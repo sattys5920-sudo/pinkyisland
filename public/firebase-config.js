@@ -1,12 +1,11 @@
-// Firebase 콘솔 > 프로젝트 설정 > 내 앱 > 웹 앱의 firebaseConfig 값을 그대로 붙여 넣어요.
+// Firebase 콘솔 > 프로젝트 설정 > 내 앱 > 웹 앱의 firebaseConfig 값이에요.
 // (이 값들은 공개되어도 괜찮아요. 데이터 보호는 database.rules.json 규칙이 맡아요.)
-// 채우기 전에는 혼자 보기 모드로 실행돼요.
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "",
-  databaseURL: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
+  apiKey: "AIzaSyADHRKHuBaEpxHsFCEhD9yVRV9NWb-leaQ",
+  authDomain: "pinkyisland.firebaseapp.com",
+  databaseURL: "https://pinkyisland-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "pinkyisland",
+  storageBucket: "pinkyisland.firebasestorage.app",
+  messagingSenderId: "429160302603",
+  appId: "1:429160302603:web:6d726a26b2e568c36adf0e",
 };
