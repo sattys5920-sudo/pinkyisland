@@ -50,6 +50,7 @@ npx firebase-tools emulators:start --only hosting
 | `lots/<0~13>` | 집터 선착순 선점 |
 | `online/<uid>` | 지금 접속 중인 사람의 위치와 이모티콘 (나가면 자동 삭제) |
 | `chat` | 채팅 |
+| `market/<id>` | 거래소에 올린 물건 (판매자·품목·개수·가격, 산 사람) |
 
 지붕 색이 14개뿐이라 섬 주민은 최대 14명이에요. 규칙(`database.rules.json`)이 이걸 서버 쪽에서도 지켜요.
 

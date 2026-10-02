@@ -60,6 +60,13 @@
       "hp": {
         ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
       }
+    },
+    "market": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && !newData.child('buyer').exists()) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid) || (data.exists() && !data.child('buyer').exists() && data.child('uid').val() !== auth.uid && newData.child('buyer').val() === auth.uid && newData.child('uid').val() === data.child('uid').val() && newData.child('item').val() === data.child('item').val() && newData.child('n').val() === data.child('n').val() && newData.child('price').val() === data.child('price').val()))",
+        ".validate": "newData.child('item').isString() && newData.child('item').val().length <= 16 && newData.child('n').isNumber() && newData.child('n').val() >= 1 && newData.child('n').val() <= 99 && newData.child('price').isNumber() && newData.child('price').val() >= 1 && newData.child('price').val() <= 1000000 && newData.child('nick').isString() && newData.child('nick').val().length <= 8"
+      }
     }
   }
 }
