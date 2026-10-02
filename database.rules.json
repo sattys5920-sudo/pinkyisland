@@ -34,6 +34,32 @@
         ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
         ".validate": "newData.child('t').isString() && newData.child('t').val().length >= 1 && newData.child('t').val().length <= 80"
       }
+    },
+    "contest": {
+      ".read": "auth != null",
+      "$week": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.child('size').isNumber() && newData.child('nick').isString() && newData.child('nick').val().length <= 8"
+        }
+      }
+    },
+    "mail": {
+      "$to": {
+        ".read": "auth != null && auth.uid === $to",
+        "$msg": {
+          ".write": "auth != null && ((!data.exists() && newData.child('from').val() === auth.uid) || (auth.uid === $to && !newData.exists()))",
+          ".validate": "newData.child('item').isString() && newData.child('item').val().length <= 16"
+        }
+      }
+    },
+    "boss": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".validate": "newData.hasChildren(['hp','max','gen'])",
+      "hp": {
+        ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+      }
     }
   }
 }
