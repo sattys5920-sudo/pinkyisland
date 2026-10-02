@@ -212,7 +212,7 @@ body.typing #chatin{background:#fff}
 import { firebaseConfig } from './firebase-config.js';
 import { NPC_TEXT } from './npcs.js';
 import * as CH from './char.js';
-import { QUESTS } from './quests.js';
+import { QUESTS as NPC_QUESTS } from './quests.js';
 import { LORE } from './lore.js';
 import { ACHIEVEMENTS } from './achievements.js';
 import { FURN2, FURN2_DRAW } from './art/furn2.js';
@@ -2257,14 +2257,14 @@ function achPanel(){
 
 // ===== 주민 퀘스트: 주민마다 6개가 이어져요 =====
 function qState(){ me.q = me.q || {done:[], active:{}, prog:{}}; me.q.done = me.q.done||[]; me.q.active = me.q.active||{}; me.q.prog = me.q.prog||{}; return me.q; }
-function questFor(n){ const list = QUESTS[n.id]||[]; const q = qState(); return list.find(x=>!q.done.includes(x.id)) || null; }
-function questAvail(n, qq){ const list = QUESTS[n.id]||[], i = list.indexOf(qq); return heartsN(n) >= (qq.unlock||0) && (i===0 || qState().done.includes(list[i-1].id)); }
+function questFor(n){ const list = NPC_QUESTS[n.id]||[]; const q = qState(); return list.find(x=>!q.done.includes(x.id)) || null; }
+function questAvail(n, qq){ const list = NPC_QUESTS[n.id]||[], i = list.indexOf(qq); return heartsN(n) >= (qq.unlock||0) && (i===0 || qState().done.includes(list[i-1].id)); }
 function questCount(qq){ const q = qState(); if (qq.type==='collect') return invCount(qq.key); return q.prog[qq.id]||0; }
 function questComplete(qq){ return questCount(qq) >= qq.n; }
 // 사건이 일어날 때 호출: type = catch|kill|mine|cook|sell|gift|talk, key = 물건/몬스터/주민 id
 function questEvent(type, key, n=1){
   if (!me) return; const q = qState(); let changed = false;
-  for (const [nid, qid] of Object.entries(q.active)){ const qq = (QUESTS[nid]||[]).find(x=>x.id===qid); if (!qq || qq.type!==type) continue;
+  for (const [nid, qid] of Object.entries(q.active)){ const qq = (NPC_QUESTS[nid]||[]).find(x=>x.id===qid); if (!qq || qq.type!==type) continue;
     const match = type==='sell' ? key.startsWith(qq.key+':') : (key===qq.key || (type==='catch' && key.startsWith(qq.key+'_')));
     if (!match) continue; const before = q.prog[qid]||0; if (before >= qq.n) continue; q.prog[qid] = Math.min(qq.n, before + n); changed = true;
     if (q.prog[qid] >= qq.n) toast(`퀘스트 목표 달성! ${NPC[nid].name}에게 돌아가요: ${qq.title}`); }
@@ -2283,18 +2283,18 @@ function questActions(n){
   if (questComplete(qq)) return [[`✅ 완료: ${qq.title}`, ()=>{
     if (qq.type==='collect') invAdd(qq.key, -qq.n);
     q.done.push(qq.id); delete q.active[n.id]; delete q.prog[qq.id];
-    me.inv.gold += qq.reward.gold||0; for (const [k,c] of (qq.reward.items||[])){ if (CH.ITEM(k)) { CLOSET().push(k); } else invAdd(k, c); }
+    me.inv.gold += qq.reward.gold||0; for (const [k,c] of (qq.reward.items||[])){ if (k.startsWith('hat:')){ CLOSET().push(k.slice(4)); } else invAdd(k, c); }
     if (qq.reward.pts) addPts(n, qq.reward.pts);
     stat('questsDone'); saveMe(); renderHud(); setExpr('happy', 3000);
-    const rw = [qq.reward.gold ? qq.reward.gold+'G' : '', ...(qq.reward.items||[]).map(([k,c])=>`${CH.ITEM(k)?.name || itemName(k)} ${CH.ITEM(k)?'':c}`), qq.reward.pts ? `호감도 +${qq.reward.pts}` : ''].filter(Boolean).join(' · ');
+    const rw = [qq.reward.gold ? qq.reward.gold+'G' : '', ...(qq.reward.items||[]).map(([k,c])=>k.startsWith('hat:') ? `${CH.HATS[k.slice(4)]?.name||'모자'}` : `${itemName(k)} ${c}`), qq.reward.pts ? `호감도 +${qq.reward.pts}` : ''].filter(Boolean).join(' · ');
     questPages(n, qq.done, null, '보상: '+rw); }]];
   return [[`📜 진행 중: ${qq.title} (${questCount(qq)}/${qq.n})`, ()=>say(title(n), fillName(qq.progress), npcActions(n), `${qTypeLabel[qq.type]}: ${qTarget(qq)} ${questCount(qq)}/${qq.n}`)]];
 }
 function questLog(){
-  const q = qState(); const rows = Object.entries(q.active).map(([nid,qid])=>{ const n = NPC[nid], qq = (QUESTS[nid]||[]).find(x=>x.id===qid); if (!qq) return '';
+  const q = qState(); const rows = Object.entries(q.active).map(([nid,qid])=>{ const n = NPC[nid], qq = (NPC_QUESTS[nid]||[]).find(x=>x.id===qid); if (!qq) return '';
     return `<div class="np"><span class="np-name">📜 ${esc(qq.title)} <small>${n.name} · ${ZONES[n.zone].name}</small></span><span class="np-place">${questComplete(qq) ? '완료! 돌아가기' : `${questCount(qq)}/${qq.n}`}</span><span class="np-day">${qTypeLabel[qq.type]}: ${esc(qTarget(qq))} ${qq.n}</span></div>`; }).join('');
   const next = NPCS.map(n=>{ const qq = questFor(n); if (!qq || q.active[n.id]) return ''; const ok = questAvail(n, qq); return `<div class="np" style="opacity:${ok?1:.6}"><span class="np-name">${n.name} <small>${ZONES[n.zone].name}</small></span><span class="np-place">${ok ? '새 퀘스트!' : `♥${qq.unlock} 필요`}</span></div>`; }).join('');
-  openPanel(`퀘스트 · 완료 ${q.done.length}/${Object.values(QUESTS).flat().length}`, `<div class="bag-sec"><b>진행 중</b>${rows || '<p class="mnote">진행 중인 퀘스트가 없어요. 주민에게 말을 걸어 봐요.</p>'}</div><div class="bag-sec"><b>받을 수 있는 퀘스트</b>${next}</div>`);
+  openPanel(`퀘스트 · 완료 ${q.done.length}/${Object.values(NPC_QUESTS).flat().length}`, `<div class="bag-sec"><b>진행 중</b>${rows || '<p class="mnote">진행 중인 퀘스트가 없어요. 주민에게 말을 걸어 봐요.</p>'}</div><div class="bag-sec"><b>받을 수 있는 퀘스트</b>${next}</div>`);
 }
 // ===== 도감 설명 =====
 function loreOf(id){ return LORE[id] || null; }
@@ -2724,7 +2724,7 @@ function talkBubble(key, x, y, t){
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-80);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { iconURL, questLog, achPanel, questEvent, stat, syncStats, QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { iconURL, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
 </body>
 </html>
