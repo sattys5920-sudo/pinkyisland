@@ -212,6 +212,10 @@ body.typing #chatin{background:#fff}
 import { firebaseConfig } from './firebase-config.js';
 import { NPC_TEXT } from './npcs.js';
 import * as CH from './char.js';
+import { QUESTS } from './quests.js';
+import { LORE } from './lore.js';
+import { ACHIEVEMENTS } from './achievements.js';
+import { FURN2, FURN2_DRAW } from './art/furn2.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
 import { ART_PART as ART_CROPS } from './art/crops.js';
@@ -541,6 +545,7 @@ let fadeT = 0;
 function enterZone(id, from, x, y){
   if (!zoneOk(id)) id = 'home';
   decorating = null;
+  if (me){ const v = (me.visited||'home').split(',').filter(Boolean); const zid = id.startsWith('house:') ? 'house' : id; if (!v.includes(zid)){ v.push(zid); me.visited = v.join(','); syncStats(); } }
   zoneId = id; const z = Z(); target = null; staticSig = '';
   if (x!=null){ pos.x = x; pos.y = y; }
   else if (from==='n'){ pos.x = z.W/2; pos.y = M+40; }
@@ -777,7 +782,7 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz;
-    Object.assign(o, {sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', nick:String(s.nick||'').slice(0,8), uid:id});
+    Object.assign(o, {sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', ti:String(s.ti||'').slice(0,12), nick:String(s.nick||'').slice(0,8), uid:id});
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
   }
@@ -989,6 +994,7 @@ function enterGame(doc){
   renderHud();
   addLog(`${me.nick}님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
   if (solo) addLog('혼자 보기 모드예요. firebase-config.js를 채우면 다른 사람과 연결돼요.', true);
+  syncStats(); checkAchievements();
   if (me.quest===0) setTimeout(()=>say('편지', '웰컴 팩이 도착했어요! 텃밭 2칸과 토마토 씨앗 2개가 들어 있어요.', [['열어 보기', ()=>{ me.inv.garden += 2; invAdd('seed:c01', 2); me.quest = 1; saveMe(); renderHud(); closeTalk(); toast('집 앞 빈 자리를 눌러 텃밭을 놓아요'); }]]), 400);
 }
 function renderHud(){
@@ -1035,7 +1041,7 @@ function pickLine(arr, key){
 function addPts(n, v){
   const r = relOf(n.id), before = heartsOf(r.pts);
   r.pts = Math.max(0, Math.min(500, r.pts + v));
-  const after = heartsOf(r.pts);
+  const after = heartsOf(r.pts); if (after !== before) syncStats();
   return [4,7,10].filter(h => before < h && after >= h && !r['ev'+h]);
 }
 // 하트 4·7·10이 되는 순간 그 주민의 이야기가 열려요
@@ -1058,7 +1064,7 @@ function playEvents(n, list){
   show();
 }
 function npcActions(n){
-  const r = relOf(n.id), acts = [];
+  const r = relOf(n.id), acts = [...questActions(n)];
   if (n.id==='momo') acts.push(...sellActions(n));
   if (n.id==='dandan') acts.push(['요리하기', cookPanel]);
   if (n.id!=='momo' && BUYERS[n.id]) acts.push(['물건 팔기', ()=>sellPanel(n)]);
@@ -1073,7 +1079,7 @@ function npcActions(n){
   if (n.id==='kongi') acts.push(['먼지 여왕 소식', ()=>say(title(n), boss && boss.gen===today() ? (boss.hp>0 ? `보고드립니다! 깊은 먼지 숲에 먼지 여왕이 나타났습니다! 남은 체력 ${Math.ceil(boss.hp)}/${boss.max}! 다 함께 물리쳐야 합니다!` : '보고드립니다! 오늘의 먼지 여왕은 물리쳤습니다! 내일 다시 나타날 겁니다!') : '보고드립니다! 깊은 먼지 숲을 살피는 중입니다!', npcActions(n))]);
   if (n.id==='toto') acts.push(['오늘의 시세', pricePanel], ['섬 주식', stockPanel]);
   if (n.id!=='toto' && Object.values(STOCKS).some(x=>x.npc===n.id)) acts.push(['우리 가게 주식', ()=>stockDetail(Object.keys(STOCKS).find(k=>STOCKS[k].npc===n.id))]);
-  if (n.id==='toto' && me.daily !== today()) acts.push([`출석 선물 받기 (${DAILY_GOLD}G)`, ()=>{ me.daily = today(); me.inv.gold += DAILY_GOLD; saveMe(); renderHud(); say(title(n), `허허… 오늘도 와 주었구먼. 자, ${DAILY_GOLD}G일세.`, npcActions(n)); }]);
+  if (n.id==='toto' && me.daily !== today()) acts.push([`출석 선물 받기 (${DAILY_GOLD}G)`, ()=>{ me.daily = today(); me.inv.gold += DAILY_GOLD; stat('daysAttended'); saveMe(); renderHud(); say(title(n), `허허… 오늘도 와 주었구먼. 자, ${DAILY_GOLD}G일세.`, npcActions(n)); }]);
   if (r.giftDay !== today() && giftList().length) acts.push(['선물하기', ()=>giftMenu(n)]);
   return acts;
 }
@@ -1087,7 +1093,7 @@ function giftMenu(n){
 function giveGift(n, item){
   const r = relOf(n.id);
   if (r.giftDay === today() || !(invCount(item)>0)) return closeTalk();
-  invAdd(item, -1); r.giftDay = today(); setExpr('wink', 2500);
+  invAdd(item, -1); r.giftDay = today(); setExpr('wink', 2500); stat('giftsGiven'); questEvent('gift', n.id);
   const taste = tasteOf(n, item), ups = addPts(n, GIFT_PTS[taste]);
   saveMe(); renderHud();
   const text = pickLine(n.react && n.react[taste], n.id+'r') || {loved:'정말 좋아해! 고마워!', liked:'고마워!', neutral:'고마워.', disliked:'음... 마음만 받을게.'}[taste];
@@ -1132,7 +1138,7 @@ function runTalk(n, talk, opening, note, ups){
 }
 function talkTo(n){
   const r = relOf(n.id), first = r.talkDay !== today();
-  let note = '', ups = [];
+  let note = '', ups = []; questEvent('talk', n.id);
   if (first){ r.talkDay = today(); ups = addPts(n, 10); note = '오늘 첫 대화 · 호감도 +10'; }
   if (n.id==='dodo' && !me.inv.pick){ me.inv.pick = true; note = [note, '도도에게 곡괭이를 받았어요! 바위를 눌러 캐 봐요'].filter(Boolean).join(' · '); }
   if (n.id==='bibi' && !me.inv.sword){ me.inv.sword = true; me.inv.weapon = 'w1'; me.inv.weapons = ['w1']; note = [note, '비비에게 나무 검을 받았어요! 몬스터를 바라보고 휘두르기(F 키)를 눌러 싸워요'].filter(Boolean).join(' · '); }
@@ -1290,7 +1296,7 @@ function catchFish(){
   stopFishing();
   const ratio = Math.pow(Math.random(), 1.5), size = Math.round((f.min + (f.max-f.min)*ratio)*10)/10;
   const st = ratio >= .85 ? 3 : ratio >= .5 ? 2 : 1, k = fishKey(id, st);
-  setExpr(st===3 || f.weight < 10 ? 'sparkle' : 'happy', 2500);
+  setExpr(st===3 || f.weight < 10 ? 'sparkle' : 'happy', 2500); stat('fishCaught'); if (st===3) stat('fish3Star'); questEvent('catch', 'fish:'+k);
   invAdd('fish:'+k, 1);
   me.dex = me.dex || {}; const dx = me.dex[id] || {n:0, best:0, st:0};
   const record = size > dx.best; me.dex[id] = {n:dx.n+1, best:Math.max(dx.best,size), st:Math.max(dx.st,st)};
@@ -1418,7 +1424,7 @@ function mineRock(r){
   if (rockHits[key] < 3){ toast(`바위를 캐는 중… (${rockHits[key]}/3)`); return; }
   delete rockHits[key];
   const id = rollOre(zoneId), o = ORES[id], n = o.tier===1 ? 1 + Math.floor(Math.random()*3) : 1;
-  invAdd('ore:'+id, n); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200);
+  invAdd('ore:'+id, n); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200); stat('oreMined', n); questEvent('mine', 'ore:'+id, n);
   me.mined = me.mined || {}; const m = me.mined[zoneId];
   me.mined[zoneId] = {h:hourKey(), done: (m && m.h===hourKey() ? m.done+',' : '') + r.i};
   me.odex = me.odex || {}; const first = !me.odex[id]; me.odex[id] = (me.odex[id]||0) + n;
@@ -1528,7 +1534,7 @@ function weaponPanel(){
         me.inv.gold -= w.gold; for (const [k,n] of w.need) invAdd(k, -n);
         me.inv.weapons = [...own, id]; toast(`${w.name}을(를) 만들었어요!`);
       } else toast(`${w.name}을(를) 들었어요 · 공격력 ${w.atk}`);
-      me.inv.weapon = id; saveMe(); renderHud(); weaponPanel(); });
+      me.inv.weapon = id; syncStats(); saveMe(); renderHud(); weaponPanel(); });
 }
 const DIRV = {left:[-1,0], right:[1,0], up:[0,-1], down:[0,1]};
 let swingAt = -1e9, swingDir = 'down', lunge = 0;
@@ -1578,7 +1584,7 @@ function hitMob(mob, t, vx, vy){
   mob.kvx = kx/kl*power; mob.kvy = ky/kl*power; mob.kb = .18;
   fx.push({x:mob.x, y:mob.y-40, text:String(dmg), t, color:'#ffffff'});
   if (mob.hp <= 0){
-    mobs = mobs.filter(m=>m!==mob);
+    mobs = mobs.filter(m=>m!==mob); stat('monsterKills'); if (mob.id==='m28') stat('caveBossKills'); questEvent('kill', mob.id);
     const m = MONSTERS[mob.id], gold = Math.round(m.atk * (0.8 + Math.random()*.4));
     invAdd('loot:'+mob.id, 1); me.inv.gold += gold;
     me.mdex = me.mdex || {}; const first = !me.mdex[mob.id]; me.mdex[mob.id] = (me.mdex[mob.id]||0) + 1;
@@ -1654,7 +1660,7 @@ function useSlot(i){
     const c = cropNow(g.crop, now); g.crop = c; const cd = CROPS[c.type] || CROPS.c01;
     if (c.stage>=4){
       const n = cd.y1 + Math.floor(Math.random()*(cd.y2-cd.y1+1));
-      g.crop = null; invAdd('crop:'+c.type, n); setExpr('happy', 2000);
+      g.crop = null; invAdd('crop:'+c.type, n); setExpr('happy', 2000); stat('cropsHarvested', n);
       if (me.quest<=5 && me.quest>=4){ me.quest = 6; invAdd('seed:c01', 2); say('하나 · 꼬마 농부', '첫 수확 축하해! 기념으로 토마토 씨앗 2개 더 줄게! 다른 씨앗은 마을 광장 모모 가게에서 살 수 있어!'); }
       else toast(`${cd.name} ${n}개를 수확했어요!`, 'crop:'+c.type);
     } else if (!c.wateredAt){
@@ -1721,7 +1727,7 @@ function cook(id){
     if (k==='fish:*'){ let left = n; for (const [fk,c] of anyFishKeys()){ const t = Math.min(left, c); invAdd(fk, -t); left -= t; if (!left) break; } }
     else invAdd(k, -n);
   }
-  invAdd('dish:'+id, 1); me.cooked = (me.cooked||0) + 1; setExpr('happy', 2000); saveMe(); renderHud();
+  invAdd('dish:'+id, 1); me.cooked = (me.cooked||0) + 1; setExpr('happy', 2000); stat('dishesCooked'); questEvent('cook', 'dish:'+id); saveMe(); renderHud();
   toast(`${DISHES[id].name}을(를) 만들었어요!`); cookPanel();
 }
 function cookPanel(){
@@ -1774,7 +1780,7 @@ function errandPanel(){
     if (e.key.startsWith('fish:')){ let left = e.n; for (const [k,c] of itemsOf('fish')){ const p = parseFish(k.slice(5)); if (p.id!==e.key.slice(5) || p.st<e.st) continue; const t = Math.min(left,c); invAdd(k,-t); left -= t; if (!left) break; } }
     else invAdd(e.key, -e.n);
     me.inv.gold += e.reward; addPts(NPC.tori, 5);
-    me.errand = {day:today(), done:[...done, String(e.i)].filter(Boolean).join(',')};
+    me.errand = {day:today(), done:[...done, String(e.i)].filter(Boolean).join(',')}; stat('errandsDone');
     saveMe(); renderHud(); toast(`심부름 완료! ${e.reward}G를 받았어요`); errandPanel();
   });
 }
@@ -1791,6 +1797,7 @@ const FURN_LIST = [
   ['황금 트로피',3000,'ore:o21',3,'trophy','#ffd23f'], ['자수정 램프',2600,'ore:o23',2,'crystal','#b57bff'], ['별빛 조명',6000,'ore:o38',1,'star','#fff6b0'],
   ['보물 상자',4000,'ore:o22',2,'chest','#a8744f'], ['케이크 장식장',1800,'ore:o20',2,'cake','#ff9fc4'],
 ];
+FURN_LIST.push(...FURN2);
 const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5]}]));
 function workshopPanel(){
   const plots = me.plots || 2, next = plots + 1, pc = PLOT_COST[next];
@@ -1801,12 +1808,12 @@ function workshopPanel(){
   }).join('') + '<p class="mnote">만든 가구는 내 집 안에서 [꾸미기]로 놓아요.</p>', b=>{
     if (b.dataset.id==='plot'){
       if (!pc) return; if (me.inv.gold < pc[0] || invCount(pc[1]) < pc[2]) return toast('재료가 모자라요');
-      me.inv.gold -= pc[0]; invAdd(pc[1], -pc[2]); me.plots = next; me.gardens.push(null); me.inv.garden++;
+      me.inv.gold -= pc[0]; invAdd(pc[1], -pc[2]); me.plots = next; me.gardens.push(null); me.inv.garden++; syncStats();
       saveMe(); renderHud(); toast('텃밭 1칸을 받았어요! 집 앞 + 자리에 놓아요'); return workshopPanel();
     }
     const f = FURN[b.dataset.id];
     if (me.inv.gold < f.gold || invCount(f.need) < f.n) return toast('재료가 모자라요');
-    me.inv.gold -= f.gold; invAdd(f.need, -f.n); invAdd('furn:'+b.dataset.id, 1);
+    me.inv.gold -= f.gold; invAdd(f.need, -f.n); invAdd('furn:'+b.dataset.id, 1); syncStats();
     saveMe(); renderHud(); toast(`${f.name}을(를) 만들었어요!`); workshopPanel();
   });
 }
@@ -1845,6 +1852,7 @@ function drawFurn(d, f, x, y){
     case 'lamp': d.rr(x-2,y-44,4,44,2,'#8a7a6a'); d.tri([[x-14,y-40],[x,y-60],[x+14,y-40]],col); d.ell(x,y,10,3,'#8a7a6a'); break;
     case 'sofa': d.rr(x-40,y-40,80,26,10,col); d.rr(x-46,y-24,92,24,10,shade(col,-.1)); d.rr(x-48,y-36,12,32,6,col); d.rr(x+36,y-36,12,32,6,col); break;
     case 'wardrobe': d.rr(x-26,y-76,52,78,8,col); d.line(c=>{c.moveTo(x,y-72);c.lineTo(x,y);},shade(col,-.3),2); d.dot(x-5,y-36,2,'#ffd23f'); d.dot(x+5,y-36,2,'#ffd23f'); break;
+    default: if (FURN2_DRAW[F.shape]) { FURN2_DRAW[F.shape](d, x, y, col); break; }
     case 'tank': d.rr(x-30,y-46,60,40,8,col); d.rr(x-30,y-8,60,10,3,'#8a7a6a'); d.ell(x-8,y-28,7,4,'#ff8f7a'); d.ell(x+12,y-20,5,3,'#ffd23f'); break;
     case 'fire': d.rr(x-34,y-56,68,58,8,col); d.rr(x-20,y-34,40,34,10,'#3b2f2f'); d.tri([[x-10,y-4],[x,y-28+Math.sin(performance.now()/120)*3],[x+10,y-4]],'#ff8c1a'); break;
     case 'piano': d.rr(x-40,y-50,80,40,8,col); d.rr(x-40,y-18,80,8,2,'#ffffff'); for (let i=0;i<7;i++) d.rr(x-36+i*11,y-18,4,5,1,'#3b3b46'); break;
@@ -1919,7 +1927,7 @@ function clothesPanel(){
     const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
     if (!can) return toast(it.need ? '재료나 돈이 모자라요' : '돈이 모자라요');
     say(it.name, it.need ? `${it.price?it.price+'G와 ':''}${itemName(it.need)} ${it.n}개로 만들까요?` : `${it.price}G에 살까요? 사면 옷장에 들어가요.`, [[it.need ? '만들기' : '사기', ()=>{
-      me.inv.gold -= it.price; if (it.need) invAdd(it.need, -it.n); CLOSET().push(id); renderHud(); closeTalk(); wear(slot, id); toast(`${it.name}을(를) ${it.need?'만들어':'사서'} 입었어요!`); }], ['그만두기', ()=>{ closeTalk(); clothesPanel(); }]], '', true);
+      me.inv.gold -= it.price; if (it.need) invAdd(it.need, -it.n); CLOSET().push(id); stat('bought'); syncStats(); renderHud(); closeTalk(); wear(slot, id); toast(`${it.name}을(를) ${it.need?'만들어':'사서'} 입었어요!`); }], ['그만두기', ()=>{ closeTalk(); clothesPanel(); }]], '', true);
   });
 }
 
@@ -2038,7 +2046,7 @@ function sellItem(key, cnt, n){
   cnt = Math.min(cnt, invCount(key)); if (cnt <= 0) return 0;
   const g = sellTotal(key, cnt, n), sk = baseKey(key).replace(':','_'), c = soldToday();
   invAdd(key, -cnt); c[sk] = (c[sk]||0) + cnt; me.inv.gold += g;
-  me.earned = (me.earned||0) + g;
+  me.earned = (me.earned||0) + g; stat('sold', cnt); questEvent('sell', key, cnt); syncStats();
   return g;
 }
 const trend = key => { const m = marketMul(key); return m >= 2 ? '<b style="color:#e48fac">인기 ×2</b>' : m >= 1.15 ? '<span style="color:#e48fac">▲</span>' : m <= .85 ? '<span style="color:#7fa6d9">▼</span>' : '<span style="color:var(--soft)">–</span>'; };
@@ -2077,7 +2085,7 @@ function onMarket(v){
   // 내 물건이 팔렸으면 골드를 받아요
   for (const [id,l] of Object.entries(market)) if (l.uid===uid && l.buyer){
     net.marketCollect(id).then(ok=>{ if (!ok) return; const g = Math.floor(l.price*(1-MARKET_FEE)); me.inv.gold += g; me.earned = (me.earned||0) + g; saveMe(); renderHud();
-      addLog(`거래소: ${String(l.bnick||'누군가').slice(0,8)}님이 ${itemName(l.item)} ${l.n}개를 샀어요! +${g}G`, true); }).catch(()=>{});
+      stat('marketSold'); addLog(`거래소: ${String(l.bnick||'누군가').slice(0,8)}님이 ${itemName(l.item)} ${l.n}개를 샀어요! +${g}G`, true); }).catch(()=>{});
   }
   if (!$('npcPanel').hidden && $('npcPanel').dataset.market) marketPanel();
 }
@@ -2098,7 +2106,7 @@ function marketPanel(){
       withIcon(l.item);
       say('거래소', `${String(l.nick||'').slice(0,8)}님의 ${itemName(l.item)} ${l.n}개를 ${l.price}G에 살까요?`, [['사기', async ()=>{
         if (me.inv.gold < l.price) return toast('골드가 모자라요');
-        if (await net.marketBuy(id)){ me.inv.gold -= l.price; invAdd(l.item, l.n); saveMe(); renderHud(); toast(`${itemName(l.item)} ${l.n}개를 샀어요!`, l.item); }
+        if (await net.marketBuy(id)){ me.inv.gold -= l.price; invAdd(l.item, l.n); stat('marketBought'); saveMe(); renderHud(); toast(`${itemName(l.item)} ${l.n}개를 샀어요!`, l.item); }
         else toast('앗, 이미 다른 사람이 샀어요');
         closeTalk(); marketPanel(); }], ['그만두기', marketPanel]], `상점 시세로는 개당 ${unitPrice(l.item)}G예요`, true); });
   $('npcPanel').dataset.market = '1';
@@ -2193,7 +2201,7 @@ function stockTrade(id, n){
   } else {
     const h = own[id]; n = Math.min(-n, h?.n||0); if (!n) return;
     const got = Math.floor(p*n*(1-STOCK_FEE)); h.cost = Math.round(h.cost * (h.n-n)/h.n); h.n -= n; if (!h.n) delete own[id];
-    me.inv.gold += got; me.earned = (me.earned||0) + got;
+    me.inv.gold += got; me.earned = (me.earned||0) + got; if (got > h.cost*n/(h.n+n)) stat('stockProfit', Math.round(got - h.cost*n/(h.n+n))); syncStats();
     toast(`${STOCKS[id].name} ${n}주를 팔았어요 · +${got}G`);
   }
   saveMe(); renderHud(); stockDetail(id);
@@ -2216,6 +2224,81 @@ function stockDetail(id){
 let stockShown = -1;
 setInterval(()=>{ const k = stockTick(); if (k !== stockShown){ stockShown = k; const p = $('npcPanel'); if (p && !p.hidden && p.dataset.stock) stockPanel(); } }, 5000);
 
+
+// ===== 기록(stats) · 업적 · 칭호 =====
+function stats(){ me.stats = me.stats || {}; return me.stats; }
+function stat(key, n=1){ const st = stats(); st[key] = (st[key]||0) + n; checkAchievements(); return st[key]; }
+function statSet(key, v){ const st = stats(); if (st[key] !== v){ st[key] = v; checkAchievements(); } }
+function syncStats(){ // 다른 데이터에서 바로 계산되는 기록
+  const st = stats(); st.dexFish = Object.keys(me.dex||{}).length; st.dexOre = Object.keys(me.odex||{}).length; st.dexMon = Object.keys(me.mdex||{}).length;
+  st.earned = me.earned||0; st.closetCount = (me.closet||[]).length; st.plots = me.plots||2; st.museumDonated = museumTotal();
+  const hearts = NPCS.map(n=>heartsN(n)); st.maxHearts = Math.max(0, ...hearts); st.friends7 = hearts.filter(h=>h>=7).length; st.soulmates = hearts.filter(h=>h>=10).length;
+  st.weaponTier = Math.max(1, WEAPON_LIST.findIndex(w=>w[0]===(me.inv.weapon||'w1')) + 1);
+  st.zonesVisited = (me.visited||'home').split(',').filter(Boolean).length; st.questsDone = (me.q&&me.q.done||[]).length;
+  st.furnCount = Object.values(me.inv.furn||{}).reduce((a,b)=>a+b,0) + (me.furn||[]).length;
+}
+let achQueue = [];
+function checkAchievements(){
+  if (!me) return; me.ach = me.ach || []; const st = stats(); let got = false;
+  for (const a of ACHIEVEMENTS){ if (me.ach.includes(a.id) || (st[a.stat]||0) < a.n) continue; me.ach.push(a.id); me.inv.gold += a.reward.gold||0; got = true; achQueue.push(a); }
+  if (got){ saveMe(); renderHud(); flushAch(); }
+}
+let achToastT = 0;
+function flushAch(){ if (!achQueue.length) return; const a = achQueue.shift(); toast(`${a.icon} 업적 달성! ${a.name} · +${a.reward.gold}G · 칭호 획득`); setExpr('sparkle', 2500); clearTimeout(achToastT); achToastT = setTimeout(flushAch, 2800); }
+const titleOf = id => (ACHIEVEMENTS.find(a=>a.id===id)||{}).reward?.title || '';
+function achPanel(){
+  syncStats(); const st = stats(), done = me.ach || [];
+  const rows = ACHIEVEMENTS.map(a=>{ const ok = done.includes(a.id), v = Math.min(st[a.stat]||0, a.n);
+    return `<button class="np ${ok?'':'dim'}" data-id="${a.id}" style="${ok?'':'opacity:.7'}"><span class="np-name">${a.icon} ${esc(a.name)} <small>${esc(a.desc)}</small></span><span class="np-place">${ok ? (me.title===a.id ? '칭호 사용 중' : '칭호 쓰기') : `${v}/${a.n}`}</span><span class="np-day">${ok ? '달성 · '+a.reward.gold+'G' : ''}</span></button>`; }).join('');
+  openPanel(`업적 ${done.length}/${ACHIEVEMENTS.length}`, `<p class="mnote" style="margin-top:0">달성한 업적의 칭호를 고르면 이름 위에 보여요.${me.title ? ` 지금 칭호: <b>${esc(titleOf(me.title))}</b>` : ''}</p><div style="display:flex;gap:6px"><button class="mini" id="achNone">칭호 없음</button></div>${rows}`,
+    b=>{ const id = b.dataset.id; if (!done.includes(id)) return; me.title = me.title===id ? '' : id; saveMe(); achPanel(); });
+  $('achNone').onclick = ()=>{ me.title = ''; saveMe(); achPanel(); };
+}
+
+// ===== 주민 퀘스트: 주민마다 6개가 이어져요 =====
+function qState(){ me.q = me.q || {done:[], active:{}, prog:{}}; me.q.done = me.q.done||[]; me.q.active = me.q.active||{}; me.q.prog = me.q.prog||{}; return me.q; }
+function questFor(n){ const list = QUESTS[n.id]||[]; const q = qState(); return list.find(x=>!q.done.includes(x.id)) || null; }
+function questAvail(n, qq){ const list = QUESTS[n.id]||[], i = list.indexOf(qq); return heartsN(n) >= (qq.unlock||0) && (i===0 || qState().done.includes(list[i-1].id)); }
+function questCount(qq){ const q = qState(); if (qq.type==='collect') return invCount(qq.key); return q.prog[qq.id]||0; }
+function questComplete(qq){ return questCount(qq) >= qq.n; }
+// 사건이 일어날 때 호출: type = catch|kill|mine|cook|sell|gift|talk, key = 물건/몬스터/주민 id
+function questEvent(type, key, n=1){
+  if (!me) return; const q = qState(); let changed = false;
+  for (const [nid, qid] of Object.entries(q.active)){ const qq = (QUESTS[nid]||[]).find(x=>x.id===qid); if (!qq || qq.type!==type) continue;
+    const match = type==='sell' ? key.startsWith(qq.key+':') : (key===qq.key || (type==='catch' && key.startsWith(qq.key+'_')));
+    if (!match) continue; const before = q.prog[qid]||0; if (before >= qq.n) continue; q.prog[qid] = Math.min(qq.n, before + n); changed = true;
+    if (q.prog[qid] >= qq.n) toast(`퀘스트 목표 달성! ${NPC[nid].name}에게 돌아가요: ${qq.title}`); }
+  if (changed) saveMe();
+}
+function questPages(n, pages, after, note){ // 페이지를 차례로 보여 주고 마지막에 after 실행
+  const show = i => say(title(n), fillName(pages[i]), i < pages.length-1 ? [['다음', ()=>show(i+1)]] : (after ? [['확인', after]] : npcActions(n)), i===pages.length-1 ? (note||'') : '', true);
+  show(0);
+}
+const qTypeLabel = {collect:'가져오기', catch:'낚기', kill:'물리치기', mine:'캐기', cook:'요리하기', sell:'팔기', gift:'선물하기', talk:'말 걸기'};
+function qTarget(qq){ if (qq.type==='talk' || qq.type==='gift') return NPC[qq.key]?.name || qq.key; if (qq.type==='sell') return SELL_CATS[qq.key] || qq.key; if (qq.type==='kill') return MONSTERS[qq.key]?.name || qq.key; return itemName(qq.key); }
+function questActions(n){
+  const qq = questFor(n); if (!qq) return [];
+  const q = qState(), active = q.active[n.id]===qq.id;
+  if (!active){ if (!questAvail(n, qq)) return []; return [[`📜 ${qq.title}`, ()=>questPages(n, qq.intro, ()=>{ q.active[n.id] = qq.id; q.prog[qq.id] = 0; saveMe(); closeTalk(); toast(`퀘스트 시작: ${qq.title}`); renderHud(); }, `${qTypeLabel[qq.type]}: ${qTarget(qq)} ${qq.n}`)]]; }
+  if (questComplete(qq)) return [[`✅ 완료: ${qq.title}`, ()=>{
+    if (qq.type==='collect') invAdd(qq.key, -qq.n);
+    q.done.push(qq.id); delete q.active[n.id]; delete q.prog[qq.id];
+    me.inv.gold += qq.reward.gold||0; for (const [k,c] of (qq.reward.items||[])){ if (CH.ITEM(k)) { CLOSET().push(k); } else invAdd(k, c); }
+    if (qq.reward.pts) addPts(n, qq.reward.pts);
+    stat('questsDone'); saveMe(); renderHud(); setExpr('happy', 3000);
+    const rw = [qq.reward.gold ? qq.reward.gold+'G' : '', ...(qq.reward.items||[]).map(([k,c])=>`${CH.ITEM(k)?.name || itemName(k)} ${CH.ITEM(k)?'':c}`), qq.reward.pts ? `호감도 +${qq.reward.pts}` : ''].filter(Boolean).join(' · ');
+    questPages(n, qq.done, null, '보상: '+rw); }]];
+  return [[`📜 진행 중: ${qq.title} (${questCount(qq)}/${qq.n})`, ()=>say(title(n), fillName(qq.progress), npcActions(n), `${qTypeLabel[qq.type]}: ${qTarget(qq)} ${questCount(qq)}/${qq.n}`)]];
+}
+function questLog(){
+  const q = qState(); const rows = Object.entries(q.active).map(([nid,qid])=>{ const n = NPC[nid], qq = (QUESTS[nid]||[]).find(x=>x.id===qid); if (!qq) return '';
+    return `<div class="np"><span class="np-name">📜 ${esc(qq.title)} <small>${n.name} · ${ZONES[n.zone].name}</small></span><span class="np-place">${questComplete(qq) ? '완료! 돌아가기' : `${questCount(qq)}/${qq.n}`}</span><span class="np-day">${qTypeLabel[qq.type]}: ${esc(qTarget(qq))} ${qq.n}</span></div>`; }).join('');
+  const next = NPCS.map(n=>{ const qq = questFor(n); if (!qq || q.active[n.id]) return ''; const ok = questAvail(n, qq); return `<div class="np" style="opacity:${ok?1:.6}"><span class="np-name">${n.name} <small>${ZONES[n.zone].name}</small></span><span class="np-place">${ok ? '새 퀘스트!' : `♥${qq.unlock} 필요`}</span></div>`; }).join('');
+  openPanel(`퀘스트 · 완료 ${q.done.length}/${Object.values(QUESTS).flat().length}`, `<div class="bag-sec"><b>진행 중</b>${rows || '<p class="mnote">진행 중인 퀘스트가 없어요. 주민에게 말을 걸어 봐요.</p>'}</div><div class="bag-sec"><b>받을 수 있는 퀘스트</b>${next}</div>`);
+}
+// ===== 도감 설명 =====
+function loreOf(id){ return LORE[id] || null; }
+
 // ===== 협동 보스: 먼지 여왕 (깊은 먼지 숲) =====
 const BOSS = {x:800, y:440, max:3000, atk:30};
 let boss = null, bossPending = 0, bossFlushT = 0, bossCd = 0, bossHurt = 0;
@@ -2227,7 +2310,7 @@ function bossAlive(){ return zoneId==='deepforest' && boss && boss.gen===today()
 function updateBoss(dt, t){
   if (zoneId!=='deepforest' || !boss) return;
   if (boss.gen===today() && boss.hp <= 0){
-    if (me.bossClaim !== today() && (me.bossHit||0) === today()){ me.bossClaim = today(); me.inv.gold += 3000; invAdd('loot:m16', 1); addPts(NPC.bibi, 30); saveMe(); renderHud(); say('먼지 여왕을 물리쳤어요!', '섬 주민들과 힘을 합쳐 먼지 여왕을 물리쳤어요!\n먼지 숲이 조금 맑아진 것 같아요.', [], '보상 3000G · 여왕의 리본 · 비비 호감도 +30'); }
+    if (me.bossClaim !== today() && (me.bossHit||0) === today()){ me.bossClaim = today(); me.inv.gold += 3000; stat('bossKills'); invAdd('loot:m16', 1); addPts(NPC.bibi, 30); saveMe(); renderHud(); say('먼지 여왕을 물리쳤어요!', '섬 주민들과 힘을 합쳐 먼지 여왕을 물리쳤어요!\n먼지 숲이 조금 맑아진 것 같아요.', [], '보상 3000G · 여왕의 리본 · 비비 호감도 +30'); }
     return;
   }
   const d = Math.hypot(pos.x-BOSS.x, pos.y-BOSS.y);
@@ -2263,7 +2346,7 @@ function drawStars(c, t){
 }
 function makeWish(){
   if (me.wish === wishKey()) return say('별빛 언덕', '오늘 밤 소원은 이미 빌었어요.\n별똥별은 하룻밤에 한 번만 소원을 들어준대요.');
-  me.wish = wishKey();
+  me.wish = wishKey(); stat('wishes');
   const r = Math.random();
   let msg;
   if (r < .3){ invAdd('seed:c30', 1); msg = '반짝이는 씨앗이 떨어졌어요! (황금딸기 씨앗)'; }
@@ -2330,8 +2413,8 @@ function showBag(){
   const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
   openPanel(`가방 · 💰 ${me.inv.gold}G · ❤️ ${Math.ceil(playerHp)}`,
     `<div class="np"><span class="np-name">도구 <small>${tools}</small></span></div>${grid || '<p class="mnote">가방이 비어 있어요.</p>'}
-     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">친구에게 선물 보내기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">섬 주식</button><button class="mini" id="bgCloset">옷장</button></div>`);
-  $('bgCloset').onclick = clothesPanel;
+     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">친구에게 선물 보내기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">섬 주식</button><button class="mini" id="bgCloset">옷장</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`);
+  $('bgCloset').onclick = clothesPanel; $('bgQuest').onclick = questLog; $('bgAch').onclick = achPanel;
   $('bgMarket').onclick = marketPanel; $('bgPrice').onclick = pricePanel; $('bgStock').onclick = stockPanel;
   $('npcPanel').querySelectorAll('.tile').forEach(b=>b.onclick = ()=>itemInfo(b.dataset.k));
   $('dxF').onclick = showDex; $('dxO').onclick = oreDex; $('dxM').onclick = monDex;
@@ -2340,6 +2423,7 @@ function showBag(){
 function itemInfo(k){
   const [cat, id] = k.split(':'), acts = [];
   let desc = `${invCount(k)}/${STACK_MAX}개 · 팔면 1개 ${itemPrice(k)}G`;
+  const lore = loreOf(cat==='fish' ? parseFish(id).id : id); if (lore) desc = lore.desc + '\n' + desc;
   if (cat==='dish'){ desc += ` · 먹으면 체력 +${DISHES[id].heal}`; acts.push(['먹기', ()=>{ eatDish(id); closeTalk(); showBag(); }]); }
   if (cat==='fish'){ const p = parseFish(id), d = (me.dex||{})[p.id]; desc = `${'★'.repeat(p.st)}${'☆'.repeat(3-p.st)} · ` + desc + (d ? ` · 최고 기록 ${d.best}cm` : ''); }
   if (cat==='ore') desc = `희귀도 ${TIER_STAR(ORES[id].tier)} · ` + desc;
@@ -2348,9 +2432,11 @@ function itemInfo(k){
   acts.push(['가방으로', showBag]);
   withIcon(k); say(itemName(k), desc, acts, '', true);
 }
+function dexGridBind(entries){ $('npcPanel').querySelectorAll('.tile[data-aid]').forEach(t=>t.onclick = ()=>{ const e = entries.find(x=>x.aid===t.dataset.aid); dexInfo(e.aid, e.got, e.name); }); }
 function dexGrid(title, entries){
-  openPanel(title, `<div class="bag-grid dex">${entries.map(e=>`<div class="tile ${e.got?'':'unknown'}" title="${esc(e.name)}"><img class="ic" src="${iconURL(e.aid, 96, !e.got)}" alt=""><em>${e.got ? esc(e.name) : '???'}</em>${e.sub ? `<s>${e.sub}</s>` : ''}</div>`).join('')}</div>`);
+  openPanel(title, `<div class="bag-grid dex">${entries.map(e=>`<div class="tile ${e.got?'':'unknown'}" data-aid="${e.aid}" data-got="${e.got?1:0}" title="${esc(e.name)}"><img class="ic" src="${iconURL(e.aid, 96, !e.got)}" alt=""><em>${e.got ? esc(e.name) : '???'}</em>${e.sub ? `<s>${e.sub}</s>` : ''}</div>`).join('')}</div>`);  dexGridBind(entries);
 }
+function dexInfo(aid, got, name){ const l = loreOf(aid); if (!got) return say('???', '아직 만나지 못했어요.', [], l ? l.tip : ''); withIcon(aid.startsWith('f') ? 'fish:'+aid+'_1' : aid.startsWith('o') ? 'ore:'+aid : aid.startsWith('m') ? 'loot:'+aid : aid.startsWith('c') ? 'crop:'+aid : 'dish:'+aid); say(name, l ? l.desc : '', [], l ? l.tip : '', false); }
 function showDex(){
   const zn = {pond:'연못', beach:'바다', seacave:'해식 동굴'}, tm = {any:'', day:' 낮', night:' 밤'};
   dexGrid(`물고기 도감 ${Object.keys(me.dex||{}).length}/50`, Object.entries(FISH).map(([id,f])=>{ const d = (me.dex||{})[id]; return {aid:id, got:!!d, name:f.name, sub: d ? `${'★'.repeat(d.st)} ${d.best}cm` : zn[f.zone]+tm[f.time]}; }));
@@ -2400,9 +2486,9 @@ addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
 function sendChat(){
   const inp = $('chatin'), t = inp.value.trim(); inp.value = ''; inp.blur();
   if (!t) return;
-  net.sendChat(t).catch(()=>toast('채팅을 보내지 못했어요.'));
+  net.sendChat(t).catch(()=>toast('채팅을 보내지 못했어요.')); stat('chatSent');
 }
-document.querySelectorAll('.emo').forEach(b=>b.onclick = ()=>{ emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); setExpr({'👋':'happy','❤️':'wink','✨':'sparkle','😢':'sad'}[b.dataset.e] || 'cat', 3000); });
+document.querySelectorAll('.emo').forEach(b=>b.onclick = ()=>{ emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); setExpr({'👋':'happy','❤️':'wink','✨':'sparkle','😢':'sad'}[b.dataset.e] || 'cat', 3000); stat('emotesSent'); });
 
 function toWorld(cx, cy){ return { x: view.cx + cx/view.zoom, y: view.cy + cy/view.zoom }; }
 function hitTarget(w){
@@ -2432,7 +2518,7 @@ function interactNear(){
 }
 
 // ===== 이동 =====
-let stuckT = 0;
+let stuckT = 0, walked = 0;
 function step(dt){
   let vx = (keys.d||keys.arrowright?1:0) - (keys.a||keys.arrowleft?1:0);
   let vy = (keys.s||keys.arrowdown?1:0) - (keys.w||keys.arrowup?1:0);
@@ -2453,6 +2539,7 @@ function step(dt){
   const ox = pos.x, oy = pos.y, nx = pos.x + vx*SPEED*dt, ny = pos.y + vy*SPEED*dt;
   if (!blocked(nx, pos.y)) pos.x = nx;
   if (!blocked(pos.x, ny)) pos.y = ny;
+  walked += Math.hypot(pos.x-ox, pos.y-oy); if (walked > 500){ stats().distanceWalked = (stats().distanceWalked||0) + Math.round(walked); walked = 0; checkAchievements(); }
   checkExit();
   if (target && Math.hypot(pos.x-ox, pos.y-oy) < SPEED*dt*.2){ stuckT += dt; if (stuckT>.35){ const tg = target; target = null; stuckT = 0; if (tg.act && Math.hypot(pos.x-tg.x, pos.y-tg.y) < 64) tg.act(); } } else stuckT = 0;
 }
@@ -2461,7 +2548,7 @@ let lastPres = 0, presSig = '', lastTarget = null;
 function sendPresence(t){
   if (!net || !me) return;
   const tgt = target && !keyMoving ? target : null;
-  const p = {z:zoneId, nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr()};
+  const p = {z:zoneId, nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : ''};
   if (tgt){ p.tx = Math.round(tgt.x); p.ty = Math.round(tgt.y); }
   const sig = JSON.stringify(tgt ? {...p, x:0, y:0, dir:0, mv:0} : p);
   let go = false;
@@ -2579,6 +2666,7 @@ function buildStatic(){
   if (ex.w) signPost(d, `← ${ZONES[ex.w].name}`, M+80, cy-50);
   if (ex.e) signPost(d, `→ ${ZONES[ex.e].name}`, z.W-M-80, cy-50);
 }
+function titleTag(c, text, x, y){ c.font='bold 13px "Dongle",sans-serif'; c.textAlign='center'; const w = c.measureText(text).width + 10; c.fillStyle='rgba(228,143,172,.9)'; c.beginPath(); c.roundRect(x-w/2, y-10, w, 13, 6); c.fill(); c.fillStyle='#fff'; c.fillText(text, x, y); }
 function tag(c, text, x, y, color){
   c.font='bold 18px "Dongle",sans-serif'; c.textAlign='center';
   const w = c.measureText(text).width + 12;
@@ -2616,11 +2704,11 @@ function frame(t){
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
       ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-50, null)})),
-      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'), label:()=>{ tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); talkBubble(k,o.x,o.y,t); }})),
+      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'), label:()=>{ tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-80); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
-      {y:pos.y, draw:()=>drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); talkBubble('me',pos.x,pos.y,t); }},
+      {y:pos.y, draw:()=>drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-80); talkBubble('me',pos.x,pos.y,t); }},
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
@@ -2636,7 +2724,7 @@ function talkBubble(key, x, y, t){
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-80);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { iconURL, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { iconURL, questLog, achPanel, questEvent, stat, syncStats, QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
 </body>
 </html>
