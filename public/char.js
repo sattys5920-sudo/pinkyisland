@@ -127,6 +127,53 @@ export const HAIR = {
   pixie:  {g:'f', label:'픽시컷',     back:K=>{}, front:K=>{ K.dome(1.22,.85,-.4); K.lock(.4,-1.0,-1.0,.0,.38,-.35); K.lock(.4,-1.05,-.4,-.1,.34,-.15); K.lock(.4,-1.0,.15,-.28,.3,0); K.lock(.45,-1.0,.75,-.3,.3,.15); K.lock(-.9,-.3,-1.08,.25,.26,-.05); K.gloss(); }},
   medium: {g:'f', label:'레이어드 미디움', back:K=>{ K.back(2.5,-.6,2.0,.7); K.lock(-1.1,.2,-1.3,1.2,.3,-.2); K.lock(1.1,.2,1.3,1.2,.3,.2); }, front:K=>{ K.dome(); K.curtain(); K.sides(1.2,.32,-.3); K.gloss(); }},
 };
+
+// ---------- 옆모습 머리 (오른쪽을 보는 기준, 앞 = +x) ----------
+// fringe: 앞머리 종류 / fall: 뒤로 늘어지는 길이(R 단위) / tail: 포니테일 / bun: [x,y,r] / braid / twin / curls / curlEnd / thin
+const SIDE_SPEC = {
+  short:{fringe:'short'}, part:{fringe:'sweep'}, dandy:{fringe:'straight'}, center:{fringe:'curtain'}, perm:{fringe:'sweep', curls:true},
+  twoblock:{fringe:'sweep'}, slick:{fringe:'up'}, wolf:{fringe:'sweep', fall:.9}, longm:{fringe:'curtain', fall:1.3}, comma:{fringe:'comma'},
+  gile:{fringe:'gile'}, seethru:{fringe:'thin'}, layered:{fringe:'curtain', fall:.7}, softwave:{fringe:'curtain', curls:true, fall:.35}, asperm:{fringe:'curtain', curls:true},
+  ccurl:{fringe:'sweep', fall:.9, curlEnd:true}, bob:{fringe:'sweep', fall:.9}, long:{fringe:'sweep', fall:1.8}, pony:{fringe:'sweep', tail:true}, wave:{fringe:'curtain', fall:1.2, curls:true},
+  bun:{fringe:'up', bun:[-.45,-1.2,.4]}, twin:{fringe:'straight', twin:true}, braid:{fringe:'sweep', braid:true}, twinbun:{fringe:'up', bun:[-.55,-1.05,.34]}, shortbob:{fringe:'straight', fall:.7},
+  sidepony:{fringe:'sweep', tail:true, low:true}, halfup:{fringe:'curtain', fall:1.5, bun:[-.35,-1.2,.28]}, bangslong:{fringe:'straight', fall:1.8}, pixie:{fringe:'sweep', short:true}, medium:{fringe:'curtain', fall:1.2},
+};
+function sideHair(d, x, y, R, hc, id, layer){
+  const sp = SIDE_SPEC[id] || SIDE_SPEC.short, u = v => v*R, c = d.ctx;
+  const L = (x0,y0,x1,y1,w,b=0,round=true)=>lock(d, hc, x+u(x0), y+u(y0), x+u(x1), y+u(y1), u(w), u(b), round);
+  if (layer==='back'){
+    // 뒤로 늘어지는 머리: 뒷통수 아래에서 등 뒤로
+    if (sp.fall){ d.shape(k=>{ k.beginPath(); k.roundRect(x-u(1.32), y-u(.35), u(.95), u(.35+sp.fall), u(.4)); }, hc, [x-u(.85), y+u(sp.fall/2), u(.9)]);
+      if (sp.curlEnd){ d.circle(x-u(.6), y+u(sp.fall-.2), u(.3), hc); d.circle(x-u(1.1), y+u(sp.fall-.1), u(.3), hc); }
+      if (sp.curls){ for (let i=0;i<3;i++) d.circle(x-u(1.25)+u(i*.35), y+u(sp.fall-.25+(i%2)*.15), u(.27), hc); } }
+    if (sp.tail){ const ty = sp.low ? .1 : -.55; L(-1.1, ty, -1.45, ty+1.5, .34, -.45); d.circle(x-u(1.1), y+u(ty), u(.3), hc); }
+    if (sp.braid){ for (let i=0;i<5;i++) d.circle(x-u(1.15)+u(i%2?.07:-.07), y-u(.3)+u(i*.32), u(.22), hc); }
+    if (sp.twin){ L(-1.15, -.2, -1.45, 1.0, .3, -.25); d.circle(x-u(1.15), y-u(.25), u(.26), hc); }
+    if (sp.curls && !sp.fall){ for (let i=0;i<3;i++) d.circle(x-u(1.2)+u(i*.2), y-u(.1)+u(i*.3), u(.26), hc); }
+    return;
+  }
+  // 덮개: 이마 끝 → 정수리 → 뒷통수 → 뒷목, 안쪽은 귀 뒤로
+  const fy = sp.fringe==='up' ? -.72 : -.12, nape = sp.fall ? .3 : .55;
+  d.shape(k=>{ k.beginPath(); k.moveTo(x+u(.98), y+u(fy));
+    k.quadraticCurveTo(x+u(.95), y-u(1.18), x, y-u(1.22));
+    k.quadraticCurveTo(x-u(1.32), y-u(1.18), x-u(1.28), y-u(.1));
+    k.lineTo(x-u(1.22), y+u(nape));
+    k.quadraticCurveTo(x-u(.95), y+u(nape+.12), x-u(.6), y+u(nape-.05));
+    k.lineTo(x-u(.42), y-u(.15));
+    k.quadraticCurveTo(x-u(.1), y-u(.55), x+u(.3), y+u(fy-.25));
+    k.closePath(); }, hc, [x-u(.3), y-u(.5), u(1.15)]);
+  // 앞머리
+  const f = sp.fringe;
+  if (f==='sweep' || f==='short'){ const e = f==='short' || sp.short ? -.3 : -.02; L(-.1,-1.1, .98, e, .42, .15); L(0,-1.1, .62, e-.18, .32, .05); }
+  else if (f==='straight'){ d.shape(k=>{ k.beginPath(); k.roundRect(x+u(.1), y-u(1.0), u(.92), u(.98), [u(.1),u(.1),u(.3),u(.3)]); }, hc, [x+u(.55), y-u(.5), u(.6)], {seam:true}); L(.3,-.9,.95,-.02,.3,.05); }
+  else if (f==='curtain'){ L(.2,-1.1, 1.0, -.08, .4, .25); L(.1,-1.1, .5, -.25, .28, .05); }
+  else if (f==='comma'){ L(-.05,-1.12, .98, -.05, .44, .45); L(.05,-1.1, .55, -.3, .3, .1); }
+  else if (f==='gile'){ L(-.1,-1.1, 1.05, .28, .46, .3); L(0,-1.1, .6, -.2, .3, .05); }
+  else if (f==='thin'){ for (let i=0;i<3;i++) L(.1+i*.05,-1.05, .5+i*.24, -.02-(i%2)*.06, .2, .08); }
+  else if (f==='up'){ L(.2,-.95, -.4,-1.3, .3, .05); L(.6,-.8, 0,-1.3, .3, .05); }
+  if (sp.bun) d.circle(x+u(sp.bun[0]), y+u(sp.bun[1]), u(sp.bun[2]), hc);
+  const g=d.ctx; g.save(); g.globalAlpha=.14; g.fillStyle='#fff6ee'; g.beginPath(); g.ellipse(x-u(.3), y-u(.95), u(.6), u(.2), -.1, 0, 7); g.fill(); g.restore();
+}
 function hair(d, x, y, L, side, R, layer, up=false){
   const st = HAIR[L.hair] || HAIR.short, c = d.ctx;
   if (up){ // 뒷모습: 뒷통수 전체가 머리카락
@@ -134,13 +181,7 @@ function hair(d, x, y, L, side, R, layer, up=false){
     d.shape(k=>{ k.beginPath(); k.ellipse(x, y-R*.12, R*1.26, R*1.12, 0, 0, 7); }, L.hairColor, [x, y-R*.2, R*1.2]);
     st.back(K); K.gloss(0, -.95, .75, .22); return;
   }
-  if (side){ // 옆모습: 뒷머리는 뒤로(-x), 앞머리는 앞으로(+x) 치우쳐요
-    c.save();
-    if (layer==='back'){ c.translate(x - R*.25, 0); c.scale(-.8, 1); c.translate(-x, 0); } // 좌우를 뒤집어 포니테일·땋은 머리가 뒤쪽에 오게
-    else { c.translate(x + R*.12, 0); c.scale(.92, 1); c.translate(-x, 0); }
-    const K = hairKit(d, x, y, R, L.hairColor); (layer==='back' ? st.back : st.front)(K);
-    c.restore(); return;
-  }
+  if (side){ sideHair(d, x, y, R, L.hairColor, L.hair, layer); return; }
   const K = hairKit(d, x, y, R, L.hairColor);
   (layer==='back' ? st.back : st.front)(K);
 }
@@ -277,7 +318,7 @@ export function figure(d, L, dir, t, walk, expr){
   if (up && (L.hair==='long' || L.hair==='bangslong' || L.hair==='halfup' || L.hair==='longm')) { const K = hairKit(d, 0, HY, R, L.hairColor); (HAIR[L.hair]||HAIR.long).back(K); }
   // 머리
   if (!side) { d.ell(-R*1.2, HY+R*.1, 2.4, 3, L.skin); d.ell(R*1.2, HY+R*.1, 2.4, 3, L.skin); }
-  else d.ell(-R*1.08, HY+R*.1, 2.4, 3, L.skin); // 옆모습: 뒤쪽 귀 하나
+  else d.ell(-R*.5, HY+R*.12, 2.6, 3.2, L.skin); // 옆모습: 귀는 머리 가운데 뒤쪽
   headShape(d, 0, HY, R, L.skin);
   if (!up) face(d, side ? R*.22 : 0, HY+R*.28, L, side, expr);
   if (up) hair(d, 0, HY, L, side, R, 'back', true);
