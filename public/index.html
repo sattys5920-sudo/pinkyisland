@@ -1,15 +1,21 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
 <title>핑키 디저트 아일랜드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
 <style>
 :root{--ink:#6b3a4d;--soft:#a5768a;--card:#fffaf7;--pink:#ff8fb3;--pinkd:#e5588a;--line:#f2cfdc;--sea:#8fd3f5}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{margin:0;background:var(--sea);color:var(--ink);font:16px/1.5 "Jua",system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 #game{position:fixed;inset:0;width:100%;height:100%;display:block}
 .pill{background:linear-gradient(#fff,#ffeef4);border-radius:16px;box-shadow:inset 0 -3px 0 #f6c3d5,0 4px 12px #c9708f33}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-offset:2px}
-#hud{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:10px;display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:15px;z-index:5}
+#hud{flex-wrap:wrap;max-width:calc(100vw - 20px - min(260px,52vw) - 10px);position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:10px;display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:15px;z-index:5}
 #hud i{width:14px;height:14px;border-radius:5px;display:inline-block;vertical-align:-2px;margin-right:4px}
 #quest{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;max-width:min(260px,52vw);padding:8px 12px;font-size:14px;z-index:5}
 #quest b{display:block;font-size:12px;color:var(--soft)}
@@ -27,6 +33,16 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 #talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:min(520px,calc(100vw - 20px));padding:14px 16px;z-index:8}
 #talk h3{margin:0 0 4px;font-size:18px;color:var(--pinkd)}
 #talk p{margin:0 0 10px;font-size:16px}
+#talk #talkNote{font-size:13px;color:var(--soft);margin-top:-6px}
+#talk .act{flex-wrap:wrap}
+.mini{border:0;border-radius:10px;background:var(--pink);color:#fff;font-size:13px;padding:2px 10px;box-shadow:inset 0 -2px 0 #e5588a}
+#npcPanel{position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:10px;width:min(360px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;z-index:7;display:flex;flex-direction:column;gap:6px;touch-action:pan-y}
+.np-head{display:flex;justify-content:space-between;align-items:center;padding:0 4px}
+.np{border:0;background:#fff;border-radius:12px;padding:6px 10px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:0 8px;box-shadow:inset 0 -2px 0 #f2d6e0}
+.np-name{font-size:15px}.np-name small{color:var(--soft);font-size:12px}
+.np-place{font-size:12px;color:var(--soft);text-align:right}
+.np-h{color:#ff5a88;font-size:12px;letter-spacing:1px}
+.np-day{font-size:12px;color:var(--soft);text-align:right}
 .btn{border:0;border-radius:12px;padding:7px 16px;background:var(--pink);color:#fff;font-size:16px;box-shadow:inset 0 -3px 0 #e5588a}
 .btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 -3px 0 #f2d6e0}
 .btn:disabled{opacity:.4;cursor:default}
@@ -68,6 +84,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 .act{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .note{background:#fff;border-radius:14px;padding:10px 14px;font-size:14px;color:var(--soft)}
 </style>
+</head>
+<body>
 
 <canvas id="game" aria-label="게임 화면"></canvas>
 <div id="hud" class="pill" hidden></div>
@@ -83,7 +101,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
     <button class="emo" data-e="😢" aria-label="눈물">😢</button>
   </div>
 </div>
-<div id="talk" class="pill" hidden><h3 id="talkName"></h3><p id="talkText"></p><div class="act" id="talkAct"></div></div>
+<div id="talk" class="pill" hidden><h3 id="talkName"></h3><p id="talkText"></p><p id="talkNote" hidden></p><div class="act" id="talkAct"></div></div>
+<div id="npcPanel" class="pill" hidden></div>
 <div id="toast" class="pill" style="opacity:0"></div>
 <div id="ob"><div class="obc" id="obc"><h1>핑키 디저트 아일랜드</h1><p class="sub">섬에 연결하는 중이에요…</p></div></div>
 
@@ -234,35 +253,179 @@ function blob(d, x, y, fabric, acc, t){
 
 
 // ===== 월드 =====
-const W = 1800, H = 1200, SPEED = 150, STAGE_MS = 30000, MAX = 14;
+const W = 2400, H = 1800, SPEED = 160, STAGE_MS = 30000, MAX = 14;
 const ROOFS = [['빨강','#ff6b6b'],['주황','#ffa14f'],['노랑','#ffd84f'],['연두','#b5e35a'],['초록','#5cc46a'],['민트','#6fe0c4'],['하늘','#7cc8ff'],['파랑','#5b8cff'],['남색','#5361b3'],['보라','#a77bff'],['분홍','#ff8fc4'],['코랄','#ff8f7a'],['갈색','#a8744f'],['회색','#9a96a6']];
-const LOT_X = [230,390,550,710,1090,1250,1410];
-const LOTS = [...LOT_X.map(x=>({x,y:330})), ...LOT_X.map(x=>({x,y:950}))];
-const SHOP = {x:1590,y:610};
-const NPCS = [
-  {id:'hana', name:'하나', role:'꼬마 농부', x:980, y:480, fabric:'#c5efcb', acc:'cap'},
-  {id:'momo', name:'모모', role:'케이크 가게 주인', x:1590, y:650, fabric:'#ffc2d6', acc:'apron'},
+const LOT_X = [560,720,880,1040,1360,1520,1680];
+const LOTS = [...LOT_X.map(x=>({x,y:640})), ...LOT_X.map(x=>({x,y:1260}))];
+const FOUNTAIN = {x:1200, y:900};
+
+// 주민들이 있는 장소 (house는 건물, 나머지는 특별한 모양으로 그려요)
+const PLACES = [
+  {id:'mine', name:'광산 입구', kind:'mine', x:330, y:330, area:'북서쪽'},
+  {id:'farm', name:'하나의 텃밭', kind:'field', x:330, y:700, area:'서쪽'},
+  {id:'flower', name:'밤이 꽃집', kind:'house', x:330, y:1150, roof:'#ffb3d9', icon:'💐', area:'서쪽'},
+  {id:'forest', name:'먼지 숲 입구', kind:'forest', x:330, y:1540, area:'남서쪽'},
+  {id:'museum', name:'올리 박물관', kind:'house', x:880, y:330, roof:'#b9a6ff', icon:'🏛️', area:'북쪽'},
+  {id:'workshop', name:'보리 공방', kind:'house', x:1520, y:330, roof:'#c98e5b', icon:'🔨', area:'북쪽'},
+  {id:'pond', name:'사탕 연못', kind:'pond', x:2060, y:300, area:'북동쪽'},
+  {id:'cake', name:'모모 케이크', kind:'house', x:2060, y:760, roof:'#ff9fc4', icon:'🍰', area:'동쪽'},
+  {id:'clothes', name:'몽실 옷가게', kind:'house', x:2060, y:1160, roof:'#9fd6ff', icon:'👕', area:'동쪽'},
+  {id:'lighthouse', name:'펭펭 등대', kind:'lighthouse', x:2080, y:1560, area:'남동쪽'},
+  {id:'cafe', name:'단단 카페', kind:'house', x:880, y:1580, roof:'#b5e35a', icon:'☕', area:'남쪽'},
+  {id:'gate', name:'마을 입구', kind:'gate', x:1200, y:1600, area:'남쪽'},
+  {id:'post', name:'토리 우체국', kind:'house', x:1520, y:1580, roof:'#ffa14f', icon:'✉️', area:'남쪽'},
+  {id:'plaza', name:'광장 분수', kind:'plaza', x:1200, y:900, area:'가운데'},
 ];
-const TREES = [[150,210],[150,480],[150,770],[160,1040],[830,190],[980,190],[1680,200],[1690,440],[1700,800],[830,1050],[980,1050],[330,700],[610,480],[1240,700],[1330,480],[520,820]];
-const POND = {x:1630,y:990,rx:80,ry:55};
-const QUESTS = ['웰컴 팩을 열어요','집 앞에 텃밭 2칸을 놓아요','하나에게 말을 걸어 물뿌리개를 받아요','텃밭에 토마토 씨앗을 심어요','심은 씨앗에 물을 줘요','토마토가 다 자라면 수확해요','튜토리얼 완료! 계속 토마토를 키워 봐요'];
+const PLACE = Object.fromEntries(PLACES.map(p=>[p.id,p]));
+const POND = {x:2060, y:300, rx:130, ry:80};
+const MINE = {x:330, y:290, rx:160, ry:100};
+const TREES = [[160,520],[160,900],[620,200],[1110,190],[1300,190],[1790,200],[2250,560],[2250,960],[2250,1340],[700,1440],[1060,1440],[1340,1440],[1720,1440],[1880,1420],
+  [190,1430],[280,1460],[170,1530],[250,1630],[360,1660],[160,1650],[420,1440]];
+
+// 동물 주민 14명. lines: 하트 0~2 / 3~6 / 7~10 단계별 대사
+const NPCS = [
+  {id:'hana', name:'하나', animal:'토끼', role:'꼬마 농부', place:'farm', x:330, y:748, sp:{kind:'rabbit', fur:'#fff6f0', acc:'straw'},
+   tastes:{loved:['tomato'], liked:['seed']},
+   lines:[['오늘 날씨 딱 농사짓기 좋다!','토마토는 단계마다 물을 줘야 쑥쑥 자라~'],['네 텃밭 봤어! 정말 잘 키우더라!','나중에 같이 큰 밭 만들자!'],['너랑 농사짓는 게 제일 좋아!','언젠가 이 섬을 토마토 섬으로 만들 거야. 도와줄 거지?']]},
+  {id:'momo', name:'모모', animal:'고양이', role:'케이크 가게 주인', place:'cake', x:2060, y:792, sp:{kind:'cat', fur:'#ffc98f', acc:'apron'},
+   tastes:{liked:['tomato']},
+   lines:[['어서 와요~ 모모 케이크예요!','토마토는 하나에 30G에 사 갈게요.'],['단골손님 왔다! 오늘은 뭐 팔러 왔어요?','토마토 케이크 신메뉴 어때요? 헤헤.'],['당신이 오면 가게가 환해져요.','가게 문 닫고 같이 노을 보러 갈래요?']]},
+  {id:'lulu', name:'루루', animal:'수달', role:'느긋한 어부', place:'pond', x:2060, y:425, sp:{kind:'otter', fur:'#b98a64', acc:'cap'}, soon:'낚시는 곧 열려요',
+   tastes:{},
+   lines:[['어이~ 연못 구경 왔어? 물고기가 꽤 많다구.','낚시는 서두르면 안 돼. 느긋하게~'],['오, 또 왔네. 같이 물멍이나 할까?','연못 깊은 곳에 황금잉어가 산다는 소문이 있어.'],['너랑 있으면 시간 가는 줄 모르겠어.','황금잉어 잡으면 제일 먼저 너한테 보여 줄게.']]},
+  {id:'dodo', name:'도도', animal:'두더지', role:'광부 아저씨', place:'mine', x:470, y:420, sp:{kind:'mole', fur:'#7a6a72', acc:'helmet'}, soon:'채굴은 곧 열려요',
+   tastes:{disliked:['tomato']},
+   lines:[['허허, 광산은 아직 위험하다네. 조금만 기다리게.','반짝이는 바위엔 보석이 숨어 있지.'],['자네 또 왔나. 차라도 한잔 하겠나?','이 헬멧, 30년 된 거라네.'],['자네 같은 후배가 있어 든든하구먼.','언젠가 이 곡괭이를 자네에게 물려주지.']]},
+  {id:'bibi', name:'비비', animal:'여우', role:'씩씩한 모험가', place:'forest', x:510, y:1530, sp:{kind:'fox', fur:'#ff9a4d', acc:'bandana'}, soon:'전투는 곧 열려요',
+   tastes:{disliked:['tomato']},
+   lines:[['숲에 먼지 뭉치가 늘고 있어! 조심해!','나는 비비! 이 섬 최고의 모험가지!'],['오, 눈빛이 좋아졌는데? 같이 모험 갈래?','다음엔 누가 먼지 뭉치를 더 잡나 내기하자!'],['내 등을 맡길 수 있는 건 너뿐이야.','세상 끝까지 같이 모험 가자!']]},
+  {id:'toto', name:'토토', animal:'거북이', role:'섬 촌장 할아버지', place:'plaza', x:1120, y:968, sp:{kind:'turtle', fur:'#a8dc8f', acc:'glasses'},
+   tastes:{liked:['tomato']},
+   lines:[['허허, 어서 오게. 이 섬의 촌장 토토라네.','천천히 가도 괜찮다네. 섬은 어디 가지 않으니.'],['자네 덕분에 섬이 활기차졌어.','오늘도 이웃들과 인사는 나눴는가?'],['자네는 이 섬의 자랑이라네.','이 섬을 자네 같은 주민에게 맡길 수 있어 기쁘네.']]},
+  {id:'bori', name:'보리', animal:'곰', role:'목수·대장장이', place:'workshop', x:1520, y:362, sp:{kind:'bear', fur:'#b98256', acc:'none'}, soon:'도구 업그레이드와 텃밭 늘리기는 곧 열려요',
+   tastes:{},
+   lines:[['...보리. 목수다.','부서진 거 있으면 가져와.'],['...왔나. 앉아.','네 물뿌리개, 언젠가 더 좋게 고쳐 주지.'],['...너는 좋은 친구다.','네 집 의자, 내가 직접 만들어 주고 싶다.']]},
+  {id:'mongsil', name:'몽실', animal:'양', role:'옷가게 재봉사', place:'clothes', x:2060, y:1192, sp:{kind:'sheep', fur:'#fffaf0', acc:'bow'}, soon:'옷과 모자 판매는 곧 열려요',
+   tastes:{},
+   lines:[['아, 안녕하세요... 몽실이에요.','옷, 옷은 아직 만드는 중이에요...'],['또 와 주셨네요! 기, 기뻐요.','당신에게 어울리는 색을 생각해 봤어요.'],['당신 옷은 제가 평생 만들어 드릴게요!','처음 만든 리본, 당신한테 주고 싶어요.']]},
+  {id:'tori', name:'토리', animal:'다람쥐', role:'우체부', place:'post', x:1520, y:1612, roam:true, sp:{kind:'squirrel', fur:'#d9894f', acc:'bag'}, soon:'편지와 심부름은 곧 열려요',
+   tastes:{liked:['tomato']},
+   lines:[['바빠 바빠! 편지 배달 중이야!','이 섬 소식은 내가 제일 빨라!'],['너한테 온 편지는 없나 매일 확인해!','들었어? 펭펭이 내일 비 온대!'],['너한테만 알려 주는 비밀 소식이 있어!','배달 끝나면 너네 집 앞에서 쉬어도 돼?']]},
+  {id:'olly', name:'올리', animal:'부엉이', role:'박물관 관장', place:'museum', x:880, y:362, sp:{kind:'owl', fur:'#a98366', acc:'none'}, soon:'도감 기부는 곧 열려요',
+   tastes:{},
+   lines:[['부엉, 박물관에 온 걸 환영하네.','이 섬의 물고기, 광석, 작물을 모두 모으는 게 내 꿈이지.'],['자네는 질문을 잘하는구먼. 좋은 자세야.','밤에 오면 별 이야기도 해 주지.'],['자네가 내 최고의 조수일세.','박물관 한쪽에 자네 이름을 새기고 싶군.']]},
+  {id:'pengpeng', name:'펭펭', animal:'펭귄', role:'등대지기', place:'lighthouse', x:2020, y:1612, sp:{kind:'penguin', fur:'#454a63', acc:'none'}, soon:'날씨 예보와 이벤트 알림은 곧 열려요',
+   tastes:{},
+   lines:[['펭! 오늘 날씨는... 맑음! 아마도!','등대 불빛은 내가 매일 닦아.'],['바람 냄새가 좋아. 너도 맡아 봐!','내일은 무지개가 뜰지도 몰라. 진짜야!'],['너는 내 등대 같은 친구야.','날씨가 나빠도 너랑 있으면 괜찮아.']]},
+  {id:'dandan', name:'단단', animal:'판다', role:'카페 사장', place:'cafe', x:880, y:1612, sp:{kind:'panda', fur:'#ffffff', acc:'chef'}, soon:'디저트 요리는 곧 열려요',
+   tastes:{loved:['tomato']},
+   lines:[['어서 와~ 단단 카페야. 냠.','배고프면 아무것도 못 해. 진짜야.'],['토마토 있으면 맛있는 거 만들어 줄게!','오늘의 추천은... 내가 다 먹었어. 미안.'],['너랑 먹는 디저트가 제일 맛있어.','카페 신메뉴 이름을 네 이름으로 할래!']]},
+  {id:'kongi', name:'콩이', animal:'강아지', role:'마을 경비대', place:'gate', x:1290, y:1628, sp:{kind:'dog', fur:'#f2d2a0', acc:'collar'}, soon:'먼지 뭉치 알림은 곧 열려요',
+   tastes:{},
+   lines:[['멍! 마을 입구는 내가 지킨다!','수상한 먼지 뭉치를 보면 바로 알려 줘!'],['킁킁, 너한테서 좋은 냄새가 나!','잃어버린 물건 있으면 내가 찾아 줄게!'],['너는 내가 제일 좋아하는 주민이야! 멍!','산책 같이 갈래? 꼬리가 멈추질 않아!']]},
+  {id:'bami', name:'밤이', animal:'고슴도치', role:'꽃집 주인', place:'flower', x:330, y:1182, sp:{kind:'hedgehog', fur:'#e8c9a6', acc:'flower'}, soon:'꽃 씨앗과 꽃다발은 곧 열려요',
+   tastes:{liked:['seed']},
+   lines:[['흥, 꽃 밟지 마. ...그래도 와 줘서 고마워.','꽃집은 곧 열 거야.'],['너 오늘 좀 괜찮아 보이네. 칭찬은 아니야.','이 꽃 이름? 비밀이야.'],['...너한테만 가시 안 세울게.','네 집 앞에 꽃 심어 줄까? 특별히.']]},
+];
+const NPC = Object.fromEntries(NPCS.map(n=>[n.id,n]));
+const GIFT_ITEMS = {tomato:'토마토', seed:'토마토 씨앗'};
+const GIFT_PTS = {loved:40, liked:25, neutral:15, disliked:-10};
+const REACT = {loved:'우와아! 이거 정말 좋아해! 고마워!', liked:'오, 좋은 걸 주는구나. 고마워!', neutral:'고마워. 잘 받을게!', disliked:'음... 마음만 받을게.'};
+const REWARDS = {3:100, 6:300, 10:1000};
+const TOMATO_PRICE = 30, SEED_PRICE = 20, DAILY_GOLD = 50;
+const QUESTS = ['웰컴 팩을 열어요','집 앞에 텃밭 2칸을 놓아요','섬 서쪽 텃밭의 하나에게 말을 걸어 물뿌리개를 받아요','텃밭에 토마토 씨앗을 심어요','심은 씨앗에 물을 줘요','토마토가 다 자라면 수확해요','튜토리얼 완료! 주민 14명과 친해져 봐요'];
 const STAGE_NAMES = ['씨앗','새싹','잎','꽃','빨간 토마토'];
+
+const today = () => Math.floor((Date.now() + 9*3600000) / 86400000); // 한국 시간 기준 날짜
+const heartsOf = pts => Math.max(0, Math.min(10, Math.floor((pts||0)/50)));
+function tasteOf(npc, item){ for (const k of ['loved','liked','disliked']) if ((npc.tastes[k]||[]).includes(item)) return k; return 'neutral'; }
+
+// 우체부 토리는 시계를 기준으로 걸어서 모두의 화면에 같은 자리에 보여요
+const TORI_PATH = [[1520,1612],[1240,1612],[1240,960],[640,960],[1240,960],[1760,960],[1240,960],[1240,1612]];
+const TORI_SEGS = TORI_PATH.map((a,i)=>{ const b = TORI_PATH[(i+1)%TORI_PATH.length]; return {a, b, walk:Math.hypot(b[0]-a[0], b[1]-a[1])/60*1000}; });
+const TORI_TOTAL = TORI_SEGS.reduce((s,g)=>s+g.walk+3000, 0);
+function toriPos(now){
+  let t = now % TORI_TOTAL;
+  for (const g of TORI_SEGS){
+    if (t < 3000) return {x:g.a[0], y:g.a[1], mv:false, dx:0};
+    t -= 3000;
+    if (t < g.walk){ const k = t/g.walk; return {x:g.a[0]+(g.b[0]-g.a[0])*k, y:g.a[1]+(g.b[1]-g.a[1])*k, mv:true, dx:g.b[0]-g.a[0]}; }
+    t -= g.walk;
+  }
+  return {x:TORI_PATH[0][0], y:TORI_PATH[0][1], mv:false, dx:0};
+}
 
 function slotsOf(lot){ const L = LOTS[lot]; return [{x:L.x-34,y:L.y+44},{x:L.x+34,y:L.y+44}]; }
 function cropNow(c, now){ if (!c) return null; if (c.wateredAt && c.stage<4 && now >= c.wateredAt + STAGE_MS) return {stage:c.stage+1, wateredAt:null}; return c; }
 
-const obstacles = { circles: [], rects: [] };
+const obstacles = { circles: [], rects: [], ells: [] };
 function rebuildObstacles(){
-  obstacles.circles = [{x:900,y:600,r:44}, ...TREES.map(([x,y])=>({x,y:y+22,r:24}))];
-  obstacles.rects = [{x:SHOP.x-56,y:SHOP.y-108,w:112,h:110}];
+  obstacles.circles = [{x:FOUNTAIN.x,y:FOUNTAIN.y,r:44}, {x:1160,y:1600,r:12}, {x:1240,y:1600,r:12}, ...TREES.map(([x,y])=>({x,y:y+22,r:24}))];
+  obstacles.ells = [POND, MINE];
+  obstacles.rects = [{x:2112,y:1420,w:56,h:150}];
+  for (const p of PLACES) if (p.kind==='house') obstacles.rects.push({x:p.x-56,y:p.y-108,w:112,h:110});
   for (const p of Object.values(players)) if (p.lot!=null){ const L=LOTS[p.lot]; obstacles.rects.push({x:L.x-54,y:L.y-106,w:108,h:108}); }
 }
 function blocked(x,y){
   if (x<112||x>W-112||y<112||y>H-104) return true;
-  if (((x-POND.x)/(POND.rx+6))**2 + ((y-POND.y)/(POND.ry+6))**2 < 1) return true;
+  for (const e of obstacles.ells) if (((x-e.x)/(e.rx+6))**2 + ((y-e.y)/(e.ry+6))**2 < 1) return true;
   for (const c of obstacles.circles) if ((x-c.x)**2+(y-c.y)**2 < c.r*c.r) return true;
   for (const r of obstacles.rects) if (x>r.x && x<r.x+r.w && y>r.y && y<r.y+r.h) return true;
   return false;
+}
+
+// ===== 동물 솜인형 =====
+function animalNpc(d, x, y, sp, t, mv, flip){
+  const c = d.ctx, bob = mv ? Math.abs(Math.sin(t*8+x))*2 : Math.abs(Math.sin(t*2.5+x))*1.5;
+  const f = sp.fur, dark = shade(f,-.18), K = sp.kind;
+  c.save(); c.translate(x,y); if (flip) c.scale(-1,1);
+  d.dot(0,2,12,'rgba(0,0,0,.13)'); c.translate(0,-bob);
+  // 몸 뒤에 오는 것
+  if (K==='turtle'){ d.ell(0,-11,16,13,'#6fae5f'); for (const [sx,sy] of [[-7,-15],[7,-15],[0,-7],[-9,-6],[9,-6]]) d.dot(sx,sy,2.6,'#8fcb7a'); }
+  if (K==='squirrel'){ d.ell(14,-20,7,13,f); d.ell(15,-28,6,6,shade(f,.25)); }
+  if (K==='hedgehog') for (let a=-2.9;a<=-.2;a+=.32) d.tri([[Math.cos(a)*11-3,-13+Math.sin(a)*11-3],[Math.cos(a)*19,-13+Math.sin(a)*18],[Math.cos(a)*11+3,-13+Math.sin(a)*11+3]],'#8a6248');
+  if (K==='rabbit'){ d.ell(-5,-33,3.8,10,f); d.ell(5,-33,3.8,10,f); d.dot(-5,-33,1.8,'blush'); d.dot(5,-33,1.8,'blush'); }
+  if (K==='cat'||K==='fox'){ const s = K==='fox'?1.15:1; d.tri([[-12,-19],[-9*s,-33*s],[-2,-25]],f); d.tri([[12,-19],[9*s,-33*s],[2,-25]],f); if (K==='fox'){ d.dot(-9.5*s,-30*s,1.8,'#fff'); d.dot(9.5*s,-30*s,1.8,'#fff'); } else { d.dot(-8,-26,1.6,'blush'); d.dot(8,-26,1.6,'blush'); } }
+  if (K==='bear'||K==='otter'||K==='panda'){ const r = K==='otter'?3.6:5, col = K==='panda'?'#2f2f3a':f; d.circle(-9,-24,r,col); d.circle(9,-24,r,col); }
+  if (K==='squirrel'){ d.tri([[-10,-21],[-8,-31],[-3,-24]],f); d.tri([[10,-21],[8,-31],[3,-24]],f); }
+  if (K==='owl'){ d.tri([[-12,-18],[-11,-31],[-4,-24]],dark); d.tri([[12,-18],[11,-31],[4,-24]],dark); }
+  // 발, 몸
+  d.ell(-5,1,4,2.6,dark); d.ell(5,1,4,2.6,dark);
+  d.ell(0,-13,13,13,f);
+  if (K==='penguin'){ d.ell(0,-10,9,10,'#ffffff'); }
+  if (K==='owl'||K==='fox'||K==='otter'||K==='bear'||K==='dog'||K==='hedgehog') d.ell(0,-7,7,5.5,shade(f,.5));
+  const armC = K==='panda' ? '#2f2f3a' : K==='penguin' ? f : f;
+  d.ell(-14,-11,3.2,4.5,armC); d.ell(14,-11,3.2,4.5,armC);
+  if (K==='sheep') for (let a=-3.1;a<=0;a+=.45) d.circle(Math.cos(a)*12,-13+Math.sin(a)*11.5,4.6,'#ffffff');
+  if (K==='dog'){ d.ell(-12.5,-16,3.6,7.5,shade(f,-.22)); d.ell(12.5,-16,3.6,7.5,shade(f,-.22)); }
+  d.stitch(c=>{c.moveTo(0,-25);c.quadraticCurveTo(2,-20,0,-17);}, '#ffffff', .6);
+  // 얼굴
+  const ey = -14;
+  if (K==='owl'){ for (const ex of [-5,5]){ d.circle(ex,ey,4.4,'#fff7e6'); d.dot(ex,ey,2.2,'eye'); d.dot(ex-.7,ey-.8,.7,'#fff'); } d.tri([[-1.8,-10],[0,-7],[1.8,-10]],'#ffb347'); }
+  else {
+    if (K==='panda'){ d.ell(-5,ey,3.8,4.6,'#2f2f3a'); d.ell(5,ey,3.8,4.6,'#2f2f3a'); }
+    const er = K==='mole' ? 1.2 : 2.3;
+    for (const ex of [-4.5,4.5]){ d.dot(ex,ey,er,K==='panda'?'#ffffff':'eye'); if (K!=='mole') d.dot(ex-.6,ey-.6,.6,K==='panda'?'eye':'#fff'); }
+    if (K==='penguin') d.tri([[-2.5,-10.5],[0,-6.5],[2.5,-10.5]],'#ffa94d');
+    else if (K==='mole') d.circle(0,-9.5,3,'#ff9fb3');
+    else { d.dot(0,-10,1.3,'eye'); d.line(c=>{c.moveTo(-1.6,-8.6);c.quadraticCurveTo(0,-7.4,1.6,-8.6);},'eye',.8); }
+    if (K==='cat'||K==='otter') d.line(c=>{c.moveTo(-6,-10);c.lineTo(-11,-11);c.moveTo(-6,-9);c.lineTo(-11,-8);c.moveTo(6,-10);c.lineTo(11,-11);c.moveTo(6,-9);c.lineTo(11,-8);},'eye',.6);
+  }
+  if (K!=='penguin'&&K!=='panda') { d.dot(-8,-10,2.3,'blush',.75); d.dot(8,-10,2.3,'blush',.75); }
+  // 소품
+  const A = sp.acc;
+  if (A==='straw'){ d.ell(0,-24,15,3.6,'#f3d27a'); d.ell(0,-27,8.5,5,'#f3d27a'); d.rr(-8.5,-27,17,2,1,'#ff7a9a'); }
+  if (A==='apron') d.rr(-6,-9,12,8,3,'#ffffff');
+  if (A==='cap'){ d.ell(0,-25,10,4.5,'#5fb3ff'); d.ell(6,-23,7,2,'#4a9be8'); }
+  if (A==='helmet'){ d.shape(()=>{c.beginPath();c.arc(0,-21,11.5,Math.PI,0);c.closePath();},'#ffd84f',[0,-25,11]); d.circle(0,-30,3,'#fff6b0'); }
+  if (A==='bandana') d.tri([[-8,-4],[0,3],[8,-4]],'#ff5a5a');
+  if (A==='glasses') d.line(c=>{c.arc(-5,ey,3.6,0,7);c.moveTo(8.6,ey);c.arc(5,ey,3.6,0,7);c.moveTo(-1.4,ey);c.lineTo(1.4,ey);},'#5b3345',.9);
+  if (A==='bow'){ d.tri([[0,-25],[-6,-29],[-6,-21]],'#ff8fc4'); d.tri([[0,-25],[6,-29],[6,-21]],'#ff8fc4'); d.circle(0,-25,1.6,'#ffb3d9'); }
+  if (A==='bag'){ d.line(c=>{c.moveTo(-10,-20);c.lineTo(7,-4);},'#8a5a3b',1.4); d.rr(4,-7,9,7,2,'#c98e5b'); }
+  if (A==='chef'){ d.circle(-4,-30,4.5,'#fff'); d.circle(4,-30,4.5,'#fff'); d.circle(0,-33,5,'#fff'); d.rr(-7,-28,14,4,2,'#fff'); }
+  if (A==='collar'){ d.rr(-7,-5,14,2.6,1.2,'#ff5a5a'); d.dot(0,-2,1.6,'#ffd84f'); }
+  if (A==='flower'){ for (let a=0;a<6.28;a+=1.256) d.dot(6+Math.cos(a)*2.4,-25+Math.sin(a)*2.4,1.8,'#ff8fc4'); d.dot(6,-25,1.4,'#ffe066'); }
+  c.restore();
 }
 
 // ===== 상태 =====
@@ -280,7 +443,7 @@ let staticLayer = null, staticSig = '';
 function fromDB(p){
   if (!p) return p;
   const g = p.gardens || [];
-  return { ...p, inv:{garden:0, seed:0, tomato:0, can:false, ...(p.inv||{})},
+  return { ...p, rel:p.rel||{}, inv:{garden:0, seed:0, tomato:0, can:false, gold:0, ...(p.inv||{})},
     gardens:[0,1].map(i=>{ const s = g[i]; if (!s) return null; return {crop: s.stage>=0 ? {stage:s.stage, wateredAt:s.wateredAt||null} : null}; }) };
 }
 function toDB(p){
@@ -482,7 +645,7 @@ function renderOb(){
       if (!ok || Object.values(players).some(p=>p.lot===pick.lot)){
         pick.lot = null; renderOb(); $('err').textContent = '방금 다른 분이 고른 집터예요. 다른 곳을 골라 주세요.'; return;
       }
-      const doc = { nick:nickVal, look:structuredClone(EDIT), roof:pick.roof, lot:pick.lot, inv:{garden:0,seed:0,tomato:0,can:false}, gardens:[null,null], quest:0, joinedAt:Date.now() };
+      const doc = { nick:nickVal, look:structuredClone(EDIT), roof:pick.roof, lot:pick.lot, inv:{garden:0,seed:0,tomato:0,can:false,gold:0}, rel:{}, gardens:[null,null], quest:0, joinedAt:Date.now() };
       me = doc; await saveMe();
       players[uid] = structuredClone(doc); rebuildObstacles();
       enterGame(doc);
@@ -511,10 +674,12 @@ function enterGame(doc){
 }
 function renderHud(){
   const online = 1 + others.size;
-  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>접속 ${Math.min(online,MAX)}/${MAX}</span>`;
+  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>💰 ${me.inv.gold}G</span><span>접속 ${Math.min(online,MAX)}/${MAX}</span><button id="npcBtn" class="mini">주민</button>`;
+  $('npcBtn').onclick = toggleNpcPanel;
   $('quest').innerHTML = `<b>${me.quest<6?'할 일':'튜토리얼'}</b>${QUESTS[Math.min(me.quest,6)]}`;
   const it = [['💧','물뿌리개',me.inv.can?1:0,true],['🟫','텃밭',me.inv.garden],['🌱','토마토 씨앗',me.inv.seed],['🍅','토마토',me.inv.tomato]];
   $('bar').innerHTML = it.map(([e,n,c,tool])=>`<div class="${c?'':'off'}" title="${n}" aria-label="${n} ${c}개">${e}${tool?'':`<span>${c}</span>`}</div>`).join('');
+  if (!$('npcPanel').hidden) renderNpcPanel();
 }
 let toastT = 0;
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(()=>el.style.opacity=0, 2600); }
@@ -523,23 +688,78 @@ function addLog(t, sys){
   const log = $('log'); log.append(p); while (log.children.length > 6) log.firstChild.remove();
   setTimeout(()=>{ p.style.opacity = .35; }, 9000);
 }
-function say(name, text, actions=[]){
+function say(name, text, actions=[], note=''){
   $('talkName').textContent = name; $('talkText').textContent = text;
+  $('talkNote').textContent = note; $('talkNote').hidden = !note;
   const act = $('talkAct'); act.innerHTML = '';
   for (const [label, fn] of [...actions, ['닫기', closeTalk]]){ const b = document.createElement('button'); b.className = label==='닫기'&&actions.length ? 'btn ghost' : 'btn'; b.textContent = label; b.onclick = fn; act.append(b); }
   $('talk').hidden = false;
 }
 function closeTalk(){ $('talk').hidden = true; }
 
-function talkTo(npc){
-  if (npc.id==='momo') return say('모모 · 케이크 가게 주인', me.inv.tomato ? `와, 토마토를 ${me.inv.tomato}개나 키웠네요! 가게는 곧 문을 열어요. 그때 사 갈게요~` : '어서 와요~ 모모 케이크예요! 가게는 곧 문을 열어요. 맛있는 걸 키우면 꼭 보여 줘요!');
-  if (me.quest<=1) return say('하나 · 꼬마 농부', '안녕! 나는 하나야. 먼저 웰컴 팩을 열고, 집 앞 빈 자리에 텃밭 2칸을 놓아 봐!');
-  if (me.quest===2){ me.inv.can = true; me.quest = 3; saveMe(); renderHud(); return say('하나 · 꼬마 농부', '텃밭 다 놓았구나! 자, 내 물뿌리개 하나 줄게. 토마토 씨앗을 심고 물을 줘 봐!'); }
-  if (me.quest<5) return say('하나 · 꼬마 농부', '씨앗을 심고 물을 주면 30초마다 한 단계씩 자라. 단계마다 물을 다시 줘야 해!');
-  if (me.quest===5) return say('하나 · 꼬마 농부', '토마토가 빨갛게 익으면 텃밭을 눌러서 수확해!');
-  const planted = me.gardens.some(g=>g&&g.crop);
-  if (!me.inv.seed && !planted){ me.inv.seed += 2; saveMe(); renderHud(); return say('하나 · 꼬마 농부', '씨앗이 다 떨어졌구나? 토마토 씨앗 2개 더 줄게!'); }
-  say('하나 · 꼬마 농부', ['오늘 날씨 딱 농사짓기 좋다!','다른 친구들 텃밭도 구경해 봐!','언젠가 이 섬을 토마토 섬으로 만들 거야!'][Math.floor(Math.random()*3)]);
+// ===== 주민 호감도 =====
+function relOf(id){ me.rel = me.rel || {}; return me.rel[id] = me.rel[id] || {pts:0, talkDay:0, giftDay:0}; }
+function hearts(n){ const h = heartsOf(relOf(n.id).pts); return '♥'.repeat(h) + '♡'.repeat(10-h); }
+function title(n){ return `${n.name} · ${n.animal} ${n.role}  ${heartsOf(relOf(n.id).pts)}♥`; }
+function addPts(n, v){
+  const r = relOf(n.id), before = heartsOf(r.pts);
+  r.pts = Math.max(0, Math.min(500, r.pts + v));
+  const after = heartsOf(r.pts);
+  for (const h of [3,6,10]) if (before < h && after >= h && !r['h'+h]){
+    r['h'+h] = true; me.inv.gold += REWARDS[h];
+    setTimeout(()=>toast(`하트 ${h}개! ${n.name}이(가) 고맙다며 ${REWARDS[h]}G를 줬어요`), 900);
+  }
+}
+function npcLine(n){ const h = heartsOf(relOf(n.id).pts), tier = h<3 ? 0 : h<7 ? 1 : 2; const L = n.lines[tier]; return L[Math.floor(Math.random()*L.length)]; }
+function npcActions(n){
+  const r = relOf(n.id), acts = [];
+  if (n.id==='momo'){
+    if (me.inv.tomato) acts.push([`토마토 ${me.inv.tomato}개 팔기 (+${me.inv.tomato*TOMATO_PRICE}G)`, ()=>{ const g = me.inv.tomato*TOMATO_PRICE; me.inv.gold += g; me.inv.tomato = 0; saveMe(); renderHud(); say(title(n), `고마워요! ${g}G 여기 있어요~`, npcActions(n)); }]);
+    acts.push([`씨앗 사기 (${SEED_PRICE}G)`, ()=>{ if (me.inv.gold < SEED_PRICE) return toast('돈이 모자라요'); me.inv.gold -= SEED_PRICE; me.inv.seed++; saveMe(); renderHud(); toast('토마토 씨앗 1개를 샀어요'); }]);
+  }
+  if (n.id==='toto' && me.daily !== today()) acts.push([`출석 선물 받기 (${DAILY_GOLD}G)`, ()=>{ me.daily = today(); me.inv.gold += DAILY_GOLD; saveMe(); renderHud(); say(title(n), `오늘도 와 줬구먼. 자, ${DAILY_GOLD}G일세. 내일도 오게나.`, npcActions(n)); }]);
+  if (r.giftDay !== today() && Object.keys(GIFT_ITEMS).some(k=>me.inv[k]>0)) acts.push(['선물하기', ()=>giftMenu(n)]);
+  return acts;
+}
+function giftMenu(n){
+  const acts = Object.entries(GIFT_ITEMS).filter(([k])=>me.inv[k]>0).map(([k,name])=>[`${name} (${me.inv[k]})`, ()=>giveGift(n,k)]);
+  say(title(n), '무엇을 선물할까요? 하루에 한 번 줄 수 있어요.', acts);
+}
+function giveGift(n, item){
+  const r = relOf(n.id);
+  if (r.giftDay === today() || !(me.inv[item]>0)) return closeTalk();
+  me.inv[item]--; r.giftDay = today();
+  const taste = tasteOf(n, item); addPts(n, GIFT_PTS[taste]);
+  saveMe(); renderHud();
+  say(title(n), REACT[taste], [], `${GIFT_ITEMS[item]} 선물 · 호감도 ${GIFT_PTS[taste]>0?'+':''}${GIFT_PTS[taste]}`);
+}
+function talkTo(n){
+  const r = relOf(n.id);
+  let note = '';
+  if (r.talkDay !== today()){ r.talkDay = today(); addPts(n, 10); note = '오늘 첫 대화 · 호감도 +10'; }
+  let text = npcLine(n);
+  if (n.id==='hana'){
+    if (me.quest<=1) text = '안녕! 나는 하나야. 먼저 웰컴 팩을 열고, 집 앞 빈 자리에 텃밭 2칸을 놓아 봐!';
+    else if (me.quest===2){ me.inv.can = true; me.quest = 3; text = '텃밭 다 놓았구나! 자, 내 물뿌리개 하나 줄게. 토마토 씨앗을 심고 물을 줘 봐!'; }
+    else if (me.quest<5) text = '씨앗을 심고 물을 주면 30초마다 한 단계씩 자라. 단계마다 물을 다시 줘야 해!';
+    else if (me.quest===5) text = '토마토가 빨갛게 익으면 텃밭을 눌러서 수확해!';
+    else if (!me.inv.seed && !me.gardens.some(g=>g&&g.crop) && me.inv.gold < SEED_PRICE){ me.inv.seed += 2; text = '씨앗이 다 떨어졌구나? 토마토 씨앗 2개 더 줄게!'; }
+  }
+  if (n.soon) note = [note, `${n.soon}`].filter(Boolean).join(' · ');
+  saveMe(); renderHud();
+  say(title(n), text, npcActions(n), note);
+}
+
+// ===== 주민 목록 =====
+function toggleNpcPanel(){ const p = $('npcPanel'); p.hidden = !p.hidden; if (!p.hidden) renderNpcPanel(); }
+function renderNpcPanel(){
+  const d = today();
+  $('npcPanel').innerHTML = `<div class="np-head"><b>섬 주민 14명</b><button class="mini" id="npClose">닫기</button></div>` + NPCS.map(n=>{
+    const r = relOf(n.id), pl = PLACE[n.place];
+    return `<button class="np" data-id="${n.id}"><span class="np-name">${n.name} <small>${n.animal} · ${n.role}</small></span><span class="np-place">${n.roam?'섬 곳곳 (우체국)':pl.area+' '+pl.name}</span><span class="np-h">${hearts(n)}</span><span class="np-day">${r.talkDay===d?'대화 ✓':'대화 ·'} ${r.giftDay===d?'선물 ✓':'선물 ·'}</span></button>`;
+  }).join('');
+  $('npClose').onclick = toggleNpcPanel;
+  $('npcPanel').querySelectorAll('.np').forEach(b=>b.onclick = ()=>{ const n = NPC[b.dataset.id]; $('npcPanel').hidden = true; target = {x:n.x, y:n.y+30, act:()=>talkTo(n)}; toast(`${n.name}에게 가는 중이에요`); });
 }
 
 function useSlot(i){
@@ -547,7 +767,7 @@ function useSlot(i){
   if (!g){
     if (!me.inv.garden) return toast('놓을 텃밭이 없어요.');
     me.gardens[i] = {crop:null}; me.inv.garden--;
-    if (me.quest===1 && me.gardens.every(Boolean)) { me.quest = 2; toast('텃밭 완성! 광장 위쪽의 하나에게 가 봐요'); } else toast('텃밭을 놓았어요');
+    if (me.quest===1 && me.gardens.every(Boolean)) { me.quest = 2; toast('텃밭 완성! 섬 서쪽 텃밭의 하나에게 가 봐요'); } else toast('텃밭을 놓았어요');
   } else if (!g.crop){
     if (!me.inv.seed) return toast(me.inv.can ? '씨앗이 없어요. 하나에게 가 봐요.' : '씨앗이 없어요.');
     g.crop = {stage:0, wateredAt:null}; me.inv.seed--;
@@ -680,8 +900,40 @@ function drawTree(d, x, y, i){
   d.rr(x-3,y,6,38,3,'stick');
   d.circle(x,y,20,i%2?'candyB':'candyA'); d.circle(x,y,11,i%2?'candyA':'candyB'); d.circle(x,y,4,i%2?'candyB':'candyA');
 }
+function drawPlace(d, p){
+  const c = d.ctx, label = (text, x, y, size=14, color='#fff') => { c.font=`${size}px "Jua",sans-serif`; c.textAlign='center'; c.fillStyle=color; c.fillText(text, x, y); };
+  const sign = (text, x, y) => { d.rr(x-2,y-6,4,22,2,'#c79a74'); c.font='12px "Jua",sans-serif'; const w = c.measureText(text).width+14; d.rr(x-w/2,y-22,w,18,6,'#f3d9b8'); label(text, x, y-9, 12, '#7a5040'); };
+  if (p.kind==='house'){
+    drawHouse(d, p.x, p.y, p.roof, p.name);
+    c.font='22px sans-serif'; c.textAlign='center'; c.fillText(p.icon, p.x, p.y-108);
+  } else if (p.kind==='field'){
+    d.rr(p.x-95,p.y-95,190,110,14,'soil');
+    for (let i=0;i<4;i++) for (let j=0;j<2;j++){ const x = p.x-66+i*44, y = p.y-62+j*44; d.circle(x-5,y,6,'leaf'); d.circle(x+5,y-1,6,'leaf'); d.circle(x,y-6,6,'#7fd07a'); d.circle(x-4,y+1,3.4,'#ff4f4f'); d.circle(x+4,y-3,3.4,'#ff5a5a'); }
+    d.rr(p.x+108,p.y-90,5,60,2,'#c79a74'); d.rr(p.x+96,p.y-74,30,5,2,'#c79a74'); d.circle(p.x+110,p.y-94,9,'#f3d27a'); d.ell(p.x+110,p.y-101,13,3,'#e8b84f');
+    sign(p.name, p.x-120, p.y+10);
+  } else if (p.kind==='mine'){
+    d.ell(MINE.x,MINE.y,MINE.rx,MINE.ry,'#b3a8b8'); d.ell(MINE.x-80,MINE.y-30,70,50,'#c6bccd'); d.ell(MINE.x+90,MINE.y-20,60,45,'#a99fb0');
+    d.rr(MINE.x-36,MINE.y+10,72,82,36,'#4a3f52'); d.rr(MINE.x-42,MINE.y+6,84,12,6,'#c79a74');
+    d.dot(MINE.x+60,MINE.y-50,4,'#bf8cff'); d.dot(MINE.x-50,MINE.y+30,3.5,'#ffd84f'); d.dot(MINE.x+30,MINE.y+40,3,'#7cc8ff');
+    sign(p.name, MINE.x+150, MINE.y+90);
+  } else if (p.kind==='pond'){
+    d.ell(POND.x,POND.y,POND.rx,POND.ry,'water'); d.ell(POND.x-40,POND.y-28,40,9,'waterHi');
+    d.circle(POND.x+60,POND.y+20,9,'leaf'); d.circle(POND.x-70,POND.y+30,7,'leaf'); d.dot(POND.x+60,POND.y+18,2.5,'#ff8fc4');
+    sign(p.name, POND.x+150, POND.y+110);
+  } else if (p.kind==='forest'){
+    sign(p.name, p.x+130, p.y+70);
+  } else if (p.kind==='lighthouse'){
+    d.ell(p.x,p.y+30,190,100,'#ffe7c2');
+    d.rr(2118,1420,44,145,12,'#ffffff'); for (const y of [1446,1490,1534]) d.rr(2118,y,44,16,3,'#ff6b6b');
+    d.rr(2112,1396,56,28,10,'#ffd84f'); d.tri([[2108,1398],[2140,1372],[2172,1398]],'#ff6b6b');
+    sign(p.name, p.x-80, p.y+100);
+  } else if (p.kind==='gate'){
+    d.rr(p.x-48,p.y-60,16,66,6,'#c79a74'); d.rr(p.x+32,p.y-60,16,66,6,'#c79a74'); d.rr(p.x-62,p.y-72,124,24,11,'#ff9fc4');
+    label('핑키 아일랜드', p.x, p.y-55, 13);
+  }
+}
 function buildStatic(){
-  const s = Math.min(2, view.dpr*view.zoom);
+  const s = Math.min(1.6, view.dpr*view.zoom);
   const sig = s+'|'+Object.entries(players).map(([k,p])=>k+p.lot+p.roof+p.nick).join(',');
   if (sig===staticSig && staticLayer) return;
   staticSig = sig;
@@ -690,14 +942,14 @@ function buildStatic(){
   const c = staticLayer.getContext('2d'); c.setTransform(s,0,0,s,0,0);
   const d = painter(c);
   c.fillStyle = '#8fd3f5'; c.fillRect(0,0,W,H);
-  c.fillStyle = '#b4e3fa'; for (let i=0;i<90;i++){ c.fillRect((i*197)%W, (i*331)%H, 18, 3); }
-  d.rr(60,60,W-120,H-120,220,'#ffe7c2');
-  d.rr(92,92,W-184,H-184,190,'grass');
-  [[400,560,90,30],[1300,900,80,26],[600,1080,70,20],[1500,300,90,28],[300,300,60,20],[1200,560,70,22]].forEach(b=>d.ell(...b,'grass2'));
-  d.rr(140,584,W-280,34,17,'path'); d.rr(884,130,34,H-260,17,'path');
-  d.ell(900,600,190,100,'path');
-  d.circle(900,600,40,'#ffd1e1'); d.circle(900,600,28,'water'); d.circle(894,592,9,'waterHi');
-  d.ell(POND.x,POND.y,POND.rx,POND.ry,'water'); d.ell(POND.x-20,POND.y-14,26,7,'waterHi'); d.circle(POND.x+30,POND.y+12,6,'leaf');
+  c.fillStyle = '#b4e3fa'; for (let i=0;i<140;i++){ c.fillRect((i*197)%W, (i*331)%H, 18, 3); }
+  d.rr(60,60,W-120,H-120,260,'#ffe7c2');
+  d.rr(92,92,W-184,H-184,230,'grass');
+  [[700,820,90,30],[1700,1080,80,26],[900,1400,70,20],[1800,560,90,28],[600,480,60,20],[1500,780,70,22],[2000,1400,60,20]].forEach(b=>d.ell(...b,'grass2'));
+  d.rr(140,884,W-280,34,17,'path'); d.rr(1184,130,34,H-260,17,'path');
+  d.ell(FOUNTAIN.x,FOUNTAIN.y,200,110,'path');
+  d.circle(FOUNTAIN.x,FOUNTAIN.y,40,'#ffd1e1'); d.circle(FOUNTAIN.x,FOUNTAIN.y,28,'water'); d.circle(FOUNTAIN.x-6,FOUNTAIN.y-8,9,'waterHi');
+  for (const p of PLACES) drawPlace(d, p);
   LOTS.forEach((L,i)=>{
     const owner = Object.values(players).find(p=>p.lot===i);
     if (owner) drawHouse(d, L.x, L.y, ROOFS[owner.roof][1], owner.nick);
@@ -707,9 +959,6 @@ function buildStatic(){
       c.font='11px "Jua",sans-serif'; c.textAlign='center'; c.fillStyle='#7a5040'; c.fillText(`${i+1}번 빈 집터`, L.x, L.y-43);
     }
   });
-  drawHouse(d, SHOP.x, SHOP.y, '#ff9fc4', '');
-  d.circle(SHOP.x, SHOP.y-110, 8, 'cherry');
-  c.font='14px "Jua",sans-serif'; c.textAlign='center'; c.fillStyle='#fff'; c.fillText('모모 케이크', SHOP.x, SHOP.y-80);
   TREES.forEach(([x,y],i)=>drawTree(d,x,y,i));
 }
 function drawSlot(d, s, g, now, mine){
@@ -753,6 +1002,7 @@ function frame(t){
   const dt = Math.min(.05, (t-lastT)/1000); lastT = t;
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fff7f2'; c.fillRect(0,0,240,120); const d = painter(c); d.ell(120,104,110,9,'#f6dcd3'); player(d,45,102,EDIT,'down',t/1000,true,1.95); player(d,120,102,EDIT,'right',t/1000,true,1.95); player(d,195,102,EDIT,'up',t/1000,true,1.95); } }
   if (me && !obStep){
+    const tp = toriPos(Date.now()), tori = NPC.tori; tori.x = tp.x; tori.y = tp.y; tori.mv = tp.mv; if (tp.dx) tori.flip = tp.dx < 0;
     step(dt); moveOthers(dt); sendPresence(t);
     buildStatic();
     const z = view.zoom, vw = view.w/z, vh = view.h/z;
@@ -765,7 +1015,7 @@ function frame(t){
     for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const g = id===uid ? me.gardens : (p.gardens||[]); slotsOf(p.lot).forEach((sl,i)=>drawSlot(d, sl, g[i], now, id===uid)); }
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
-      ...NPCS.map(n=>({y:n.y, draw:()=>blob(d,n.x,n.y,n.fabric,n.acc,t/1000), label:()=>tag(ctx, n.name, n.x, n.y-40, null)})),
+      ...NPCS.map(n=>({y:n.y, draw:()=>animalNpc(d,n.x,n.y,n.sp,t/1000,n.mv,n.flip), label:()=>tag(ctx, n.name, n.x, n.y-50, null)})),
       ...[...others.entries()].map(([k,o])=>({y:o.y, draw:()=>player(d,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1), label:()=>{ tag(ctx,o.nick,o.x,o.y-54,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); talkBubble(k,o.x,o.y,t); }})),
       {y:pos.y, draw:()=>player(d,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-54,ROOFS[me.roof][1]); talkBubble('me',pos.x,pos.y,t); }},
     ].sort((a,b)=>a.y-b.y);
@@ -780,5 +1030,7 @@ function talkBubble(key, x, y, t){
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-70);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { useSlot, talkTo, NPCS, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { useSlot, talkTo, NPCS, pos, view, painter, animalNpc, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
+</body>
+</html>
