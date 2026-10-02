@@ -3,3 +3,7 @@ node_modules/
 *.log
 .env
 data/
+
+# 로컬 테스트용 복사본 (apiKey를 지운 public 사본)
+pub/
+pub2/
