@@ -95,6 +95,7 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 .dex .tile s{color:var(--soft)}
 .tile.unknown img{opacity:.55}
 .tile.on{box-shadow:inset 0 -2px 0 #f6e6ec,0 0 0 2px var(--pinkd)}
+.tile.full i{color:#e48fac}
 #fade{position:fixed;inset:0;background:#fffafb;opacity:0;pointer-events:none;z-index:6}
 .btn{border:0;border-radius:12px;padding:7px 16px;background:var(--pink);color:var(--ink);font-size:21px;box-shadow:inset 0 -3px 0 #f2c3d3}
 .btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 -3px 0 #f6e6ec}
@@ -1285,7 +1286,7 @@ function catchFish(){
   const ratio = Math.pow(Math.random(), 1.5), size = Math.round((f.min + (f.max-f.min)*ratio)*10)/10;
   const st = ratio >= .85 ? 3 : ratio >= .5 ? 2 : 1, k = fishKey(id, st);
   setExpr(st===3 || f.weight < 10 ? 'sparkle' : 'happy', 2500);
-  me.inv.fish = me.inv.fish || {}; me.inv.fish[k] = (me.inv.fish[k]||0) + 1;
+  invAdd('fish:'+k, 1);
   me.dex = me.dex || {}; const dx = me.dex[id] || {n:0, best:0, st:0};
   const record = size > dx.best; me.dex[id] = {n:dx.n+1, best:Math.max(dx.best,size), st:Math.max(dx.st,st)};
   saveMe(); renderHud(); contestSubmit(id, size);
@@ -1313,7 +1314,16 @@ function showFishBag(){
 const CATS = {seed:'seeds', crop:'crops', fish:'fish', ore:'ores', loot:'loot', dish:'dishes', furn:'furn'};
 function bagOf(cat){ me.inv[CATS[cat]] = me.inv[CATS[cat]] || {}; return me.inv[CATS[cat]]; }
 function invCount(key){ const [cat, id] = key.split(':'); return bagOf(cat)[id] || 0; }
-function invAdd(key, n=1){ const [cat, id] = key.split(':'); const b = bagOf(cat); b[id] = (b[id]||0) + n; if (b[id] <= 0) delete b[id]; }
+// 가방: 같은 물건은 한 칸에 겹쳐 쌓여요. 한 칸 최대 500개 — 넘치는 만큼은 버려지고 알려 줘요
+const STACK_MAX = 500;
+let stackToastT = 0;
+function invAdd(key, n=1){
+  const [cat, id] = key.split(':'); const b = bagOf(cat); const cur = b[id]||0; let next = cur + n;
+  if (next > STACK_MAX){ const over = next - STACK_MAX; next = STACK_MAX; const now = performance.now(); if (now - stackToastT > 1500){ stackToastT = now; toast(`${itemName(key)}은(는) 500개까지만 쌓여요. ${over}개는 가방에 못 넣었어요`); } }
+  b[id] = next; if (b[id] <= 0) delete b[id];
+  return next - cur;
+}
+const invRoom = key => STACK_MAX - invCount(key);
 function itemName(key){
   const [cat, id] = key.split(':');
   if (cat==='fish') return fishName(id);
@@ -1985,6 +1995,7 @@ function sendMenu(){
 }
 function onMail(m, remove){
   if (!m || typeof m.item!=='string' || !/^(dish|crop|fish|ore|loot|seed|furn):[a-z0-9_]{2,8}$/.test(m.item)) return remove();
+  if (invRoom(m.item) < 1){ addLog(`${String(m.nick||'누군가').slice(0,8)}님이 보낸 ${itemName(m.item)}이(가) 우편함에 있어요 (가방이 가득 차서 못 받았어요)`, true); return; }
   invAdd(m.item, 1); saveMe(); renderHud(); remove();
   addLog(`${String(m.nick||'누군가').slice(0,8)}님이 ${itemName(m.item)}을(를) 보냈어요!`, true);
 }
@@ -2078,6 +2089,7 @@ function marketPanel(){
     b=>{ const id = b.dataset.id, l = market[id]; if (!l) return;
       if (l.uid===uid) return say('거래소', `${itemName(l.item)} ${l.n}개를 내릴까요?`, [['내리기', async ()=>{ if (await net.marketCancel(id)){ invAdd(l.item, l.n); saveMe(); renderHud(); toast('물건을 돌려받았어요'); } else toast('이미 팔렸거나 내릴 수 없어요'); closeTalk(); marketPanel(); }], ['그만두기', marketPanel]], '', true);
       if (me.inv.gold < l.price) return toast('골드가 모자라요');
+      if (invRoom(l.item) < l.n) return toast(`${itemName(l.item)}은(는) 가방에 ${invRoom(l.item)}개까지만 더 넣을 수 있어요`);
       withIcon(l.item);
       say('거래소', `${String(l.nick||'').slice(0,8)}님의 ${itemName(l.item)} ${l.n}개를 ${l.price}G에 살까요?`, [['사기', async ()=>{
         if (me.inv.gold < l.price) return toast('골드가 모자라요');
@@ -2309,7 +2321,7 @@ const withIcon = key => { talkIconNext = key; };
 function showBag(){
   const cats = [['dish','요리'],['crop','작물'],['fish','물고기'],['ore','광석'],['loot','전리품'],['seed','씨앗'],['furn','가구']];
   const grid = cats.map(([cat,label])=>{ const it = itemsOf(cat); if (!it.length) return '';
-    return `<div class="bag-sec"><b>${label}</b><div class="bag-grid">${it.map(([k,n])=>`<button class="tile" data-k="${k}" title="${esc(itemName(k))}">${iconImg(k)}<i>${n}</i>${cat==='fish' ? `<s>${'★'.repeat(parseFish(k.slice(5)).st)}</s>` : cat==='seed' ? '<s>씨앗</s>' : ''}</button>`).join('')}</div></div>`; }).join('');
+    return `<div class="bag-sec"><b>${label}</b><div class="bag-grid">${it.map(([k,n])=>`<button class="tile${n>=STACK_MAX?' full':''}" data-k="${k}" title="${esc(itemName(k))}${n>=STACK_MAX?' · 가득 참':''}">${iconImg(k)}<i>${n}</i>${cat==='fish' ? `<s>${'★'.repeat(parseFish(k.slice(5)).st)}</s>` : cat==='seed' ? '<s>씨앗</s>' : ''}</button>`).join('')}</div></div>`; }).join('');
   const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
   openPanel(`가방 · 💰 ${me.inv.gold}G · ❤️ ${Math.ceil(playerHp)}`,
     `<div class="np"><span class="np-name">도구 <small>${tools}</small></span></div>${grid || '<p class="mnote">가방이 비어 있어요.</p>'}
@@ -2322,7 +2334,7 @@ function showBag(){
 }
 function itemInfo(k){
   const [cat, id] = k.split(':'), acts = [];
-  let desc = `${invCount(k)}개 · 팔면 1개 ${itemPrice(k)}G`;
+  let desc = `${invCount(k)}/${STACK_MAX}개 · 팔면 1개 ${itemPrice(k)}G`;
   if (cat==='dish'){ desc += ` · 먹으면 체력 +${DISHES[id].heal}`; acts.push(['먹기', ()=>{ eatDish(id); closeTalk(); showBag(); }]); }
   if (cat==='fish'){ const p = parseFish(id), d = (me.dex||{})[p.id]; desc = `${'★'.repeat(p.st)}${'☆'.repeat(3-p.st)} · ` + desc + (d ? ` · 최고 기록 ${d.best}cm` : ''); }
   if (cat==='ore') desc = `희귀도 ${TIER_STAR(ORES[id].tier)} · ` + desc;
