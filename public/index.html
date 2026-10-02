@@ -94,6 +94,7 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 .tile em{font-style:normal;font-size:13px;line-height:1.2;text-align:center}
 .dex .tile s{color:var(--soft)}
 .tile.unknown img{opacity:.55}
+.tile.on{box-shadow:inset 0 -2px 0 #f6e6ec,0 0 0 2px var(--pinkd)}
 #fade{position:fixed;inset:0;background:#fffafb;opacity:0;pointer-events:none;z-index:6}
 .btn{border:0;border-radius:12px;padding:7px 16px;background:var(--pink);color:var(--ink);font-size:21px;box-shadow:inset 0 -3px 0 #f2c3d3}
 .btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 -3px 0 #f6e6ec}
@@ -204,6 +205,7 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 <script type="module">
 import { firebaseConfig } from './firebase-config.js';
 import { NPC_TEXT } from './npcs.js';
+import * as CH from './char.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
 import { ART_PART as ART_CROPS } from './art/crops.js';
@@ -211,17 +213,16 @@ import { ART_PART as ART_ORES } from './art/ores.js';
 import { ART_PART as ART_MON } from './art/monsters.js';
 import { ART_PART as ART_DISH } from './art/dishes.js';
 const P = {grass:'#b5e6a3',grass2:'#9fdb8c',path:'#ffe0bf',water:'#9fd9ff',waterHi:'#e8f7ff',cream:'#fff0e0',pink:'#ffa6c9',choco:'#9a5a45',cherry:'#ff5a78',candyA:'#ffa6cf',candyB:'#fff09a',stick:'#fff',soil:'#d69a70',berry:'#ff5a78',leaf:'#6cc46a',rock:'#c3b8d2',gem:'#bf8cff',dust:'#bdb5c9',blush:'#ffadc4',eye:'#5b3345',stitch:'#ffffff',bubble:'#fff',text:'#8a4b63'};
+const STARTERS = [['t01|b01','기본 티 + 청바지'],['t02|b02','줄무늬 티 + 반바지'],['t01|b02','기본 티 + 반바지'],['s01','멜빵바지']];
 const OPT = {
-  skin:  { label:'피부 색', color:true, v:['#ffe4d2','#f9d3b8','#eebd98','#d9a07a','#b87a55','#8d5a3c'] },
-  hairA: { label:'머리 모양 (남)', target:'hair', v:[['short','숏컷'],['part','가르마'],['dandy','댄디컷'],['center','가운데 가르마'],['perm','파마']] },
-  hairB: { label:'머리 모양 (여)', target:'hair', v:[['bob','단발'],['long','긴 생머리'],['pony','포니테일'],['wave','웨이브'],['bun','똥머리']] },
-  hairColor: { label:'머리 색', color:true, v:['#2f2a2e','#4a3228','#7a5236','#a8784c','#e8c77a','#9a9aa6','#f2a0b8','#8fc3ea'] },
-  eyes:  { label:'눈', v:[['round','동글 눈'],['lash','속눈썹 눈'],['smile','웃는 눈'],['sleepy','졸린 눈']] },
-  outfit:{ label:'옷', v:[['tee','티셔츠'],['shirt','셔츠'],['hoodie','후드'],['overall','멜빵바지'],['dress','원피스']] },
-  outfitColor: { label:'옷 색', color:true, v:['#ff9fbf','#ffe07a','#9fd6ff','#b9ec9f','#d2b8ff','#ffb27a','#ffffff','#7c86d6'] },
-  hat:   { label:'모자', v:[['none','없음'],['straw','밀짚모자'],['beanie','비니'],['cap','캡모자'],['pin','리본핀']] },
+  skin:  { label:'피부 색', color:true, v:CH.SKINS },
+  hairA: { label:'머리 모양 (남)', target:'hair', v:CH.HAIR_M.map(k=>[k, CH.HAIR[k].label]) },
+  hairB: { label:'머리 모양 (여)', target:'hair', v:CH.HAIR_F.map(k=>[k, CH.HAIR[k].label]) },
+  hairColor: { label:'머리 색', color:true, v:CH.HAIR_COLORS },
+  starter: { label:'시작 옷 (옷가게에서 더 살 수 있어요)', target:'starter', v:STARTERS },
 };
-let EDIT = { skin:'#f9d3b8', hair:'long', hairColor:'#7a5236', eyes:'lash', outfit:'overall', outfitColor:'#ff9fbf', hat:'pin' };
+let EDIT = { ...CH.defaultLook(), starter:'t01|b01' };
+function applyStarter(L){ const st = L.starter || 't01|b01'; const n = {...L}; delete n.starter; if (st.startsWith('s')){ n.set = st; } else { const [t,b] = st.split('|'); n.top = t; n.bottom = b; n.set = ''; } return n; }
 
 function shade(hex,k){const n=parseInt(hex.slice(1),16);const f=v=>Math.max(0,Math.min(255,Math.round(k>0?v+(255-v)*k:v*(1+k))));return `rgb(${f(n>>16)},${f(n>>8&255)},${f(n&255)})`;}
 
@@ -292,14 +293,20 @@ function sprite(key, w, h, ox, oy, drawFn){
   return sp;
 }
 const qphase = (ph, n) => Math.round((((ph % TAU) + TAU) % TAU) / TAU * n) % n;
-// 플레이어: 걷기 8단계, 서 있기 4단계
-function drawPlayer(c, x, y, L, dir, t, walk, s=1){
+// 플레이어: 걷기 8단계, 서 있기 4단계. 매트 클레이 페인터로 그려요
+function drawPlayer(c, x, y, L, dir, t, walk, s=1, expr='dot'){
+  if (!L || !L.top && !L.set) L = CH.migrateLook(L);
   const ph = t*8 + x*.37, q = walk ? qphase(ph, 8) : qphase(t*2 + x, 4);
-  const key = 'p|'+JSON.stringify(L)+'|'+dir+'|'+(walk?'w':'i')+q+'|'+Math.round(view.dpr*view.zoom*2);
+  const key = 'p|'+JSON.stringify(L)+'|'+dir+'|'+(walk?'w':'i')+q+'|'+expr+'|'+Math.round(view.dpr*view.zoom*2);
   const t2 = walk ? q/8*TAU/8 : q/4*TAU/2;
-  const sp = sprite(key, 64, 96, 32, 84, d=>player(d, 0, 0, L, dir, t2, walk, 1));
+  const B = CH.FIG_BOX;
+  const sp = sprite(key, B.w, B.h, B.ox, B.oy, d=>CH.figure(CH.mattePainter(d.ctx), L, dir, t2, walk, expr));
   c.drawImage(sp.c, x - sp.ox*s, y - sp.oy*s, sp.c.width/sp.sc*s, sp.c.height/sp.sc*s);
 }
+// 표정: 잠깐 바뀌었다가 돌아와요. 밤(0~5시)에 가만히 있으면 졸린 눈
+let exprNow = 'dot', exprUntil = 0;
+function setExpr(e, ms=2000){ exprNow = e; exprUntil = performance.now() + ms; }
+function myExpr(){ if (performance.now() < exprUntil) return exprNow; const h = kstHour(); return (h < 5 && !pos.moving) ? 'sleepy' : 'dot'; }
 // 동물 주민: 걷기 8단계, 서 있기 4단계
 function drawCritter(c, x, y, v, t, walk, s=1){
   const ph = t*7 + x*.3, q = walk ? qphase(ph, 8) : qphase(t*2 + x, 4);
@@ -307,101 +314,6 @@ function drawCritter(c, x, y, v, t, walk, s=1){
   const t2 = walk ? q/8*TAU/7 : q/4*TAU/2;
   const sp = sprite(key, 80, 100, 40, 88, d=>critter(d, 0, 0, v, t2, walk, 1));
   c.drawImage(sp.c, x - sp.ox*s, y - sp.oy*s, sp.c.width/sp.sc*s, sp.c.height/sp.sc*s);
-}
-
-// 플레이어: 사람 비율에 가까운 인형. dir = down | up | right | left
-const FRINGE = new Set(['dandy','bob','bun']);
-function player(d, x, y, L, dir, t, walk=true, s=1){
-  const c = d.ctx, ph = t*8 + x*.37, step = walk ? Math.sin(ph) : 0, bob = walk ? Math.abs(Math.sin(ph))*1.2 : Math.sin(t*2+x)*.3+.3;
-  const side = dir==='left'||dir==='right', up = dir==='up';
-  c.save(); c.translate(x,y); c.scale(dir==='left'?-s:s, s);
-  c.save(); c.fillStyle='rgba(0,0,0,.14)'; c.beginPath(); c.ellipse(0,1,9,3,0,0,7); c.fill(); c.restore();
-  c.translate(0,-bob);
-  const hy = -30, H = L.hair, hc = L.hairColor, hd = shade(hc,-.35), sk = L.skin, oc = L.outfitColor, O = L.outfit;
-  const top = O==='overall' ? '#fff7ee' : oc;
-  const legC = {tee:sk, overall:oc, hoodie:'#5d6b8a', dress:sk, shirt:'#4d5670'}[O];
-  const cap = (cx,cy,r)=>d.shape(()=>{c.beginPath();c.arc(cx,cy,r,Math.PI,0);c.closePath();},hc,[cx,cy-r/2,r]);
-  // 다리
-  if (side){ for (const [lx,k] of [[-2,step],[1.5,-step]]){ d.rr(lx+k*1.8-2,-9,4,9,2,legC); d.ell(lx+k*1.8+.8,.2,3,1.5,'#7a4e42'); } }
-  else { const a=Math.max(0,step)*1.5, b=Math.max(0,-step)*1.5; d.rr(-5,-9-a,4,9,2,legC); d.rr(1,-9-b,4,9,2,legC); d.ell(-3,.2-a,2.8,1.5,'#7a4e42'); d.ell(3,.2-b,2.8,1.5,'#7a4e42'); }
-  if (O==='tee') d.rr(side?-5:-5.5,-11,side?10:11,4.5,2,'#6f86b8');
-  // 뒷머리
-  if (!up){
-    if (H==='long'||H==='wave') d.rr(side?-11:-10.5, hy-4, side?14:21, 22, 7, hc);
-    if (H==='wave' && !side) for (const bx of [-8,-3,3,8]) d.circle(bx,hy+17,3.2,hc);
-    if (H==='bob') d.rr(side?-11:-11, hy-4, side?15:22, 14, 6, hc);
-    if (H==='pony') side ? d.ell(-12,hy+3,3.4,7,hc) : d.ell(10,hy+4,2.8,6,hc);
-  }
-  // 몸통 + 옷
-  if (O==='dress'){ d.ell(0,-8.5,side?6.5:8.5,4,oc); d.rr(side?-5:-6,-21,side?10:12,12,4.5,oc); }
-  else d.rr(side?-5:-6.5,-21,side?10:13,13,4.5,top);
-  if (!side && !up){
-    if (O==='overall'){ d.rr(-5,-16,10,8,2,oc); d.line(c=>{c.moveTo(-3.5,-21);c.lineTo(-3.5,-16);c.moveTo(3.5,-21);c.lineTo(3.5,-16);},oc,1.6); d.dot(-3.2,-15,.7,'#fff'); d.dot(3.2,-15,.7,'#fff'); }
-    if (O==='hoodie'){ d.rr(-4,-14,8,3.5,1.5,shade(oc,-.1)); d.line(c=>{c.moveTo(-1.8,-21);c.lineTo(-1.8,-17.5);c.moveTo(1.8,-21);c.lineTo(1.8,-17.5);},'#ffffff',.8); }
-    if (O==='shirt'){ d.tri([[-3.5,-21],[0,-18.5],[0,-21]],'#ffffff'); d.tri([[3.5,-21],[0,-18.5],[0,-21]],'#ffffff'); for (const by of [-17,-14,-11]) d.dot(0,by,.6,'#ffffff'); }
-    d.stitch(c=>{c.moveTo(-5,-9.5);c.lineTo(5,-9.5);},'#ffffff',.5);
-  }
-  if (up && O==='hoodie') d.ell(0,-21,5.5,2.4,shade(oc,-.1));
-  // 팔
-  const short = O==='tee'||O==='dress';
-  const arm = (ax,ay)=>{ if (short){ d.ell(ax,ay-2.8,2.4,2.4,top); d.ell(ax,ay+.5,1.8,3.6,sk);} else d.ell(ax,ay,2.2,4.6,top); d.circle(ax-.1,ay+4.4,1.8,sk); };
-  if (side) arm(step*1.5,-16); else { arm(-7.8,-16+step*.6); arm(7.8,-16-step*.6); }
-  // 머리
-  if (!up && !side){ d.circle(-10,hy+1.5,2.2,sk); d.circle(10,hy+1.5,2.2,sk); }
-  d.ell(0,hy,10.5,10,sk);
-  if (up){
-    d.circle(0,hy,11,hc);
-    if (H==='long'||H==='wave') d.rr(-10.5,hy,21,18,7,hc);
-    if (H==='bob') d.rr(-11,hy,22,10,6,hc);
-    if (H==='pony') d.ell(0,hy+9,3.2,7,hc);
-    if (H==='perm') for (let a=0;a<6.28;a+=.7) d.circle(Math.cos(a)*9,hy+Math.sin(a)*9,3.2,hc);
-    d.stitch(c=>{for (const o of [-4,0,4]){c.moveTo(o,hy-10);c.quadraticCurveTo(o*1.3,hy-2,o*1.1,hy+7);}},hd,.5);
-  } else if (side){
-    d.ell(-2.5,hy-1,9,9.8,hc); cap(0,hy-1.5,11);
-    if (H==='short'||H==='part'||H==='center'||H==='dandy') d.rr(-3,hy-3,3,6,1.5,hc);
-    if (!['short','perm'].includes(H)) d.ell(5,hy-2.5,5.5,3,hc);
-    if (H==='bob'||H==='long'||H==='wave') d.rr(-4,hy-3,5,H==='bob'?12:17,2.5,hc);
-    if (H==='perm') for (let a=-3.1;a<=0;a+=.5) d.circle(Math.cos(a)*10.5-1,hy-1.5+Math.sin(a)*10,3.2,hc);
-    if (H==='bun') d.circle(-3,hy-11,4.6,hc);
-    d.stitch(c=>{for (const o of [-4,1]){c.moveTo(o,hy-10);c.quadraticCurveTo(o-2,hy-5,o-3,hy);}},hd,.5);
-  } else {
-    cap(0,hy-1.5,11.2);
-    if (H==='short'){ d.rr(-11,hy-3,2.6,6,1.3,hc); d.rr(8.4,hy-3,2.6,6,1.3,hc); for (const fx of [-6,-1,4]) d.tri([[fx,hy-2],[fx+2.5,hy+.6],[fx+5,hy-2]],hc); }
-    if (H==='part'){ d.ell(-2.5,hy-2.5,8,3.6,hc); d.ell(6,hy-3,4.5,2.8,hc); d.rr(-11,hy-3,2.6,5,1.3,hc); d.rr(8.4,hy-3,2.6,5,1.3,hc); }
-    if (H==='dandy'||H==='bob'||H==='bun'){ d.rr(-10,hy-5,20,5.5,2.5,hc); for (const fx of [-9,-4,1,6]) d.tri([[fx,hy],[fx+1.5,hy+2],[fx+3,hy]],hc); }
-    if (H==='dandy'){ d.rr(-11,hy-3,2.6,6,1.3,hc); d.rr(8.4,hy-3,2.6,6,1.3,hc); }
-    if (H==='center'||H==='long'||H==='wave'){ d.ell(-5.5,hy-1.8,5.6,3.8,hc); d.ell(5.5,hy-1.8,5.6,3.8,hc); }
-    if (H==='center'){ d.rr(-11,hy-3,2.6,6,1.3,hc); d.rr(8.4,hy-3,2.6,6,1.3,hc); }
-    if (H==='pony'){ d.ell(-2,hy-2.6,8.5,3.5,hc); d.rr(-11,hy-3,2.6,7,1.3,hc); d.rr(8.4,hy-3,2.6,7,1.3,hc); }
-    if (H==='perm'){ for (let a=-3.1;a<=0;a+=.45) d.circle(Math.cos(a)*10.5,hy-1.5+Math.sin(a)*10,3.3,hc); for (const fx of [-5,0,5]) d.circle(fx,hy-2.5,3,hc); }
-    if (H==='bob'||H==='long'||H==='wave'){ const hh = H==='bob'?12:17; d.rr(-11.5,hy-3,4,hh,2,hc); d.rr(7.5,hy-3,4,hh,2,hc); }
-    if (H==='wave') for (const [wx,wy] of [[-9.5,hy+14],[9.5,hy+14]]) d.circle(wx,wy,2.8,hc);
-    if (H==='bun') d.circle(0,hy-12,4.6,hc);
-    d.stitch(c=>{for (const o of [-5,0,5]){c.moveTo(o,hy-11);c.quadraticCurveTo(o+1.5,hy-7,o+1,hy-3);}},hd,.45);
-  }
-  // 얼굴
-  if (!up){
-    const eyes = side ? [5.5] : [-4,4], ey = hy+3;
-    for (const ex of eyes){
-      if (L.eyes==='round'){ d.dot(ex,ey,2.2,'eye'); d.dot(ex-.8,ey-.9,.9,'#fff'); d.dot(ex+.7,ey+.8,.4,'#fff'); }
-      else if (L.eyes==='smile') d.line(c=>c.arc(ex,ey+.8,1.9,Math.PI*1.1,Math.PI*1.9),'eye',1.1);
-      else if (L.eyes==='lash'){ d.dot(ex,ey,2.1,'eye'); d.dot(ex-.7,ey-.8,.8,'#fff'); const o = side?1:Math.sign(ex); d.line(c=>{c.moveTo(ex+o*1.6,ey-1.4);c.lineTo(ex+o*2.8,ey-2.4);},'eye',.8); }
-      else d.line(c=>{c.moveTo(ex-1.9,ey+.4);c.quadraticCurveTo(ex,ey+1.4,ex+1.9,ey+.4);},'eye',1.1);
-      if (!FRINGE.has(H)) d.line(c=>{c.moveTo(ex-1.6,ey-3.6);c.lineTo(ex+1.6,ey-3.9);},hd,.9);
-    }
-    for (const bx of side ? [4.5] : [-6.4,6.4]) d.dot(bx,ey+3,2,'blush',.55);
-    const mx = side ? 7.5 : 0;
-    d.line(c=>{c.moveTo(mx-1.1,ey+4.6);c.quadraticCurveTo(mx,ey+5.8,mx+1.1,ey+4.6);},'eye',.85);
-  }
-  // 모자
-  if (L.hat==='straw'){ d.ell(0,hy-6,15,3.6,'#f3d27a'); d.ell(0,hy-9,8.5,5.5,'#f3d27a'); d.rr(-8.5,hy-9,17,2.2,1,'#ff7a9a'); }
-  if (L.hat==='beanie'){ d.rr(-11,hy-13,22,10,6,'#ff9f7a'); d.rr(-11.5,hy-6,23,3.6,1.8,'#ffb896'); d.circle(0,hy-14,3.2,'#ffffff'); }
-  if (L.hat==='cap'){ d.shape(()=>{c.beginPath();c.arc(0,hy-3,11.3,Math.PI,0);c.closePath();},'#6fa8ff',[0,hy-7,11]); if (side) d.ell(9,hy-3.5,6,1.8,'#5b93e6'); else if (!up) d.ell(0,hy-2.5,9,2.4,'#5b93e6'); d.dot(0,hy-14,1.2,'#5b93e6'); }
-  if (L.hat==='crown'){ d.rr(-8,hy-15,16,6,2,'#ffd23f'); for (const cx of [-6,0,6]) d.tri([[cx-3,hy-14],[cx,hy-21],[cx+3,hy-14]],'#ffd23f'); d.dot(0,hy-12,1.6,'#ff4f6d'); }
-  if (L.hat==='flower') for (let a=Math.PI*1.05; a<Math.PI*1.96; a+=.3) d.circle(Math.cos(a)*11, hy-1+Math.sin(a)*10, 2.6, ['#ff8fc4','#ffe066','#ffffff','#c9a6ff'][Math.round(a*3)%4]);
-  if (L.hat==='witch'){ d.ell(0,hy-8,15,3.4,'#5b4a8f'); d.tri([[-8,hy-9],[3,hy-30],[8,hy-9]],'#6f5bb5'); d.dot(1,hy-12,1.6,'#ffd23f'); }
-  if (L.hat==='pin' && !up){ const px = side ? 3 : 6; d.tri([[px,hy-6],[px-3.5,hy-8.5],[px-3,hy-3.8]],'#ff6f9a'); d.tri([[px,hy-6],[px+3.5,hy-8.5],[px+3,hy-3.8]],'#ff6f9a'); d.circle(px,hy-6,1.2,'#ff8fb1'); }
-  c.restore();
 }
 
 // NPC: 덩어리 솜인형
@@ -790,7 +702,8 @@ function fromDB(p){
   for (const k of ['seeds','crops','fish','ores','loot']) inv[k] = {...(inv[k]||{})};
   if (inv.seed){ inv.seeds.c01 = (inv.seeds.c01||0) + inv.seed; } delete inv.seed;
   if (inv.tomato){ inv.crops.c01 = (inv.crops.c01||0) + inv.tomato; } delete inv.tomato;
-  return { ...p, rel:p.rel||{}, inv,
+  const closet = [...new Set([...CH.FREE, ...(p.closet||[]), ...(p.hats ? p.hats.split(',') : []), ...CH.lookItems(CH.migrateLook(p.look))])].filter(id=>CH.ITEM(id));
+  return { ...p, look:CH.migrateLook(p.look), closet, rel:p.rel||{}, inv,
     gardens:Array.from({length:Math.max(2, Math.min(6, p.plots||2))}, (_,i)=>i).map(i=>{ const s = g[i]; if (!s) return null; return {crop: s.stage>=0 ? {type:s.type||'c01', stage:s.stage, wateredAt:s.wateredAt||null} : null}; }) };
 }
 function toDB(p){
@@ -835,7 +748,7 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz;
-    Object.assign(o, {sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:s.look, nick:String(s.nick||'').slice(0,8), uid:id});
+    Object.assign(o, {sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', nick:String(s.nick||'').slice(0,8), uid:id});
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
   }
@@ -1016,7 +929,7 @@ function renderOb(){
       if (!ok || Object.values(players).some(p=>p.lot===pick.lot)){
         pick.lot = null; renderOb(); $('err').textContent = '방금 다른 분이 고른 집터예요. 다른 곳을 골라 주세요.'; return;
       }
-      const doc = { nick:nickVal, look:structuredClone(EDIT), roof:pick.roof, lot:pick.lot, inv:{garden:0,seed:0,tomato:0,can:false,gold:0}, rel:{}, gardens:[null,null], quest:0, joinedAt:Date.now() };
+      const doc = { nick:nickVal, look:applyStarter(EDIT), closet:[...CH.FREE], roof:pick.roof, lot:pick.lot, inv:{garden:0,seed:0,tomato:0,can:false,gold:0}, rel:{}, gardens:[null,null], quest:0, joinedAt:Date.now() };
       me = doc; await saveMe();
       players[uid] = structuredClone(doc); rebuildObstacles();
       enterGame(doc);
@@ -1122,7 +1035,7 @@ function npcActions(n){
   if (n.id!=='momo' && BUYERS[n.id]) acts.push(['물건 팔기', ()=>sellPanel(n)]);
   if (n.id==='tori') acts.push(['오늘의 심부름', errandPanel]);
   if (n.id==='bori') acts.push(['공방 (텃밭·가구)', workshopPanel]);
-  if (n.id==='mongsil') acts.push(['옷 갈아입기', clothesPanel]);
+  if (n.id==='mongsil') acts.push(['옷가게 · 갈아입기', clothesPanel]);
   if (n.id==='bibi' && me.inv.sword) acts.push(['대장간 (무기)', weaponPanel]);
   if (n.id==='olly') acts.push(['박물관 기증', museumPanel]);
   if (n.id==='pengpeng') acts.push(['날씨 예보', ()=>say(title(n), '펭! '+forecast(), npcActions(n))], ['낚시 대회', contestPanel]);
@@ -1145,7 +1058,7 @@ function giftMenu(n){
 function giveGift(n, item){
   const r = relOf(n.id);
   if (r.giftDay === today() || !(invCount(item)>0)) return closeTalk();
-  invAdd(item, -1); r.giftDay = today();
+  invAdd(item, -1); r.giftDay = today(); setExpr('wink', 2500);
   const taste = tasteOf(n, item), ups = addPts(n, GIFT_PTS[taste]);
   saveMe(); renderHud();
   const text = pickLine(n.react && n.react[taste], n.id+'r') || {loved:'정말 좋아해! 고마워!', liked:'고마워!', neutral:'고마워.', disliked:'음... 마음만 받을게.'}[taste];
@@ -1349,6 +1262,7 @@ function catchFish(){
   stopFishing();
   const ratio = Math.pow(Math.random(), 1.5), size = Math.round((f.min + (f.max-f.min)*ratio)*10)/10;
   const st = ratio >= .85 ? 3 : ratio >= .5 ? 2 : 1, k = fishKey(id, st);
+  setExpr(st===3 || f.weight < 10 ? 'sparkle' : 'happy', 2500);
   me.inv.fish = me.inv.fish || {}; me.inv.fish[k] = (me.inv.fish[k]||0) + 1;
   me.dex = me.dex || {}; const dx = me.dex[id] || {n:0, best:0, st:0};
   const record = size > dx.best; me.dex[id] = {n:dx.n+1, best:Math.max(dx.best,size), st:Math.max(dx.st,st)};
@@ -1468,7 +1382,7 @@ function mineRock(r){
   if (rockHits[key] < 3){ toast(`바위를 캐는 중… (${rockHits[key]}/3)`); return; }
   delete rockHits[key];
   const id = rollOre(zoneId), o = ORES[id], n = o.tier===1 ? 1 + Math.floor(Math.random()*3) : 1;
-  invAdd('ore:'+id, n);
+  invAdd('ore:'+id, n); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200);
   me.mined = me.mined || {}; const m = me.mined[zoneId];
   me.mined[zoneId] = {h:hourKey(), done: (m && m.h===hourKey() ? m.done+',' : '') + r.i};
   me.odex = me.odex || {}; const first = !me.odex[id]; me.odex[id] = (me.odex[id]||0) + n;
@@ -1545,7 +1459,7 @@ function updateMobs(dt, t){
     if (mob.kb > 0){ mob.kb -= dt; const nx = mob.x + mob.kvx*dt, ny = mob.y + mob.kvy*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; mob.kvx *= .86; mob.kvy *= .86; continue; }
     if (l > 22 && mob.hurt <= 0){ const nx = mob.x + dx/l*sp*dt, ny = mob.y + dy/l*sp*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; }
     if (d < 30 && mob.cd <= 0 && !talking){
-      mob.cd = 1.2; playerHp -= m.atk; lastHurt = t; pushPlayer(pos.x-mob.x, pos.y-mob.y, 18);
+      mob.cd = 1.2; playerHp -= m.atk; lastHurt = t; pushPlayer(pos.x-mob.x, pos.y-mob.y, 18); setExpr('surprised', 1200);
       fx.push({x:pos.x, y:pos.y-50, text:'-'+m.atk, t, color:'#ff3b6b'});
       if (playerHp <= 0) return faint();
     }
@@ -1704,7 +1618,7 @@ function useSlot(i){
     const c = cropNow(g.crop, now); g.crop = c; const cd = CROPS[c.type] || CROPS.c01;
     if (c.stage>=4){
       const n = cd.y1 + Math.floor(Math.random()*(cd.y2-cd.y1+1));
-      g.crop = null; invAdd('crop:'+c.type, n);
+      g.crop = null; invAdd('crop:'+c.type, n); setExpr('happy', 2000);
       if (me.quest<=5 && me.quest>=4){ me.quest = 6; invAdd('seed:c01', 2); say('하나 · 꼬마 농부', '첫 수확 축하해! 기념으로 토마토 씨앗 2개 더 줄게! 다른 씨앗은 마을 광장 모모 가게에서 살 수 있어!'); }
       else toast(`${cd.name} ${n}개를 수확했어요!`, 'crop:'+c.type);
     } else if (!c.wateredAt){
@@ -1771,7 +1685,7 @@ function cook(id){
     if (k==='fish:*'){ let left = n; for (const [fk,c] of anyFishKeys()){ const t = Math.min(left, c); invAdd(fk, -t); left -= t; if (!left) break; } }
     else invAdd(k, -n);
   }
-  invAdd('dish:'+id, 1); me.cooked = (me.cooked||0) + 1; saveMe(); renderHud();
+  invAdd('dish:'+id, 1); me.cooked = (me.cooked||0) + 1; setExpr('happy', 2000); saveMe(); renderHud();
   toast(`${DISHES[id].name}을(를) 만들었어요!`); cookPanel();
 }
 function cookPanel(){
@@ -1937,23 +1851,40 @@ function decorMenu(){
 }
 
 // ===== 몽실 옷가게 =====
-const SPECIAL_HATS = {crown:{name:'왕관', need:'loot:m28', n:1, gold:0}, flower:{name:'꽃 화관', need:'crop:c18', n:3, gold:300}, witch:{name:'마법사 모자', need:'loot:m16', n:2, gold:500}};
-let wardrobe = null;
+// ===== 몽실 옷가게: 상의·하의·세트·모자·악세사리·신발. 사면 옷장에 들어가고, 입는 건 무료 =====
+let shopTab = 'top';
+const CLOSET = () => { me.closet = me.closet || [...CH.FREE]; return me.closet; };
+const wearing = id => CH.lookItems(me.look).includes(id);
+const previewCache = new Map();
+// 옷 미리보기: 내 캐릭터가 그 옷을 입은 모습 (정면)
+function wearPreview(L, size=96){
+  const key = JSON.stringify(L)+'|'+size; if (previewCache.has(key)) return previewCache.get(key);
+  const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d');
+  const sc = size/64; x.setTransform(sc,0,0,sc,size/2, size-8);
+  try { CH.figure(CH.mattePainter(x), L, 'down', 0, false, 'dot'); } catch(e){}
+  const url = c.toDataURL(); if (previewCache.size > 200) previewCache.clear(); previewCache.set(key, url); return url;
+}
+function tryOn(L, slot, id){ const n = {...L}; if (slot==='set'){ n.set = id; } else if (slot==='top' || slot==='bottom'){ n.set = ''; n[slot] = id; } else n[slot] = id; return n; }
+function wear(slot, id){ me.look = tryOn(me.look, slot, id); saveMe(); spriteCache.clear(); toast(id==='none' ? '벗었어요' : `${CH.ITEM(id).name}을(를) 입었어요`); clothesPanel(); }
 function clothesPanel(){
-  if (!wardrobe) wardrobe = structuredClone(me.look);
-  const unlocked = me.hats ? me.hats.split(',') : [];
-  const opt = (k, list) => `<div class="row"><b>${OPT[k]?.label || '머리 모양'}</b><div class="opts">${list.map(v=>{ const [val,name] = Array.isArray(v)?v:[v,v]; const key = OPT[k]?.target || k; const on = me.look[key]===val;
-    return OPT[k]?.color ? `<button class="sw" style="background:${val}" data-k="${key}" data-v="${val}" aria-pressed="${on}" aria-label="${OPT[k].label}"></button>` : `<button data-k="${key}" data-v="${val}" aria-pressed="${on}">${name}</button>`; }).join('')}</div></div>`;
-  const hats = [...OPT.hat.v, ...Object.entries(SPECIAL_HATS).filter(([id])=>unlocked.includes(id)).map(([id,h])=>[id,h.name])];
-  const shop = Object.entries(SPECIAL_HATS).filter(([id])=>!unlocked.includes(id)).map(([id,h])=>`<button class="np" data-id="${id}"><span class="np-name">${h.name} 만들기 <small>${h.gold?h.gold+'G + ':''}${itemName(h.need)} ${h.n}</small></span><span class="np-place">${me.inv.gold>=h.gold&&invCount(h.need)>=h.n?'만들기':'재료 부족'}</span></button>`).join('');
-  openPanel('몽실 옷가게 · 갈아입기 100G', `<div class="ctrls">${opt('hairA',OPT.hairA.v)}${opt('hairB',OPT.hairB.v)}${opt('hairColor',OPT.hairColor.v)}${opt('outfit',OPT.outfit.v)}${opt('outfitColor',OPT.outfitColor.v)}${opt('hat',hats)}</div>
-    <div class="act" style="justify-content:flex-start"><button class="btn" id="wdOk">이대로 입기 (100G)</button><button class="btn ghost" id="wdNo">되돌리기</button></div>${shop}`, b=>{
-      const h = SPECIAL_HATS[b.dataset.id]; if (me.inv.gold < h.gold || invCount(h.need) < h.n) return toast('재료가 모자라요');
-      me.inv.gold -= h.gold; invAdd(h.need, -h.n); me.hats = [...unlocked, b.dataset.id].join(','); saveMe(); renderHud(); toast(`${h.name}을(를) 만들었어요!`); clothesPanel();
-    });
-  $('npcPanel').querySelectorAll('.opts button').forEach(b=>b.onclick = ()=>{ me.look[b.dataset.k] = b.dataset.v; clothesPanel(); });
-  $('wdOk').onclick = ()=>{ if (JSON.stringify(me.look)===JSON.stringify(wardrobe)) { wardrobe = null; $('npcPanel').hidden = true; return; } if (me.inv.gold < 100){ me.look = wardrobe; wardrobe = null; $('npcPanel').hidden = true; return toast('돈이 모자라요'); } me.inv.gold -= 100; wardrobe = null; saveMe(); renderHud(); $('npcPanel').hidden = true; toast('새 옷으로 갈아입었어요!'); };
-  $('wdNo').onclick = ()=>{ me.look = wardrobe; wardrobe = null; $('npcPanel').hidden = true; };
+  const [slot, label, cat] = CH.CATS.find(c=>c[0]===shopTab);
+  const tabs = CH.CATS.map(([k,l])=>`<button class="mini" data-tab="${k}" style="${k===shopTab?'':'background:#fff'}">${l}</button>`).join('');
+  const rows = Object.entries(cat).map(([id,it])=>{
+    const own = CLOSET().includes(id) || it.price===0 && !it.need, on = wearing(id) || (id==='none' && (slot==='hat' ? me.look.hat==='none' : slot==='acc' ? me.look.acc==='none' : false));
+    const cost = it.need ? `${it.price?it.price+'G + ':''}${itemName(it.need)} ${invCount(it.need)}/${it.n}` : `${it.price}G`;
+    const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
+    return `<button class="tile ${on?'on':''}" data-id="${id}" title="${esc(it.name)}">${id==='none' ? '<span style="font-size:30px;line-height:44px">✕</span>' : `<img class="ic" src="${wearPreview(tryOn(me.look, slot, id))}" alt="">`}<em>${esc(it.name)}</em><s style="color:${own?'var(--soft)':can?'#e48fac':'#c9b3bc'}">${own ? (on ? '입는 중' : '입기') : cost}</s></button>`; }).join('');
+  openPanel(`몽실 옷가게 · 💰 ${me.inv.gold}G`, `<div style="display:flex;gap:5px;flex-wrap:wrap">${tabs}</div><p class="mnote" style="margin:4px 2px 0">산 옷은 옷장에 들어가고, 갈아입는 건 공짜예요. 세트를 입으면 상의·하의는 가려져요.</p><div class="bag-grid">${rows}</div>`);
+  const pn = $('npcPanel');
+  pn.querySelectorAll('[data-tab]').forEach(b=>b.onclick = ()=>{ shopTab = b.dataset.tab; clothesPanel(); });
+  pn.querySelectorAll('.tile[data-id]').forEach(b=>b.onclick = ()=>{
+    const id = b.dataset.id, it = cat[id];
+    if (CLOSET().includes(id) || (it.price===0 && !it.need)){ if (!CLOSET().includes(id)) CLOSET().push(id); return wear(slot, id); }
+    const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
+    if (!can) return toast(it.need ? '재료나 돈이 모자라요' : '돈이 모자라요');
+    say(it.name, it.need ? `${it.price?it.price+'G와 ':''}${itemName(it.need)} ${it.n}개로 만들까요?` : `${it.price}G에 살까요? 사면 옷장에 들어가요.`, [[it.need ? '만들기' : '사기', ()=>{
+      me.inv.gold -= it.price; if (it.need) invAdd(it.need, -it.n); CLOSET().push(id); renderHud(); closeTalk(); wear(slot, id); toast(`${it.name}을(를) ${it.need?'만들어':'사서'} 입었어요!`); }], ['그만두기', ()=>{ closeTalk(); clothesPanel(); }]], '', true);
+  });
 }
 
 // ===== 올리 박물관 기부 =====
@@ -2264,7 +2195,7 @@ function updateBoss(dt, t){
   const d = Math.hypot(pos.x-BOSS.x, pos.y-BOSS.y);
   bossCd -= dt;
   bossHurt -= dt;
-  if (d < 70 && bossCd <= 0 && $('talk').hidden){ bossCd = 1.6; playerHp -= BOSS.atk; lastHurt = t; pushPlayer(pos.x-BOSS.x, pos.y-BOSS.y, 30); fx.push({x:pos.x, y:pos.y-50, text:'-'+BOSS.atk, t, color:'#ff3b6b'}); if (playerHp <= 0) return faint(); }
+  if (d < 70 && bossCd <= 0 && $('talk').hidden){ bossCd = 1.6; playerHp -= BOSS.atk; lastHurt = t; pushPlayer(pos.x-BOSS.x, pos.y-BOSS.y, 30); setExpr('surprised', 1200); fx.push({x:pos.x, y:pos.y-50, text:'-'+BOSS.atk, t, color:'#ff3b6b'}); if (playerHp <= 0) return faint(); }
   if (bossPending && t - bossFlushT > 1000){ bossFlushT = t; const p = bossPending; bossPending = 0; net.bossHit && net.bossHit(p); }
 }
 function drawBoss(d, t){
@@ -2361,7 +2292,8 @@ function showBag(){
   const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
   openPanel(`가방 · 💰 ${me.inv.gold}G · ❤️ ${Math.ceil(playerHp)}`,
     `<div class="np"><span class="np-name">도구 <small>${tools}</small></span></div>${grid || '<p class="mnote">가방이 비어 있어요.</p>'}
-     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">친구에게 선물 보내기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">섬 주식</button></div>`);
+     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">친구에게 선물 보내기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">섬 주식</button><button class="mini" id="bgCloset">옷장</button></div>`);
+  $('bgCloset').onclick = clothesPanel;
   $('bgMarket').onclick = marketPanel; $('bgPrice').onclick = pricePanel; $('bgStock').onclick = stockPanel;
   $('npcPanel').querySelectorAll('.tile').forEach(b=>b.onclick = ()=>itemInfo(b.dataset.k));
   $('dxF').onclick = showDex; $('dxO').onclick = oreDex; $('dxM').onclick = monDex;
@@ -2419,7 +2351,7 @@ function sendChat(){
   if (!t) return;
   net.sendChat(t).catch(()=>toast('채팅을 보내지 못했어요.'));
 }
-document.querySelectorAll('.emo').forEach(b=>b.onclick = ()=>{ emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); });
+document.querySelectorAll('.emo').forEach(b=>b.onclick = ()=>{ emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); setExpr({'👋':'happy','❤️':'wink','✨':'sparkle','😢':'sad'}[b.dataset.e] || 'cat', 3000); });
 
 function toWorld(cx, cy){ return { x: view.cx + cx/view.zoom, y: view.cy + cy/view.zoom }; }
 function hitTarget(w){
@@ -2478,7 +2410,7 @@ let lastPres = 0, presSig = '', lastTarget = null;
 function sendPresence(t){
   if (!net || !me) return;
   const tgt = target && !keyMoving ? target : null;
-  const p = {z:zoneId, nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0};
+  const p = {z:zoneId, nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr()};
   if (tgt){ p.tx = Math.round(tgt.x); p.ty = Math.round(tgt.y); }
   const sig = JSON.stringify(tgt ? {...p, x:0, y:0, dir:0, mv:0} : p);
   let go = false;
@@ -2614,7 +2546,7 @@ function bubble(c, text, x, y){
 let lastT = performance.now(), lastFade = -1;
 function frame(t){
   const dt = Math.min(.05, (t-lastT)/1000); lastT = t;
-  if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = painter(c); d.ell(120,104,110,9,'#f6dcd3'); player(d,45,102,EDIT,'down',t/1000,true,1.95); player(d,120,102,EDIT,'right',t/1000,true,1.95); player(d,195,102,EDIT,'up',t/1000,true,1.95); } }
+  if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,108); c.scale(1.7,1.7); CH.figure(d, L, dir, t/1000, true, 'dot'); c.restore(); } } }
   if (me && !obStep){
     const tp = toriPos(Date.now()), tori = NPC.tori; tori.x = tp.x; tori.y = tp.y; tori.mv = tp.mv; if (tp.dx) tori.flip = tp.dx < 0;
     step(dt); moveOthers(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateSwing(dt); updateStars(t); rainWater(t);
@@ -2633,11 +2565,11 @@ function frame(t){
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
       ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1), label:()=>tag(ctx, n.name, n.x, n.y-50, null)})),
-      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1), label:()=>{ tag(ctx,o.nick,o.x,o.y-54,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); talkBubble(k,o.x,o.y,t); }})),
+      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'), label:()=>{ tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
-      {y:pos.y, draw:()=>drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-54,ROOFS[me.roof][1]); talkBubble('me',pos.x,pos.y,t); }},
+      {y:pos.y, draw:()=>drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); talkBubble('me',pos.x,pos.y,t); }},
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
@@ -2649,11 +2581,11 @@ function frame(t){
 }
 function talkBubble(key, x, y, t){
   const e = bubbles.get(key+'-emo'), b = bubbles.get(key);
-  if (b && t-b.at < 5000) bubble(ctx, b.text, x, y-70);
-  else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-70);
+  if (b && t-b.at < 5000) bubble(ctx, b.text, x, y-80);
+  else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-80);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { iconURL, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { iconURL, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
 </body>
 </html>
