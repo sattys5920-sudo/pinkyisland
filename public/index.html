@@ -176,6 +176,11 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
   #chatbox{bottom:calc(env(safe-area-inset-bottom,0px) + 62px);width:min(260px,30vw)}
   #log{max-height:4.5em;overflow:hidden;justify-content:flex-end}
 }
+/* 키패드가 올라온 동안: 채팅창만 남기고 아래 버튼은 숨겨요 */
+body.typing #bar, body.typing #sideBtns, body.typing #talk, body.typing #toast{visibility:hidden}
+body.typing #chatbox{z-index:30;transition:bottom .12s}
+body.typing #log{max-height:4.5em;overflow:hidden;justify-content:flex-end}
+body.typing #chatin{background:#fff}
 </style>
 </head>
 <body>
@@ -2367,7 +2372,20 @@ function resize(){
   view.zoom = Math.max(1.3, Math.min(1.8, Math.min(view.w, view.h*1.4)/480));
   cv.width = view.w*view.dpr; cv.height = view.h*view.dpr; staticSig = ''; spriteCache.clear(); sizePrev();
 }
-addEventListener('resize', resize); if (window.visualViewport) visualViewport.addEventListener('resize', resize); addEventListener('orientationchange', ()=>setTimeout(resize, 200)); resize();
+addEventListener('resize', resize); if (window.visualViewport) visualViewport.addEventListener('resize', resize);
+// 폰 키패드가 올라오면 채팅창을 키패드 바로 위로 옮기고, 아래쪽 버튼은 잠깐 숨겨요
+function keyboardLayout(){
+  const vv = window.visualViewport, box = $('chatbox'), on = typing() && vv;
+  document.body.classList.toggle('typing', !!on);
+  if (on){
+    const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop);
+    box.style.bottom = (kb + 8) + 'px';
+    if (vv.offsetTop) scrollTo(0, 0);
+  } else box.style.bottom = '';
+}
+if (window.visualViewport){ visualViewport.addEventListener('resize', keyboardLayout); visualViewport.addEventListener('scroll', keyboardLayout); }
+$('chatin').addEventListener('focus', ()=>{ setTimeout(keyboardLayout, 50); setTimeout(keyboardLayout, 350); });
+$('chatin').addEventListener('blur', ()=>setTimeout(keyboardLayout, 50)); addEventListener('orientationchange', ()=>setTimeout(resize, 200)); resize();
 const typing = () => document.activeElement && document.activeElement.tagName==='INPUT';
 addEventListener('keydown', e=>{
   if (!me || obStep) return;
