@@ -225,13 +225,44 @@ let EDIT = { skin:'#f9d3b8', hair:'long', hairColor:'#7a5236', eyes:'lash', outf
 
 function shade(hex,k){const n=parseInt(hex.slice(1),16);const f=v=>Math.max(0,Math.min(255,Math.round(k>0?v+(255-v)*k:v*(1+k))));return `rgb(${f(n>>16)},${f(n>>8&255)},${f(n&255)})`;}
 
+// 클레이 질감: 블러 그림자 대신 (1) 바닥에 붙은 접촉 그림자 (2) 매트한 몸통 그라데이션 (3) 위쪽 가장자리 림 라이트 (4) 아래 가장자리 어두운 음영 (5) 고운 입자
+let grainCanvas = null;
+function grainPattern(ctx){
+  if (ctx.__grain) return ctx.__grain;
+  if (!grainCanvas){
+    grainCanvas = document.createElement('canvas'); grainCanvas.width = grainCanvas.height = 96;
+    const g = grainCanvas.getContext('2d'), img = g.createImageData(96, 96), d = img.data;
+    let seed = 7; for (let i=0;i<d.length;i+=4){ seed = (seed*1103515245 + 12345) & 0x7fffffff; const v = seed % 255; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; }
+    g.putImageData(img, 0, 0);
+  }
+  return ctx.__grain = ctx.createPattern(grainCanvas, 'repeat');
+}
+function mixHex(a, b, k){ const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16); const f=(x,y)=>Math.round(x+(y-x)*k); return '#'+[f(A>>16,B>>16),f(A>>8&255,B>>8&255),f(A&255,B&255)].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+const toHex = col => col.startsWith('#') ? (col.length===4 ? '#'+[...col.slice(1)].map(c=>c+c).join('') : col.slice(0,7)) : (()=>{ const m = col.match(/\d+/g); return m ? '#'+m.slice(0,3).map(v=>(+v).toString(16).padStart(2,'0')).join('') : '#cccccc'; })();
 function painter(ctx){
   function paint(path, key, [cx,cy,r]){
-    const col = P[key] || key;
-    ctx.save(); if (r>=7){ ctx.shadowColor='rgba(150,70,100,.22)'; ctx.shadowBlur=5; ctx.shadowOffsetY=2; }
-    const g=ctx.createRadialGradient(cx-r*.35,cy-r*.45,r*.05,cx,cy,r*1.25);
-    g.addColorStop(0,shade(col,.5)); g.addColorStop(.55,col); g.addColorStop(1,shade(col,-.16));
-    path(); ctx.fillStyle=g; ctx.fill(); ctx.restore();
+    const col = toHex(P[key] || key), big = r >= 6, huge = r > 60, k = huge ? .35 : 1; // 큰 바닥 모양은 효과를 약하게
+    ctx.save();
+    if (big){ // 접촉 그림자: 같은 모양을 살짝 아래로 어둡게
+      ctx.save(); ctx.translate(Math.min(2.5, r*.08), Math.min(5, Math.max(1.2, r*.16))); ctx.globalAlpha = r > 60 ? .08 : .16; path(); ctx.fillStyle = '#5a2e48'; ctx.fill(); ctx.restore();
+    }
+    const g = ctx.createRadialGradient(cx-r*.38, cy-r*.42, r*.08, cx, cy, r*1.18);
+    g.addColorStop(0, mixHex(col, '#fff7ef', .42*k)); g.addColorStop(.5, col); g.addColorStop(1, mixHex(col, '#4a2a40', .26*k));
+    path(); ctx.fillStyle = g; ctx.fill();
+    if (big){
+      path(); ctx.clip();
+      // 아래 가장자리 음영 (덩어리감)
+      const ao = ctx.createRadialGradient(cx+r*.15, cy+r*.35, r*.55, cx+r*.15, cy+r*.35, r*1.15);
+      ao.addColorStop(0, 'rgba(70,30,60,0)'); ao.addColorStop(1, `rgba(70,30,60,${.28*k})`);
+      ctx.fillStyle = ao; ctx.fillRect(cx-r*1.3, cy-r*1.3, r*2.6, r*2.6);
+      // 위쪽 림 라이트
+      const rim = ctx.createRadialGradient(cx-r*.25, cy-r*.3, r*.78, cx-r*.25, cy-r*.3, r*1.08);
+      rim.addColorStop(0, 'rgba(255,250,245,0)'); rim.addColorStop(.75, `rgba(255,250,245,${.42*k})`); rim.addColorStop(1, 'rgba(255,250,245,0)');
+      ctx.fillStyle = rim; ctx.fillRect(cx-r*1.3, cy-r*1.3, r*2.6, r*2.6);
+      // 입자
+      if (r >= 9){ ctx.globalAlpha = .07; ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = grainPattern(ctx); ctx.fillRect(cx-r*1.3, cy-r*1.3, r*2.6, r*2.6); }
+    }
+    ctx.restore();
   }
   return { ctx,
     circle:(x,y,r,k)=>paint(()=>{ctx.beginPath();ctx.arc(x,y,r,0,7);},k,[x,y,r]),
@@ -243,6 +274,39 @@ function painter(ctx){
     stitch:(fn,k='stitch',a=.85)=>{ctx.save();ctx.globalAlpha=a;ctx.setLineDash([2,1.6]);ctx.lineWidth=.9;ctx.strokeStyle=P[k]||k;ctx.beginPath();fn(ctx);ctx.stroke();ctx.restore();},
     line:(fn,k,w=1)=>{ctx.save();ctx.strokeStyle=P[k]||k;ctx.lineWidth=w;ctx.lineCap='round';ctx.beginPath();fn(ctx);ctx.stroke();ctx.restore();},
   };
+}
+
+// ===== 스프라이트 캐시: 캐릭터는 자세별로 한 번만 그리고, 그 뒤로는 그림을 붙여 넣어요 (끊김 방지) =====
+const spriteCache = new Map(), SPRITE_MAX = 420, TAU = Math.PI*2;
+function sprite(key, w, h, ox, oy, drawFn){
+  let sp = spriteCache.get(key);
+  if (!sp){
+    const sc = Math.min(3, Math.max(1, Math.round(view.dpr*view.zoom*2)/2));
+    const c = document.createElement('canvas'); c.width = Math.ceil(w*sc); c.height = Math.ceil(h*sc);
+    const x = c.getContext('2d'); x.setTransform(sc,0,0,sc,ox*sc,oy*sc);
+    drawFn(painter(x));
+    sp = {c, sc, ox, oy};
+    if (spriteCache.size >= SPRITE_MAX) spriteCache.delete(spriteCache.keys().next().value);
+    spriteCache.set(key, sp);
+  }
+  return sp;
+}
+const qphase = (ph, n) => Math.round((((ph % TAU) + TAU) % TAU) / TAU * n) % n;
+// 플레이어: 걷기 8단계, 서 있기 4단계
+function drawPlayer(c, x, y, L, dir, t, walk, s=1){
+  const ph = t*8 + x*.37, q = walk ? qphase(ph, 8) : qphase(t*2 + x, 4);
+  const key = 'p|'+JSON.stringify(L)+'|'+dir+'|'+(walk?'w':'i')+q+'|'+Math.round(view.dpr*view.zoom*2);
+  const t2 = walk ? q/8*TAU/8 : q/4*TAU/2;
+  const sp = sprite(key, 64, 96, 32, 84, d=>player(d, 0, 0, L, dir, t2, walk, 1));
+  c.drawImage(sp.c, x - sp.ox*s, y - sp.oy*s, sp.c.width/sp.sc*s, sp.c.height/sp.sc*s);
+}
+// 동물 주민: 걷기 8단계, 서 있기 4단계
+function drawCritter(c, x, y, v, t, walk, s=1){
+  const ph = t*7 + x*.3, q = walk ? qphase(ph, 8) : qphase(t*2 + x, 4);
+  const key = 'c|'+JSON.stringify(v)+'|'+(walk?'w':'i')+q+'|'+Math.round(view.dpr*view.zoom*2);
+  const t2 = walk ? q/8*TAU/7 : q/4*TAU/2;
+  const sp = sprite(key, 80, 100, 40, 88, d=>critter(d, 0, 0, v, t2, walk, 1));
+  c.drawImage(sp.c, x - sp.ox*s, y - sp.oy*s, sp.c.width/sp.sc*s, sp.c.height/sp.sc*s);
 }
 
 // 플레이어: 사람 비율에 가까운 인형. dir = down | up | right | left
@@ -2336,7 +2400,7 @@ let view = {zoom:1, dpr:1, w:0, h:0, cx:0, cy:0};
 function resize(){
   view.dpr = Math.min(2, devicePixelRatio||1); view.w = innerWidth; view.h = innerHeight;
   view.zoom = Math.max(1.3, Math.min(1.8, Math.min(view.w, view.h*1.4)/480));
-  cv.width = view.w*view.dpr; cv.height = view.h*view.dpr; staticSig = ''; sizePrev();
+  cv.width = view.w*view.dpr; cv.height = view.h*view.dpr; staticSig = ''; spriteCache.clear(); sizePrev();
 }
 addEventListener('resize', resize); if (window.visualViewport) visualViewport.addEventListener('resize', resize); addEventListener('orientationchange', ()=>setTimeout(resize, 200)); resize();
 const typing = () => document.activeElement && document.activeElement.tagName==='INPUT';
@@ -2500,13 +2564,16 @@ function buildStatic(){
   const d = painter(c);
   if (z.theme==='room'){ drawRoomStatic(c, d, z); return; }
   c.fillStyle = T.ground; c.fillRect(0,0,z.W,z.H);
-  for (let i=0;i<14;i++) d.ell((i*331)%z.W, (i*197)%z.H, 50+(i%3)*20, 16+(i%2)*6, T.ground2);
+  // 바닥 클레이 질감: 넓은 명암 얼룩 + 고운 입자 + 가장자리 어둡게
+  for (let i=0;i<22;i++){ const x = (i*331+77)%z.W, y = (i*197+41)%z.H, r = 140+(i%4)*60; const g = c.createRadialGradient(x,y,0,x,y,r); const lite = i%3===0; g.addColorStop(0, lite ? 'rgba(255,255,240,.16)' : 'rgba(60,40,70,.10)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x-r,y-r,r*2,r*2); }
+  c.save(); c.globalAlpha = .07; c.globalCompositeOperation = 'multiply'; c.fillStyle = grainPattern(c); c.fillRect(0,0,z.W,z.H); c.restore();
+  { const v = c.createRadialGradient(z.W/2, z.H/2, Math.min(z.W,z.H)*.35, z.W/2, z.H/2, Math.max(z.W,z.H)*.75); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(60,30,60,.14)'); c.fillStyle = v; c.fillRect(0,0,z.W,z.H); }
+  for (let i=0;i<14;i++){ const x=(i*331)%z.W, y=(i*197)%z.H, rx=50+(i%3)*20, ry=16+(i%2)*6; c.save(); c.globalAlpha=.55; c.fillStyle=T.ground2; c.beginPath(); c.ellipse(x,y,rx,ry,0,0,7); c.fill(); c.restore(); }
   if (z.theme==='flower') for (let i=0;i<120;i++) d.dot(M+(i*173)%(z.W-2*M), M+(i*97)%(z.H-2*M), 2.6, ['#ff8fc4','#ffe066','#ffffff','#c9a6ff'][i%4]);
   if (z.theme==='night') for (let i=0;i<70;i++) d.dot((i*223)%z.W, (i*137)%z.H, 1.6, '#fff6b0', .8);
   // 구역 길: 출구에서 가운데로
   const cx = z.W/2, cy = z.H/2, ex = z.exits;
-  if (ex.n) d.rr(cx-17,-10,34,cy+10,17,T.path); if (ex.s) d.rr(cx-17,cy,34,z.H/2+10,17,T.path);
-  if (ex.w) d.rr(-10,cy-17,cx+10,34,17,T.path); if (ex.e) d.rr(cx,cy-17,z.W/2+10,34,17,T.path);
+  d.shape(()=>{ c.beginPath(); if (ex.n) c.roundRect(cx-17,-10,34,cy+27,17); if (ex.s) c.roundRect(cx-17,cy-17,34,z.H/2+27,17); if (ex.w) c.roundRect(-10,cy-17,cx+27,34,17); if (ex.e) c.roundRect(cx-17,cy-17,z.W/2+27,34,17); }, T.path, [cx,cy,Math.max(z.W,z.H)/2]);
   for (const p of z.places) drawZonePlace(d, z, p);
   // 가장자리: 나무 / 바위 (출구 자리는 비워요)
   const edgeCol = z.theme==='cave' ? '#5b5266' : z.theme==='sand' ? '#ffd29a' : T.edge;
@@ -2544,7 +2611,7 @@ function bubble(c, text, x, y){
   c.fillStyle='#6b3a4d'; c.fillText(text.length>16 ? text.slice(0,15)+'…' : text, x, y-7);
 }
 
-let lastT = performance.now();
+let lastT = performance.now(), lastFade = -1;
 function frame(t){
   const dt = Math.min(.05, (t-lastT)/1000); lastT = t;
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = painter(c); d.ell(120,104,110,9,'#f6dcd3'); player(d,45,102,EDIT,'down',t/1000,true,1.95); player(d,120,102,EDIT,'right',t/1000,true,1.95); player(d,195,102,EDIT,'up',t/1000,true,1.95); } }
@@ -2565,18 +2632,18 @@ function frame(t){
     drawRocks(d, t);
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
-      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>critter(d,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1), label:()=>tag(ctx, n.name, n.x, n.y-50, null)})),
-      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>player(d,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1), label:()=>{ tag(ctx,o.nick,o.x,o.y-54,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); talkBubble(k,o.x,o.y,t); }})),
+      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1), label:()=>tag(ctx, n.name, n.x, n.y-50, null)})),
+      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1), label:()=>{ tag(ctx,o.nick,o.x,o.y-54,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
-      {y:pos.y, draw:()=>player(d,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-54,ROOFS[me.roof][1]); talkBubble('me',pos.x,pos.y,t); }},
+      {y:pos.y, draw:()=>drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-54,ROOFS[me.roof][1]); talkBubble('me',pos.x,pos.y,t); }},
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
     for (const e of ents) e.label();
     drawWeather(ctx, t);
-    $('fade').style.opacity = Math.max(0, 1 - (t - fadeT)/450);
+    const fo = Math.max(0, 1 - (t - fadeT)/450); if (fo !== lastFade){ lastFade = fo; $('fade').style.opacity = fo; }
   }
   requestAnimationFrame(frame);
 }
