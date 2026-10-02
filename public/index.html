@@ -15,7 +15,7 @@ body{margin:0;background:var(--sea);color:var(--ink);font:16px/1.5 "Jua",system-
 .pill{background:linear-gradient(#fff,#ffeef4);border-radius:16px;box-shadow:inset 0 -3px 0 #f6c3d5,0 4px 12px #c9708f33}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-offset:2px}
-#hud{flex-wrap:wrap;max-width:calc(100vw - 20px - min(260px,52vw) - 10px);position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:10px;display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:15px;z-index:5}
+#hud{font-size:13px!important;gap:6px 10px!important;flex-wrap:wrap;max-width:calc(100vw - 20px - min(260px,52vw) - 10px);position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:10px;display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:15px;z-index:5}
 #hud i{width:14px;height:14px;border-radius:5px;display:inline-block;vertical-align:-2px;margin-right:4px}
 #quest{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;max-width:min(260px,52vw);padding:8px 12px;font-size:14px;z-index:5}
 #quest b{display:block;font-size:12px;color:var(--soft)}
@@ -36,7 +36,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 #talk #talkNote{font-size:13px;color:var(--soft);margin-top:-6px}
 #talk .act{flex-wrap:wrap}
 .mini{border:0;border-radius:10px;background:var(--pink);color:#fff;font-size:13px;padding:2px 10px;box-shadow:inset 0 -2px 0 #e5588a}
-#npcPanel{position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:10px;width:min(360px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;z-index:7;display:flex;flex-direction:column;gap:6px;touch-action:pan-y}
+#npcPanel{z-index:10;position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:10px;width:min(360px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;display:flex;flex-direction:column;gap:6px;touch-action:pan-y}
 .np-head{display:flex;justify-content:space-between;align-items:center;padding:0 4px}
 .np{border:0;background:#fff;border-radius:12px;padding:6px 10px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:0 8px;box-shadow:inset 0 -2px 0 #f2d6e0}
 .np-name{font-size:15px}.np-name small{color:var(--soft);font-size:12px}
@@ -45,7 +45,9 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 .np-day{font-size:12px;color:var(--soft);text-align:right}
 .np-h small{color:var(--soft);letter-spacing:0}
 .np-keep{grid-column:1/-1;font-size:12px;color:var(--pinkd)}
-#mapPanel{position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;z-index:7;touch-action:pan-y}
+#sideBtns{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 78px);display:flex;flex-direction:column;gap:8px;z-index:5}
+.round{width:52px;height:52px;border-radius:50%;border:0;background:linear-gradient(#fff,#ffeef4);color:var(--ink);font-size:14px;box-shadow:inset 0 -3px 0 #f6c3d5,0 4px 12px #c9708f33}
+#mapPanel{z-index:10;position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;touch-action:pan-y}
 .mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(7,auto);gap:4px;margin-top:6px}
 .mz{background:#fff;border-radius:10px;padding:5px 3px;text-align:center;font-size:11px;line-height:1.25;display:flex;flex-direction:column;gap:2px;box-shadow:inset 0 -2px 0 #f2d6e0;min-height:52px;justify-content:center}
 .mz b{font-size:12px;font-weight:normal}
@@ -115,6 +117,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 <div id="talk" class="pill" hidden><h3 id="talkName"></h3><p id="talkText"></p><p id="talkNote" hidden></p><div class="act" id="talkAct"></div></div>
 <div id="npcPanel" class="pill" hidden></div>
 <div id="mapPanel" class="pill" hidden></div>
+<div id="sideBtns" hidden><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button></div>
 <div id="fade"></div>
 <div id="toast" class="pill" style="opacity:0"></div>
 <div id="ob"><div class="obc" id="obc"><h1>핑키 디저트 아일랜드</h1><p class="sub">섬에 연결하는 중이에요…</p></div></div>
@@ -741,7 +744,9 @@ function sizePrev(){ const c = $('obprev'); if (!c) return; const r = c.getBound
 // ===== 게임 =====
 function enterGame(doc){
   me = doc; obStep = null; $('ob').hidden = true;
-  for (const id of ['hud','quest','bar','chatbox']) $(id).hidden = false;
+  for (const id of ['hud','quest','bar','chatbox','sideBtns']) $(id).hidden = false;
+  $('npcBtn').onclick = ()=>togglePanel('npcPanel', renderNpcPanel);
+  $('mapBtn').onclick = ()=>togglePanel('mapPanel', renderMap);
   const L = LOTS[me.lot]; pos.dir = 'down';
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
   else enterZone('home', null, L.x, L.y + 18);
@@ -752,9 +757,7 @@ function enterGame(doc){
 }
 function renderHud(){
   const online = 1 + others.size;
-  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>💰 ${me.inv.gold}G</span><span>📍 ${Z().name}</span><span>접속 ${Math.min(online,MAX)}/${MAX}</span><button id="mapBtn" class="mini">지도</button><button id="npcBtn" class="mini">주민</button>`;
-  $('npcBtn').onclick = ()=>togglePanel('npcPanel', renderNpcPanel);
-  $('mapBtn').onclick = ()=>togglePanel('mapPanel', renderMap);
+  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>💰 ${me.inv.gold}G</span><span>📍 ${Z().name}</span><span>👥 ${Math.min(online,MAX)}/${MAX}</span>`;
   $('quest').innerHTML = `<b>${me.quest<6?'할 일':'튜토리얼'}</b>${QUESTS[Math.min(me.quest,6)]}`;
   const it = [['💧','물뿌리개',me.inv.can?1:0,true],['🟫','텃밭',me.inv.garden],['🌱','토마토 씨앗',me.inv.seed],['🍅','토마토',me.inv.tomato]];
   $('bar').innerHTML = it.map(([e,n,c,tool])=>`<div class="${c?'':'off'}" title="${n}" aria-label="${n} ${c}개">${e}${tool?'':`<span>${c}</span>`}</div>`).join('');

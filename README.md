@@ -3,6 +3,7 @@
 14명이 함께 사는 디저트 섬 생활 웹게임이에요. 캐릭터를 만들고, 지붕 색과 집터를 고르고, 집 앞 텃밭에서 토마토를 키우고, 동물 주민 14명과 친해져요.
 
 - 화면: `public/index.html` (게임 전체가 이 파일 하나에 있어요)
+- 주민 대사·스토리: `public/npcs.js` (대사를 고치거나 늘릴 때는 이 파일만 고치면 돼요)
 - 저장과 실시간 접속: Firebase Realtime Database
 - 로그인: Firebase 인증 (구글 / 게스트)
 - 배포: `main` 브랜치에 푸시하면 GitHub Actions가 Firebase Hosting에 올려요
