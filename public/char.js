@@ -160,7 +160,7 @@ function sideHair(d, x, y, R, hc, id, layer){
     k.lineTo(x-u(1.22), y+u(nape));
     k.quadraticCurveTo(x-u(.95), y+u(nape+.12), x-u(.6), y+u(nape-.05));
     k.lineTo(x-u(.42), y-u(.15));
-    k.quadraticCurveTo(x-u(.1), y-u(.55), x+u(.3), y+u(fy-.25));
+    k.quadraticCurveTo(x+u(.2), y+u(fy-.1), x+u(.98), y+u(fy)); // 이마는 앞머리 선까지 머리카락으로 덮여요
     k.closePath(); }, hc, [x-u(.3), y-u(.5), u(1.15)]);
   // 앞머리
   const f = sp.fringe;
