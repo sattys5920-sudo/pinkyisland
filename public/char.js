@@ -34,8 +34,8 @@ function face(d, x, y, L, side, expr){
   const sk = L.skin, bl = mixHex(sk, '#ff5f85', .5), c = d.ctx, ink = '#2b2228', mo = '#9a5566';
   c.save(); c.globalAlpha = .5; c.fillStyle = bl;
   if (!side){ c.beginPath(); c.ellipse(x-9.5, y+4, 4.4, 2.6, 0,0,7); c.fill(); }
-  c.beginPath(); c.ellipse(x+(side?3:9.5), y+4, 4.4, 2.6, 0,0,7); c.fill(); c.restore();
-  const eyes = side ? [x+1.5] : [x-6.5, x+6.5];
+  c.beginPath(); c.ellipse(x+(side?R*.05:9.5), y+4, 4.4, 2.6, 0,0,7); c.fill(); c.restore();
+  const eyes = side ? [x+R*.42] : [x-6.5, x+6.5];
   const dot = (e, r=1.7) => { c.save(); c.fillStyle = ink; c.beginPath(); c.ellipse(e, y, r*.85, r*1.35, 0,0,7); c.fill(); c.restore(); d.dot(e-.4, y-.9, .5, '#fff', .9); };
   const arc = (e, up=true) => d.line(k=>{ k.moveTo(e-2, y+(up?.8:-.8)); k.quadraticCurveTo(e, y+(up?-2.2:2), e+2, y+(up?.8:-.8)); }, ink, 1.5);
   const lid = (e) => d.line(k=>{ k.moveTo(e-2, y-.3); k.quadraticCurveTo(e, y+1.4, e+2, y-.3); }, ink, 1.5);
@@ -49,7 +49,7 @@ function face(d, x, y, L, side, expr){
     else dot(e);
   });
   if (expr==='surprised') for (const e of eyes) d.line(k=>{ k.moveTo(e-1.6, y-6); k.lineTo(e+1.6, y-6.3); }, mixHex(L.hairColor,'#000',.1), 1, .7);
-  const mx = x+(side?3:0);
+  const mx = x+(side?R*.5:0);
   if (expr==='surprised'){ c.save(); c.fillStyle = mo; c.beginPath(); c.ellipse(mx, y+5.5, 1.1, 1.4, 0,0,7); c.fill(); c.restore(); }
   else if (expr==='cat') d.line(k=>{ k.moveTo(mx-2.2, y+4.6); k.quadraticCurveTo(mx-1.1, y+6.2, mx, y+4.8); k.quadraticCurveTo(mx+1.1, y+6.2, mx+2.2, y+4.6); }, mo, 1);
   else if (expr==='sleepy') d.line(k=>{ k.moveTo(mx-1, y+5.4); k.lineTo(mx+1, y+5.4); }, mo, 1);
@@ -127,8 +127,21 @@ export const HAIR = {
   pixie:  {g:'f', label:'픽시컷',     back:K=>{}, front:K=>{ K.dome(1.22,.85,-.4); K.lock(.4,-1.0,-1.0,.0,.38,-.35); K.lock(.4,-1.05,-.4,-.1,.34,-.15); K.lock(.4,-1.0,.15,-.28,.3,0); K.lock(.45,-1.0,.75,-.3,.3,.15); K.lock(-.9,-.3,-1.08,.25,.26,-.05); K.gloss(); }},
   medium: {g:'f', label:'레이어드 미디움', back:K=>{ K.back(2.5,-.6,2.0,.7); K.lock(-1.1,.2,-1.3,1.2,.3,-.2); K.lock(1.1,.2,1.3,1.2,.3,.2); }, front:K=>{ K.dome(); K.curtain(); K.sides(1.2,.32,-.3); K.gloss(); }},
 };
-function hair(d, x, y, L, side, R, layer){
-  const st = HAIR[L.hair] || HAIR.short, K = hairKit(d, x, y, R, L.hairColor);
+function hair(d, x, y, L, side, R, layer, up=false){
+  const st = HAIR[L.hair] || HAIR.short, c = d.ctx;
+  if (up){ // 뒷모습: 뒷통수 전체가 머리카락
+    const K = hairKit(d, x, y, R, L.hairColor);
+    d.shape(k=>{ k.beginPath(); k.ellipse(x, y-R*.12, R*1.26, R*1.12, 0, 0, 7); }, L.hairColor, [x, y-R*.2, R*1.2]);
+    st.back(K); K.gloss(0, -.95, .75, .22); return;
+  }
+  if (side){ // 옆모습: 뒷머리는 뒤로(-x), 앞머리는 앞으로(+x) 치우쳐요
+    c.save();
+    if (layer==='back'){ c.translate(x - R*.25, 0); c.scale(-.8, 1); c.translate(-x, 0); } // 좌우를 뒤집어 포니테일·땋은 머리가 뒤쪽에 오게
+    else { c.translate(x + R*.12, 0); c.scale(.92, 1); c.translate(-x, 0); }
+    const K = hairKit(d, x, y, R, L.hairColor); (layer==='back' ? st.back : st.front)(K);
+    c.restore(); return;
+  }
+  const K = hairKit(d, x, y, R, L.hairColor);
   (layer==='back' ? st.back : st.front)(K);
 }
 
@@ -194,7 +207,7 @@ export const HATS = {
   straw: {name:'밀짚모자', price:680, draw:(d,g)=>{ d.ell(0,HY-R*1.0,R*1.45,3.8,'#f3d27a'); d.ell(0,HY-R*1.2,R*.78,6,'#f3d27a'); d.rr(-R*.78,HY-R*1.2,R*1.56,2.4,1.2,'#ff7a9a',{flat:true}); }},
   beanie:{name:'비니', price:620, draw:(d,g)=>{ d.rr(-R*1.15,HY-R*1.5,R*2.3,R*.9,R*.5,'#ff9f7a'); d.rr(-R*1.2,HY-R*.75,R*2.4,4,2,'#ffb896'); d.circle(0,HY-R*1.6,3.6,'#fffaf2'); }},
   cap:   {name:'캡모자', price:730, draw:(d,g)=>{ d.shape(c=>{ c.beginPath(); c.ellipse(0,HY-R*.7,R*1.2,R*.78,0,Math.PI,0); c.closePath(); },'#6fa8ff',[0,HY-R,R*1.2]); if (g.side) d.ell(R*1.0,HY-R*.72,6.5,2,'#5b93e6'); else if (!g.up) d.ell(0,HY-R*.62,R*.95,2.6,'#5b93e6'); d.dot(0,HY-R*1.5,1.4,'#5b93e6'); }},
-  pin:   {name:'리본핀', price:310, draw:(d,g)=>{ if (g.up) return; const px = g.side ? 3 : R*.6, py = HY-R*.95; d.ell(px-2.4,py,2.6,1.8,'#ff86ad',{flat:true}); d.ell(px+2.4,py,2.6,1.8,'#ff86ad',{flat:true}); d.dot(px,py,1.1,'#ffd6e2'); }},
+  pin:   {name:'리본핀', price:310, draw:(d,g)=>{ if (g.up) return; const px = g.side ? R*.2 : R*.6, py = HY-R*.95; d.ell(px-2.4,py,2.6,1.8,'#ff86ad',{flat:true}); d.ell(px+2.4,py,2.6,1.8,'#ff86ad',{flat:true}); d.dot(px,py,1.1,'#ffd6e2'); }},
   beret: {name:'베레모', price:780, draw:(d,g)=>{ d.ell(-2,HY-R*1.22,R*1.25,R*.55,'#c9657a'); d.rr(-R*1.0,HY-R*.95,R*2.0,3,1.5,'#b85568'); d.dot(-2,HY-R*1.75,1.3,'#b85568'); }},
   bucket:{name:'버킷햇', price:730, draw:(d,g)=>{ d.rr(-R*1.0,HY-R*1.5,R*2.0,R*.75,R*.3,'#e6dcc3'); d.ell(0,HY-R*.78,R*1.4,3.6,'#d9ccae'); }},
   earmuff:{name:'귀도리', price:570, draw:(d,g)=>{ d.line(k=>{ k.moveTo(-R*1.05,HY-R*.2); k.quadraticCurveTo(0,HY-R*1.55,R*1.05,HY-R*.2); }, '#8a7a86', 1.6, .9); d.circle(-R*1.12,HY+R*.05,4.2,'#fff0f5'); d.circle(R*1.12,HY+R*.05,4.2,'#fff0f5'); }},
@@ -204,14 +217,14 @@ export const HATS = {
 };
 export const ACCS = {
   none:   {name:'없음', price:0, draw:()=>{}},
-  glassR: {name:'동그란 안경', price:530, draw:(d,g)=>{ if (g.up) return; const y = HY+R*.28, ex = g.side ? [1.5] : [-6.5,6.5]; for (const e of ex) d.line(k=>{ k.arc(e,y,3.4,0,7); }, '#6e5260', 1.2, .9); if (!g.side) d.line(k=>{ k.moveTo(-3.1,y); k.lineTo(3.1,y); }, '#6e5260', 1, .9); }},
-  glassS: {name:'네모 안경', price:530, draw:(d,g)=>{ if (g.up) return; const y = HY+R*.28, ex = g.side ? [1.5] : [-6.5,6.5]; for (const e of ex) d.line(k=>{ k.roundRect(e-3.4,y-2.8,6.8,5.6,1.5); }, '#4a3a44', 1.2, .9); if (!g.side) d.line(k=>{ k.moveTo(-3.1,y); k.lineTo(3.1,y); }, '#4a3a44', 1, .9); }},
-  sun:    {name:'선글라스', price:720, draw:(d,g)=>{ if (g.up) return; const y = HY+R*.28, ex = g.side ? [1.5] : [-6.5,6.5]; for (const e of ex) d.ell(e,y,3.6,3,'#3a3040',{flat:true}); if (!g.side) d.line(k=>{ k.moveTo(-3,y); k.lineTo(3,y); }, '#3a3040', 1.2, .9); for (const e of ex) d.dot(e-1.2,y-1,.8,'#fff',.6); }},
+  glassR: {name:'동그란 안경', price:530, draw:(d,g)=>{ if (g.up) return; const y = HY+R*.28, ex = g.side ? [R*.64] : [-6.5,6.5]; for (const e of ex) d.line(k=>{ k.arc(e,y,3.4,0,7); }, '#6e5260', 1.2, .9); if (!g.side) d.line(k=>{ k.moveTo(-3.1,y); k.lineTo(3.1,y); }, '#6e5260', 1, .9); }},
+  glassS: {name:'네모 안경', price:530, draw:(d,g)=>{ if (g.up) return; const y = HY+R*.28, ex = g.side ? [R*.64] : [-6.5,6.5]; for (const e of ex) d.line(k=>{ k.roundRect(e-3.4,y-2.8,6.8,5.6,1.5); }, '#4a3a44', 1.2, .9); if (!g.side) d.line(k=>{ k.moveTo(-3.1,y); k.lineTo(3.1,y); }, '#4a3a44', 1, .9); }},
+  sun:    {name:'선글라스', price:720, draw:(d,g)=>{ if (g.up) return; const y = HY+R*.28, ex = g.side ? [R*.64] : [-6.5,6.5]; for (const e of ex) d.ell(e,y,3.6,3,'#3a3040',{flat:true}); if (!g.side) d.line(k=>{ k.moveTo(-3,y); k.lineTo(3,y); }, '#3a3040', 1.2, .9); for (const e of ex) d.dot(e-1.2,y-1,.8,'#fff',.6); }},
   bowtie: {name:'리본 넥타이', price:430, draw:(d,g)=>{ if (g.up) return; const y = BY+2.5; d.ell(-2.4,y,2.4,1.6,'#e85d7a',{flat:true}); d.ell(2.4,y,2.4,1.6,'#e85d7a',{flat:true}); d.dot(0,y,1,'#ff9fb8'); }},
   scarf:  {name:'목도리', price:670, draw:(d,g)=>{ d.rr(-g.bw/2-1, BY-2, g.bw+2, 4.5, 2.2, '#f28c8c'); if (!g.up) d.rr(2, BY+1, 3.4, 7, 1.5, '#f28c8c'); }},
   starch: {name:'별 볼 스티커', price:290, draw:(d,g)=>{ if (g.up) return; const y = HY+R*.5; for (const e of (g.side ? [R*.6] : [-R*.62, R*.62])) d.dot(e, y, 1.3, '#ffd23f'); }},
   neck:   {name:'목걸이', price:620, draw:(d,g)=>{ if (g.up) return; d.line(k=>{ k.moveTo(-4, BY); k.quadraticCurveTo(0, BY+4.5, 4, BY); }, '#e8c26a', .9, .9); d.dot(0, BY+2.8, 1.1, '#ff6f9a'); }},
-  bandage:{name:'코 반창고', price:240, draw:(d,g)=>{ if (g.up) return; d.rr((g.side?2:0)-2.4, HY+R*.42, 4.8, 1.8, .9, '#f6d9c2', {flat:true, noShadow:true}); d.dot((g.side?2:0)-1.4, HY+R*.48, .35, '#d9b7a0'); d.dot((g.side?2:0)+1.4, HY+R*.48, .35, '#d9b7a0'); }},
+  bandage:{name:'코 반창고', price:240, draw:(d,g)=>{ if (g.up) return; d.rr((g.side?R*.6:0)-2.4, HY+R*.42, 4.8, 1.8, .9, '#f6d9c2', {flat:true, noShadow:true}); d.dot((g.side?R*.6:0)-1.4, HY+R*.48, .35, '#d9b7a0'); d.dot((g.side?R*.6:0)+1.4, HY+R*.48, .35, '#d9b7a0'); }},
   headphone:{name:'헤드폰', price:910, draw:(d,g)=>{ d.line(k=>{ k.moveTo(-R*1.1,HY-R*.1); k.quadraticCurveTo(0,HY-R*1.5,R*1.1,HY-R*.1); }, '#8a7a86', 1.6, .9); d.rr(-R*1.3,HY-R*.3,4.5,7,2,'#f6c6d3'); d.rr(R*1.3-4.5,HY-R*.3,4.5,7,2,'#f6c6d3'); }},
   earring:{name:'꽃 귀걸이', price:480, draw:(d,g)=>{ if (g.up) return; for (const e of (g.side ? [R*1.15] : [-R*1.2, R*1.2])){ d.dot(e, HY+R*.35, 1.5, '#ff8fc4'); d.dot(e, HY+R*.35, .6, '#ffe066'); } }},
 };
@@ -257,15 +270,17 @@ export function figure(d, L, dir, t, walk, expr){
   const set = SETS[L.set], top = TOPS[L.top] || TOPS.t01, bottom = BOTTOMS[L.bottom] || BOTTOMS.b01;
   const hat = HATS[L.hat] || HATS.none, acc = ACCS[L.acc] || ACCS.none, shoes = SHOES[L.shoes] || SHOES.sh01;
   if (!up) hair(d, 0, HY, L, side, R, 'back');
+  else if (!(L.hair==='long' || L.hair==='bangslong' || L.hair==='halfup' || L.hair==='longm' || L.hair==='hime')) {}
   // 신발 → 하의 → 상의 (세트면 한 번에)
   shoes.draw(d, g);
   if (set) set.draw(d, g); else { bottom.draw(d, g); top.draw(d, g); }
-  if (up && (L.hair==='long' || L.hair==='bangslong' || L.hair==='halfup' || L.hair==='longm' || L.hair==='hime')) hair(d, 0, HY, L, side, R, 'back');
+  if (up && (L.hair==='long' || L.hair==='bangslong' || L.hair==='halfup' || L.hair==='longm')) { const K = hairKit(d, 0, HY, R, L.hairColor); (HAIR[L.hair]||HAIR.long).back(K); }
   // 머리
   if (!side) { d.ell(-R*1.2, HY+R*.1, 2.4, 3, L.skin); d.ell(R*1.2, HY+R*.1, 2.4, 3, L.skin); }
+  else d.ell(-R*1.08, HY+R*.1, 2.4, 3, L.skin); // 옆모습: 뒤쪽 귀 하나
   headShape(d, 0, HY, R, L.skin);
-  if (!up) face(d, side ? R*.35 : 0, HY+R*.28, L, side, expr);
-  if (up){ const K = hairKit(d, 0, HY, R, L.hairColor); K.dome(1.26, 1.05, .25); hair(d, 0, HY, L, side, R, 'back'); }
+  if (!up) face(d, side ? R*.22 : 0, HY+R*.28, L, side, expr);
+  if (up) hair(d, 0, HY, L, side, R, 'back', true);
   else hair(d, 0, HY, L, side, R, 'front');
   acc.draw(d, g); hat.draw(d, g);
   c.restore();
