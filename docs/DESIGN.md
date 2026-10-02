@@ -25,9 +25,7 @@
 - 물뿌리개는 NPC '하나'에게 말을 걸어 받음
 - 튜토리얼: 웰컴 팩 받기 → 집 앞에 텃밭 놓기 → 하나에게 물뿌리개 받기 → 토마토 심고 물 주기 → 첫 수확
 
-## 1차 버전 (Artifact 페이지)
-- 파일: `artifact/pinky-island.html` → https://claude.ai/artifact/ULQxHT1XmhCM7GC6hrzAAG
-- 서버 없이 claude.ai Artifact의 `db`(저장), `room`(실시간 위치·채팅), `user`(사람 구분) 기능으로 동작
-- 저장: `players/<id>` 플레이어 문서, `claims/roof-N` 지붕 색 선점(입주 안 하면 10분 뒤 풀림), `locks/lot-N` 집터 잠금
+## 구성
+- Firebase Realtime Database + 인증(구글/게스트) + Hosting, GitHub Actions로 자동 배포 (README 참고)
 - 토마토: 단계마다 물 1번, 30초 뒤 다음 단계 (씨앗 → 새싹 → 잎 → 꽃 → 열매), 수확 시 3개
 - 다음 차례: 상점(모모), 낚시, 채굴, 전투, 호감도

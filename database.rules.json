@@ -1,0 +1,39 @@
+{
+  "rules": {
+    "players": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['nick', 'roof', 'lot']) && newData.child('nick').isString() && newData.child('nick').val().length >= 1 && newData.child('nick').val().length <= 8 && root.child('roofs/' + newData.child('roof').val() + '/uid').val() === auth.uid && root.child('lots/' + newData.child('lot').val() + '/uid').val() === auth.uid"
+      }
+    },
+    "roofs": {
+      ".read": "auth != null",
+      "$i": {
+        ".write": "auth != null && $i.matches(/^([0-9]|1[0-3])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
+        ".validate": "newData.child('uid').val() === auth.uid && newData.child('at').isNumber()"
+      }
+    },
+    "lots": {
+      ".read": "auth != null",
+      "$i": {
+        ".write": "auth != null && $i.matches(/^([0-9]|1[0-3])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
+        ".validate": "newData.child('uid').val() === auth.uid && newData.child('at').isNumber()"
+      }
+    },
+    "online": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['x', 'y'])"
+      }
+    },
+    "chat": {
+      ".read": "auth != null",
+      "$msg": {
+        ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
+        ".validate": "newData.child('t').isString() && newData.child('t').val().length >= 1 && newData.child('t').val().length <= 80"
+      }
+    }
+  }
+}
