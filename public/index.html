@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dongle:wght@400;700&display=swap">
 <style>
-:root{--ink:#6e5260;--soft:#b39aa6;--card:#fffdfd;--pink:#fbdbe5;--pinkd:#e48fac;--line:#f7e6ec;--sea:#cfeefb}
+:root{--ink:#2a2429;--soft:#6f6569;--card:#fffdfd;--pink:#fbdbe5;--pinkd:#e48fac;--line:#f7e6ec;--sea:#cfeefb}
 [hidden]{display:none!important}
 html,body{height:100%;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 @supports (height:100dvh){html,body{height:100dvh}}
@@ -38,12 +38,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 #chatbox{position:fixed;left:calc(env(safe-area-inset-left,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 72px);width:min(320px,calc(100vw - 20px));z-index:5;display:flex;flex-direction:column;gap:6px;pointer-events:none}
 #log{display:flex;flex-direction:column;gap:2px;font-size:19px;text-shadow:0 1px 0 #fff,0 0 4px #fff}
 #log p{margin:0;transition:opacity 1s}
-#log p.sys{color:var(--pinkd)}
+#log p.sys{color:var(--ink);opacity:.85}
 #chatrow{display:flex;gap:6px;pointer-events:auto}
 #chatin{flex:1;min-width:0;font:700 20px "Dongle",sans-serif;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fffffff0;color:var(--ink)}
 .emo{border:0;border-radius:12px;background:#fff;width:44px;min-height:44px;font-size:25px;box-shadow:inset 0 -2px 0 #f6e6ec}
 #talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:min(520px,calc(100vw - 20px));padding:14px 16px;z-index:8}
-#talk h3{margin:0 0 4px;font-size:25px;color:var(--pinkd)}
+#talk h3{margin:0 0 4px;font-size:25px;color:var(--ink)}
 #talk p{margin:0 0 10px;font-size:21px;white-space:pre-line}
 #talk #talkNote{font-size:18px;color:var(--soft);margin-top:-6px}
 #talk .act{flex-wrap:wrap}
@@ -59,7 +59,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 .np-h{color:#f08aa8;font-size:16px;letter-spacing:1px}
 .np-day{font-size:16px;color:var(--soft);text-align:right}
 .np-h small{color:var(--soft);letter-spacing:0}
-.np-keep{grid-column:1/-1;font-size:16px;color:var(--pinkd)}
+.np-keep{grid-column:1/-1;font-size:16px;color:var(--ink);opacity:.8}
 #sideBtns{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 78px);display:flex;flex-direction:column;gap:8px;z-index:5}
 .round.swing{width:64px;height:64px;font-size:18px;background:linear-gradient(#fff,#fde4ec);box-shadow:inset 0 -3px 0 #f2c3d3,0 4px 14px #d4a3b52e}
 .round{width:52px;height:52px;border-radius:50%;border:0;background:linear-gradient(#fff,#fff8fa);color:var(--ink);font-size:19px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
@@ -72,7 +72,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 .mz.here{outline:3px solid var(--pinkd)}
 .mnote{font-size:16px;color:var(--soft);margin:8px 2px 0}
 #fishGame{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 90px);width:min(440px,calc(100vw - 20px));padding:12px 14px;z-index:11;display:flex;flex-direction:column;gap:8px;touch-action:none}
-#fishGame b{font-size:24px;color:var(--pinkd)}
+#fishGame b{font-size:24px;color:var(--ink)}
 #fishGame small{font-size:16px;color:var(--soft)}
 #fishGame p{margin:0;font-size:19px}
 #fgTrack{position:relative;height:54px;border-radius:14px;background:linear-gradient(#bfe6fb,#8fd3f5);overflow:hidden;cursor:grab}
@@ -103,7 +103,7 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 120px);transform:translateX(-50%);padding:8px 16px;z-index:9;font-size:20px;transition:opacity .4s;pointer-events:none;text-align:center;max-width:calc(100vw - 32px)}
 #ob{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;position:fixed;inset:0;z-index:20;background:#fffafb;overflow:auto;touch-action:auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 16px 40px}
 .obc{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-.obc h1{margin:0;font-size:46px;color:var(--pinkd);line-height:1.15}
+.obc h1{margin:0;font-size:46px;color:var(--ink);line-height:1.15}
 .obc h2{margin:0;font-size:30px}
 .obc .sub{margin:0;color:var(--soft);font-size:20px}
 .steps{display:flex;gap:6px;font-size:18px;color:var(--soft);flex-wrap:wrap}
@@ -2048,7 +2048,7 @@ function sellPanel(n){
   const all = rows.reduce((a,r)=>a+sellTotal(r.k, r.c, n), 0);
   const bon = Object.entries(by.bonus).map(([c,b])=>`${SELL_CATS[c]} +${Math.round((b-1)*100)}%`).concat(heartsN(n) >= 7 ? ['친한 친구 +10%'] : []).join(' · ');
   openPanel(`${n.name}에게 팔기 · 💰 ${me.inv.gold}G`,
-    `<p class="mnote" style="margin-top:0">${esc(by.line)}${bon ? ` <b style="color:var(--pinkd)">${bon}</b>` : ''}<br>오늘의 인기: ${hotToday().map(k=>itemName(k)).join(', ')} (2배)</p>` +
+    `<p class="mnote" style="margin-top:0">${esc(by.line)}${bon ? ` <b style="color:var(--ink)">${bon}</b>` : ''}<br>오늘의 인기: ${hotToday().map(k=>itemName(k)).join(', ')} (2배)</p>` +
     (rows.length ? `<button class="mini" id="spAll" style="align-self:flex-start">전부 팔기 +${all}G</button>` +
       rows.map(r=>`<button class="np" data-id="${r.k}"><span class="np-name">${iconImg(r.k)}${esc(itemName(r.k))} <small>×${r.c}</small></span><span class="np-place">${unitPrice(r.k, n)}G ${trend(r.k)}</span><span class="np-day">전부 ${sellTotal(r.k, r.c, n)}G</span></button>`).join('')
       : `<p class="mnote">${n.name}에게 팔 수 있는 물건이 없어요.</p>`),
@@ -2591,7 +2591,7 @@ function bubble(c, text, x, y){
   const w = Math.min(200, c.measureText(text).width + 18);
   c.fillStyle='#fff'; c.beginPath(); c.roundRect(x-w/2, y-24, w, 24, 12); c.fill();
   c.beginPath(); c.moveTo(x-5,y); c.lineTo(x,y+6); c.lineTo(x+5,y); c.fill();
-  c.fillStyle='#6b3a4d'; c.fillText(text.length>16 ? text.slice(0,15)+'…' : text, x, y-7);
+  c.fillStyle='#2a2429'; c.fillText(text.length>16 ? text.slice(0,15)+'…' : text, x, y-7);
 }
 
 let lastT = performance.now(), lastFade = -1;
