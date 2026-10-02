@@ -426,7 +426,7 @@ const NPC = Object.fromEntries(NPCS.map(n=>[n.id,n]));
 const GIFT_PTS = {loved:40, liked:25, neutral:15, disliked:-10};
 const TIERS = [null, '아는 사이', '괜찮은 사람', '친한 친구', '소중한 짝'];
 const STORY_GOLD = {4:100, 7:300, 10:1000};
-const DAILY_GOLD = 50;
+const DAILY_GOLD = 150;
 const QUESTS = ['웰컴 팩을 열어요','집 앞에 텃밭 2칸을 놓아요','서쪽 들판의 하나에게 말을 걸어 물뿌리개를 받아요','텃밭에 토마토 씨앗을 심어요','심은 씨앗에 물을 줘요','토마토가 다 자라면 수확해요','튜토리얼 완료! 동서남북 구역을 돌며 주민들과 친해져 봐요'];
 const STAGE_NAMES = ['씨앗','새싹','잎','꽃','빨간 토마토'];
 
@@ -1158,24 +1158,23 @@ function renderMap(){
 // ===== 낚시 =====
 // [이름, 구역, 등장 가중치, 기본 가격, 난이도(0~1), 최소cm, 최대cm, 색, 시간(any/day/night)]
 const FISH_LIST = [
-  ['송사리','pond',30,8,.1,2,5,'#c9d3dd','any'], ['피라미','pond',30,15,.15,4,12,'#9fc4d8','any'], ['붕어','pond',28,20,.2,10,35,'#b5a06a','any'],
-  ['버들치','pond',22,18,.2,6,15,'#a8b98f','day'], ['납자루','pond',18,22,.25,5,10,'#ff9fb3','day'], ['미꾸라지','pond',18,25,.3,8,20,'#8a7a5a','any'],
-  ['블루길','pond',16,30,.35,10,25,'#5b8cff','day'], ['잉어','pond',14,40,.4,30,90,'#d9a46f','any'], ['배스','pond',12,45,.45,20,55,'#6a8f4a','day'],
-  ['무지개송어','pond',10,55,.5,25,60,'#ff9fc4','day'], ['산천어','pond',8,70,.55,15,35,'#9fd6ff','day'], ['메기','pond',10,60,.5,30,100,'#5b5266','night'],
-  ['쏘가리','pond',5,120,.7,20,50,'#e8b84f','any'], ['뱀장어','pond',6,110,.65,40,100,'#4a5a4a','night'], ['황금잉어','pond',2,400,.88,40,90,'#ffd23f','any'],
-  ['철갑상어','pond',1,600,.95,100,250,'#7a8a9a','night'],
-  ['정어리','beach',30,12,.15,10,25,'#a7c4d6','any'], ['전갱이','beach',28,20,.2,15,35,'#b9d3e0','any'], ['고등어','beach',24,30,.3,25,45,'#5b8cff','any'],
-  ['꽁치','beach',18,28,.3,25,40,'#7c86d6','any'], ['학꽁치','beach',14,35,.35,25,40,'#9fd6ff','day'], ['쥐치','beach',14,40,.4,15,35,'#c9b58f','day'],
-  ['가자미','beach',14,45,.4,20,45,'#a8744f','any'], ['우럭','beach',14,50,.45,20,50,'#5a4a4a','any'], ['복어','beach',12,60,.5,15,40,'#ffd88a','any'],
-  ['광어','beach',10,80,.55,30,80,'#8a6a4a','any'], ['감성돔','beach',8,90,.6,25,55,'#7a8a9a','day'], ['참돔','beach',8,100,.6,30,90,'#ff6b6b','day'],
-  ['오징어','beach',10,70,.55,20,45,'#ffd9e6','night'], ['문어','beach',6,120,.65,40,120,'#ff8f7a','night'], ['갈치','beach',6,130,.7,60,140,'#e8eef4','night'],
-  ['농어','beach',6,140,.7,40,100,'#9aa6b6','any'], ['방어','beach',4,180,.75,50,110,'#6a8fd6','any'], ['연어','beach',4,200,.75,50,100,'#ff9f7a','day'],
-  ['참치','beach',2,350,.88,100,250,'#3d4785','any'], ['청새치','beach',1,700,.96,150,300,'#4b7bd6','day'],
-  ['바다나비','seacave',28,30,.2,3,8,'#c9a6ff','any'], ['동굴새우','seacave',28,35,.25,5,15,'#ff9f7a','any'], ['장님물고기','seacave',22,45,.35,5,12,'#f3e6ff','any'],
-  ['수정게','seacave',18,60,.4,8,20,'#b9f0ff','any'], ['유령고기','seacave',14,80,.5,10,30,'#e8eef4','night'], ['무지개산호어','seacave',14,90,.5,10,25,'#ff8fc4','day'],
-  ['앵무조개','seacave',10,110,.55,10,25,'#e8b84f','any'], ['별빛해파리','seacave',10,120,.55,10,40,'#bfe0ff','night'], ['심해랜턴피시','seacave',8,150,.65,8,20,'#6fe0c4','night'],
-  ['동굴메기','seacave',8,160,.65,30,80,'#5b5266','any'], ['은빛장어','seacave',6,200,.75,40,110,'#c9d3dd','any'], ['초롱아귀','seacave',4,260,.82,20,50,'#3d4785','night'],
-  ['보석가오리','seacave',3,380,.88,60,150,'#bf8cff','any'], ['실러캔스','seacave',1,800,.97,120,200,'#4a5a7a','any'],
+  ['송사리','pond',30,3,0.1,2,5,'#c9d3dd','any'], ['피라미','pond',30,5,0.15,4,12,'#9fc4d8','any'], ['붕어','pond',28,7,0.2,10,35,'#b5a06a','any'],
+  ['버들치','pond',22,7,0.2,6,15,'#a8b98f','day'], ['납자루','pond',18,8,0.25,5,10,'#ff9fb3','day'], ['미꾸라지','pond',18,9,0.3,8,20,'#8a7a5a','any'],
+  ['블루길','pond',16,11,0.35,10,25,'#5b8cff','day'], ['잉어','pond',14,14,0.4,30,90,'#d9a46f','any'], ['배스','pond',12,16,0.45,20,55,'#6a8f4a','day'],
+  ['무지개송어','pond',10,20,0.5,25,60,'#ff9fc4','day'], ['산천어','pond',8,25,0.55,15,35,'#9fd6ff','day'], ['메기','pond',10,22,0.5,30,100,'#5b5266','night'],
+  ['쏘가리','pond',5,43,0.7,20,50,'#e8b84f','any'], ['뱀장어','pond',6,40,0.65,40,100,'#4a5a4a','night'], ['황금잉어','pond',2,144,0.88,40,90,'#ffd23f','any'],
+  ['철갑상어','pond',1,216,0.95,100,250,'#7a8a9a','night'], ['정어리','beach',30,5,0.15,10,25,'#a7c4d6','any'], ['전갱이','beach',28,9,0.2,15,35,'#b9d3e0','any'],
+  ['고등어','beach',24,14,0.3,25,45,'#5b8cff','any'], ['꽁치','beach',18,12,0.3,25,40,'#7c86d6','any'], ['학꽁치','beach',14,16,0.35,25,40,'#9fd6ff','day'],
+  ['쥐치','beach',14,18,0.4,15,35,'#c9b58f','day'], ['가자미','beach',14,20,0.4,20,45,'#a8744f','any'], ['우럭','beach',14,22,0.45,20,50,'#5a4a4a','any'],
+  ['복어','beach',12,27,0.5,15,40,'#ffd88a','any'], ['광어','beach',10,35,0.55,30,80,'#8a6a4a','any'], ['감성돔','beach',8,40,0.6,25,55,'#7a8a9a','day'],
+  ['참돔','beach',8,44,0.6,30,90,'#ff6b6b','day'], ['오징어','beach',10,31,0.55,20,45,'#ffd9e6','night'], ['문어','beach',6,53,0.65,40,120,'#ff8f7a','night'],
+  ['갈치','beach',6,58,0.7,60,140,'#e8eef4','night'], ['농어','beach',6,62,0.7,40,100,'#9aa6b6','any'], ['방어','beach',4,80,0.75,50,110,'#6a8fd6','any'],
+  ['연어','beach',4,88,0.75,50,100,'#ff9f7a','day'], ['참치','beach',2,155,0.88,100,250,'#3d4785','any'], ['청새치','beach',1,309,0.96,150,300,'#4b7bd6','day'],
+  ['바다나비','seacave',28,16,0.2,3,8,'#c9a6ff','any'], ['동굴새우','seacave',28,19,0.25,5,15,'#ff9f7a','any'], ['장님물고기','seacave',22,23,0.35,5,12,'#f3e6ff','any'],
+  ['수정게','seacave',18,31,0.4,8,20,'#b9f0ff','any'], ['유령고기','seacave',14,41,0.5,10,30,'#e8eef4','night'], ['무지개산호어','seacave',14,47,0.5,10,25,'#ff8fc4','day'],
+  ['앵무조개','seacave',10,57,0.55,10,25,'#e8b84f','any'], ['별빛해파리','seacave',10,62,0.55,10,40,'#bfe0ff','night'], ['심해랜턴피시','seacave',8,78,0.65,8,20,'#6fe0c4','night'],
+  ['동굴메기','seacave',8,83,0.65,30,80,'#5b5266','any'], ['은빛장어','seacave',6,104,0.75,40,110,'#c9d3dd','any'], ['초롱아귀','seacave',4,135,0.82,20,50,'#3d4785','night'],
+  ['보석가오리','seacave',3,197,0.88,60,150,'#bf8cff','any'], ['실러캔스','seacave',1,414,0.97,120,200,'#4a5a7a','any'],
 ];
 const FISH = Object.fromEntries(FISH_LIST.map((f,i)=>['f'+String(i+1).padStart(2,'0'), {name:f[0], zone:f[1], weight:f[2], price:f[3], diff:f[4], min:f[5], max:f[6], color:f[7], time:f[8]}]));
 const FISH_ZONES = {pond:1, beach:1, seacave:1};
@@ -1213,7 +1212,7 @@ function fishTarget(w){
 function castAt(bx, by){
   if (fishing) return;
   pos.dir = Math.abs(bx-pos.x) > Math.abs(by-pos.y) ? (bx>pos.x?'right':'left') : (by>pos.y?'down':'up');
-  fishing = {phase:'wait', bx, by, biteAt: performance.now() + 1800 + Math.random()*4500, id: rollFish(), castAt: performance.now()};
+  fishing = {phase:'wait', bx, by, biteAt: performance.now() + 5000 + Math.random()*7000, id: rollFish(), castAt: performance.now()};
   toast('찌를 던졌어요… 느낌표가 뜨면 탭!');
 }
 function stopFishing(msg){ fishing = null; $('fishGame').hidden = true; if (msg) toast(msg); }
@@ -1323,16 +1322,16 @@ const fmtLeft = ms => { const s = Math.ceil(ms/1000); return s >= 3600 ? `${Math
 // ===== 작물 30종 =====
 // [이름, 다 크는 데 걸리는 분, 씨앗 값, 1개 판매가, 최소 수확, 최대 수확, 색, 모양]
 const CROP_LIST = [
-  ['토마토',3,10,18,2,3,'#ff4f4f','fruit'], ['무순',5,12,20,2,3,'#c9f0a0','leaf'], ['래디시',8,15,26,1,3,'#ff6fa0','root'],
-  ['상추',10,16,28,1,2,'#8fd66a','leaf'], ['시금치',15,20,36,1,2,'#4fae3c','leaf'], ['당근',20,24,44,1,3,'#ff9533','root'],
-  ['감자',25,28,50,2,4,'#d9b07a','root'], ['양파',30,30,56,1,3,'#e8c9ff','root'], ['튤립',35,34,64,1,1,'#ff6b9a','flower'],
-  ['완두콩',40,36,70,2,4,'#7cc96a','fruit'], ['옥수수',45,40,80,1,2,'#ffd84f','tall'], ['딸기',60,50,100,2,4,'#ff4f6d','fruit'],
-  ['데이지',70,54,110,1,1,'#ffffff','flower'], ['블루베리',80,60,120,3,5,'#5b6bd6','fruit'], ['고구마',90,64,135,1,3,'#b5547a','root'],
-  ['오이',105,70,150,2,3,'#5cb85c','fruit'], ['파프리카',120,80,170,1,3,'#ff7a3d','fruit'], ['장미',135,90,200,1,1,'#ff3b5c','flower'],
-  ['브로콜리',150,95,210,1,2,'#3f9e46','leaf'], ['해바라기',165,100,230,1,1,'#ffcf3f','flower'], ['호박',180,110,260,1,1,'#ff8c1a','fruit'],
-  ['수박',210,125,300,1,1,'#3fae5a','fruit'], ['멜론',240,140,340,1,1,'#c9e88a','fruit'], ['파인애플',270,155,380,1,1,'#ffc94f','tall'],
-  ['바닐라',300,170,420,1,3,'#f3e6c9','tall'], ['라벤더',330,180,450,1,1,'#a77bff','flower'], ['카카오',360,195,500,1,3,'#8a5a3b','tall'],
-  ['커피콩',390,210,540,2,4,'#6b3a2a','tall'], ['사탕수수',420,220,580,1,3,'#ffb3d9','tall'], ['황금딸기',480,260,800,1,2,'#ffd23f','fruit'],
+  ['토마토',3,8,13,2,3,'#ff4f4f','fruit'], ['무순',5,14,22,2,3,'#c9f0a0','leaf'], ['래디시',8,22,44,1,3,'#ff6fa0','root'],
+  ['상추',10,28,74,1,2,'#8fd66a','leaf'], ['시금치',15,29,78,1,2,'#4fae3c','leaf'], ['당근',20,39,78,1,3,'#ff9533','root'],
+  ['감자',25,49,65,2,4,'#d9b07a','root'], ['양파',30,59,117,1,3,'#e8c9ff','root'], ['튤립',35,68,272,1,1,'#ff6b9a','flower'],
+  ['완두콩',40,78,104,2,4,'#7cc96a','fruit'], ['옥수수',45,87,233,1,2,'#ffd84f','tall'], ['딸기',60,117,156,2,4,'#ff4f6d','fruit'],
+  ['데이지',70,86,342,1,1,'#ffffff','flower'], ['블루베리',80,98,98,3,5,'#5b6bd6','fruit'], ['고구마',90,110,220,1,3,'#b5547a','root'],
+  ['오이',105,128,205,2,3,'#5cb85c','fruit'], ['파프리카',120,147,293,1,3,'#ff7a3d','fruit'], ['장미',135,165,660,1,1,'#ff3b5c','flower'],
+  ['브로콜리',150,183,489,1,2,'#3f9e46','leaf'], ['해바라기',165,202,807,1,1,'#ffcf3f','flower'], ['호박',180,220,880,1,1,'#ff8c1a','fruit'],
+  ['수박',210,257,1027,1,1,'#3fae5a','fruit'], ['멜론',240,293,1173,1,1,'#c9e88a','fruit'], ['파인애플',270,180,720,1,1,'#ffc94f','tall'],
+  ['바닐라',300,200,400,1,3,'#f3e6c9','tall'], ['라벤더',330,220,880,1,1,'#a77bff','flower'], ['카카오',360,240,480,1,3,'#8a5a3b','tall'],
+  ['커피콩',390,260,347,2,4,'#6b3a2a','tall'], ['사탕수수',420,280,560,1,3,'#ffb3d9','tall'], ['황금딸기',480,320,853,1,2,'#ffd23f','fruit'],
 ];
 const CROPS = Object.fromEntries(CROP_LIST.map((c,i)=>['c'+String(i+1).padStart(2,'0'), {name:c[0], min:c[1], seed:c[2], sell:c[3], y1:c[4], y2:c[5], color:c[6], shape:c[7]}]));
 const stageMs = type => (CROPS[type] || CROPS.c01).min * 60000 / 4; // 4단계, 단계마다 물 한 번
@@ -1341,15 +1340,14 @@ function cropNow(c, now){ if (!c) return null; if (c.wateredAt && c.stage<4 && n
 // ===== 광석 40종 =====
 // [이름, 희귀도 1~5, 판매가, 색, 바다 광석 여부]
 const ORE_LIST = [
-  ['돌멩이',1,3,'#a39aa8'],['석탄',1,8,'#3b3b46'],['구리 광석',1,12,'#e08a4f'],['주석 광석',1,12,'#c9ccd6'],['점토',1,6,'#c98e5b'],
-  ['석회석',1,7,'#efe8d8'],['사암',1,6,'#e8c99a'],['부싯돌',1,10,'#5b5266'],['흑연',1,14,'#4a4a52'],['소금 결정',1,9,'#f4f8ff'],
-  ['철 광석',2,25,'#b9c2cc'],['은 광석',2,40,'#e3e8ef'],['납 광석',2,22,'#7d8090'],['아연 광석',2,24,'#a8b3bf'],['석영',2,30,'#f3f0ff'],
-  ['장석',2,26,'#f3d9c9'],['운모',2,28,'#d9c9a6'],['황',2,32,'#ffe066'],['형석',2,38,'#9fe0c9'],['마노',2,45,'#e8a07a'],
-  ['금 광석',3,80,'#ffd23f'],['백금 광석',3,110,'#e8eef4'],['자수정',3,90,'#b57bff'],['황수정',3,85,'#ffc94f'],['가넷',3,95,'#c9304f'],
-  ['터키석',3,100,'#4fd6c9'],['오팔',3,120,'#ffe3f3'],['옥',3,105,'#5cc48a'],['산호석',3,90,'#ff8f9f',1],
-  ['루비',4,220,'#ff2f4f'],['사파이어',4,230,'#3f6fff'],['에메랄드',4,240,'#2fbf6f'],['토파즈',4,200,'#ffb347'],['아쿠아마린',4,210,'#7fe0ff',1],
-  ['진주',4,250,'#fff7f0',1],['미스릴',4,300,'#bfe3ff'],
-  ['다이아몬드',5,600,'#e8fbff'],['별빛 수정',5,800,'#d9c9ff'],['무지개 원석',5,1000,'#ff9fe0'],['용의 심장석',5,1500,'#ff4f2f'],
+  ['돌멩이',1,10,'#a39aa8'], ['석탄',1,30,'#3b3b46'], ['구리 광석',1,45,'#e08a4f'], ['주석 광석',1,45,'#c9ccd6'], ['점토',1,25,'#c98e5b'],
+  ['석회석',1,25,'#efe8d8'], ['사암',1,25,'#e8c99a'], ['부싯돌',1,40,'#5b5266'], ['흑연',1,55,'#4a4a52'], ['소금 결정',1,35,'#f4f8ff'],
+  ['철 광석',2,105,'#b9c2cc'], ['은 광석',2,170,'#e3e8ef'], ['납 광석',2,90,'#7d8090'], ['아연 광석',2,100,'#a8b3bf'], ['석영',2,125,'#f3f0ff'],
+  ['장석',2,110,'#f3d9c9'], ['운모',2,115,'#d9c9a6'], ['황',2,135,'#ffe066'], ['형석',2,160,'#9fe0c9'], ['마노',2,190,'#e8a07a'],
+  ['금 광석',3,410,'#ffd23f'], ['백금 광석',3,565,'#e8eef4'], ['자수정',3,465,'#b57bff'], ['황수정',3,435,'#ffc94f'], ['가넷',3,490,'#c9304f'],
+  ['터키석',3,515,'#4fd6c9'], ['오팔',3,615,'#ffe3f3'], ['옥',3,540,'#5cc48a'], ['산호석',3,465,'#ff8f9f',1], ['루비',4,1400,'#ff2f4f'],
+  ['사파이어',4,1465,'#3f6fff'], ['에메랄드',4,1525,'#2fbf6f'], ['토파즈',4,1275,'#ffb347'], ['아쿠아마린',4,1335,'#7fe0ff',1], ['진주',4,1590,'#fff7f0',1],
+  ['미스릴',4,1910,'#bfe3ff'], ['다이아몬드',5,3075,'#e8fbff'], ['별빛 수정',5,4105,'#d9c9ff'], ['무지개 원석',5,5130,'#ff9fe0'], ['용의 심장석',5,7690,'#ff4f2f'],
 ];
 const ORES = Object.fromEntries(ORE_LIST.map((o,i)=>['o'+String(i+1).padStart(2,'0'), {name:o[0], tier:o[1], price:o[2], color:o[3], sea:!!o[4]}]));
 const TIER_W = {1:100, 2:35, 3:10, 4:2.5, 5:0.5};
@@ -1366,7 +1364,7 @@ function rollOre(zid){
   const total = list.reduce((a,[,o])=>a+w(o),0);
   let r = Math.random()*total; for (const [id,o] of list){ if ((r -= w(o)) < 0) return id; } return list[0][0];
 }
-const hourKey = () => Math.floor(Date.now()/3600000);
+const hourKey = () => Math.floor(Date.now()/1200000); // 바위는 20분마다 다시 생겨요
 // 바위는 한 시간마다 다시 생겨요 (각자 화면 기준)
 function rocksHere(){
   const mz = MINE_ZONES[zoneId]; if (!mz) return [];
@@ -1407,17 +1405,17 @@ const MONSTER_LIST = [
   ['보푸라기','forest',30,5,50,'#c9b8d9','dust','보풀',9,22], ['털뭉치','forest',35,5,45,'#d9c2a6','dust','털실 조각',10,20],
   ['실밥벌레','forest',28,6,80,'#9fc48f','bug','실밥',11,18], ['좀벌레','forest',32,6,75,'#a8a3b8','bug','좀벌레 껍질',12,16],
   ['거미줄 요정','forest',40,7,65,'#f3f3ff','ghost','거미줄 실',15,12], ['먼지 토끼','forest',45,8,90,'#c9c2d6','dust','먼지 토끼 귀',18,10],
-  ['회색 먼지곰','deepforest',80,12,50,'#8f8899','dust','회색 털',28,18], ['가시 덤불','deepforest',70,14,35,'#4f8f46','plant','가시 열매',26,18],
-  ['그림자 솜','deepforest',60,15,85,'#4b4660','ghost','그림자 솜',30,16], ['독버섯 요정','deepforest',75,13,55,'#c9304f','plant','독버섯 갓',32,14],
-  ['먼지 늑대','deepforest',90,16,95,'#7a7489','dust','늑대 털',38,12], ['썩은 나뭇잎','deepforest',65,12,60,'#8a6a3b','plant','마른 잎',22,16],
-  ['밤그림자','deepforest',85,18,90,'#2f2f3a','ghost','밤의 조각',45,8], ['먼지 여왕의 시녀','deepforest',120,20,70,'#b58cff','ghost','여왕의 리본',70,4],
-  ['소금 게','seacave',60,10,55,'#ff8f7a','crab','게 집게',24,20], ['이끼 슬라임','seacave',70,11,45,'#7fc46a','slime','이끼 젤리',26,18],
-  ['해파리 유령','seacave',55,14,70,'#bfe0ff','ghost','해파리 촉수',34,14], ['따개비 골렘','seacave',110,12,30,'#8f9aa6','golem','따개비 껍데기',40,10],
+  ['회색 먼지곰','deepforest',80,12,50,'#8f8899','dust','회색 털',23,18], ['가시 덤불','deepforest',70,14,35,'#4f8f46','plant','가시 열매',21,18],
+  ['그림자 솜','deepforest',60,15,85,'#4b4660','ghost','그림자 솜',25,16], ['독버섯 요정','deepforest',75,13,55,'#c9304f','plant','독버섯 갓',25,14],
+  ['먼지 늑대','deepforest',90,16,95,'#7a7489','dust','늑대 털',30,12], ['썩은 나뭇잎','deepforest',65,12,60,'#8a6a3b','plant','마른 잎',18,16],
+  ['밤그림자','deepforest',85,18,90,'#2f2f3a','ghost','밤의 조각',36,8], ['먼지 여왕의 시녀','deepforest',120,20,70,'#b58cff','ghost','여왕의 리본',57,4],
+  ['소금 게','seacave',60,10,55,'#ff8f7a','crab','게 집게',23,20], ['이끼 슬라임','seacave',70,11,45,'#7fc46a','slime','이끼 젤리',27,18],
+  ['해파리 유령','seacave',55,14,70,'#bfe0ff','ghost','해파리 촉수',33,14], ['따개비 골렘','seacave',110,12,30,'#8f9aa6','golem','따개비 껍데기',40,10],
   ['동굴 박쥐','seacave',50,13,110,'#5b4a6f','bat','박쥐 날개',30,16], ['심해 촉수','seacave',100,18,50,'#6f4fb5','slime','촉수 조각',55,6],
-  ['바위 두더지','cave',100,15,60,'#8a7a6a','dust','두더지 발톱',40,20], ['수정 박쥐','cave',80,18,120,'#b9a6ff','bat','수정 날개',55,16],
-  ['광석 골렘','cave',180,22,30,'#a39aa8','golem','골렘 심장석',90,10], ['용암 슬라임','cave',120,24,55,'#ff6b3b','slime','용암 젤리',75,10],
-  ['그림자 광부','cave',150,26,75,'#3b3b46','ghost','낡은 헬멧 조각',110,6], ['동굴의 주인','cave',400,35,45,'#5b2f6f','golem','동굴의 왕관',500,1],
-  ['별똥 유령','starhill',90,16,80,'#fff6b0','ghost','별가루',60,10], ['달빛 나방','starhill',70,14,100,'#d9e3ff','bug','달빛 비늘',50,12],
+  ['바위 두더지','cave',100,15,60,'#8a7a6a','dust','두더지 발톱',34,20], ['수정 박쥐','cave',80,18,120,'#b9a6ff','bat','수정 날개',47,16],
+  ['광석 골렘','cave',180,22,30,'#a39aa8','golem','골렘 심장석',77,10], ['용암 슬라임','cave',120,24,55,'#ff6b3b','slime','용암 젤리',64,10],
+  ['그림자 광부','cave',150,26,75,'#3b3b46','ghost','낡은 헬멧 조각',94,6], ['동굴의 주인','cave',400,35,45,'#5b2f6f','golem','동굴의 왕관',1500,1],
+  ['별똥 유령','starhill',90,16,80,'#fff6b0','ghost','별가루',36,10], ['달빛 나방','starhill',70,14,100,'#d9e3ff','bug','달빛 비늘',30,12],
 ];
 const MONSTERS = Object.fromEntries(MONSTER_LIST.map((m,i)=>['m'+String(i+1).padStart(2,'0'), {name:m[0], zone:m[1], hp:m[2], atk:m[3], speed:m[4], color:m[5], shape:m[6], drop:m[7], dropPrice:m[8], weight:m[9]}]));
 const COMBAT_ZONES = {forest:5, deepforest:6, seacave:4, cave:6, starhill:4};
@@ -1447,7 +1445,7 @@ function syncMobs(){
 let respawnT = 0;
 function updateMobs(dt, t){
   const want = syncMobs(); if (!want) return;
-  if (mobs.length < want && t > respawnT){ spawnMob(); respawnT = t + 15000; }
+  if (mobs.length < want && t > respawnT){ spawnMob(); respawnT = t + 25000; }
   const talking = !$('talk').hidden;
   for (const mob of mobs){
     const m = MONSTERS[mob.id], d = Math.hypot(pos.x-mob.x, pos.y-mob.y);
@@ -1469,13 +1467,13 @@ function updateMobs(dt, t){
 // 무기: 비비의 대장간에서 광석과 골드로 만들어요. 좋은 무기일수록 공격력이 세요
 const WEAPON_LIST = [
   ['w1','나무 검',10,0,[],'#d9a877'],
-  ['w2','구리 검',16,300,[['ore:o03',5]],'#e08a4f'],
-  ['w3','철 검',24,800,[['ore:o11',5]],'#b9c2cc'],
-  ['w4','은빛 검',34,1800,[['ore:o12',5],['ore:o15',3]],'#e3e8ef'],
-  ['w5','금빛 검',46,3500,[['ore:o21',5]],'#ffd23f'],
-  ['w6','루비 검',62,6000,[['ore:o30',3],['ore:o21',3]],'#ff2f4f'],
-  ['w7','미스릴 검',80,9000,[['ore:o36',3]],'#bfe3ff'],
-  ['w8','별빛 검',110,15000,[['ore:o38',1],['ore:o37',1]],'#d9c9ff'],
+  ['w2','구리 검',16,500,[['ore:o03',5]],'#e08a4f'],
+  ['w3','철 검',24,1500,[['ore:o11',5]],'#b9c2cc'],
+  ['w4','은빛 검',34,4000,[['ore:o12',5],['ore:o15',3]],'#e3e8ef'],
+  ['w5','금빛 검',46,9000,[['ore:o21',5]],'#ffd23f'],
+  ['w6','루비 검',62,16000,[['ore:o30',3],['ore:o21',3]],'#ff2f4f'],
+  ['w7','미스릴 검',80,25000,[['ore:o36',3]],'#bfe3ff'],
+  ['w8','별빛 검',110,45000,[['ore:o38',1],['ore:o37',1]],'#d9c9ff'],
 ];
 const WEAPONS = Object.fromEntries(WEAPON_LIST.map(w=>[w[0], {name:w[1], atk:w[2], gold:w[3], need:w[4], color:w[5]}]));
 const weapon = () => WEAPONS[me.inv.weapon] || WEAPONS.w1;
@@ -1543,7 +1541,7 @@ function hitMob(mob, t, vx, vy){
   fx.push({x:mob.x, y:mob.y-40, text:String(dmg), t, color:'#ffffff'});
   if (mob.hp <= 0){
     mobs = mobs.filter(m=>m!==mob);
-    const m = MONSTERS[mob.id], gold = Math.round(m.atk * (1.5 + Math.random()));
+    const m = MONSTERS[mob.id], gold = Math.round(m.atk * (0.8 + Math.random()*.4));
     invAdd('loot:'+mob.id, 1); me.inv.gold += gold;
     me.mdex = me.mdex || {}; const first = !me.mdex[mob.id]; me.mdex[mob.id] = (me.mdex[mob.id]||0) + 1;
     saveMe(); renderHud();
@@ -1678,7 +1676,7 @@ const DISH_LIST = [
 const DISHES = Object.fromEntries(DISH_LIST.map((d,i)=>['d'+String(i+1).padStart(2,'0'), {name:d[0], need:d[1], heal:d[2]}]));
 function anyFishKeys(){ return itemsOf('fish').sort((a,b)=>fishPrice(a[0].slice(5))-fishPrice(b[0].slice(5))); }
 function canCook(id){ return DISHES[id].need.every(([k,n])=> k==='fish:*' ? countOf('fish') >= n : invCount(k) >= n); }
-function dishPrice(id){ return Math.round(DISHES[id].need.reduce((a,[k,n])=>a + (k==='fish:*' ? 40 : itemPrice(k))*n, 0) * 1.8) + 20; }
+function dishPrice(id){ return Math.round(DISHES[id].need.reduce((a,[k,n])=>a + (k==='fish:*' ? 25 : itemPrice(k))*n, 0) * 1.8) + 40; }
 function cook(id){
   if (!canCook(id)) return toast('재료가 모자라요');
   for (const [k,n] of DISHES[id].need){
@@ -1719,7 +1717,7 @@ function errandsToday(){
     if (k==='ore'){ const id = pick(ores); list.push({key:'ore:'+id, n:1+Math.floor(r()*3), label:ORES[id].name}); }
     if (k==='loot'){ const id = pick(loot); list.push({key:'loot:'+id, n:1+Math.floor(r()*2), label:MONSTERS[id].drop}); }
   }
-  return list.map((e,i)=>({...e, i, reward: 60 + Math.round(e.key.startsWith('fish:') ? fishPrice(e.key.slice(5)+'_'+e.st)*2.2 : itemPrice(e.key)*e.n*2.2)}));
+  return list.map((e,i)=>({...e, i, reward: 150 + Math.round(e.key.startsWith('fish:') ? fishPrice(e.key.slice(5)+'_'+e.st)*2.2 : itemPrice(e.key)*e.n*2.2)}));
 }
 function errandHave(e){
   if (e.key.startsWith('fish:')){ const id = e.key.slice(5); return itemsOf('fish').filter(([k])=>{ const p = parseFish(k.slice(5)); return p.id===id && p.st>=e.st; }).reduce((a,[,n])=>a+n,0) >= e.n; }
@@ -1744,16 +1742,16 @@ function errandPanel(){
 }
 
 // ===== 보리 공방: 텃밭 늘리기 · 가구 =====
-const PLOT_COST = {3:[500,'ore:o11',3], 4:[1000,'ore:o12',3], 5:[2000,'ore:o21',2], 6:[4000,'ore:o30',1]};
+const PLOT_COST = {3:[1000,'ore:o11',3], 4:[2500,'ore:o12',3], 5:[6000,'ore:o21',2], 6:[12000,'ore:o30',1]};
 // [이름, 골드, 재료, 개수, 모양, 색]
 const FURN_LIST = [
-  ['나무 의자',80,'ore:o01',2,'chair','#c98e5b'], ['나무 탁자',150,'ore:o01',4,'table','#c98e5b'], ['포근한 침대',400,'ore:o05',3,'bed','#ff9fbf'],
-  ['책장',300,'ore:o01',5,'shelf','#a8744f'], ['둥근 러그',120,'ore:o06',2,'rug','#ffd3e2'], ['작은 화분',60,'ore:o05',1,'plant','#6cc46a'],
-  ['스탠드 조명',200,'ore:o03',2,'lamp','#ffe066'], ['말랑 소파',500,'ore:o16',2,'sofa','#a9d8ff'], ['옷장',450,'ore:o01',6,'wardrobe','#d9a46f'],
-  ['어항',600,'ore:o15',2,'tank','#8fd3f5'], ['벽난로',800,'ore:o11',4,'fire','#c9b8a6'], ['피아노',1200,'ore:o13',4,'piano','#3b3b46'],
-  ['괘종시계',700,'ore:o04',3,'clock','#8a5a3b'], ['큰 거울',650,'ore:o12',2,'mirror','#e8f4ff'], ['곰 인형',300,'ore:o17',1,'bear','#d9a46f'],
-  ['황금 트로피',1500,'ore:o21',3,'trophy','#ffd23f'], ['자수정 램프',1300,'ore:o23',2,'crystal','#b57bff'], ['별빛 조명',3000,'ore:o38',1,'star','#fff6b0'],
-  ['보물 상자',2000,'ore:o22',2,'chest','#a8744f'], ['케이크 장식장',900,'ore:o20',2,'cake','#ff9fc4'],
+  ['나무 의자',160,'ore:o01',2,'chair','#c98e5b'], ['나무 탁자',300,'ore:o01',4,'table','#c98e5b'], ['포근한 침대',800,'ore:o05',3,'bed','#ff9fbf'],
+  ['책장',600,'ore:o01',5,'shelf','#a8744f'], ['둥근 러그',240,'ore:o06',2,'rug','#ffd3e2'], ['작은 화분',120,'ore:o05',1,'plant','#6cc46a'],
+  ['스탠드 조명',400,'ore:o03',2,'lamp','#ffe066'], ['말랑 소파',1000,'ore:o16',2,'sofa','#a9d8ff'], ['옷장',900,'ore:o01',6,'wardrobe','#d9a46f'],
+  ['어항',1200,'ore:o15',2,'tank','#8fd3f5'], ['벽난로',1600,'ore:o11',4,'fire','#c9b8a6'], ['피아노',2400,'ore:o13',4,'piano','#3b3b46'],
+  ['괘종시계',1400,'ore:o04',3,'clock','#8a5a3b'], ['큰 거울',1300,'ore:o12',2,'mirror','#e8f4ff'], ['곰 인형',600,'ore:o17',1,'bear','#d9a46f'],
+  ['황금 트로피',3000,'ore:o21',3,'trophy','#ffd23f'], ['자수정 램프',2600,'ore:o23',2,'crystal','#b57bff'], ['별빛 조명',6000,'ore:o38',1,'star','#fff6b0'],
+  ['보물 상자',4000,'ore:o22',2,'chest','#a8744f'], ['케이크 장식장',1800,'ore:o20',2,'cake','#ff9fc4'],
 ];
 const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5]}]));
 function workshopPanel(){
@@ -1900,7 +1898,7 @@ function museumPanel(){
     (rows.length ? rows.map((r,i)=>`<button class="np" data-id="${i}"><span class="np-name">${iconImg(r.key)}${r.name}</span><span class="np-place">기증하기</span></button>`).join('') : '<p class="mnote">기증할 새 물건이 없어요. 아직 박물관에 없는 물고기·광석·전리품을 가져와요.</p>'), b=>{
       const r = rows[+b.dataset.id]; invAdd(r.key, -1);
       me.museum = me.museum || {}; me.museum[r.cat] = [...museumSet(r.cat), r.id].join(',');
-      const t = museumTotal(); if (t % 10 === 0){ me.inv.gold += 300; addPts(NPC.olly, 20); toast(`기증 ${t}개 달성! 300G를 받았어요`); } else toast(`${r.name}을(를) 기증했어요`);
+      const t = museumTotal(); if (t % 10 === 0){ me.inv.gold += 800; addPts(NPC.olly, 20); toast(`기증 ${t}개 달성! 800G를 받았어요`); } else toast(`${r.name}을(를) 기증했어요`);
       saveMe(); renderHud(); museumPanel();
     });
 }
@@ -2189,7 +2187,7 @@ function bossAlive(){ return zoneId==='deepforest' && boss && boss.gen===today()
 function updateBoss(dt, t){
   if (zoneId!=='deepforest' || !boss) return;
   if (boss.gen===today() && boss.hp <= 0){
-    if (me.bossClaim !== today() && (me.bossHit||0) === today()){ me.bossClaim = today(); me.inv.gold += 1000; invAdd('loot:m16', 1); addPts(NPC.bibi, 30); saveMe(); renderHud(); say('먼지 여왕을 물리쳤어요!', '섬 주민들과 힘을 합쳐 먼지 여왕을 물리쳤어요!\n먼지 숲이 조금 맑아진 것 같아요.', [], '보상 1000G · 여왕의 리본 · 비비 호감도 +30'); }
+    if (me.bossClaim !== today() && (me.bossHit||0) === today()){ me.bossClaim = today(); me.inv.gold += 3000; invAdd('loot:m16', 1); addPts(NPC.bibi, 30); saveMe(); renderHud(); say('먼지 여왕을 물리쳤어요!', '섬 주민들과 힘을 합쳐 먼지 여왕을 물리쳤어요!\n먼지 숲이 조금 맑아진 것 같아요.', [], '보상 3000G · 여왕의 리본 · 비비 호감도 +30'); }
     return;
   }
   const d = Math.hypot(pos.x-BOSS.x, pos.y-BOSS.y);
