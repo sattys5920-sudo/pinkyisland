@@ -308,7 +308,8 @@ let exprNow = 'dot', exprUntil = 0;
 function setExpr(e, ms=2000){ exprNow = e; exprUntil = performance.now() + ms; }
 function myExpr(){ if (performance.now() < exprUntil) return exprNow; const h = kstHour(); return (h < 5 && !pos.moving) ? 'sleepy' : 'dot'; }
 // 동물 주민: 걷기 8단계, 서 있기 4단계
-function drawCritter(c, x, y, v, t, walk, s=1){
+function drawCritter(c, x, y, v, t, walk, s=1, flip=false){
+  if (flip){ c.save(); c.translate(x, 0); c.scale(-1, 1); drawCritter(c, 0, y, v, t, walk, s, false); c.restore(); return; }
   const ph = t*7 + x*.3, q = walk ? qphase(ph, 8) : qphase(t*2 + x, 4);
   const key = 'c|'+JSON.stringify(v)+'|'+(walk?'w':'i')+q+'|'+Math.round(view.dpr*view.zoom*2);
   const t2 = walk ? q/8*TAU/7 : q/4*TAU/2;
@@ -458,6 +459,28 @@ function toriPos(now){
   return {x:TORI_PATH[0][0], y:TORI_PATH[0][1], mv:false, dx:0};
 }
 
+// 주민 산책: 자기 자리(home) 주위 range 안에서 7초마다 새 자리로 느긋하게 걸어가요. 시간 기준이라 친구 화면에서도 같은 자리에 있어요
+const NPC_RANGE = {momo:55, dandan:55, mongsil:55, bori:60, olly:60, toto:70, lulu:80, pengpeng:80, dodo:70, bibi:110, hana:110, bami:80, kongi:120};
+const WANDER_MS = 7000, WANDER_PAUSE = 2800;
+function wanderSpot(n, k){
+  const h = hash(n.id + '|' + k), r = (NPC_RANGE[n.id] || 70) * (0.35 + (h % 1000) / 1000 * 0.65), a = ((h >>> 10) % 6283) / 1000;
+  const x = n.home[0] + Math.cos(a)*r, y = n.home[1] + Math.sin(a)*r*0.6; // 위아래로는 조금만
+  return blocked(x, y) ? {x:n.home[0], y:n.home[1]} : {x, y};
+}
+function wanderPos(n, now){
+  const k = Math.floor(now / WANDER_MS), t = now - k*WANDER_MS, a = wanderSpot(n, k-1), b = wanderSpot(n, k);
+  if (t < WANDER_PAUSE) return {x:a.x, y:a.y, mv:false, dx:0};
+  const u = (t - WANDER_PAUSE) / (WANDER_MS - WANDER_PAUSE), e = u*u*(3-2*u);
+  return {x:a.x + (b.x-a.x)*e, y:a.y + (b.y-a.y)*e, mv:Math.hypot(b.x-a.x, b.y-a.y) > 4, dx:b.x-a.x};
+}
+function updateNpcs(now){
+  for (const n of NPCS){
+    if (n.zone !== zoneId) continue;
+    if (!n.home) n.home = [n.x, n.y];
+    const p = n.id==='tori' ? toriPos(now) : wanderPos(n, now);
+    n.x = p.x; n.y = p.y; n.mv = p.mv; if (p.dx) n.flip = p.dx < 0;
+  }
+}
 function slotsOf(lot, n=2){ const L = LOTS[lot]; return [[-40,44],[0,44],[40,44],[-40,82],[0,82],[40,82]].slice(0, Math.max(2, Math.min(6, n))).map(([dx,dy])=>({x:L.x+dx, y:L.y+dy})); }
 
 // 지금 있는 구역
@@ -2546,7 +2569,7 @@ function frame(t){
   const dt = Math.min(.05, (t-lastT)/1000); lastT = t;
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,108); c.scale(1.7,1.7); CH.figure(d, L, dir, t/1000, true, 'dot'); c.restore(); } } }
   if (me && !obStep){
-    const tp = toriPos(Date.now()), tori = NPC.tori; tori.x = tp.x; tori.y = tp.y; tori.mv = tp.mv; if (tp.dx) tori.flip = tp.dx < 0;
+    updateNpcs(Date.now());
     step(dt); moveOthers(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateSwing(dt); updateStars(t); rainWater(t);
     const hpEl = $('hpv'); if (hpEl && hpEl.textContent !== String(Math.ceil(playerHp))) hpEl.textContent = Math.ceil(playerHp);
     buildStatic();
@@ -2562,7 +2585,7 @@ function frame(t){
     drawRocks(d, t);
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
-      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1), label:()=>tag(ctx, n.name, n.x, n.y-50, null)})),
+      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-50, null)})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'), label:()=>{ tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
