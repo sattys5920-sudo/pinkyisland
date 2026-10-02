@@ -49,6 +49,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 .np-h small{color:var(--soft);letter-spacing:0}
 .np-keep{grid-column:1/-1;font-size:12px;color:var(--pinkd)}
 #sideBtns{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 78px);display:flex;flex-direction:column;gap:8px;z-index:5}
+.round.swing{width:64px;height:64px;font-size:13px;background:linear-gradient(#fff,#fde4ec);box-shadow:inset 0 -3px 0 #f2c3d3,0 4px 14px #d4a3b52e}
 .round{width:52px;height:52px;border-radius:50%;border:0;background:linear-gradient(#fff,#fff8fa);color:var(--ink);font-size:14px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
 #mapPanel{z-index:10;position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;touch-action:pan-y}
 .mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(7,auto);gap:4px;margin-top:6px}
@@ -143,7 +144,7 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 <div id="talk" class="pill" hidden><img id="talkIcon" alt="" hidden><h3 id="talkName"></h3><p id="talkText"></p><p id="talkNote" hidden></p><div class="act" id="talkAct"></div></div>
 <div id="npcPanel" class="pill" hidden></div>
 <div id="mapPanel" class="pill" hidden></div>
-<div id="sideBtns" hidden><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="decoBtn" class="round" hidden>꾸미기</button></div>
+<div id="sideBtns" hidden><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="decoBtn" class="round" hidden>꾸미기</button><button id="swingBtn" class="round swing" hidden>휘두르기</button></div>
 <div id="fade"></div>
 <div id="fishGame" class="pill" hidden><b id="fgTitle">무언가 걸렸어요!</b><div id="fgTrack"><div id="fgZone"></div><div id="fgBob"></div></div><div id="fgMeter"><div id="fgBar"></div></div><p id="fgText"></p><small>누른 채 좌우로 움직여 찌를 따라가요 (키보드: ← →)</small></div>
 <div id="toast" class="pill" style="opacity:0"></div>
@@ -914,6 +915,7 @@ function enterGame(doc){
   $('npcBtn').onclick = ()=>togglePanel('npcPanel', renderNpcPanel);
   $('mapBtn').onclick = ()=>togglePanel('mapPanel', renderMap);
   $('decoBtn').onclick = decorMenu;
+  $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); swing(); });
   const L = LOTS[me.lot]; pos.dir = 'down';
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
   else enterZone('home', null, L.x, L.y + 18);
@@ -926,7 +928,8 @@ function renderHud(){
   const online = 1 + others.size;
   $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>💰 ${me.inv.gold}G</span><span>📍 ${Z().name}</span><span>👥 ${Math.min(online,MAX)}/${MAX}</span><span>❤️ <b id="hpv">${Math.ceil(playerHp)}</b></span>`;
   $('quest').innerHTML = `<b>${me.quest<6?'할 일':'튜토리얼'}</b>${QUESTS[Math.min(me.quest,6)]}`;
-  const it = [['💧','물뿌리개',me.inv.can],['🎣','낚싯대',me.inv.rod],['⛏️','곡괭이',me.inv.pick],['🗡️','검',me.inv.sword]];
+  const it = [['💧','물뿌리개',me.inv.can],['🎣','낚싯대',me.inv.rod],['⛏️','곡괭이',me.inv.pick],['🗡️',me.inv.sword ? `${weapon().name} (공격력 ${weapon().atk})` : '검',me.inv.sword]];
+  $('swingBtn').hidden = !me.inv.sword;
   $('bar').innerHTML = it.map(([e,n,c])=>`<div class="${c?'':'off'}" title="${n}" aria-label="${n}${c?'':' 없음'}">${e}</div>`).join('') + `<div id="bagBtn" title="가방" aria-label="가방" style="cursor:pointer">🎒</div>`;
   $('bagBtn').onclick = showBag;
   if (!$('npcPanel').hidden && $('npcPanel').dataset.kind==='npc') renderNpcPanel();
@@ -994,6 +997,7 @@ function npcActions(n){
   if (n.id==='tori') acts.push(['오늘의 심부름', errandPanel]);
   if (n.id==='bori') acts.push(['공방 (텃밭·가구)', workshopPanel]);
   if (n.id==='mongsil') acts.push(['옷 갈아입기', clothesPanel]);
+  if (n.id==='bibi' && me.inv.sword) acts.push(['대장간 (무기)', weaponPanel]);
   if (n.id==='olly') acts.push(['박물관 기증', museumPanel]);
   if (n.id==='pengpeng') acts.push(['날씨 예보', ()=>say(title(n), '펭! '+forecast(), npcActions(n))], ['낚시 대회', contestPanel]);
   if (n.id==='lulu') acts.push(['낚시 대회', contestPanel]);
@@ -1061,7 +1065,7 @@ function talkTo(n){
   let note = '', ups = [];
   if (first){ r.talkDay = today(); ups = addPts(n, 10); note = '오늘 첫 대화 · 호감도 +10'; }
   if (n.id==='dodo' && !me.inv.pick){ me.inv.pick = true; note = [note, '도도에게 곡괭이를 받았어요! 바위를 눌러 캐 봐요'].filter(Boolean).join(' · '); }
-  if (n.id==='bibi' && !me.inv.sword){ me.inv.sword = true; note = [note, '비비에게 검을 받았어요! 몬스터 가까이 가면 자동으로 싸워요'].filter(Boolean).join(' · '); }
+  if (n.id==='bibi' && !me.inv.sword){ me.inv.sword = true; me.inv.weapon = 'w1'; me.inv.weapons = ['w1']; note = [note, '비비에게 나무 검을 받았어요! 몬스터를 바라보고 휘두르기(F 키)를 눌러 싸워요'].filter(Boolean).join(' · '); }
   if (n.id==='lulu' && !me.inv.rod){ me.inv.rod = true; note = [note, '루루에게 낚싯대를 받았어요! 물을 눌러 낚시해 봐요'].filter(Boolean).join(' · '); }
   if (n.soon) note = [note, n.soon].filter(Boolean).join(' · ');
   const hr = kstHour();
@@ -1410,27 +1414,90 @@ function updateMobs(dt, t){
     if (d < 240 && !talking){ tx = pos.x; ty = pos.y; }
     else { if ((mob.wander -= dt) <= 0){ mob.wander = 1.5 + Math.random()*2.5; mob.wx = mob.x + (Math.random()-.5)*200; mob.wy = mob.y + (Math.random()-.5)*200; } tx = mob.wx; ty = mob.wy; sp *= .4; }
     const dx = tx-mob.x, dy = ty-mob.y, l = Math.hypot(dx,dy);
+    if (mob.kb > 0){ mob.kb -= dt; const nx = mob.x + mob.kvx*dt, ny = mob.y + mob.kvy*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; mob.kvx *= .86; mob.kvy *= .86; continue; }
     if (l > 22 && mob.hurt <= 0){ const nx = mob.x + dx/l*sp*dt, ny = mob.y + dy/l*sp*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; }
     if (d < 30 && mob.cd <= 0 && !talking){
-      mob.cd = 1.2; playerHp -= m.atk; lastHurt = t;
+      mob.cd = 1.2; playerHp -= m.atk; lastHurt = t; pushPlayer(pos.x-mob.x, pos.y-mob.y, 18);
       fx.push({x:pos.x, y:pos.y-50, text:'-'+m.atk, t, color:'#ff3b6b'});
       if (playerHp <= 0) return faint();
     }
   }
-  // 검이 있으면 가까운 몬스터를 자동으로 공격해요
-  if (me.inv.sword && t - lastSwing > 450){
-    let best = null, bd = 50;
-    for (const mob of mobs){ const d = Math.hypot(pos.x-mob.x, pos.y-mob.y); if (d < bd){ bd = d; best = mob; } }
-    if (best){ lastSwing = t; hitMob(best, t); }
-  }
   if (t - lastHurt > 6000 && playerHp < PLAYER_MAX_HP) playerHp = Math.min(PLAYER_MAX_HP, playerHp + 5*dt);
 }
-function swordAtk(){ return 10 + Math.floor(Math.random()*5); }
-function hitMob(mob, t){
-  const dmg = swordAtk(); mob.hp -= dmg; mob.hurt = .25;
+// 무기: 비비의 대장간에서 광석과 골드로 만들어요. 좋은 무기일수록 공격력이 세요
+const WEAPON_LIST = [
+  ['w1','나무 검',10,0,[],'#d9a877'],
+  ['w2','구리 검',16,300,[['ore:o03',5]],'#e08a4f'],
+  ['w3','철 검',24,800,[['ore:o11',5]],'#b9c2cc'],
+  ['w4','은빛 검',34,1800,[['ore:o12',5],['ore:o15',3]],'#e3e8ef'],
+  ['w5','금빛 검',46,3500,[['ore:o21',5]],'#ffd23f'],
+  ['w6','루비 검',62,6000,[['ore:o30',3],['ore:o21',3]],'#ff2f4f'],
+  ['w7','미스릴 검',80,9000,[['ore:o36',3]],'#bfe3ff'],
+  ['w8','별빛 검',110,15000,[['ore:o38',1],['ore:o37',1]],'#d9c9ff'],
+];
+const WEAPONS = Object.fromEntries(WEAPON_LIST.map(w=>[w[0], {name:w[1], atk:w[2], gold:w[3], need:w[4], color:w[5]}]));
+const weapon = () => WEAPONS[me.inv.weapon] || WEAPONS.w1;
+function swordAtk(){ const a = weapon().atk; return a + Math.floor(Math.random()*(a*.25+1)); }
+function weaponPanel(){
+  const own = me.inv.weapons || ['w1'];
+  openPanel(`비비의 대장간 · 💰 ${me.inv.gold}G`, `<p class="mnote" style="margin-top:0">무기를 바꾸면 공격력이 세져요. 광석은 광산과 동굴에서 캘 수 있어요.</p>` +
+    WEAPON_LIST.map(([id,name,atk,gold,need])=>{ const has = own.includes(id), on = weapon()===WEAPONS[id];
+      const cost = [gold?gold+'G':'', ...need.map(([k,n])=>`${itemName(k)} ${invCount(k)}/${n}`)].filter(Boolean).join(' · ');
+      return `<button class="np" data-id="${id}"><span class="np-name">🗡️ ${name} <small>공격력 ${atk}</small></span><span class="np-place">${on?'장착 중':has?'장착하기':'만들기'}</span>${has?'':`<span class="np-day">${cost}</span>`}</button>`; }).join(''),
+    b=>{ const id = b.dataset.id, w = WEAPONS[id];
+      if (!own.includes(id)){
+        if (me.inv.gold < w.gold || w.need.some(([k,n])=>invCount(k) < n)) return toast('재료나 돈이 모자라요');
+        me.inv.gold -= w.gold; for (const [k,n] of w.need) invAdd(k, -n);
+        me.inv.weapons = [...own, id]; toast(`${w.name}을(를) 만들었어요!`);
+      } else toast(`${w.name}을(를) 들었어요 · 공격력 ${w.atk}`);
+      me.inv.weapon = id; saveMe(); renderHud(); weaponPanel(); });
+}
+const DIRV = {left:[-1,0], right:[1,0], up:[0,-1], down:[0,1]};
+let swingAt = -1e9, swingDir = 'down', lunge = 0;
+function pushPlayer(dx, dy, dist){
+  const l = Math.hypot(dx,dy)||1, nx = pos.x + dx/l*dist, ny = pos.y + dy/l*dist;
+  if (!blocked(nx, pos.y)) pos.x = nx; if (!blocked(pos.x, ny)) pos.y = ny;
+}
+function faceTo(x, y){ const dx = x-pos.x, dy = y-pos.y; pos.dir = Math.abs(dx) > Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up'); }
+function nearFoe(r=110){ return mobs.some(m=>Math.hypot(pos.x-m.x, pos.y-m.y) < r) || (bossAlive() && Math.hypot(pos.x-BOSS.x, pos.y-BOSS.y) < r+40); }
+// 휘두르기: 바라보는 쪽으로 한 발 내딛으며 검을 휘둘러요. 닿은 몬스터는 밀려나요
+function swing(){
+  if (!me.inv.sword){ toast('검이 없어요. 먼지 숲의 비비에게 가 봐요'); return; }
+  const t = performance.now(); if (t - swingAt < 380) return;
+  if (fishing) return;
+  swingAt = t; swingDir = pos.dir; lunge = .12; target = null;
+  const [vx,vy] = DIRV[pos.dir] || DIRV.down;
+  const cx = pos.x + vx*26, cy = pos.y + vy*26;
+  for (const mob of [...mobs]){
+    const dx = mob.x-pos.x, dy = mob.y-pos.y;
+    if (Math.hypot(mob.x-cx, mob.y-cy) < 58 && dx*vx + dy*vy > -12) hitMob(mob, t, vx, vy);
+  }
+  if (bossAlive()){
+    const dx = BOSS.x-pos.x, dy = BOSS.y-pos.y;
+    if (Math.hypot(BOSS.x-cx, BOSS.y-cy) < 100 && dx*vx + dy*vy > -20){
+      const dmg = swordAtk(); bossPending += dmg; bossHurt = .2; fx.push({x:BOSS.x+(Math.random()-.5)*40, y:BOSS.y-90, text:String(dmg), t, color:'#ffffff'});
+      if (me.bossHit !== today()){ me.bossHit = today(); saveMe(); }
+    }
+  }
+}
+function updateSwing(dt){
+  if (lunge > 0){ lunge -= dt; const [vx,vy] = DIRV[swingDir] || DIRV.down; pushPlayer(vx, vy, 170*dt); }
+}
+function drawSwing(c, t){
+  const a = (t - swingAt)/180; if (a < 0 || a > 1) return;
+  const base = {right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[swingDir] ?? Math.PI/2;
+  const from = base - 1.2, to = from + 2.4*Math.min(1, a*1.6), col = weapon().color;
+  c.save(); c.translate(pos.x, pos.y-20); c.globalAlpha = 1 - a*.7; c.lineCap = 'round';
+  c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 9; c.beginPath(); c.arc(0,0,40,from,to); c.stroke();
+  c.strokeStyle = col; c.lineWidth = 4; c.beginPath(); c.arc(0,0,40,from,to); c.stroke();
+  c.rotate(to); c.fillStyle = col; c.strokeStyle = '#6e5260'; c.lineWidth = 1.5; c.beginPath(); c.roundRect(14,-3,34,6,3); c.fill(); c.stroke();
+  c.restore();
+}
+function hitMob(mob, t, vx, vy){
+  const dmg = swordAtk(); mob.hp -= dmg; mob.hurt = .3;
   const dx = mob.x-pos.x, dy = mob.y-pos.y, l = Math.hypot(dx,dy)||1;
-  if (!blocked(mob.x+dx/l*14, mob.y+dy/l*14)){ mob.x += dx/l*14; mob.y += dy/l*14; }
-  pos.dir = Math.abs(dx) > Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up');
+  const kx = dx/l + (vx||0), ky = dy/l + (vy||0), kl = Math.hypot(kx,ky)||1, power = 300 / (1 + MONSTERS[mob.id].hp/400);
+  mob.kvx = kx/kl*power; mob.kvy = ky/kl*power; mob.kb = .18;
   fx.push({x:mob.x, y:mob.y-40, text:String(dmg), t, color:'#ffffff'});
   if (mob.hp <= 0){
     mobs = mobs.filter(m=>m!==mob);
@@ -1463,7 +1530,8 @@ function drawFx(c, t){
 function contentTarget(w){
   for (const mob of mobs) if (Math.abs(w.x-mob.x) < 24 && w.y > mob.y-40 && w.y < mob.y+8){
     if (!me.inv.sword){ toast('검이 없어요. 먼지 숲의 비비에게 가 봐요'); return {x:pos.x, y:pos.y, act:null, mark:performance.now()}; }
-    return {x:mob.x, y:mob.y+6, act:()=>{}};
+    const dx = pos.x-mob.x, dy = pos.y-mob.y, l = Math.hypot(dx,dy)||1;
+    return {x:mob.x+dx/l*40, y:mob.y+dy/l*40, act:()=>{ faceTo(mob.x, mob.y); swing(); }};
   }
   for (const r of rocksHere()) if (Math.abs(w.x-r.x) < 24 && Math.abs(w.y-r.y) < 20) return {x:r.x, y:r.y+24, act:()=>mineRock(r)};
   return null;
@@ -1851,7 +1919,7 @@ function onMail(m, remove){
 
 // ===== 협동 보스: 먼지 여왕 (깊은 먼지 숲) =====
 const BOSS = {x:800, y:440, max:3000, atk:30};
-let boss = null, bossPending = 0, bossFlushT = 0, bossCd = 0;
+let boss = null, bossPending = 0, bossFlushT = 0, bossCd = 0, bossHurt = 0;
 function onBoss(b){
   boss = b;
   if (!b || b.gen !== today()) net.bossReset && net.bossReset(today(), BOSS.max);
@@ -1865,15 +1933,15 @@ function updateBoss(dt, t){
   }
   const d = Math.hypot(pos.x-BOSS.x, pos.y-BOSS.y);
   bossCd -= dt;
-  if (d < 70 && bossCd <= 0 && $('talk').hidden){ bossCd = 1.6; playerHp -= BOSS.atk; lastHurt = t; fx.push({x:pos.x, y:pos.y-50, text:'-'+BOSS.atk, t, color:'#ff3b6b'}); if (playerHp <= 0) return faint(); }
-  if (me.inv.sword && d < 80 && t - lastSwing > 450){ lastSwing = t; const dmg = swordAtk(); bossPending += dmg; fx.push({x:BOSS.x+(Math.random()-.5)*40, y:BOSS.y-90, text:String(dmg), t, color:'#ffffff'}); if (me.bossHit !== today()){ me.bossHit = today(); saveMe(); } }
+  bossHurt -= dt;
+  if (d < 70 && bossCd <= 0 && $('talk').hidden){ bossCd = 1.6; playerHp -= BOSS.atk; lastHurt = t; pushPlayer(pos.x-BOSS.x, pos.y-BOSS.y, 30); fx.push({x:pos.x, y:pos.y-50, text:'-'+BOSS.atk, t, color:'#ff3b6b'}); if (playerHp <= 0) return faint(); }
   if (bossPending && t - bossFlushT > 1000){ bossFlushT = t; const p = bossPending; bossPending = 0; net.bossHit && net.bossHit(p); }
 }
 function drawBoss(d, t){
   if (!bossAlive()) return;
   const c = d.ctx, x = BOSS.x, y = BOSS.y, bob = Math.sin(t/300)*4;
   c.save(); c.fillStyle='rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(x,y+2,50,12,0,0,7); c.fill(); c.restore();
-  c.save(); c.translate(x, y-bob); c.scale(3,3);
+  c.save(); c.translate(x, y-bob); c.scale(3,3); if (bossHurt > 0 && Math.floor(t/60)%2) c.globalAlpha = .55;
   for (let i=0;i<14;i++){ const a=i/14*6.283; d.circle(Math.cos(a)*12, -12+Math.sin(a)*10, 4, '#8f7fa6'); }
   d.ell(0,-12,12,10,'#a99bbf'); d.tri([[-8,-21],[-5,-29],[-2,-22]],'#ffd23f'); d.tri([[-3,-22],[0,-31],[3,-22]],'#ffd23f'); d.tri([[2,-22],[5,-29],[8,-21]],'#ffd23f');
   d.dot(-4,-13,2.8,'#ffffff'); d.dot(4,-13,2.8,'#ffffff'); d.dot(-3.6,-12.6,1.5,'eye'); d.dot(4.4,-12.6,1.5,'eye');
@@ -1960,7 +2028,7 @@ function showBag(){
   const cats = [['dish','요리'],['crop','작물'],['fish','물고기'],['ore','광석'],['loot','전리품'],['seed','씨앗'],['furn','가구']];
   const grid = cats.map(([cat,label])=>{ const it = itemsOf(cat); if (!it.length) return '';
     return `<div class="bag-sec"><b>${label}</b><div class="bag-grid">${it.map(([k,n])=>`<button class="tile" data-k="${k}" title="${esc(itemName(k))}">${iconImg(k)}<i>${n}</i>${cat==='fish' ? `<s>${'★'.repeat(parseFish(k.slice(5)).st)}</s>` : cat==='seed' ? '<s>씨앗</s>' : ''}</button>`).join('')}</div></div>`; }).join('');
-  const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&'검'].filter(Boolean).join(' · ')||'없음';
+  const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
   openPanel(`가방 · 💰 ${me.inv.gold}G · ❤️ ${Math.ceil(playerHp)}`,
     `<div class="np"><span class="np-name">도구 <small>${tools}</small></span></div>${grid || '<p class="mnote">가방이 비어 있어요.</p>'}
      <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">친구에게 선물 보내기</button></div>`);
@@ -2011,7 +2079,8 @@ addEventListener('keydown', e=>{
   if (e.key==='Escape'){ closeTalk(); $('chatin').blur(); return; }
   if (typing()) return;
   keys[e.key.toLowerCase()] = true;
-  if (e.key===' '||e.key.toLowerCase()==='e'){ e.preventDefault(); if (!fishTap()) interactNear(); }
+  if (e.key.toLowerCase()==='f' || e.key.toLowerCase()==='j'){ e.preventDefault(); swing(); return; }
+  if (e.key===' '||e.key.toLowerCase()==='e'){ e.preventDefault(); if (!fishTap()){ if (me.inv.sword && nearFoe()) swing(); else interactNear(); } }
 });
 addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
 function sendChat(){
@@ -2026,7 +2095,7 @@ function hitTarget(w){
   const ht = houseTap(w); if (ht) return ht;
   if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const L = LOTS[p.lot]; if (w.x>L.x-50 && w.x<L.x+50 && w.y>L.y-104 && w.y<L.y) return {x:L.x, y:L.y+16, act:()=>enterZone('house:'+id, null, 450, 600)}; }
   if (zoneId==='starhill'){ for (const st of stars){ const a = (performance.now()-st.t)/4000, sx = st.x + a*160, sy = st.y + a*90; if (Math.hypot(w.x-sx, w.y-sy) < 40){ makeWish(); return {x:pos.x, y:pos.y, act:null, mark:performance.now()}; } } if (Math.hypot(w.x-800, w.y-400) < 70) return {x:800, y:520, act:promiseTree}; }
-  if (bossAlive() && Math.hypot(w.x-BOSS.x, w.y-(BOSS.y-30)) < 60){ if (!me.inv.sword){ toast('검이 없어요. 먼지 숲의 비비에게 가 봐요'); return {x:pos.x,y:pos.y,act:null,mark:performance.now()}; } return {x:BOSS.x, y:BOSS.y+50, act:()=>{}}; }
+  if (bossAlive() && Math.hypot(w.x-BOSS.x, w.y-(BOSS.y-30)) < 60){ if (!me.inv.sword){ toast('검이 없어요. 먼지 숲의 비비에게 가 봐요'); return {x:pos.x,y:pos.y,act:null,mark:performance.now()}; } return {x:BOSS.x, y:BOSS.y+70, act:()=>{ faceTo(BOSS.x, BOSS.y); swing(); }}; }
   for (const n of NPCS) if (n.zone===zoneId && Math.abs(w.x-n.x)<22 && w.y>n.y-48 && w.y<n.y+8) return {x:n.x, y:n.y+30, act:()=>talkTo(n)};
   if (zoneId==='home' && me.lot!=null) for (const [i,s] of slotsOf(me.lot, me.plots).entries()) if (Math.abs(w.x-s.x)<18 && Math.abs(w.y-s.y)<18) return {x:s.x, y:s.y+26, act:()=>useSlot(i)};
   return null;
@@ -2212,7 +2281,7 @@ function frame(t){
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = painter(c); d.ell(120,104,110,9,'#f6dcd3'); player(d,45,102,EDIT,'down',t/1000,true,1.95); player(d,120,102,EDIT,'right',t/1000,true,1.95); player(d,195,102,EDIT,'up',t/1000,true,1.95); } }
   if (me && !obStep){
     const tp = toriPos(Date.now()), tori = NPC.tori; tori.x = tp.x; tori.y = tp.y; tori.mv = tp.mv; if (tp.dx) tori.flip = tp.dx < 0;
-    step(dt); moveOthers(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateStars(t); rainWater(t);
+    step(dt); moveOthers(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateSwing(dt); updateStars(t); rainWater(t);
     const hpEl = $('hpv'); if (hpEl && hpEl.textContent !== String(Math.ceil(playerHp))) hpEl.textContent = Math.ceil(playerHp);
     buildStatic();
     const z = view.zoom, vw = view.w/z, vh = view.h/z;
@@ -2235,7 +2304,7 @@ function frame(t){
       {y:pos.y, draw:()=>player(d,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-54,ROOFS[me.roof][1]); talkBubble('me',pos.x,pos.y,t); }},
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
-    drawFishing(ctx, t); drawStars(ctx, t); drawFx(ctx, t);
+    drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
     for (const e of ents) e.label();
     drawWeather(ctx, t);
     $('fade').style.opacity = Math.max(0, 1 - (t - fadeT)/450);
@@ -2248,7 +2317,7 @@ function talkBubble(key, x, y, t){
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-70);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { iconURL, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { iconURL, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
 </body>
 </html>
