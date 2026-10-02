@@ -4,34 +4,44 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
 <title>핑키 디저트 아일랜드</title>
+<meta name="theme-color" content="#fffafb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="핑키 섬">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dongle:wght@400;700&display=swap">
 <style>
 :root{--ink:#6e5260;--soft:#b39aa6;--card:#fffdfd;--pink:#fbdbe5;--pinkd:#e48fac;--line:#f7e6ec;--sea:#cfeefb}
 [hidden]{display:none!important}
-html,body{height:100%}
+html,body{height:100%;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+@supports (height:100dvh){html,body{height:100dvh}}
 body{margin:0;background:var(--sea);color:var(--ink);font:700 21px/1.15 "Dongle",system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 #game{position:fixed;inset:0;width:100%;height:100%;display:block}
 .pill{background:linear-gradient(#fff,#fff8fa);border-radius:16px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-offset:2px}
-#hud{font-size:18px!important;gap:6px 10px!important;flex-wrap:wrap;max-width:calc(100vw - 20px - min(260px,46vw) - 10px);position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:10px;display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:20px;z-index:5}
+#hud{left:calc(env(safe-area-inset-left,0px) + 10px)!important;font-size:18px!important;gap:6px 10px!important;flex-wrap:wrap;max-width:calc(100vw - 20px - min(260px,46vw) - 10px);position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:10px;display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:20px;z-index:5}
 #hud u{text-decoration:none;font-size:.62em;margin-right:3px;vertical-align:1px}
 #hud b{font-weight:inherit}
 #hud i{width:14px;height:14px;border-radius:5px;display:inline-block;vertical-align:-2px;margin-right:4px}
-#quest{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;max-width:min(260px,46vw);padding:8px 12px;font-size:19px;z-index:5}
+#quest{right:calc(env(safe-area-inset-right,0px) + 10px)!important;position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;max-width:min(260px,46vw);padding:8px 12px;font-size:19px;z-index:5}
 #quest b{display:block;font-size:16px;color:var(--soft)}
 #bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:6px;padding:6px;z-index:5}
 #bar div{width:46px;height:46px;border-radius:12px;background:#fff;display:grid;place-items:center;position:relative;font-size:32px;box-shadow:inset 0 -2px 0 #f6e6ec}
 #bar div.off{opacity:.28;filter:grayscale(1)}
 #bar span{position:absolute;right:3px;bottom:0;font-size:16px;color:var(--ink)}
-#chatbox{position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 72px);width:min(320px,calc(100vw - 20px));z-index:5;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+#chatbox{position:fixed;left:calc(env(safe-area-inset-left,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 72px);width:min(320px,calc(100vw - 20px));z-index:5;display:flex;flex-direction:column;gap:6px;pointer-events:none}
 #log{display:flex;flex-direction:column;gap:2px;font-size:19px;text-shadow:0 1px 0 #fff,0 0 4px #fff}
 #log p{margin:0;transition:opacity 1s}
 #log p.sys{color:var(--pinkd)}
 #chatrow{display:flex;gap:6px;pointer-events:auto}
 #chatin{flex:1;min-width:0;font:700 20px "Dongle",sans-serif;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fffffff0;color:var(--ink)}
-.emo{border:0;border-radius:12px;background:#fff;width:38px;font-size:25px;box-shadow:inset 0 -2px 0 #f6e6ec}
+.emo{border:0;border-radius:12px;background:#fff;width:44px;min-height:44px;font-size:25px;box-shadow:inset 0 -2px 0 #f6e6ec}
 #talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:min(520px,calc(100vw - 20px));padding:14px 16px;z-index:8}
 #talk h3{margin:0 0 4px;font-size:25px;color:var(--pinkd)}
 #talk p{margin:0 0 10px;font-size:21px;white-space:pre-line}
@@ -41,7 +51,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 .btn.choice{background:#fff;color:var(--ink);text-align:left;box-shadow:inset 0 -3px 0 #f6e6ec,0 0 0 2px #fbe3ea}
 .btn.choice::before{content:'▸ ';color:var(--pinkd)}
 .mini{border:0;border-radius:10px;background:var(--pink);color:var(--ink);font-size:18px;padding:2px 10px;box-shadow:inset 0 -2px 0 #f2c3d3}
-#npcPanel{z-index:10;position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:10px;width:min(360px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;display:flex;flex-direction:column;gap:6px;touch-action:pan-y}
+#npcPanel{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:10;position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:10px;width:min(360px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;display:flex;flex-direction:column;gap:6px;touch-action:pan-y}
 .np-head{display:flex;justify-content:space-between;align-items:center;padding:0 4px}
 .np{border:0;background:#fff;border-radius:12px;padding:6px 10px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:0 8px;box-shadow:inset 0 -2px 0 #f6e6ec}
 .np-name{font-size:20px}.np-name small{color:var(--soft);font-size:16px}
@@ -50,10 +60,10 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 .np-day{font-size:16px;color:var(--soft);text-align:right}
 .np-h small{color:var(--soft);letter-spacing:0}
 .np-keep{grid-column:1/-1;font-size:16px;color:var(--pinkd)}
-#sideBtns{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 78px);display:flex;flex-direction:column;gap:8px;z-index:5}
+#sideBtns{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 78px);display:flex;flex-direction:column;gap:8px;z-index:5}
 .round.swing{width:64px;height:64px;font-size:18px;background:linear-gradient(#fff,#fde4ec);box-shadow:inset 0 -3px 0 #f2c3d3,0 4px 14px #d4a3b52e}
 .round{width:52px;height:52px;border-radius:50%;border:0;background:linear-gradient(#fff,#fff8fa);color:var(--ink);font-size:19px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
-#mapPanel{z-index:10;position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;touch-action:pan-y}
+#mapPanel{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:10;position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;touch-action:pan-y}
 .mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(7,auto);gap:4px;margin-top:6px}
 .mz{background:#fff;border-radius:10px;padding:5px 3px;text-align:center;font-size:15px;line-height:1.25;display:flex;flex-direction:column;gap:2px;box-shadow:inset 0 -2px 0 #f6e6ec;min-height:52px;justify-content:center}
 .mz b{font-size:16px;font-weight:normal}
@@ -89,7 +99,7 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 .btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 -3px 0 #f6e6ec}
 .btn:disabled{opacity:.4;cursor:default}
 #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 120px);transform:translateX(-50%);padding:8px 16px;z-index:9;font-size:20px;transition:opacity .4s;pointer-events:none;text-align:center;max-width:calc(100vw - 32px)}
-#ob{position:fixed;inset:0;z-index:20;background:#fffafb;overflow:auto;touch-action:auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 16px 40px}
+#ob{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;position:fixed;inset:0;z-index:20;background:#fffafb;overflow:auto;touch-action:auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 16px 40px}
 .obc{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .obc h1{margin:0;font-size:46px;color:var(--pinkd);line-height:1.15}
 .obc h2{margin:0;font-size:30px}
@@ -125,6 +135,45 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 .lots .gap{grid-column:span 7;text-align:center;font-size:18px;color:var(--soft);padding:2px}
 .act{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .note{background:#fff;border-radius:14px;padding:10px 14px;font-size:19px;color:var(--soft)}
+
+/* ===== 폰 화면 (아이폰·갤럭시): 위는 한 줄 정보바, 창은 아래에서 올라오는 시트 ===== */
+@media (max-width:640px){
+  #hud{left:10px!important;right:10px;max-width:none!important;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;white-space:nowrap;gap:0 10px!important;padding:5px 12px;border-radius:14px}
+  #hud::-webkit-scrollbar{display:none}
+  #hud span{flex:none}
+  #quest{top:calc(env(safe-area-inset-top,0px) + 54px);left:10px;right:10px!important;max-width:none;padding:4px 12px;font-size:16px;display:flex;gap:6px;align-items:baseline;border-radius:12px}
+  #quest b{display:inline;font-size:13px;flex:none}
+  #npcPanel,#mapPanel{top:auto;left:0;right:0;width:auto;transform:none;bottom:0;max-height:min(72dvh,calc(100% - 120px));border-radius:22px 22px 0 0;padding:8px 12px calc(env(safe-area-inset-bottom,0px) + 14px);box-shadow:0 -6px 24px #c08aa02e;z-index:12}
+  #npcPanel::before,#mapPanel::before{content:'';display:block;width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 6px;flex:none}
+  #talk{bottom:calc(env(safe-area-inset-bottom,0px) + 70px);width:calc(100vw - 16px)}
+  #sideBtns{bottom:calc(env(safe-area-inset-bottom,0px) + 74px);gap:6px}
+  .round{width:48px;height:48px;font-size:15px}
+  .round.swing{width:60px;height:60px}
+  #chatbox{width:calc(100vw - 20px - 60px);bottom:calc(env(safe-area-inset-bottom,0px) + 70px)}
+  #log{font-size:15px;max-height:6em;overflow:hidden;justify-content:flex-end}
+  #chatin{min-width:0}
+  #toast{top:calc(env(safe-area-inset-top,0px) + 100px)}
+  #bar{padding:5px}
+  #bar div{width:44px;height:44px}
+  #fishGame{bottom:calc(env(safe-area-inset-bottom,0px) + 80px)}
+  .mini{min-height:34px}
+  .mgrid{gap:3px}
+  .obc h1{font-size:34px}
+}
+/* 가로로 눕힌 폰: 높이가 낮아요 */
+@media (max-height:460px){
+  #quest{display:none}
+  #npcPanel,#mapPanel{top:calc(env(safe-area-inset-top,0px) + 50px);bottom:auto;left:calc(env(safe-area-inset-left,0px) + 10px);right:auto;width:min(420px,60vw);max-height:calc(100% - 60px);border-radius:16px;transform:none}
+  #npcPanel::before,#mapPanel::before{display:none}
+  #talk{bottom:calc(env(safe-area-inset-bottom,0px) + 62px);width:min(560px,calc(100vw - 180px))}
+  #bar{padding:4px}
+  #bar div{width:40px;height:40px;font-size:20px}
+  #sideBtns{flex-direction:row;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 10px)}
+  .round{width:44px;height:44px;font-size:14px}
+  .round.swing{width:52px;height:52px}
+  #chatbox{bottom:calc(env(safe-area-inset-bottom,0px) + 62px);width:min(260px,30vw)}
+  #log{max-height:4.5em;overflow:hidden;justify-content:flex-end}
+}
 </style>
 </head>
 <body>
@@ -136,7 +185,7 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 <div id="chatbox" hidden>
   <div id="log" aria-live="polite"></div>
   <div id="chatrow">
-    <input id="chatin" maxlength="80" placeholder="Enter로 채팅" autocomplete="off">
+    <input id="chatin" maxlength="80" placeholder="채팅하기" autocomplete="off">
     <button class="emo" data-e="👋" aria-label="손 흔들기">👋</button>
     <button class="emo" data-e="❤️" aria-label="하트">❤️</button>
     <button class="emo" data-e="✨" aria-label="반짝">✨</button>
@@ -2289,7 +2338,7 @@ function resize(){
   view.zoom = Math.max(1.3, Math.min(1.8, Math.min(view.w, view.h*1.4)/480));
   cv.width = view.w*view.dpr; cv.height = view.h*view.dpr; staticSig = ''; sizePrev();
 }
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize); if (window.visualViewport) visualViewport.addEventListener('resize', resize); addEventListener('orientationchange', ()=>setTimeout(resize, 200)); resize();
 const typing = () => document.activeElement && document.activeElement.tagName==='INPUT';
 addEventListener('keydown', e=>{
   if (!me || obStep) return;
@@ -2321,6 +2370,8 @@ function hitTarget(w){
 cv.addEventListener('pointerdown', e=>{
   if (!me || obStep) return;
   if (typing()) $('chatin').blur();
+  // 폰에서 아래 시트가 열려 있으면, 바깥을 누르면 시트만 닫혀요
+  if (matchMedia('(max-width:640px)').matches && (!$('npcPanel').hidden || !$('mapPanel').hidden)){ $('npcPanel').hidden = true; $('mapPanel').hidden = true; return; }
   if (fishTap()) return;
   const w = toWorld(e.clientX, e.clientY), t = hitTarget(w) || contentTarget(w) || fishTarget(w);
   target = t ? t : {x:w.x, y:w.y, act:null, mark:performance.now()};
