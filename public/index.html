@@ -157,6 +157,7 @@ import { ART_PART as ART_FISH_B } from './art/fish_b.js';
 import { ART_PART as ART_CROPS } from './art/crops.js';
 import { ART_PART as ART_ORES } from './art/ores.js';
 import { ART_PART as ART_MON } from './art/monsters.js';
+import { ART_PART as ART_DISH } from './art/dishes.js';
 const P = {grass:'#b5e6a3',grass2:'#9fdb8c',path:'#ffe0bf',water:'#9fd9ff',waterHi:'#e8f7ff',cream:'#fff0e0',pink:'#ffa6c9',choco:'#9a5a45',cherry:'#ff5a78',candyA:'#ffa6cf',candyB:'#fff09a',stick:'#fff',soil:'#d69a70',berry:'#ff5a78',leaf:'#6cc46a',rock:'#c3b8d2',gem:'#bf8cff',dust:'#bdb5c9',blush:'#ffadc4',eye:'#5b3345',stitch:'#ffffff',bubble:'#fff',text:'#8a4b63'};
 const OPT = {
   skin:  { label:'피부 색', color:true, v:['#ffe4d2','#f9d3b8','#eebd98','#d9a07a','#b87a55','#8d5a3c'] },
@@ -1916,7 +1917,7 @@ function promiseTree(){
 }
 
 // ===== 아이템 그림 (물고기·작물·광석·몬스터는 public/art/ 의 종류별 그림) =====
-const ART = {...ART_FISH_A, ...ART_FISH_B, ...ART_CROPS, ...ART_ORES, ...ART_MON};
+const ART = {...ART_FISH_A, ...ART_FISH_B, ...ART_CROPS, ...ART_ORES, ...ART_MON, ...ART_DISH};
 globalThis.shade = shade;
 const iconCache = new Map();
 function artIdOf(key){
@@ -1927,6 +1928,7 @@ function artIdOf(key){
   return id; // seed·crop → c00, ore → o00, loot → m00
 }
 function drawArt(d, aid, t=0){
+  if (aid.startsWith('dish:') && ART[aid.slice(5)]) return ART[aid.slice(5)](d, t);
   if (aid.startsWith('dish:')){
     const ds = DISHES[aid.slice(5)]; const main = ds ? ds.need[0][0] : '';
     d.ell(0,10,20,7,'#ffffff'); d.ell(0,8,15,4.5,'#f3eef6');
