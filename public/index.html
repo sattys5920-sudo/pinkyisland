@@ -32,7 +32,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 .emo{border:0;border-radius:12px;background:#fff;width:38px;font-size:18px;box-shadow:inset 0 -2px 0 #f2d6e0}
 #talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:min(520px,calc(100vw - 20px));padding:14px 16px;z-index:8}
 #talk h3{margin:0 0 4px;font-size:18px;color:var(--pinkd)}
-#talk p{margin:0 0 10px;font-size:16px}
+#talk p{margin:0 0 10px;font-size:16px;white-space:pre-line}
 #talk #talkNote{font-size:13px;color:var(--soft);margin-top:-6px}
 #talk .act{flex-wrap:wrap}
 #talk .act.choices{flex-direction:column;align-items:stretch}
@@ -169,7 +169,7 @@ function player(d, x, y, L, dir, t, walk=true, s=1){
   const c = d.ctx, ph = t*8 + x*.37, step = walk ? Math.sin(ph) : 0, bob = walk ? Math.abs(Math.sin(ph))*1.2 : Math.sin(t*2+x)*.3+.3;
   const side = dir==='left'||dir==='right', up = dir==='up';
   c.save(); c.translate(x,y); c.scale(dir==='left'?-s:s, s);
-  d.dot(0,1.5,9,'rgba(0,0,0,.13)');
+  c.save(); c.fillStyle='rgba(0,0,0,.14)'; c.beginPath(); c.ellipse(0,1,9,3,0,0,7); c.fill(); c.restore();
   c.translate(0,-bob);
   const hy = -30, H = L.hair, hc = L.hairColor, hd = shade(hc,-.35), sk = L.skin, oc = L.outfitColor, O = L.outfit;
   const top = O==='overall' ? '#fff7ee' : oc;
@@ -360,6 +360,7 @@ const NPCS = [
   {id:'bami', name:'밤이', animal:'고슴도치', role:'꽃집 주인', zone:'meadow', x:460, y:452, sp:{kind:'hedgehog', fur:'#e8c9a6', acc:'flower'}, tastes:{liked:['seed']}, soon:'꽃 씨앗과 꽃다발은 곧 열려요'},
 ];
 for (const n of NPCS){ n.homeX = n.x; n.homeY = n.y; Object.assign(n, NPC_TEXT[n.id] || {}); }
+queueMicrotask(()=>{ for (const n of NPCS) n.look = NPC_LOOKS.find(v=>v.name===n.name) || {kind:n.sp.kind, fur:n.sp.fur, acc:n.sp.acc}; });
 const NPC = Object.fromEntries(NPCS.map(n=>[n.id,n]));
 const GIFT_ITEMS = {tomato:'토마토', seed:'토마토 씨앗'};
 const GIFT_PTS = {loved:40, liked:25, neutral:15, disliked:-10};
@@ -506,6 +507,113 @@ function animalNpc(d, x, y, sp, t, mv, flip){
   if (A==='flower'){ for (let a=0;a<6.28;a+=1.256) d.dot(6+Math.cos(a)*2.4,-25+Math.sin(a)*2.4,1.8,'#ff8fc4'); d.dot(6,-25,1.4,'#ffe066'); }
   c.restore();
 }
+
+// 동물 몸 주민: 큰 머리 + 통통한 동물 몸 + 앞발·콩 발 + 꼬리, 옷 대신 작은 소품
+function hexShade(hex,k){const n=parseInt(hex.slice(1),16);const f=v=>Math.max(0,Math.min(255,Math.round(k>0?v+(255-v)*k:v*(1+k))));return '#'+[f(n>>16),f(n>>8&255),f(n&255)].map(v=>v.toString(16).padStart(2,'0')).join('');}
+function critter(d, x, y, v, t, walk=true, s=1){
+  const c = d.ctx, ph = t*7 + x*.3, step = walk ? Math.sin(ph) : 0;
+  const bob = walk ? Math.abs(Math.sin(ph))*1.3 : Math.sin(t*2+x)*.4+.4;
+  const K = v.kind, f = v.fur, f2 = v.fur2 || hexShade(f,.55), dark = hexShade(f,-.25), oc = v.color, hy = -27;
+  const black = '#2f2f3a';
+  c.save(); c.translate(x,y); c.scale(s,s);
+  c.save(); c.fillStyle='rgba(0,0,0,.14)'; c.beginPath(); c.ellipse(0,1,10,3.2,0,0,7); c.fill(); c.restore();
+  c.translate(0,-bob);
+  // 꼬리·등껍질 (몸 뒤)
+  if (K==='fox'){ d.ell(11,-9,5,9,f); d.ell(13,-3,3.4,3.6,'#ffffff'); }
+  if (K==='squirrel'){ d.ell(12,-20,7.5,14,f); d.ell(13,-29,6,6,hexShade(f,.25)); }
+  if (K==='cat'){ d.ell(10,-8,2.4,6,f); d.ell(12,-14,2.4,4,f); }
+  if (K==='dog') d.ell(10,-9,3,5.5,f);
+  if (K==='rabbit') d.circle(9,-5,4,'#ffffff');
+  if (K==='bear'||K==='panda'||K==='otter') d.circle(9,-5,3.2,K==='panda'?'#ffffff':f);
+  if (K==='otter') d.ell(11,-3,3,7,f);
+  if (K==='turtle') d.ell(0,-13,12,11,'#6fae5f');
+  // 동물 몸: 통통한 몸통 + 밝은 배 + 짧은 앞발 + 콩 같은 발
+  const pawC = K==='panda' ? black : K==='penguin' ? '#ffa94d' : dark;
+  const a = Math.max(0,step)*1.6, b = Math.max(0,-step)*1.6;
+  d.ell(-4.6,-1.6-a,4.2,3,pawC); d.ell(4.6,-1.6-b,4.2,3,pawC);
+  if (K==='hedgehog') for (let ang=-2.6;ang<=-.5;ang+=.35) d.tri([[Math.cos(ang)*8-3,-10+Math.sin(ang)*7],[Math.cos(ang)*15,-10+Math.sin(ang)*13],[Math.cos(ang)*8+3,-10+Math.sin(ang)*7+3]],'#8a6248');
+  if (K==='sheep') for (let ang=0; ang<6.28; ang+=.55) d.circle(Math.cos(ang)*9.5,-10+Math.sin(ang)*8.5,4.6,'#ffffff');
+  d.ell(0,-10,K==='penguin'?10.5:10,10.5,K==='sheep'?'#ffffff':f);
+  const belly = (K==='penguin'||K==='panda') ? '#ffffff' : f2;
+  if (K!=='sheep') d.ell(0,-8.5,6.4,7,belly);
+  const armC = K==='panda' ? black : f;
+  for (const [ax,k] of [[-9.6,step],[9.6,-step]]){ if (K==='penguin') d.ell(ax*1.05,-11+k*.8,2.6,6,f); else { d.ell(ax,-11+k*.8,3,4.2,armC); d.dot(ax,-8+k*.8,1.2,hexShade(armC,.35)); } }
+  // 옷 대신 작은 소품: 스카프·앞치마·치마
+  const O = v.outfit;
+  if (O==='apron') d.rr(-5.5,-13.5,11,10,3,v.color2||'#ffffff');
+  if (O==='dress') d.ell(0,-4.5,10.5,4,v.color);
+  if (O==='chef'){ d.rr(-6.5,-17.5,13,3.6,1.6,'#ffffff'); d.dot(0,-13,1,'#c9c9d6'); }
+  if (!['apron','chef','dress'].includes(O) && v.color){ d.rr(-7.5,-18,15,4.2,2,O==='overall'||O==='vest'||O==='sailor' ? (v.color2||v.color) : v.color); d.tri([[2,-15],[6,-9],[8,-15]], O==='overall'||O==='vest'||O==='sailor' ? (v.color2||v.color) : v.color); }
+  if (O==='uniform') d.dot(-3,-16,1.3,'#ffd84f');
+  if (v.acc==='bag'){ d.line(c=>{c.moveTo(-6,-18);c.lineTo(6,-8);},'#8a5a3b',1.3); d.rr(4,-10,7,6,2,'#c98e5b'); }
+  // 머리 뒤에 오는 귀·가시
+  if (K==='hedgehog') for (let ang=-3.0;ang<=-.1;ang+=.3) d.tri([[Math.cos(ang)*10-3,hy+Math.sin(ang)*9-2],[Math.cos(ang)*19,hy+Math.sin(ang)*17],[Math.cos(ang)*10+3,hy+Math.sin(ang)*9+2]],'#8a6248');
+  if (K==='rabbit'){ d.ell(-5,hy-17,3.8,10.5,f); d.ell(5,hy-17,3.8,10.5,f); d.dot(-5,hy-17,1.8,'blush'); d.dot(5,hy-17,1.8,'blush'); }
+  if (K==='cat'||K==='fox'||K==='squirrel'){ const s2 = K==='fox'?1.2:K==='squirrel'?.85:1; d.tri([[-12,hy-4],[-9.5*s2,hy-17*s2],[-3,hy-10]],f); d.tri([[12,hy-4],[9.5*s2,hy-17*s2],[3,hy-10]],f); if (K==='fox'){ d.dot(-11,hy-18,1.8,'#3b2a2a'); d.dot(11,hy-18,1.8,'#3b2a2a'); } }
+  if (K==='bear'||K==='panda'||K==='otter'||K==='hedgehog'){ const r = K==='otter'?3.4:K==='hedgehog'?3.4:5; const col = K==='panda'?black:f; d.circle(-10,hy-9,r,col); d.circle(10,hy-9,r,col); if (K==='bear') { d.dot(-10,hy-9,2.4,f2); d.dot(10,hy-9,2.4,f2); } }
+  if (K==='owl'){ d.tri([[-12,hy-3],[-11,hy-16],[-4,hy-9]],dark); d.tri([[12,hy-3],[11,hy-16],[4,hy-9]],dark); }
+  // 머리
+  const headC = K==='sheep' ? (v.face||'#f6e0d0') : f;
+  d.ell(0,hy,13.5,12,headC);
+  if (K==='sheep'){ for (let ang=-3.3;ang<=.2;ang+=.42) d.circle(Math.cos(ang)*12.5,hy-1+Math.sin(ang)*10.5,5,'#ffffff'); d.ell(-14,hy+1,4,2.2,headC); d.ell(14,hy+1,4,2.2,headC); }
+  if (K==='dog'){ d.ell(-13,hy+1,3.8,8,dark); d.ell(13,hy+1,3.8,8,dark); }
+  if (K==='cat') d.line(c=>{c.moveTo(-3,hy-11);c.lineTo(-2,hy-7);c.moveTo(0,hy-11.5);c.lineTo(0,hy-7.5);c.moveTo(3,hy-11);c.lineTo(2,hy-7);},dark,1.4);
+  if (K==='turtle') d.ell(0,hy+4,9,6,hexShade(f,.25));
+  // 얼굴
+  const ey = hy-1;
+  if (K==='owl'){ d.ell(0,hy+1,11,9,f2); for (const ex of [-5,5]){ d.circle(ex,ey,4.4,'#fff7e6'); d.dot(ex,ey,2.3,'eye'); d.dot(ex-.8,ey-.9,.8,'#fff'); } d.tri([[-2,hy+3],[0,hy+6.5],[2,hy+3]],'#ffb347'); }
+  else if (K==='penguin'){ d.ell(0,hy+3,10,8,'#ffffff'); for (const ex of [-4.5,4.5]){ d.dot(ex,ey+1,2.2,'eye'); d.dot(ex-.6,ey+.4,.7,'#fff'); } d.tri([[-3,hy+4],[0,hy+8],[3,hy+4]],'#ffa94d'); }
+  else {
+    if (K==='panda'){ d.ell(-5,ey,4,4.8,black); d.ell(5,ey,4,4.8,black); }
+    const muzzle = {fox:[7.5,4.6,'#ffffff'], dog:[6.5,4.6,f2], bear:[6.5,4.6,f2], otter:[6.5,4.2,f2], mole:[0,0,0], cat:[5,3.4,f2], rabbit:[4.5,3.2,f2], squirrel:[5,3.4,'#ffffff'], hedgehog:[5.5,3.8,f2], panda:[5.5,3.8,'#ffffff'], sheep:[0,0,0], turtle:[0,0,0]}[K];
+    if (muzzle && muzzle[0]) d.ell(0,hy+5,muzzle[0],muzzle[1],muzzle[2]);
+    const E = v.eyes || 'round', ew = K==='mole' ? 1.3 : 2.5;
+    for (const ex of [-5,5]){
+      const col = K==='panda' ? '#ffffff' : 'eye';
+      if (E==='smile') d.line(c=>c.arc(ex,ey+.8,2.1,Math.PI*1.1,Math.PI*1.9),K==='panda'?'#ffffff':'eye',1.2);
+      else if (E==='sleepy') d.line(c=>{c.moveTo(ex-2,ey+.6);c.quadraticCurveTo(ex,ey+1.6,ex+2,ey+.6);},'eye',1.1);
+      else if (E==='lash'){ d.ell(ex,ey,2.1,2.6,col); d.dot(ex-.7,ey-.9,.8,K==='panda'?'eye':'#fff'); d.line(c=>{const o=Math.sign(ex);c.moveTo(ex+o*1.7,ey-1.8);c.lineTo(ex+o*3,ey-2.8);},'eye',.8); }
+      else { d.ell(ex,ey,ew*.85,ew,col); if (K!=='mole') d.dot(ex-.7,ey-.9,.8,K==='panda'?'eye':'#fff'); }
+    }
+    if (K==='mole') d.circle(0,hy+3.5,3.3,'#ff9fb3');
+    else d.ell(0,hy+3,K==='dog'||K==='bear'?2.3:1.6,K==='dog'||K==='bear'?1.7:1.2,'#4a3040');
+    if (K!=='mole') d.line(c=>{c.moveTo(-2,hy+5.6);c.quadraticCurveTo(-1,hy+6.8,0,hy+5.4);c.quadraticCurveTo(1,hy+6.8,2,hy+5.6);},'eye',.8);
+    if (K==='cat'||K==='otter') d.line(c=>{c.moveTo(-6,hy+4);c.lineTo(-12,hy+3);c.moveTo(-6,hy+5.5);c.lineTo(-12,hy+6.5);c.moveTo(6,hy+4);c.lineTo(12,hy+3);c.moveTo(6,hy+5.5);c.lineTo(12,hy+6.5);},'eye',.55);
+    if (K==='squirrel'){ d.dot(-8,hy+5,2.6,'#ffffff',.9); d.dot(8,hy+5,2.6,'#ffffff',.9); }
+  }
+  if (!['penguin','panda','owl'].includes(K)){ d.dot(-8.5,hy+4.5,2.4,'blush',.6); d.dot(8.5,hy+4.5,2.4,'blush',.6); }
+  // 소품
+  const A = v.acc;
+  if (A==='straw'){ d.ell(0,hy-9,16,3.8,'#f3d27a'); d.ell(0,hy-12,9,5.5,'#f3d27a'); d.rr(-9,hy-12,18,2.2,1,'#ff7a9a'); }
+  if (A==='cap'||A==='police'){ const col = A==='police' ? '#5361b3' : '#5fb3ff'; d.shape(()=>{c.beginPath();c.arc(0,hy-5,11.5,Math.PI,0);c.closePath();},col,[0,hy-9,11]); d.ell(0,hy-4.5,10.5,2.6,hexShade(col,-.15)); if (A==='police') d.dot(0,hy-10,1.8,'#ffd84f'); }
+  if (A==='helmet'){ d.shape(()=>{c.beginPath();c.arc(0,hy-4,12.5,Math.PI,0);c.closePath();},'#ffd84f',[0,hy-8,12]); d.circle(0,hy-13,3.2,'#fff6b0'); }
+  if (A==='bandana') d.tri([[-7,-18.5],[0,-12],[7,-18.5]],'#ff5a5a');
+  if (A==='glasses') d.line(c=>{c.arc(-5,ey,3.8,0,7);c.moveTo(8.8,ey);c.arc(5,ey,3.8,0,7);c.moveTo(-1.2,ey);c.lineTo(1.2,ey);},'#5b3345',.9);
+  if (A==='bow'){ d.tri([[5,hy-9],[-1,hy-13],[-1,hy-5]],'#ff8fc4'); d.tri([[5,hy-9],[11,hy-13],[11,hy-5]],'#ff8fc4'); d.circle(5,hy-9,1.7,'#ffb3d9'); }
+  if (A==='chef'){ d.circle(-5,hy-14,5,'#fff'); d.circle(5,hy-14,5,'#fff'); d.circle(0,hy-17,5.5,'#fff'); d.rr(-8.5,hy-12,17,5,2,'#fff'); }
+  if (A==='flower'){ for (let ang=0;ang<6.28;ang+=1.256) d.dot(7+Math.cos(ang)*2.6,hy-8+Math.sin(ang)*2.6,2,'#ff8fc4'); d.dot(7,hy-8,1.5,'#ffe066'); }
+  if (A==='cane'){ d.line(c=>{c.moveTo(11,-11);c.lineTo(12,1);},'#8a5a3b',1.6); }
+  c.restore();
+}
+
+
+// 주민 모습 (이름으로 찾아요)
+const NPC_LOOKS = [
+  {name:'하나', animal:'토끼', kind:'rabbit', fur:'#fff6f0', fur2:'#ffffff', outfit:'overall', color:'#ffe9a8', color2:'#ff9fbf', pants:'#ff9fbf', acc:'straw', eyes:'round'},
+  {name:'모모', animal:'고양이', kind:'cat', fur:'#ffc98f', fur2:'#fff3e0', outfit:'apron', color:'#ff9fc4', color2:'#ffffff', acc:'', eyes:'smile'},
+  {name:'루루', animal:'수달', kind:'otter', fur:'#b98a64', fur2:'#f3dcc4', outfit:'tee', color:'#7cc8ff', acc:'cap', eyes:'sleepy'},
+  {name:'도도', animal:'두더지', kind:'mole', fur:'#6f6470', outfit:'overall', color:'#9aa0a6', color2:'#d9823b', pants:'#d9823b', acc:'helmet'},
+  {name:'비비', animal:'여우', kind:'fox', fur:'#ff9a4d', outfit:'hoodie', color:'#5a5aa8', pants:'#3a3a4a', acc:'bandana', eyes:'lash'},
+  {name:'토토', animal:'거북이', kind:'turtle', fur:'#a8dc8f', outfit:'vest', color:'#f3ead2', color2:'#c98e5b', pants:'#8a7a6a', acc:'glasses', eyes:'smile'},
+  {name:'보리', animal:'곰', kind:'bear', fur:'#b98256', fur2:'#ecd2b0', outfit:'apron', color:'#7cc4a0', color2:'#8a5a3b', pants:'#5b4a3f', acc:'', eyes:'round'},
+  {name:'몽실', animal:'양', kind:'sheep', fur:'#ffffff', face:'#f6e0d0', outfit:'dress', color:'#c9a6ff', acc:'bow', eyes:'lash'},
+  {name:'토리', animal:'다람쥐', kind:'squirrel', fur:'#d9894f', outfit:'uniform', color:'#5b8cff', pants:'#4b5aa8', acc:'bag', eyes:'round'},
+  {name:'올리', animal:'부엉이', kind:'owl', fur:'#a98366', fur2:'#f3dcc4', outfit:'vest', color:'#fff7ee', color2:'#5c7a4f', pants:'#6b5a4a', acc:''},
+  {name:'펭펭', animal:'펭귄', kind:'penguin', fur:'#454a63', outfit:'sailor', color:'#ffffff', color2:'#5b8cff', pants:'#454a63', acc:''},
+  {name:'단단', animal:'판다', kind:'panda', fur:'#ffffff', outfit:'chef', color:'#ffffff', acc:'chef', eyes:'round'},
+  {name:'콩이', animal:'강아지', kind:'dog', fur:'#f2d2a0', fur2:'#fff3df', outfit:'uniform', color:'#5361b3', pants:'#3d4785', acc:'police', eyes:'round'},
+  {name:'밤이', animal:'고슴도치', kind:'hedgehog', fur:'#f3d6b8', fur2:'#fff1e3', outfit:'dress', color:'#ffb3d9', acc:'flower', eyes:'lash'},
+];
 
 // ===== 상태 =====
 let uid = null, solo = false, net = null;
@@ -848,14 +956,13 @@ function giveGift(n, item){
 }
 // ===== 대화: 주민이 3~5줄 말하고 → 선택지 → 대답에 따라 3~5줄 더 =====
 function pickTalk(n){
-  const r = relOf(n.id), tier = tierOf(heartsN(n));
-  const pool = (n.talks||[]).filter(t=>t.tier<=tier);
-  if (!pool.length) return null;
+  const r = relOf(n.id), tier = tierOf(heartsN(n)), talks = n.talks || [];
   const seen = (r.seen||'').split(',');
-  const cur = pool.filter(t=>t.tier===tier);
-  const unseenCur = cur.filter(t=>!seen.includes(t.id)), unseen = pool.filter(t=>!seen.includes(t.id));
-  const list = unseenCur.length ? unseenCur : unseen.length ? unseen : cur.length ? cur : pool;
-  return list[Math.floor(Math.random()*list.length)];
+  const next = talks.find(t=>!seen.includes(t.id));
+  if (next && next.tier <= tier) return {talk:next};
+  if (next) return {locked:true};
+  const cur = talks.filter(t=>t.tier===tier);
+  return cur.length ? {talk:cur[Math.floor(Math.random()*cur.length)]} : {};
 }
 function runTalk(n, talk, opening, note, ups){
   const lines = [opening, ...talk.lines].filter(Boolean).map(fillName);
@@ -898,9 +1005,10 @@ function talkTo(n){
   }
   if (n.id==='hana' && me.quest>=6 && !me.inv.seed && !me.gardens.some(g=>g&&g.crop) && me.inv.gold < SEED_PRICE){ me.inv.seed += 2; toast('하나가 토마토 씨앗 2개를 나눠 줬어요'); }
   saveMe(); renderHud();
-  const talk = text ? null : pickTalk(n);
-  if (talk) return runTalk(n, talk, opening, note, ups);
-  if (!text) text = opening || pickLine(n.lines && n.lines[tierOf(heartsN(n))], n.id+'l') || '...';
+  const pk = text ? {} : pickTalk(n);
+  if (pk.talk) return runTalk(n, pk.talk, opening, note, ups);
+  if (!text) text = [opening, pickLine(n.lines && n.lines[tierOf(heartsN(n))], n.id+'l')].filter(Boolean).join('\n') || '...';
+  if (pk.locked) note = [note, '조금 더 친해지면 다음 이야기를 들려줄 것 같아요'].filter(Boolean).join(' · ');
   if (ups.length) say(title(n), text, [['이야기 듣기', ()=>playEvents(n, ups)]], (note ? note+' · ' : '') + '무언가 이야기하고 싶은 눈치예요', true);
   else say(title(n), text, npcActions(n), note);
 }
@@ -1200,7 +1308,7 @@ function frame(t){
     if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const g = id===uid ? me.gardens : (p.gardens||[]); slotsOf(p.lot).forEach((sl,i)=>drawSlot(d, sl, g[i], now, id===uid)); }
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
-      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>animalNpc(d,n.x,n.y,n.sp,t/1000,n.mv,n.flip), label:()=>tag(ctx, n.name, n.x, n.y-50, null)})),
+      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>critter(d,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1), label:()=>tag(ctx, n.name, n.x, n.y-50, null)})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>player(d,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1), label:()=>{ tag(ctx,o.nick,o.x,o.y-54,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); talkBubble(k,o.x,o.y,t); }})),
       {y:pos.y, draw:()=>player(d,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-54,ROOFS[me.roof][1]); talkBubble('me',pos.x,pos.y,t); }},
     ].sort((a,b)=>a.y-b.y);
