@@ -36,10 +36,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 #bar div.off{opacity:.28;filter:grayscale(1)}
 #bar span{position:absolute;right:3px;bottom:0;font-size:16px;color:var(--ink)}
 #chatbox{position:fixed;left:calc(env(safe-area-inset-left,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 72px);width:min(320px,calc(100vw - 20px));z-index:5;display:flex;flex-direction:column;gap:6px;pointer-events:none}
-#log{display:flex;flex-direction:column;gap:2px;font-size:19px;text-shadow:0 1px 0 #fff,0 0 4px #fff}
+#log{display:flex;flex-direction:column;gap:4px;font-size:19px;text-shadow:0 1px 0 #fff,0 0 4px #fff}
 #log p{margin:0;transition:opacity 1s}
 #log p.sys{color:var(--ink);opacity:.85}
 #chatrow{display:flex;gap:6px;pointer-events:auto}
+#emorow{display:flex;gap:6px;pointer-events:auto}
+#log p{background:rgba(255,255,255,.72);border-radius:10px;padding:2px 10px;align-self:flex-start;max-width:100%;text-shadow:none}
 #chatin{flex:1;min-width:0;font:700 20px "Dongle",sans-serif;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fffffff0;color:var(--ink)}
 .emo{border:0;border-radius:12px;background:#fff;width:44px;min-height:44px;font-size:25px;box-shadow:inset 0 -2px 0 #f6e6ec}
 #talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:min(520px,calc(100vw - 20px));padding:14px 16px;z-index:8}
@@ -51,8 +53,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 .btn.choice{background:#fff;color:var(--ink);text-align:left;box-shadow:inset 0 -3px 0 #f6e6ec,0 0 0 2px #fbe3ea}
 .btn.choice::before{content:'▸ ';color:var(--pinkd)}
 .mini{border:0;border-radius:10px;background:var(--pink);color:var(--ink);font-size:18px;padding:2px 10px;box-shadow:inset 0 -2px 0 #f2c3d3}
-#npcPanel{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:10;position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:10px;width:min(360px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;display:flex;flex-direction:column;gap:6px;touch-action:pan-y}
-.np-head{display:flex;justify-content:space-between;align-items:center;padding:0 4px}
+#npcPanel{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:10;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(520px,calc(100vw - 40px));max-height:min(76vh,calc(100% - 120px));overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px;touch-action:pan-y;border-radius:20px}
+#dim{display:none;position:fixed;inset:0;background:rgba(60,30,50,.22);z-index:9}
+body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{display:block}
+.np-head{display:flex;justify-content:space-between;align-items:center;padding:2px 2px 8px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.np-head b{font-size:1.15em}
 .np{border:0;background:#fff;border-radius:12px;padding:6px 10px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:0 8px;box-shadow:inset 0 -2px 0 #f6e6ec}
 .np-name{font-size:20px}.np-name small{color:var(--soft);font-size:16px}
 .np-place{font-size:16px;color:var(--soft);text-align:right}
@@ -62,8 +67,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-
 .np-keep{grid-column:1/-1;font-size:16px;color:var(--ink);opacity:.8}
 #sideBtns{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 78px);display:flex;flex-direction:column;gap:8px;z-index:5}
 .round.swing{width:64px;height:64px;font-size:18px;background:linear-gradient(#fff,#fde4ec);box-shadow:inset 0 -3px 0 #f2c3d3,0 4px 14px #d4a3b52e}
-.round{width:52px;height:52px;border-radius:50%;border:0;background:linear-gradient(#fff,#fff8fa);color:var(--ink);font-size:19px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
-#mapPanel{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:10;position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 20px));max-height:calc(100% - 150px);overflow:auto;padding:10px;touch-action:pan-y}
+.round{width:48px;height:48px;border-radius:50%;border:0;background:linear-gradient(#fff,#fff8fa);color:var(--ink);font-size:19px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
+#mapPanel{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:10;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 40px));max-height:min(76vh,calc(100% - 120px));overflow:auto;padding:14px 16px;touch-action:pan-y;border-radius:20px}
 .mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(7,auto);gap:4px;margin-top:6px}
 .mz{background:#fff;border-radius:10px;padding:5px 3px;text-align:center;font-size:15px;line-height:1.25;display:flex;flex-direction:column;gap:2px;box-shadow:inset 0 -2px 0 #f6e6ec;min-height:52px;justify-content:center}
 .mz b{font-size:16px;font-weight:normal}
@@ -191,15 +196,14 @@ body.typing #chatin{background:#fff}
 <div id="bar" class="pill" hidden></div>
 <div id="chatbox" hidden>
   <div id="log" aria-live="polite"></div>
+  <div id="emorow" hidden><button class="emo" data-e="👋" aria-label="손 흔들기">👋</button><button class="emo" data-e="❤️" aria-label="하트">❤️</button><button class="emo" data-e="✨" aria-label="반짝">✨</button><button class="emo" data-e="😢" aria-label="눈물">😢</button></div>
   <div id="chatrow">
     <input id="chatin" maxlength="80" placeholder="채팅하기" autocomplete="off">
-    <button class="emo" data-e="👋" aria-label="손 흔들기">👋</button>
-    <button class="emo" data-e="❤️" aria-label="하트">❤️</button>
-    <button class="emo" data-e="✨" aria-label="반짝">✨</button>
-    <button class="emo" data-e="😢" aria-label="눈물">😢</button>
+    <button class="emo" id="emoBtn" aria-label="이모티콘">😊</button>
   </div>
 </div>
 <div id="talk" class="pill" hidden><img id="talkIcon" alt="" hidden><h3 id="talkName"></h3><p id="talkText"></p><p id="talkNote" hidden></p><div class="act" id="talkAct"></div></div>
+<div id="dim"></div>
 <div id="npcPanel" class="pill" hidden></div>
 <div id="mapPanel" class="pill" hidden></div>
 <div id="sideBtns" hidden><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="decoBtn" class="round" hidden>꾸미기</button><button id="swingBtn" class="round swing" hidden>휘두르기</button></div>
@@ -986,6 +990,8 @@ function enterGame(doc){
   for (const id of ['hud','quest','bar','chatbox','sideBtns']) $(id).hidden = false;
   $('npcBtn').onclick = ()=>togglePanel('npcPanel', renderNpcPanel);
   $('mapBtn').onclick = ()=>togglePanel('mapPanel', renderMap);
+  $('emoBtn').onclick = ()=>{ $('emorow').hidden = !$('emorow').hidden; };
+  $('dim').onclick = ()=>{ $('npcPanel').hidden = true; $('mapPanel').hidden = true; };
   $('decoBtn').onclick = decorMenu;
   $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); swing(); });
   const L = LOTS[me.lot]; pos.dir = 'down';
@@ -993,14 +999,14 @@ function enterGame(doc){
   else enterZone('home', null, L.x, L.y + 18);
   renderHud();
   addLog(`${me.nick}님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
-  if (solo) addLog('혼자 보기 모드예요. firebase-config.js를 채우면 다른 사람과 연결돼요.', true);
+  if (solo) addLog('혼자 보기 모드예요.', true);
   syncStats(); checkAchievements();
   if (me.quest===0) setTimeout(()=>say('편지', '웰컴 팩이 도착했어요! 텃밭 2칸과 토마토 씨앗 2개가 들어 있어요.', [['열어 보기', ()=>{ me.inv.garden += 2; invAdd('seed:c01', 2); me.quest = 1; saveMe(); renderHud(); closeTalk(); toast('집 앞 빈 자리를 눌러 텃밭을 놓아요'); }]]), 400);
 }
 function renderHud(){
   const online = 1 + others.size;
   $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span><u>💰</u>${me.inv.gold}G</span><span><u>📍</u>${Z().name}</span><span><u>👥</u>${Math.min(online,MAX)}/${MAX}</span><span><u>❤️</u><b id="hpv">${Math.ceil(playerHp)}</b></span>`;
-  $('quest').innerHTML = `<b>${me.quest<6?'할 일':'튜토리얼'}</b>${QUESTS[Math.min(me.quest,6)]}`;
+  $('quest').hidden = me.quest >= 6; $('quest').innerHTML = `<b>할 일</b>${QUESTS[Math.min(me.quest,6)]}`;
   const it = [['💧','물뿌리개',me.inv.can],['🎣','낚싯대',me.inv.rod],['⛏️','곡괭이',me.inv.pick],['🗡️',me.inv.sword ? `${weapon().name} (공격력 ${weapon().atk})` : '검',me.inv.sword]];
   $('swingBtn').hidden = !me.inv.sword;
   $('bar').innerHTML = it.map(([e,n,c])=>`<div class="${c?'':'off'}" title="${n}" aria-label="${n}${c?'':' 없음'}">${e}</div>`).join('') + `<div id="bagBtn" title="가방" aria-label="가방" style="cursor:pointer">🎒</div>`;
@@ -1011,8 +1017,8 @@ let toastT = 0;
 function toast(t, key){ const el = $('toast'); el.innerHTML = (key ? iconImg(key, 'tic') : '') + esc(t); el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(()=>el.style.opacity=0, 2600); }
 function addLog(t, sys){
   const p = document.createElement('p'); p.textContent = t; if (sys) p.className = 'sys';
-  const log = $('log'); log.append(p); while (log.children.length > 6) log.firstChild.remove();
-  setTimeout(()=>{ p.style.opacity = .35; }, 9000);
+  const log = $('log'); log.append(p); while (log.children.length > 3) log.firstChild.remove();
+  setTimeout(()=>{ p.style.opacity = 0; }, 8000); setTimeout(()=>p.remove(), 9500);
 }
 function say(name, text, actions=[], note='', noClose=false, choice=false){
   $('talkName').textContent = name; $('talkText').textContent = text;
@@ -2497,7 +2503,7 @@ function sendChat(){
   if (!t) return;
   net.sendChat(t).catch(()=>toast('채팅을 보내지 못했어요.')); stat('chatSent');
 }
-document.querySelectorAll('.emo').forEach(b=>b.onclick = ()=>{ emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); setExpr({'👋':'happy','❤️':'wink','✨':'sparkle','😢':'sad'}[b.dataset.e] || 'cat', 3000); stat('emotesSent'); });
+document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow').hidden = true; emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); setExpr({'👋':'happy','❤️':'wink','✨':'sparkle','😢':'sad'}[b.dataset.e] || 'cat', 3000); stat('emotesSent'); });
 
 function toWorld(cx, cy){ return { x: view.cx + cx/view.zoom, y: view.cy + cy/view.zoom }; }
 function hitTarget(w){
