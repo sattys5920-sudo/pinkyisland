@@ -1637,17 +1637,26 @@ function seedShop(){
 function sellActions(n){ return [['물건 팔기', ()=>sellPanel(n)], ['씨앗 가게', seedShop], ['거래소', marketPanel], ['오늘의 시세', pricePanel]]; }
 
 // ===== 텃밭 =====
+// 씨앗 고르기: 심을 때마다 가진 씨앗 중에서 골라요 (아이콘·개수·자라는 시간). 빈 텃밭 전부 같은 씨앗으로 심기도 돼요
 function plantMenu(i){
   const seeds = itemsOf('seed');
-  if (!seeds.length) return toast(me.inv.can ? '씨앗이 없어요. 마을 광장의 모모 가게에서 사요' : '씨앗이 없어요.');
-  if (seeds.length === 1) return plant(i, seeds[0][0].split(':')[1]);
-  say('어떤 씨앗을 심을까요?', '', seeds.map(([k,n])=>[`${itemName(k)} (${n}) · ${fmtMin(CROPS[k.split(':')[1]].min)}`, ()=>{ closeTalk(); plant(i, k.split(':')[1]); }]), '', false, true);
+  if (!seeds.length) return toast(me.inv.can ? '씨앗이 없어요. 마을 광장의 모모 가게나 들판의 밤이에게서 사요' : '씨앗이 없어요.');
+  const empty = me.gardens.map((g,j)=>g && !g.crop ? j : -1).filter(j=>j>=0);
+  openPanel('어떤 씨앗을 심을까요?', `<p class="mnote" style="margin-top:0">텃밭 ${i+1}번 칸에 심어요. 빈 칸 ${empty.length}개.</p><div class="bag-grid">${seeds.map(([k,n])=>{ const id = k.split(':')[1], c = CROPS[id];
+    return `<button class="tile" data-k="${id}" title="${esc(c.name)}">${iconImg('crop:'+id)}<i>${n}</i><em>${esc(c.name)}</em><s>${fmtMin(c.min)}</s></button>`; }).join('')}</div>`);
+  $('npcPanel').querySelectorAll('.tile[data-k]').forEach(t=>t.onclick = ()=>{
+    const id = t.dataset.k, c = CROPS[id], n = invCount('seed:'+id);
+    const acts = [['이 칸에 심기', ()=>{ closeTalk(); $('npcPanel').hidden = true; plant(i, id); }]];
+    if (empty.length > 1 && n > 1) acts.push([`빈 칸 ${Math.min(empty.length, n)}개에 모두 심기`, ()=>{ closeTalk(); $('npcPanel').hidden = true; let k = 0; for (const j of empty){ if (!invCount('seed:'+id)) break; plant(j, id, true); k++; } toast(`${c.name} 씨앗을 ${k}칸에 심었어요 · 다 크는 데 ${fmtMin(c.min)}`); }]);
+    acts.push(['다른 씨앗 보기', ()=>{ closeTalk(); plantMenu(i); }]);
+    withIcon('crop:'+id); say(`${c.name} 씨앗 (${n}개)`, `다 크는 데 ${fmtMin(c.min)} · 수확 ${c.y1===c.y2?c.y1:c.y1+'~'+c.y2}개 · 1개 ${c.sell}G`, acts, (loreOf(id)||{}).desc || '', true);
+  });
 }
-function plant(i, type){
+function plant(i, type, quiet=false){
   if (!invCount('seed:'+type) || !me.gardens[i] || me.gardens[i].crop) return;
   invAdd('seed:'+type, -1); me.gardens[i].crop = {type, stage:0, wateredAt:null};
   if (me.quest===3) me.quest = 4;
-  saveMe(); renderHud(); toast(`${CROPS[type].name} 씨앗을 심었어요 · 다 크는 데 ${fmtMin(CROPS[type].min)}`);
+  saveMe(); renderHud(); if (!quiet) toast(`${CROPS[type].name} 씨앗을 심었어요 · 다 크는 데 ${fmtMin(CROPS[type].min)}`);
 }
 function useSlot(i){
   const g = me.gardens[i], now = Date.now();
