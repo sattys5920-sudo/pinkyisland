@@ -13,13 +13,13 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dongle:wght@400;700&display=swap">
+<link rel="preload" href="fonts/Dongle.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 :root{--ink:#2a2429;--soft:#6f6569;--card:#fffdfd;--pink:#fbdbe5;--pinkd:#e48fac;--line:#f7e6ec;--sea:#cfeefb}
 [hidden]{display:none!important}
 html,body{height:100%;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 @supports (height:100dvh){html,body{height:100dvh}}
+@font-face{font-family:"Dongle";font-style:normal;font-weight:400 700;font-display:swap;src:url("fonts/Dongle.woff2") format("woff2")}
 body{margin:0;background:var(--sea);color:var(--ink);font:700 21px/1.15 "Dongle",system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 #game{position:fixed;inset:0;width:100%;height:100%;display:block}
 .pill{background:linear-gradient(#fff,#fff8fa);border-radius:16px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
@@ -877,7 +877,11 @@ function showLogin(auth){
   $('gl').onclick = () => F.signInWithPopup(auth, new F.GoogleAuthProvider()).catch(()=>{ $('err').textContent = '구글 로그인에 실패했어요. 크롬이나 사파리에서 다시 시도하거나 게스트로 시작해 주세요.'; });
   $('gu').onclick = () => F.signInAnonymously(auth).catch(()=>{ $('err').textContent = '게스트로 시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.'; });
 }
+// 글꼴이 다 내려받히기 전에 그린 캔버스(지형·스프라이트)는 기본 글꼴로 굳어 버려요. 먼저 기다리고, 늦게 오면 캐시를 지워 다시 그려요.
+const fontReady = (async()=>{ try { await Promise.race([document.fonts.load('700 20px "Dongle"', '핑키 디저트 아일랜드 가나다 ABC 123'), new Promise(r=>setTimeout(r, 3000))]); } catch(e){} })();
+if (document.fonts) document.fonts.addEventListener('loadingdone', ()=>{ staticSig = ''; spriteCache.clear(); });
 (async function boot(){
+  await fontReady;
   const configured = firebaseConfig && firebaseConfig.apiKey && !String(firebaseConfig.apiKey).startsWith('YOUR');
   if (!configured){
     solo = true;
