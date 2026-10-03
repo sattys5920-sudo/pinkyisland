@@ -66,8 +66,8 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .np-h small{color:var(--soft);letter-spacing:0}
 .np-keep{grid-column:1/-1;font-size:16px;color:var(--ink);opacity:.8}
 #sideBtns{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 78px);display:flex;flex-direction:column;gap:8px;z-index:5}
-.round.swing{width:64px;height:64px;font-size:18px;background:linear-gradient(#fff,#fde4ec);box-shadow:inset 0 -3px 0 #f2c3d3,0 4px 14px #d4a3b52e}
-.round{width:48px;height:48px;border-radius:50%;border:0;background:linear-gradient(#fff,#fff8fa);color:var(--ink);font-size:19px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
+.round.swing{width:64px;height:64px;font-size:16px;letter-spacing:-.5px;background:linear-gradient(#fff,#fde4ec);box-shadow:inset 0 -3px 0 #f2c3d3,0 4px 14px #d4a3b52e}
+.round{width:50px;height:50px;border-radius:50%;border:0;padding:0;line-height:1.05;white-space:nowrap;background:linear-gradient(#fff,#fff8fa);color:var(--ink);font-size:18px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
 #mapPanel{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:10;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 40px));max-height:min(76vh,calc(100% - 120px));overflow:auto;padding:14px 16px;touch-action:pan-y;border-radius:20px}
 .mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(7,auto);gap:4px;margin-top:6px}
 .mz{background:#fff;border-radius:10px;padding:5px 3px;text-align:center;font-size:15px;line-height:1.25;display:flex;flex-direction:column;gap:2px;box-shadow:inset 0 -2px 0 #f6e6ec;min-height:52px;justify-content:center}
@@ -219,6 +219,7 @@ import * as CH from './char.js';
 import { QUESTS as NPC_QUESTS } from './quests.js';
 import { LORE } from './lore.js';
 import { ACHIEVEMENTS } from './achievements.js';
+import { SITUATIONS } from './situations.js';
 import { FURN2, FURN2_DRAW } from './art/furn2.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
@@ -1112,7 +1113,7 @@ function pickTalk(n){
   const r = relOf(n.id), tier = tierOf(heartsN(n)), talks = n.talks || [];
   const seen = (r.seen||'').split(',');
   const next = talks.find(t=>!seen.includes(t.id));
-  if (next && next.tier <= tier) return {talk:next};
+  if (next && next.tier <= tier) return {talk:next, fresh:true};
   if (next) return {locked:true};
   const cur = talks.filter(t=>t.tier===tier);
   return cur.length ? {talk:cur[Math.floor(Math.random()*cur.length)]} : {};
@@ -1142,8 +1143,63 @@ function runTalk(n, talk, opening, note, ups){
   };
   show();
 }
+// ===== 상황별 대사: 지금 섬·플레이어 상태에 맞는 상황을 우선순위대로 골라요 (대사는 situations.js) =====
+function kstDate(){ const d = new Date(Date.now() + 9*3600000); return {m:d.getUTCMonth()+1, d:d.getUTCDate(), w:d.getUTCDay()}; }
+function situationsNow(n, isNew){
+  const out = [], add = (id, item) => out.push({id, item:item||''});
+  const r = relOf(n.id), {m, d, w} = kstDate(), hr = kstHour(), wx = weatherOf(today())[0];
+  // 기념일 (가장 먼저)
+  if (m===1 && d===1) add('newyear'); if (m===2 && d===14) add('valentine'); if (m===3 && d===14) add('whiteday'); if (m===5 && d===5) add('childrens');
+  if (m===10 && d===31) add('halloween'); if (m===11 && d===11) add('pepero'); if (m===12 && (d===24 || d===25)) add('xmas'); if (m===12 && d===31) add('yearend');
+  // 첫 만남 / 오랜만
+  if (isNew) return [{id:'firstEver', item:''}]; // 첫 만남은 무조건 첫 만남 인사
+  if (r.talkDay && today() - r.talkDay >= 3) add('longAbsence');
+  // 섬 사건
+  if (boss && boss.gen===today()) add(boss.hp > 0 ? 'bossAlive' : 'bossDown');
+  if (playerHp < 40) add('lowHp');
+  const q = qState(), qq = questFor(n);
+  if (qq && q.active[n.id]===qq.id) add('questActive'); else if (!qq && (NPC_QUESTS[n.id]||[]).length) add('questAllDone');
+  if (r.giftDay === today()) add('giftedToday');
+  const sid = Object.keys(STOCKS).find(k=>STOCKS[k].npc===n.id);
+  if (sid){ const ch = stockChange(sid); if (ch >= .06) add('stockUp'); else if (ch <= -.06) add('stockDown'); if ((myStocks()[sid]||{}).n > 0) add('holdsMyStock'); }
+  const hot = hotToday().find(k=>invCount(k) > 0); if (hot) add('hotItem', itemName(hot));
+  const now = Date.now(), ripe = me.gardens.find(g=>g && g.crop && cropNow(g.crop, now).stage >= 4);
+  if (ripe) add('cropsReady', CROPS[ripe.crop.type].name); else if (me.gardens.some(g=>g && g.crop && cropNow(g.crop, now).stage < 4 && !cropNow(g.crop, now).wateredAt)) add('gardenDry');
+  // 날씨 (무지개·비가 먼저)
+  if (wx==='무지개') add('rainbow'); if (wx==='비') add('rain');
+  if (hr < 5) add('dawn');
+  // 플레이어 상태
+  if (me.inv.gold >= 50000) add('rich'); else if (me.inv.gold < 30) add('broke');
+  if (['crop','fish','ore','loot','dish','seed'].reduce((a,c)=>a+countOf(c),0) >= 1500) add('bagHeavy');
+  if ((me.title||'')) add('hasTitle');
+  if (WEAPON_LIST.findIndex(x=>x[0]===(me.inv.weapon||'w1')) >= 4) add('strongWeapon');
+  if (me.look && me.look.set && me.look.set!=='none') add('wearSet');
+  if (me.look && me.look.hat && me.look.hat!=='none') add('wearHat');
+  if (countOf('loot') >= 5) add('hasLoot'); if (countOf('ore') >= 5) add('hasOre'); if (countOf('fish') >= 5) add('hasFish');
+  if ((me.ach||[]).length >= 20) add('achMany');
+  if ((me.furn||[]).length + Object.values(me.inv.furn||{}).reduce((a,b)=>a+b,0) >= 15) add('manyFurn');
+  // 사람
+  if (others.size >= 3) add('crowded'); else if (!solo && others.size === 0) add('alone');
+  // 날씨·시간·계절 (마지막)
+  if (wx==='흐림') add('cloudy'); if (wx==='맑음' && hr>=11 && hr<18) add('sunny');
+  if (w===0 || w===6) add('weekend');
+  add(m>=3 && m<=5 ? 'spring' : m>=6 && m<=8 ? 'summer' : m>=9 && m<=11 ? 'autumn' : 'winter');
+  return out;
+}
+// 상황 하나를 골라 대사를 돌려줘요. 앞쪽(중요한) 상황일수록 잘 뽑히고, 같은 상황 대사가 연달아 나오지 않게 해요.
+function situationLine(n, isNew){
+  const S = SITUATIONS[n.id]; if (!S) return '';
+  const list = situationsNow(n, isNew).filter(x=>S[x.id] && S[x.id].length);
+  if (!list.length) return '';
+  const r = relOf(n.id), last = r.sit || '';
+  let pick = list[0];
+  if (list.length > 1){ const w = list.map((_,i)=>Math.pow(.5, i)); let t = Math.random()*w.reduce((a,b)=>a+b,0); for (let i=0;i<list.length;i++){ if ((t -= w[i]) <= 0){ pick = list[i]; break; } } if (pick.id===last && list.length>1) pick = list.find(x=>x.id!==last) || pick; }
+  r.sit = pick.id;
+  return pickLine(S[pick.id], n.id+'s:'+pick.id).replace(/\{item\}/g, pick.item);
+}
 function talkTo(n){
   const r = relOf(n.id), first = r.talkDay !== today();
+  const sit = situationLine(n, !r.pts && !r.talkDay); // 호감도가 오르기 전에 상황을 봐야 '첫 만남'을 알아요
   let note = '', ups = []; questEvent('talk', n.id);
   if (first){ r.talkDay = today(); ups = addPts(n, 10); note = '오늘 첫 대화 · 호감도 +10'; }
   if (n.id==='dodo' && !me.inv.pick){ me.inv.pick = true; note = [note, '도도에게 곡괭이를 받았어요! 바위를 눌러 캐 봐요'].filter(Boolean).join(' · '); }
@@ -1151,7 +1207,7 @@ function talkTo(n){
   if (n.id==='lulu' && !me.inv.rod){ me.inv.rod = true; note = [note, '루루에게 낚싯대를 받았어요! 물을 눌러 낚시해 봐요'].filter(Boolean).join(' · '); }
   if (n.soon) note = [note, n.soon].filter(Boolean).join(' · ');
   const hr = kstHour();
-  const opening = first && n.greet ? pickLine(n.greet[hr>=5&&hr<11 ? 'morning' : hr>=11&&hr<18 ? 'day' : 'night'], n.id+'g') : '';
+  const opening = first ? (sit || (n.greet ? pickLine(n.greet[hr>=5&&hr<11 ? 'morning' : hr>=11&&hr<18 ? 'day' : 'night'], n.id+'g') : '')) : '';
   let text = '';
   if (n.id==='hana' && me.quest < 6){
     if (me.quest<=1) text = '안녕! 나는 하나야! 먼저 웰컴 팩을 열고, 집 앞 빈 자리에 텃밭 2칸을 놓아 봐!';
@@ -1162,7 +1218,9 @@ function talkTo(n){
   if (n.id==='hana' && me.quest>=6 && !countOf('seed') && !me.gardens.some(g=>g&&g.crop) && me.inv.gold < CROPS.c01.seed){ invAdd('seed:c01', 2); toast('하나가 토마토 씨앗 2개를 나눠 줬어요'); }
   saveMe(); renderHud();
   const pk = text ? {} : pickTalk(n);
-  if (pk.talk) return runTalk(n, pk.talk, opening, note, ups);
+  if (pk.talk && pk.fresh) return runTalk(n, pk.talk, opening, note, ups);
+  if (!text && !first && sit && Math.random() < .65) text = sit; // 다시 말 걸면 지금 상황 얘기를 자주 해요
+  else if (pk.talk) return runTalk(n, pk.talk, opening, note, ups);
   if (!text) text = [opening, pickLine(n.lines && n.lines[tierOf(heartsN(n))], n.id+'l')].filter(Boolean).join('\n') || '...';
   if (pk.locked) note = [note, '조금 더 친해지면 다음 이야기를 들려줄 것 같아요'].filter(Boolean).join(' · ');
   if (ups.length) say(title(n), text, [['이야기 듣기', ()=>playEvents(n, ups)]], (note ? note+' · ' : '') + '무언가 이야기하고 싶은 눈치예요', true);
@@ -2739,7 +2797,7 @@ function talkBubble(key, x, y, t){
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-80);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { iconURL, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { iconURL, situationsNow, situationLine, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
 </body>
 </html>
