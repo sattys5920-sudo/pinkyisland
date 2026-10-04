@@ -240,7 +240,7 @@ import { ART_PART as ART_DISH } from './art/dishes.js';
 const P = {grass:'#b5e6a3',grass2:'#9fdb8c',path:'#ffe0bf',water:'#9fd9ff',waterHi:'#e8f7ff',cream:'#fff0e0',pink:'#ffa6c9',choco:'#9a5a45',cherry:'#ff5a78',candyA:'#ffa6cf',candyB:'#fff09a',stick:'#fff',soil:'#d69a70',berry:'#ff5a78',leaf:'#6cc46a',rock:'#c3b8d2',gem:'#bf8cff',dust:'#bdb5c9',blush:'#ffadc4',eye:'#5b3345',stitch:'#ffffff',bubble:'#fff',text:'#8a4b63'};
 const STARTERS = [['t01|b01','기본 티 + 청바지'],['t02|b02','줄무늬 티 + 반바지'],['t01|b02','기본 티 + 반바지'],['s01','멜빵바지']];
 const OPT = {
-  skin:  { label:'피부 색', color:true, v:CH.SKINS },
+  skin:  { label:'피부색', color:true, v:CH.SKINS },
   hairA: { label:'머리 모양 (남)', target:'hair', v:CH.HAIR_M.map(k=>[k, CH.HAIR[k].label]) },
   hairB: { label:'머리 모양 (여)', target:'hair', v:CH.HAIR_F.map(k=>[k, CH.HAIR[k].label]) },
   hairColor: { label:'머리 색', color:true, v:CH.HAIR_COLORS },
@@ -318,7 +318,7 @@ function sprite(key, w, h, ox, oy, drawFn){
   return sp;
 }
 const qphase = (ph, n) => Math.round((((ph % TAU) + TAU) % TAU) / TAU * n) % n;
-// 플레이어: 걷기 8단계, 서 있기 4단계. 매트 클레이 페인터로 그려요
+// 플레이어: 걷기 8 단계, 서 있기 4 단계. 매트 클레이 페인터로 그려요
 function drawPlayer(c, x, y, L, dir, t, walk, s=1, expr='dot'){
   if (!L || !L.top && !L.set) L = CH.migrateLook(L);
   const ph = t*8 + x*.37, q = walk ? qphase(ph, 8) : qphase(t*2 + x, 4);
@@ -328,11 +328,11 @@ function drawPlayer(c, x, y, L, dir, t, walk, s=1, expr='dot'){
   const sp = sprite(key, B.w, B.h, B.ox, B.oy, d=>CH.figure(CH.mattePainter(d.ctx), L, dir, t2, walk, expr));
   c.drawImage(sp.c, x - sp.ox*s, y - sp.oy*s, sp.c.width/sp.sc*s, sp.c.height/sp.sc*s);
 }
-// 표정: 잠깐 바뀌었다가 돌아와요. 밤(0~5시)에 가만히 있으면 졸린 눈
+// 표정: 잠깐 바뀌었다가 돌아와요. 밤(0~5 시)에 가만히 있으면 졸린 눈
 let exprNow = 'dot', exprUntil = 0;
 function setExpr(e, ms=2000){ exprNow = e; exprUntil = performance.now() + ms; }
 function myExpr(){ if (performance.now() < exprUntil) return exprNow; const h = kstHour(); return (h < 5 && !pos.moving) ? 'sleepy' : 'dot'; }
-// 동물 주민: 걷기 8단계, 서 있기 4단계
+// 동물 주민: 걷기 8 단계, 서 있기 4 단계
 function drawCritter(c, x, y, v, t, walk, s=1, flip=false){
   if (flip){ c.save(); c.translate(x, 0); c.scale(-1, 1); drawCritter(c, 0, y, v, t, walk, s, false); c.restore(); return; }
   const ph = t*7 + x*.3, q = walk ? qphase(ph, 8) : qphase(t*2 + x, 4);
@@ -429,7 +429,7 @@ const THEME = {
   night:{ground:'#7d8fc4', ground2:'#6f80b6', path:'#c3b6d9', edge:'#4b5a8f'},
 };
 
-// 동물 주민 14명: 자리와 모습, 좋아하는 선물 (대사는 npcs.js)
+// 동물 주민 14 명: 자리와 모습, 좋아하는 선물 (대사는 npcs.js)
 const NPCS = [
   {id:'hana', name:'하나', animal:'토끼', role:'꼬마 농부', zone:'meadow', x:1040, y:520, sp:{kind:'rabbit', fur:'#fff6f0', acc:'straw'}, tastes:{loved:['crop'], liked:['seed'], disliked:['ore']}},
   {id:'momo', name:'모모', animal:'고양이', role:'케이크 가게 주인', zone:'village', x:420, y:412, sp:{kind:'cat', fur:'#ffc98f', acc:'apron'}, tastes:{loved:['crop:c12','crop:c30','dish'], liked:['crop','fish'], disliked:['loot']}},
@@ -453,7 +453,7 @@ const GIFT_PTS = {loved:40, liked:25, neutral:15, disliked:-10};
 const TIERS = [null, '아는 사이', '괜찮은 사람', '친한 친구', '소중한 짝'];
 const STORY_GOLD = {4:100, 7:300, 10:1000};
 const DAILY_GOLD = 150;
-const QUESTS = ['웰컴 팩을 열어요','집 앞에 텃밭 2칸을 놓아요','서쪽 들판의 하나에게 말을 걸어 물뿌리개를 받아요','텃밭에 토마토 씨앗을 심어요','심은 씨앗에 물을 줘요','토마토가 다 자라면 수확해요','튜토리얼 완료! 동서남북 구역을 돌며 주민들과 친해져 봐요'];
+const QUESTS = ['웰컴 팩을 열어요','집 앞에 텃밭 2 칸을 놓아요','서쪽 들판의 하나에게 말을 걸어 물뿌리개를 받아요','텃밭에 토마토 씨앗을 심어요','심은 씨앗에 물을 줘요','토마토가 다 자라면 수확해요','튜토리얼 완료! 동서남북 구역을 돌며 주민들과 친해져 봐요'];
 const STAGE_NAMES = ['씨앗','새싹','잎','꽃','빨간 토마토'];
 
 const today = () => Math.floor((Date.now() + 9*3600000) / 86400000); // 한국 시간 기준 날짜
@@ -484,7 +484,7 @@ function toriPos(now){
   return {x:TORI_PATH[0][0], y:TORI_PATH[0][1], mv:false, dx:0};
 }
 
-// 주민 산책: 자기 자리(home) 주위 range 안에서 7초마다 새 자리로 느긋하게 걸어가요. 시간 기준이라 친구 화면에서도 같은 자리에 있어요
+// 주민 산책: 자기 자리(home) 주위 range 안에서 7 초마다 새 자리로 느긋하게 걸어가요. 시간 기준이라 친구 화면에서도 같은 자리에 있어요
 const NPC_RANGE = {momo:55, dandan:55, mongsil:55, bori:60, olly:60, toto:70, lulu:80, pengpeng:80, dodo:70, bibi:110, hana:110, bami:80, kongi:120};
 const WANDER_MS = 7000, WANDER_PAUSE = 2800;
 function wanderSpot(n, k){
@@ -758,7 +758,7 @@ function fromDB(p){
 function toDB(p){
   return { ...p, gardens: p.gardens.map(g => g ? {stage: g.crop ? g.crop.stage : -1, wateredAt: (g.crop && g.crop.wateredAt) || 0, type: (g.crop && g.crop.type) || ''} : false) };
 }
-// 입주하지 않은 채 10분이 지난 선점은 다른 사람이 가져갈 수 있어요
+// 입주하지 않은 채 10 분이 지난 선점은 다른 사람이 가져갈 수 있어요
 function abandoned(c){ return !players[c.uid] && Date.now() - (c.at||0) > 600000; }
 
 let saving=false, saveAgain=false;
@@ -792,7 +792,7 @@ function onOnline(raw){
     if (id===uid || !s || typeof s.x!=='number' || !s.look) continue;
     seen.add(id);
     let o = others.get(id);
-    if (!o){ o = {x:s.x, y:s.y, emoAt:s.emoAt}; others.set(id, o); if (!firstOnline) addLog(`${String(s.nick||'누군가').slice(0,8)}님이 섬에 왔어요`, true); }
+    if (!o){ o = {x:s.x, y:s.y, emoAt:s.emoAt}; others.set(id, o); if (!firstOnline) addLog(`${String(s.nick||'누군가').slice(0,8)} 님이 섬에 왔어요`, true); }
     if (s.emoAt && s.emoAt!==o.emoAt){ o.emoAt = s.emoAt; if (s.emo && Date.now()-s.emoAt < 5000) bubbles.set(id+'-emo', {text:String(s.emo).slice(0,4), at:performance.now()}); }
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
@@ -801,7 +801,7 @@ function onOnline(raw){
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
   }
-  for (const [id,o] of [...others]) if (!seen.has(id)){ others.delete(id); addLog(`${o.nick}님이 집에 갔어요`, true); }
+  for (const [id,o] of [...others]) if (!seen.has(id)){ others.delete(id); addLog(`${o.nick} 님이 집에 갔어요`, true); }
   firstOnline = false;
   if (me) renderHud();
 }
@@ -877,10 +877,10 @@ const collecting = new Set();
 let app = null, F = null; // F: 필요할 때만 불러오는 Firebase 함수들
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 function start(){ net.listen(); }
-// ===== 로그인: 아이디(영어)·비밀번호(5자 이상). Firebase 이메일 로그인을 아이디 형태로 감싸요.
+// ===== 로그인: 아이디(영어)·비밀번호(5 자 이상). Firebase 이메일 로그인을 아이디 형태로 감싸요.
 const ID_RE = /^[a-zA-Z][a-zA-Z0-9_]{2,15}$/;
 const idEmail = id => `${id.toLowerCase()}@pinkyisland.app`;
-const pwPad = pw => pw + '·pinky'; // Firebase 최소 6자 규칙을 맞추기 위한 고정 꼬리표 (5자 비밀번호 허용)
+const pwPad = pw => pw + '·pinky'; // Firebase 최소 6 자 규칙을 맞추기 위한 고정 꼬리표 (5 자 비밀번호 허용)
 const AUTH_MSG = {
   'auth/operation-not-allowed': 'Firebase 콘솔 > Authentication > 로그인 방법에서 "이메일/비밀번호"를 켜 주세요.',
   'auth/email-already-in-use': '이미 있는 아이디예요. 로그인하거나 다른 아이디를 골라 주세요.',
@@ -892,22 +892,22 @@ function showLogin(auth, mode='login'){
   let savedId = ''; try { savedId = localStorage.getItem('pinky-id') || ''; } catch(e){}
   const signup = mode==='signup';
   obc.innerHTML = `<h1>핑키 디저트 아일랜드</h1>
-    <p class="sub">14명이 함께 사는 디저트 섬이에요. ${signup ? '아이디와 비밀번호를 정하면 가입 완료!' : '아이디와 비밀번호로 들어가요.'}</p>
+    <p class="sub">14 명이 함께 사는 디저트 섬이에요. ${signup ? '아이디와 비밀번호를 정하면 가입 완료!' : '아이디와 비밀번호로 들어가요.'}</p>
     <div class="tabs"><button class="tab ${signup?'':'on'}" data-m="login">로그인</button><button class="tab ${signup?'on':''}" data-m="signup">가입하기</button></div>
     <form id="lf" class="lform" autocomplete="on">
-      <label class="field"><b>아이디</b><input id="lid" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="16" placeholder="영어 3~16자" value="${esc(savedId)}"></label>
-      <label class="field"><b>비밀번호</b><input id="lpw" name="password" type="password" autocomplete="${signup?'new-password':'current-password'}" maxlength="40" placeholder="5자 이상"></label>
+      <label class="field"><b>아이디</b><input id="lid" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="16" placeholder="영어 3~16 자" value="${esc(savedId)}"></label>
+      <label class="field"><b>비밀번호</b><input id="lpw" name="password" type="password" autocomplete="${signup?'new-password':'current-password'}" maxlength="40" placeholder="5 자 이상"></label>
       ${signup ? '<label class="field"><b>비밀번호 확인</b><input id="lpw2" type="password" autocomplete="new-password" maxlength="40" placeholder="한 번 더"></label>' : ''}
       <p class="err" id="err"></p>
       <div class="act"><button class="btn" id="lgo" type="submit">${signup ? '가입하고 시작하기' : '들어가기'}</button></div>
     </form>
-    <div class="note">${signup ? '아이디는 영어로 시작하고 영어·숫자·_만 쓸 수 있어요. 비밀번호는 5자 이상이면 돼요. 가입하면 바로 닉네임과 캐릭터를 고를 수 있어요.' : '처음이면 <b>가입하기</b>를 눌러 아이디를 만들어 주세요. 다른 기기에서도 같은 아이디로 이어서 할 수 있어요.'}</div>`;
+    <div class="note">${signup ? '아이디는 영어로 시작하고 영어·숫자·_만 쓸 수 있어요. 비밀번호는 5 자 이상이면 돼요. 가입하면 바로 닉네임과 캐릭터를 고를 수 있어요.' : '처음이면 <b>가입하기</b>를 눌러 아이디를 만들어 주세요. 다른 기기에서도 같은 아이디로 이어서 할 수 있어요.'}</div>`;
   obc.querySelectorAll('.tab').forEach(b=>b.onclick = ()=>showLogin(auth, b.dataset.m));
   $('lf').onsubmit = async e => {
     e.preventDefault();
     const id = $('lid').value.trim(), pw = $('lpw').value, err = $('err');
-    if (!ID_RE.test(id)) return err.textContent = '아이디는 영어로 시작하고, 영어·숫자·_ 3~16자여야 해요.';
-    if (pw.length < 5) return err.textContent = '비밀번호는 5자 이상이어야 해요.';
+    if (!ID_RE.test(id)) return err.textContent = '아이디는 영어로 시작하고, 영어·숫자·_ 3~16 자여야 해요.';
+    if (pw.length < 5) return err.textContent = '비밀번호는 5 자 이상이어야 해요.';
     if (signup && pw !== $('lpw2').value) return err.textContent = '비밀번호 확인이 달라요.';
     $('lgo').disabled = true; err.textContent = signup ? '가입하는 중…' : '들어가는 중…';
     try {
@@ -973,10 +973,10 @@ function renderOb(){
     obc.dataset.step='maker';
     const full = registeredCount() >= MAX;
     obc.innerHTML = `<h1>핑키 디저트 아일랜드</h1>${stepsHtml(0)}
-      <p class="sub">섬에 살 내 캐릭터를 만들어요. 지금 섬 주민 ${registeredCount()}/${MAX}명${solo?' · 혼자 보기 모드(Firebase 설정 전이라 다른 사람과 연결되지 않아요)':''}</p>
+      <p class="sub">섬에 살 내 캐릭터를 만들어요. 지금 섬 주민 ${registeredCount()}/${MAX} 명${solo?' · 혼자 보기 모드(Firebase 설정 전이라 다른 사람과 연결되지 않아요)':''}</p>
       <div class="maker"><div class="prev"><canvas id="obprev"></canvas></div><div class="ctrls" id="ctrls"></div></div>
-      <div class="nick"><b>닉네임</b><input id="nick" maxlength="8" placeholder="최대 8글자" value="${esc(nickVal)}"></div>
-      <p class="err" id="err">${full?'섬이 가득 찼어요. 14명이 모두 입주했어요.':''}</p>
+      <div class="nick"><b>닉네임</b><input id="nick" maxlength="8" placeholder="최대 8 글자" value="${esc(nickVal)}"></div>
+      <p class="err" id="err">${full?'섬이 가득 찼어요. 14 명이 모두 입주했어요.':''}</p>
       <div class="act"><button class="btn" id="next1" ${full?'disabled':''}>다음: 지붕 색 고르기</button></div>`;
     renderCtrls();
     $('nick').addEventListener('input', e=>{ nickVal = e.target.value; });
@@ -992,7 +992,7 @@ function renderOb(){
     obc.innerHTML = `<h1>지붕 색 고르기</h1>${stepsHtml(1)}
       <p class="sub">지붕 색은 나를 나타내는 색이에요. 선착순이라 먼저 고른 사람의 색은 잠겨요.</p>
       <div class="roofs">${ROOFS.map(([n,c],i)=>{ const t = takenBy('roof',i);
-        return `<button data-i="${i}" ${t?'disabled':''} aria-pressed="${pick.roof===i}"><i style="background:${c}"></i>${n}<small>${t?esc(t.nick)+'님':'고를 수 있어요'}</small></button>`; }).join('')}</div>
+        return `<button data-i="${i}" ${t?'disabled':''} aria-pressed="${pick.roof===i}"><i style="background:${c}"></i>${n}<small>${t?esc(t.nick)+' 님':'고를 수 있어요'}</small></button>`; }).join('')}</div>
       <p class="err" id="err"></p>
       <div class="act"><button class="btn ghost" id="back">이전</button><button class="btn" id="next2" ${pick.roof==null?'disabled':''}>다음: 집터 고르기</button></div>`;
     obc.querySelectorAll('.roofs button').forEach(b=>b.onclick = async ()=>{
@@ -1011,7 +1011,7 @@ function renderOb(){
     const owner = i => Object.values(players).find(p=>p.lot===i);
     const cell = i => { const o = owner(i);
       if (o) return `<button disabled><i style="background:${ROOFS[o.roof][1]}"></i>${esc(o.nick)}</button>`;
-      return `<button data-i="${i}" aria-pressed="${pick.lot===i}">${i+1}번<br>빈 집터</button>`; };
+      return `<button data-i="${i}" aria-pressed="${pick.lot===i}">${i+1} 번<br>빈 집터</button>`; };
     obc.innerHTML = `<h1>집터 고르기</h1>${stepsHtml(2)}
       <p class="sub">빈 집터 중 마음에 드는 곳을 골라요. 집 앞에는 내 텃밭이 생겨요.</p>
       <div class="lots"><div class="gap">북쪽 마을</div>${[0,1,2,3,4,5,6].map(cell).join('')}<div class="gap">· 광장 ·</div>${[7,8,9,10,11,12,13].map(cell).join('')}<div class="gap">남쪽 마을</div></div>
@@ -1061,14 +1061,14 @@ function enterGame(doc){
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
   else enterZone('home', null, L.x, L.y + 18);
   renderHud();
-  addLog(`${me.nick}님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
+  addLog(`${me.nick} 님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
   if (solo) addLog('혼자 보기 모드예요.', true);
   syncStats(); checkAchievements();
-  if (me.quest===0) setTimeout(()=>say('편지', '웰컴 팩이 도착했어요! 텃밭 2칸과 토마토 씨앗 2개가 들어 있어요.', [['열어 보기', ()=>{ me.inv.garden += 2; invAdd('seed:c01', 2); me.quest = 1; saveMe(); renderHud(); closeTalk(); toast('집 앞 빈 자리를 눌러 텃밭을 놓아요'); }]]), 400);
+  if (me.quest===0) setTimeout(()=>say('편지', '웰컴 팩이 도착했어요! 텃밭 2 칸과 토마토 씨앗 2 개가 들어 있어요.', [['열어 보기', ()=>{ me.inv.garden += 2; invAdd('seed:c01', 2); me.quest = 1; saveMe(); renderHud(); closeTalk(); toast('집 앞 빈자리를 눌러 텃밭을 놓아요'); }]]), 400);
 }
 function renderHud(){
   const online = 1 + others.size;
-  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold}G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span><span>${ui('hp')}<b id="hpv">${Math.ceil(playerHp)}</b></span>`;
+  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold} G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span><span>${ui('hp')}<b id="hpv">${Math.ceil(playerHp)}</b></span>`;
   $('quest').hidden = me.quest >= 6; $('quest').innerHTML = `<b>할 일</b>${QUESTS[Math.min(me.quest,6)]}`;
   const it = [['can','물뿌리개',me.inv.can],['rod','낚싯대',me.inv.rod],['pick','곡괭이',me.inv.pick],['sword',me.inv.sword ? `${weapon().name} (공격력 ${weapon().atk})` : '검',me.inv.sword]];
   $('swingBtn').hidden = !me.inv.sword;
@@ -1128,7 +1128,7 @@ function playEvents(n, list){
     saveMe(); renderHud();
     const rest = list.slice(1);
     say(`${n.name} · ${ev.title}`, pages[i], rest.length ? [['다음 이야기', ()=>playEvents(n, rest)]] : [],
-      `관계가 '${TIERS[tierOf(h)]}'(으)로 깊어졌어요 · ${STORY_GOLD[h]}G${ev.keepsake ? ` · 기념품 '${ev.keepsake}'` : ''}`);
+      `관계가 '${TIERS[tierOf(h)]}'(으)로 깊어졌어요 · ${STORY_GOLD[h]} G${ev.keepsake ? ` · 기념품 '${ev.keepsake}'` : ''}`);
   };
   show();
 }
@@ -1148,7 +1148,7 @@ function npcActions(n){
   if (n.id==='kongi') acts.push(['먼지 여왕 소식', ()=>say(title(n), boss && boss.gen===today() ? (boss.hp>0 ? `보고드립니다! 깊은 먼지 숲에 먼지 여왕이 나타났습니다! 남은 체력 ${Math.ceil(boss.hp)}/${boss.max}! 다 함께 물리쳐야 합니다!` : '보고드립니다! 오늘의 먼지 여왕은 물리쳤습니다! 내일 다시 나타날 겁니다!') : '보고드립니다! 깊은 먼지 숲을 살피는 중입니다!', npcActions(n))]);
   if (n.id==='toto') acts.push(['오늘의 시세', pricePanel], ['섬 주식', stockPanel]);
   if (n.id!=='toto' && Object.values(STOCKS).some(x=>x.npc===n.id)) acts.push(['우리 가게 주식', ()=>stockDetail(Object.keys(STOCKS).find(k=>STOCKS[k].npc===n.id))]);
-  if (n.id==='toto' && me.daily !== today()) acts.push([`출석 선물 받기 (${DAILY_GOLD}G)`, ()=>{ me.daily = today(); me.inv.gold += DAILY_GOLD; stat('daysAttended'); saveMe(); renderHud(); say(title(n), `허허… 오늘도 와 주었구먼. 자, ${DAILY_GOLD}G일세.`, npcActions(n)); }]);
+  if (n.id==='toto' && me.daily !== today()) acts.push([`출석 선물 받기 (${DAILY_GOLD} G)`, ()=>{ me.daily = today(); me.inv.gold += DAILY_GOLD; stat('daysAttended'); saveMe(); renderHud(); say(title(n), `허허… 오늘도 와 주었구먼. 자, ${DAILY_GOLD} G일세.`, npcActions(n)); }]);
   if (r.giftDay !== today() && giftList().length) acts.push(['선물하기', ()=>giftMenu(n)]);
   return acts;
 }
@@ -1170,7 +1170,7 @@ function giveGift(n, item){
   if (ups.length) say(title(n), text, [['이야기 듣기', ()=>playEvents(n, ups)]], note + ' · 무언가 이야기하고 싶은 눈치예요', true);
   else say(title(n), text, [], note);
 }
-// ===== 대화: 주민이 3~5줄 말하고 → 선택지 → 대답에 따라 3~5줄 더 =====
+// ===== 대화: 주민이 3~5 줄 말하고 → 선택지 → 대답에 따라 3~5 줄 더 =====
 function pickTalk(n){
   const r = relOf(n.id), tier = tierOf(heartsN(n)), talks = n.talks || [];
   const seen = (r.seen||'').split(',');
@@ -1272,12 +1272,12 @@ function talkTo(n){
   const opening = first ? (sit || (n.greet ? pickLine(n.greet[hr>=5&&hr<11 ? 'morning' : hr>=11&&hr<18 ? 'day' : 'night'], n.id+'g') : '')) : '';
   let text = '';
   if (n.id==='hana' && me.quest < 6){
-    if (me.quest<=1) text = '안녕! 나는 하나야! 먼저 웰컴 팩을 열고, 집 앞 빈 자리에 텃밭 2칸을 놓아 봐!';
+    if (me.quest<=1) text = '안녕! 나는 하나야! 먼저 웰컴 팩을 열고, 집 앞 빈자리에 텃밭 2 칸을 놓아 봐!';
     else if (me.quest===2){ me.inv.can = true; me.quest = 3; text = '텃밭 다 놓았구나! 자, 내 물뿌리개 줄게! 토마토 씨앗 심고 물 줘 봐! 헤헤.'; }
-    else if (me.quest<5) text = '씨앗 심고 물 주면 30초마다 한 단계씩 자라! 단계마다 물 또 줘야 해!';
+    else if (me.quest<5) text = '씨앗 심고 물 주면 30 초마다 한 단계씩 자라! 단계마다 물 또 줘야 해!';
     else text = '토마토가 빨개지면 텃밭을 눌러서 수확해!';
   }
-  if (n.id==='hana' && me.quest>=6 && !countOf('seed') && !me.gardens.some(g=>g&&g.crop) && me.inv.gold < CROPS.c01.seed){ invAdd('seed:c01', 2); toast('하나가 토마토 씨앗 2개를 나눠 줬어요'); }
+  if (n.id==='hana' && me.quest>=6 && !countOf('seed') && !me.gardens.some(g=>g&&g.crop) && me.inv.gold < CROPS.c01.seed){ invAdd('seed:c01', 2); toast('하나가 토마토 씨앗 2 개를 나눠 줬어요'); }
   saveMe(); renderHud();
   const pk = text ? {} : pickTalk(n);
   if (pk.talk && pk.fresh) return runTalk(n, pk.talk, opening, note, ups);
@@ -1294,7 +1294,7 @@ function togglePanel(id, render){ for (const p of ['npcPanel','mapPanel']) if (p
 function renderNpcPanel(){
   const d = today();
   $('npcPanel').dataset.kind = 'npc';
-  $('npcPanel').innerHTML = `<div class="np-head"><b>섬 주민 14명</b><button class="mini" id="npClose">닫기</button></div>` + NPCS.map(n=>{
+  $('npcPanel').innerHTML = `<div class="np-head"><b>섬 주민 14 명</b><button class="mini" id="npClose">닫기</button></div>` + NPCS.map(n=>{
     const r = relOf(n.id), keep = (me.keep && me.keep[n.id]) || [];
     return `<button class="np" data-id="${n.id}"><span class="np-name">${n.name} <small>${n.animal} · ${n.role}</small></span><span class="np-place">${ZONES[n.zone].name}</span><span class="np-h">${'♥'.repeat(heartsN(n))}${'♡'.repeat(10-heartsN(n))} <small>${TIERS[tierOf(heartsN(n))]}</small></span><span class="np-day">${r.talkDay===d?'대화 ✓':'대화 ·'} ${r.giftDay===d?'선물 ✓':'선물 ·'}</span>${keep.length?`<span class="np-keep">기념품: ${keep.map(esc).join(', ')}</span>`:''}</button>`;
   }).join('');
@@ -1310,7 +1310,7 @@ function renderMap(){
   for (const o of others.values()) counts[o.z] = (counts[o.z]||0) + 1;
   const cells = Object.entries(ZONES).map(([id,z])=>{
     const npcs = NPCS.filter(n=>n.zone===id).map(n=>n.name).join(' ');
-    return `<div class="mz ${id===zoneId?'here':''}" style="grid-column:${z.grid[0]+1};grid-row:${z.grid[1]+1}"><b>${z.name}</b>${npcs?`<small>${npcs}</small>`:''}${counts[id]?`<i>${id===zoneId?'나 · ':''}${counts[id]}명</i>`:''}</div>`;
+    return `<div class="mz ${id===zoneId?'here':''}" style="grid-column:${z.grid[0]+1};grid-row:${z.grid[1]+1}"><b>${z.name}</b>${npcs?`<small>${npcs}</small>`:''}${counts[id]?`<i>${id===zoneId?'나 · ':''}${counts[id]} 명</i>`:''}</div>`;
   }).join('');
   $('mapPanel').innerHTML = `<div class="np-head"><b>섬 지도</b><button class="mini" id="mpClose">닫기</button></div><div class="mgrid">${cells}</div><p class="mnote">구역 끝의 표지판 쪽 길로 걸어가면 다음 구역으로 넘어가요. <button class="mini" id="logoutBtn" style="float:right">로그아웃</button></p>`;
   $('logoutBtn').onclick = ()=>{ if (confirm('로그아웃할까요? 캐릭터와 집은 아이디에 저장돼 있어요.')) logout(); };
@@ -1428,8 +1428,8 @@ function catchFish(){
   me.dex = me.dex || {}; const dx = me.dex[id] || {n:0, best:0, st:0};
   const record = size > dx.best; me.dex[id] = {n:dx.n+1, best:Math.max(dx.best,size), st:Math.max(dx.st,st)};
   saveMe(); renderHud(); contestSubmit(id, size);
-  withIcon('fish:'+k); say('낚시', `${f.name}을(를) 낚았어요! ${'★'.repeat(st)}${'☆'.repeat(3-st)}\n크기 ${size}cm${dx.n===0 ? ' · 처음 낚은 물고기!' : record ? ' · 최고 기록!' : ''}`, [], `도감 ${Object.keys(me.dex).length}/50 · 모모 케이크에서 ${fishPrice(k)}G에 팔 수 있어요`);
-  if (f.weight <= 2) { if (net && net.sendChat) net.sendChat(`(전설의 ${f.name}을 낚았다! ${size}cm)`).catch(()=>{}); }
+  withIcon('fish:'+k); say('낚시', `${f.name}을(를) 낚았어요! ${'★'.repeat(st)}${'☆'.repeat(3-st)}\n크기 ${size} cm${dx.n===0 ? ' · 처음 낚은 물고기!' : record ? ' · 최고 기록!' : ''}`, [], `도감 ${Object.keys(me.dex).length}/50 · 모모 케이크에서 ${fishPrice(k)} G에 팔 수 있어요`);
+  if (f.weight <= 2) { if (net && net.sendChat) net.sendChat(`(전설의 ${f.name}을 낚았다! ${size} cm)`).catch(()=>{}); }
 }
 function drawFishing(ctx, t){
   if (!fishing) return;
@@ -1443,7 +1443,7 @@ function drawFishing(ctx, t){
 }
 function fishCount(){ return Object.values(me.inv.fish||{}).reduce((a,b)=>a+b,0); }
 function showFishBag(){
-  const list = Object.entries(me.inv.fish||{}).filter(([,n])=>n>0).map(([k,n])=>`${fishName(k)} ${n}마리`).join(', ');
+  const list = Object.entries(me.inv.fish||{}).filter(([,n])=>n>0).map(([k,n])=>`${fishName(k)} ${n} 마리`).join(', ');
   say('물고기 가방', list || '아직 낚은 물고기가 없어요.', [['도감 보기', showDex]], list ? '모모 케이크에서 팔거나 주민에게 선물할 수 있어요' : '연못, 바다, 해식 동굴의 물을 눌러 낚시해 봐요');
 }
 
@@ -1452,12 +1452,12 @@ function showFishBag(){
 const CATS = {seed:'seeds', crop:'crops', fish:'fish', ore:'ores', loot:'loot', dish:'dishes', furn:'furn'};
 function bagOf(cat){ me.inv[CATS[cat]] = me.inv[CATS[cat]] || {}; return me.inv[CATS[cat]]; }
 function invCount(key){ const [cat, id] = key.split(':'); return bagOf(cat)[id] || 0; }
-// 가방: 같은 물건은 한 칸에 겹쳐 쌓여요. 한 칸 최대 500개 — 넘치는 만큼은 버려지고 알려 줘요
+// 가방: 같은 물건은 한 칸에 겹쳐 쌓여요. 한 칸 최대 500 개 — 넘치는 만큼은 버려지고 알려 줘요
 const STACK_MAX = 500;
 let stackToastT = 0;
 function invAdd(key, n=1){
   const [cat, id] = key.split(':'); const b = bagOf(cat); const cur = b[id]||0; let next = cur + n;
-  if (next > STACK_MAX){ const over = next - STACK_MAX; next = STACK_MAX; const now = performance.now(); if (now - stackToastT > 1500){ stackToastT = now; toast(`${itemName(key)}은(는) 500개까지만 쌓여요. ${over}개는 가방에 못 넣었어요`); } }
+  if (next > STACK_MAX){ const over = next - STACK_MAX; next = STACK_MAX; const now = performance.now(); if (now - stackToastT > 1500){ stackToastT = now; toast(`${itemName(key)}은(는) 500 개까지만 쌓여요. ${over} 개는 가방에 못 넣었어요`); } }
   b[id] = next; if (b[id] <= 0) delete b[id];
   return next - cur;
 }
@@ -1487,11 +1487,11 @@ function itemPrice(key){
 function itemsOf(cat){ return Object.entries(bagOf(cat)).filter(([,n])=>n>0).map(([id,n])=>[cat+':'+id, n]); }
 function sumValue(cat){ return itemsOf(cat).reduce((a,[k,n])=>a+itemPrice(k)*n, 0); }
 function countOf(cat){ return itemsOf(cat).reduce((a,[,n])=>a+n, 0); }
-const fmtMin = m => m >= 60 ? `${Math.floor(m/60)}시간${m%60 ? ' '+(m%60)+'분' : ''}` : `${m}분`;
-const fmtLeft = ms => { const s = Math.ceil(ms/1000); return s >= 3600 ? `${Math.floor(s/3600)}시간 ${Math.ceil((s%3600)/60)}분` : s >= 60 ? `${Math.ceil(s/60)}분` : `${s}초`; };
+const fmtMin = m => m >= 60 ? `${Math.floor(m/60)} 시간${m%60 ? ' '+(m%60)+' 분' : ''}` : `${m} 분`;
+const fmtLeft = ms => { const s = Math.ceil(ms/1000); return s >= 3600 ? `${Math.floor(s/3600)} 시간 ${Math.ceil((s%3600)/60)} 분` : s >= 60 ? `${Math.ceil(s/60)} 분` : `${s} 초`; };
 
-// ===== 작물 30종 =====
-// [이름, 다 크는 데 걸리는 분, 씨앗 값, 1개 판매가, 최소 수확, 최대 수확, 색, 모양]
+// ===== 작물 30 종 =====
+// [이름, 다 크는 데 걸리는 분, 씨앗 값, 1 개 판매가, 최소 수확, 최대 수확, 색, 모양]
 const CROP_LIST = [
   ['토마토',3,8,13,2,3,'#ff4f4f','fruit'], ['무순',5,14,22,2,3,'#c9f0a0','leaf'], ['래디시',8,22,44,1,3,'#ff6fa0','root'],
   ['상추',10,28,74,1,2,'#8fd66a','leaf'], ['시금치',15,29,78,1,2,'#4fae3c','leaf'], ['당근',20,39,78,1,3,'#ff9533','root'],
@@ -1505,10 +1505,10 @@ const CROP_LIST = [
   ['커피콩',390,260,347,2,4,'#6b3a2a','tall'], ['사탕수수',420,280,560,1,3,'#ffb3d9','tall'], ['황금딸기',480,320,853,1,2,'#ffd23f','fruit'],
 ];
 const CROPS = Object.fromEntries(CROP_LIST.map((c,i)=>['c'+String(i+1).padStart(2,'0'), {name:c[0], min:c[1], seed:c[2], sell:c[3], y1:c[4], y2:c[5], color:c[6], shape:c[7]}]));
-const stageMs = type => (CROPS[type] || CROPS.c01).min * 60000 / 4; // 4단계, 단계마다 물 한 번
+const stageMs = type => (CROPS[type] || CROPS.c01).min * 60000 / 4; // 4 단계, 단계마다 물 한 번
 function cropNow(c, now){ if (!c) return null; if (c.wateredAt && c.stage<4 && now >= c.wateredAt + stageMs(c.type)) return {type:c.type, stage:c.stage+1, wateredAt:null}; return c; }
 
-// ===== 광석 40종 =====
+// ===== 광석 40 종 =====
 // [이름, 희귀도 1~5, 판매가, 색, 바다 광석 여부]
 const ORE_LIST = [
   ['돌멩이',1,10,'#a39aa8'], ['석탄',1,30,'#3b3b46'], ['구리 광석',1,45,'#e08a4f'], ['주석 광석',1,45,'#c9ccd6'], ['점토',1,25,'#c98e5b'],
@@ -1535,7 +1535,7 @@ function rollOre(zid){
   const total = list.reduce((a,[,o])=>a+w(o),0);
   let r = Math.random()*total; for (const [id,o] of list){ if ((r -= w(o)) < 0) return id; } return list[0][0];
 }
-const hourKey = () => Math.floor(Date.now()/1200000); // 바위는 20분마다 다시 생겨요
+const hourKey = () => Math.floor(Date.now()/1200000); // 바위는 20 분마다 다시 생겨요
 // 바위는 한 시간마다 다시 생겨요 (각자 화면 기준)
 function rocksHere(){
   const mz = MINE_ZONES[zoneId]; if (!mz) return [];
@@ -1556,8 +1556,8 @@ function mineRock(r){
   me.mined[zoneId] = {h:hourKey(), done: (m && m.h===hourKey() ? m.done+',' : '') + r.i};
   me.odex = me.odex || {}; const first = !me.odex[id]; me.odex[id] = (me.odex[id]||0) + n;
   saveMe(); renderHud();
-  if (o.tier >= 3){ withIcon('ore:'+id); say('채굴', `${o.name}을(를) 캤어요! ${TIER_STAR(o.tier)}`, [], `희귀도 ${o.tier} · ${o.price}G${first?' · 처음 캔 광석!':''} · 광석 도감 ${Object.keys(me.odex).length}/40`); }
-  else toast(`${o.name} ${n}개를 캤어요 ${TIER_STAR(o.tier)}${first ? ' · 처음 캔 광석!' : ''}`, 'ore:'+id);
+  if (o.tier >= 3){ withIcon('ore:'+id); say('채굴', `${o.name}을(를) 캤어요! ${TIER_STAR(o.tier)}`, [], `희귀도 ${o.tier} · ${o.price} G${first?' · 처음 캔 광석!':''} · 광석 도감 ${Object.keys(me.odex).length}/40`); }
+  else toast(`${o.name} ${n} 개를 캤어요 ${TIER_STAR(o.tier)}${first ? ' · 처음 캔 광석!' : ''}`, 'ore:'+id);
   if (o.tier >= 5 && net && net.sendChat) net.sendChat(`(전설의 광석 ${o.name}을(를) 캤다!)`).catch(()=>{});
 }
 function drawRocks(d, t){
@@ -1569,7 +1569,7 @@ function drawRocks(d, t){
   }
 }
 
-// ===== 몬스터 30종 =====
+// ===== 몬스터 30 종 =====
 // [이름, 구역, 체력, 공격력, 속도, 색, 모양, 전리품 이름, 전리품 가격, 등장 가중치]
 const MONSTER_LIST = [
   ['먼지 뭉치','forest',20,3,55,'#bdb5c9','dust','먼지 가루',5,30], ['솜먼지','forest',25,4,60,'#e8e3f0','dust','솜 한 줌',7,26],
@@ -1651,9 +1651,9 @@ const weapon = () => WEAPONS[me.inv.weapon] || WEAPONS.w1;
 function swordAtk(){ const a = weapon().atk; return a + Math.floor(Math.random()*(a*.25+1)); }
 function weaponPanel(){
   const own = me.inv.weapons || ['w1'];
-  openPanel(`비비의 대장간 · 💰 ${me.inv.gold}G`, `<p class="mnote" style="margin-top:0">무기를 바꾸면 공격력이 세져요. 광석은 광산과 동굴에서 캘 수 있어요.</p>` +
+  openPanel(`비비의 대장간 · 💰 ${me.inv.gold} G`, `<p class="mnote" style="margin-top:0">무기를 바꾸면 공격력이 세져요. 광석은 광산과 동굴에서 캘 수 있어요.</p>` +
     WEAPON_LIST.map(([id,name,atk,gold,need])=>{ const has = own.includes(id), on = weapon()===WEAPONS[id];
-      const cost = [gold?gold+'G':'', ...need.map(([k,n])=>`${itemName(k)} ${invCount(k)}/${n}`)].filter(Boolean).join(' · ');
+      const cost = [gold?gold+' G':'', ...need.map(([k,n])=>`${itemName(k)} ${invCount(k)}/${n}`)].filter(Boolean).join(' · ');
       return `<button class="np" data-id="${id}"><span class="np-name">🗡️ ${name} <small>공격력 ${atk}</small></span><span class="np-place">${on?'장착 중':has?'장착하기':'만들기'}</span>${has?'':`<span class="np-day">${cost}</span>`}</button>`; }).join(''),
     b=>{ const id = b.dataset.id, w = WEAPONS[id];
       if (!own.includes(id)){
@@ -1716,7 +1716,7 @@ function hitMob(mob, t, vx, vy){
     invAdd('loot:'+mob.id, 1); me.inv.gold += gold;
     me.mdex = me.mdex || {}; const first = !me.mdex[mob.id]; me.mdex[mob.id] = (me.mdex[mob.id]||0) + 1;
     saveMe(); renderHud();
-    toast(`${m.name}을(를) 물리쳤어요! ${m.drop} · ${gold}G${first ? ' · 처음 물리친 몬스터!' : ''}`, 'loot:'+mob.id);
+    toast(`${m.name}을(를) 물리쳤어요! ${m.drop} · ${gold} G${first ? ' · 처음 물리친 몬스터!' : ''}`, 'loot:'+mob.id);
     if (mob.id==='m28' && net && net.sendChat) net.sendChat('(동굴의 주인을 물리쳤다!)').catch(()=>{});
   }
 }
@@ -1752,13 +1752,13 @@ function contentTarget(w){
 function seedShop(){
   $('npcPanel').dataset.kind = 'other';
   $('npcPanel').hidden = false; $('mapPanel').hidden = true; closeTalk();
-  $('npcPanel').innerHTML = `<div class="np-head"><b>모모의 씨앗 가게 · ${ui('coin')} ${me.inv.gold}G</b><button class="mini" id="ssClose">닫기</button></div>` +
-    Object.entries(CROPS).map(([id,c])=>`<button class="np" data-id="${id}"><span class="np-name">${iconImg('crop:'+id)}${c.name} 씨앗 <small>${fmtMin(c.min)} · 수확 ${c.y1===c.y2?c.y1:c.y1+'~'+c.y2}개 · 1개 ${c.sell}G</small></span><span class="np-place">${c.seed}G</span>${invCount('seed:'+id)?`<span class="np-day">가진 씨앗 ${invCount('seed:'+id)}</span>`:''}</button>`).join('');
+  $('npcPanel').innerHTML = `<div class="np-head"><b>모모의 씨앗 가게 · ${ui('coin')} ${me.inv.gold} G</b><button class="mini" id="ssClose">닫기</button></div>` +
+    Object.entries(CROPS).map(([id,c])=>`<button class="np" data-id="${id}"><span class="np-name">${iconImg('crop:'+id)}${c.name} 씨앗 <small>${fmtMin(c.min)} · 수확 ${c.y1===c.y2?c.y1:c.y1+'~'+c.y2} 개 · 1 개 ${c.sell} G</small></span><span class="np-place">${c.seed} G</span>${invCount('seed:'+id)?`<span class="np-day">가진 씨앗 ${invCount('seed:'+id)}</span>`:''}</button>`).join('');
   $('ssClose').onclick = ()=>{ $('npcPanel').hidden = true; };
   $('npcPanel').querySelectorAll('.np[data-id]').forEach(b=>b.onclick = ()=>{
     const c = CROPS[b.dataset.id];
     if (me.inv.gold < c.seed) return toast('돈이 모자라요');
-    me.inv.gold -= c.seed; invAdd('seed:'+b.dataset.id, 1); saveMe(); renderHud(); seedShop(); toast(`${c.name} 씨앗 1개를 샀어요`);
+    me.inv.gold -= c.seed; invAdd('seed:'+b.dataset.id, 1); saveMe(); renderHud(); seedShop(); toast(`${c.name} 씨앗 1 개를 샀어요`);
   });
 }
 function sellActions(n){ return [['물건 팔기', ()=>sellPanel(n)], ['씨앗 가게', seedShop], ['거래소', marketPanel], ['오늘의 시세', pricePanel]]; }
@@ -1769,14 +1769,14 @@ function plantMenu(i){
   const seeds = itemsOf('seed');
   if (!seeds.length) return toast(me.inv.can ? '씨앗이 없어요. 마을 광장의 모모 가게나 들판의 밤이에게서 사요' : '씨앗이 없어요.');
   const empty = me.gardens.map((g,j)=>g && !g.crop ? j : -1).filter(j=>j>=0);
-  openPanel('어떤 씨앗을 심을까요?', `<p class="mnote" style="margin-top:0">텃밭 ${i+1}번 칸에 심어요. 빈 칸 ${empty.length}개.</p><div class="bag-grid">${seeds.map(([k,n])=>{ const id = k.split(':')[1], c = CROPS[id];
+  openPanel('어떤 씨앗을 심을까요?', `<p class="mnote" style="margin-top:0">텃밭 ${i+1} 번 칸에 심어요. 빈칸 ${empty.length} 개.</p><div class="bag-grid">${seeds.map(([k,n])=>{ const id = k.split(':')[1], c = CROPS[id];
     return `<button class="tile" data-k="${id}" title="${esc(c.name)}">${iconImg('crop:'+id)}<i>${n}</i><em>${esc(c.name)}</em><s>${fmtMin(c.min)}</s></button>`; }).join('')}</div>`);
   $('npcPanel').querySelectorAll('.tile[data-k]').forEach(t=>t.onclick = ()=>{
     const id = t.dataset.k, c = CROPS[id], n = invCount('seed:'+id);
     const acts = [['이 칸에 심기', ()=>{ closeTalk(); $('npcPanel').hidden = true; plant(i, id); }]];
-    if (empty.length > 1 && n > 1) acts.push([`빈 칸 ${Math.min(empty.length, n)}개에 모두 심기`, ()=>{ closeTalk(); $('npcPanel').hidden = true; let k = 0; for (const j of empty){ if (!invCount('seed:'+id)) break; plant(j, id, true); k++; } toast(`${c.name} 씨앗을 ${k}칸에 심었어요 · 다 크는 데 ${fmtMin(c.min)}`); }]);
+    if (empty.length > 1 && n > 1) acts.push([`빈칸 ${Math.min(empty.length, n)} 개에 모두 심기`, ()=>{ closeTalk(); $('npcPanel').hidden = true; let k = 0; for (const j of empty){ if (!invCount('seed:'+id)) break; plant(j, id, true); k++; } toast(`${c.name} 씨앗을 ${k} 칸에 심었어요 · 다 크는 데 ${fmtMin(c.min)}`); }]);
     acts.push(['다른 씨앗 보기', ()=>{ closeTalk(); plantMenu(i); }]);
-    withIcon('crop:'+id); say(`${c.name} 씨앗 (${n}개)`, `다 크는 데 ${fmtMin(c.min)} · 수확 ${c.y1===c.y2?c.y1:c.y1+'~'+c.y2}개 · 1개 ${c.sell}G`, acts, (loreOf(id)||{}).desc || '', true);
+    withIcon('crop:'+id); say(`${c.name} 씨앗 (${n} 개)`, `다 크는 데 ${fmtMin(c.min)} · 수확 ${c.y1===c.y2?c.y1:c.y1+'~'+c.y2} 개 · 1 개 ${c.sell} G`, acts, (loreOf(id)||{}).desc || '', true);
   });
 }
 function plant(i, type, quiet=false){
@@ -1797,8 +1797,8 @@ function useSlot(i){
     if (c.stage>=4){
       const n = cd.y1 + Math.floor(Math.random()*(cd.y2-cd.y1+1));
       g.crop = null; invAdd('crop:'+c.type, n); setExpr('happy', 2000); stat('cropsHarvested', n);
-      if (me.quest<=5 && me.quest>=4){ me.quest = 6; invAdd('seed:c01', 2); say('하나 · 꼬마 농부', '첫 수확 축하해! 기념으로 토마토 씨앗 2개 더 줄게! 다른 씨앗은 마을 광장 모모 가게에서 살 수 있어!'); }
-      else toast(`${cd.name} ${n}개를 수확했어요!`, 'crop:'+c.type);
+      if (me.quest<=5 && me.quest>=4){ me.quest = 6; invAdd('seed:c01', 2); say('하나 · 꼬마 농부', '첫 수확 축하해! 기념으로 토마토 씨앗 2 개 더 줄게! 다른 씨앗은 마을 광장 모모 가게에서 살 수 있어!'); }
+      else toast(`${cd.name} ${n} 개를 수확했어요!`, 'crop:'+c.type);
     } else if (!c.wateredAt){
       if (!me.inv.can) return toast('물뿌리개가 필요해요. 하나를 찾아가요.');
       g.crop = {type:c.type, stage:c.stage, wateredAt:now};
@@ -1867,9 +1867,9 @@ function cook(id){
   toast(`${DISHES[id].name}을(를) 만들었어요!`); cookPanel();
 }
 function cookPanel(){
-  openPanel(`단단의 요리 · 만든 요리 ${me.cooked||0}개`, Object.entries(DISHES).map(([id,d])=>{
+  openPanel(`단단의 요리 · 만든 요리 ${me.cooked||0} 개`, Object.entries(DISHES).map(([id,d])=>{
     const need = d.need.map(([k,n])=>`${k==='fish:*' ? '물고기' : itemName(k)} ${n}`).join(' + ');
-    return `<button class="np" data-id="${id}" ${canCook(id)?'':'style="opacity:.55"'}><span class="np-name">${iconImg('dish:'+id)}${d.name} <small>${need}</small></span><span class="np-place">${canCook(id)?'만들기':'재료 부족'}</span><span class="np-day">체력 +${d.heal} · ${dishPrice(id)}G</span></button>`;
+    return `<button class="np" data-id="${id}" ${canCook(id)?'':'style="opacity:.55"'}><span class="np-name">${iconImg('dish:'+id)}${d.name} <small>${need}</small></span><span class="np-place">${canCook(id)?'만들기':'재료 부족'}</span><span class="np-day">체력 +${d.heal} · ${dishPrice(id)} G</span></button>`;
   }).join(''), b=>cook(b.dataset.id));
 }
 function eatDish(id){ invAdd('dish:'+id, -1); playerHp = Math.min(PLAYER_MAX_HP, playerHp + DISHES[id].heal); saveMe(); renderHud(); toast(`${DISHES[id].name}을(를) 먹었어요. 체력 +${DISHES[id].heal}`); }
@@ -1907,7 +1907,7 @@ function errandPanel(){
   const st = me.errand && me.errand.day===today() ? me.errand.done.split(',') : [];
   openPanel('토리의 오늘의 심부름', errandsToday().map(e=>{
     const done = st.includes(String(e.i)), ok = errandHave(e);
-    return `<button class="np" data-id="${e.i}" ${done||!ok?'style="opacity:.55"':''}><span class="np-name">${iconImg(e.key)}${e.label} ${e.n}개 <small>가져다주기</small></span><span class="np-place">${done?'완료 ✓':ok?'전달하기':'아직 없어요'}</span><span class="np-day">보상 ${e.reward}G · 토리 호감도 +5</span></button>`;
+    return `<button class="np" data-id="${e.i}" ${done||!ok?'style="opacity:.55"':''}><span class="np-name">${iconImg(e.key)}${e.label} ${e.n} 개 <small>가져다주기</small></span><span class="np-place">${done?'완료 ✓':ok?'전달하기':'아직 없어요'}</span><span class="np-day">보상 ${e.reward} G · 토리 호감도 +5</span></button>`;
   }).join('') + '<p class="mnote">심부름은 매일 바뀌어요.</p>', b=>{
     const e = errandsToday()[+b.dataset.id];
     const done = me.errand && me.errand.day===today() ? me.errand.done.split(',') : [];
@@ -1917,7 +1917,7 @@ function errandPanel(){
     else invAdd(e.key, -e.n);
     me.inv.gold += e.reward; addPts(NPC.tori, 5);
     me.errand = {day:today(), done:[...done, String(e.i)].filter(Boolean).join(',')}; stat('errandsDone');
-    saveMe(); renderHud(); toast(`심부름 완료! ${e.reward}G를 받았어요`); errandPanel();
+    saveMe(); renderHud(); toast(`심부름 완료! ${e.reward} G를 받았어요`); errandPanel();
   });
 }
 
@@ -1937,15 +1937,15 @@ FURN_LIST.push(...FURN2);
 const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5]}]));
 function workshopPanel(){
   const plots = me.plots || 2, next = plots + 1, pc = PLOT_COST[next];
-  const plotRow = pc ? `<button class="np" data-id="plot"><span class="np-name">텃밭 늘리기 (${plots} → ${next}칸) <small>${pc[0]}G + ${itemName(pc[1])} ${pc[2]}</small></span><span class="np-place">${me.inv.gold>=pc[0]&&invCount(pc[1])>=pc[2]?'늘리기':'재료 부족'}</span></button>` : `<div class="np"><span class="np-name">텃밭이 최대 6칸이에요</span></div>`;
-  openPanel('보리 공방 · 💰 '+me.inv.gold+'G', plotRow + Object.entries(FURN).map(([id,f])=>{
+  const plotRow = pc ? `<button class="np" data-id="plot"><span class="np-name">텃밭 늘리기 (${plots} → ${next} 칸) <small>${pc[0]} G + ${itemName(pc[1])} ${pc[2]}</small></span><span class="np-place">${me.inv.gold>=pc[0]&&invCount(pc[1])>=pc[2]?'늘리기':'재료 부족'}</span></button>` : `<div class="np"><span class="np-name">텃밭이 최대 6 칸이에요</span></div>`;
+  openPanel('보리 공방 · 💰 '+me.inv.gold+' G', plotRow + Object.entries(FURN).map(([id,f])=>{
     const ok = me.inv.gold >= f.gold && invCount(f.need) >= f.n;
-    return `<button class="np" data-id="${id}" ${ok?'':'style="opacity:.55"'}><span class="np-name">${f.name} <small>${f.gold}G + ${itemName(f.need)} ${f.n}</small></span><span class="np-place">${ok?'만들기':'재료 부족'}</span>${invCount('furn:'+id)?`<span class="np-day">가진 것 ${invCount('furn:'+id)}</span>`:''}</button>`;
+    return `<button class="np" data-id="${id}" ${ok?'':'style="opacity:.55"'}><span class="np-name">${f.name} <small>${f.gold} G + ${itemName(f.need)} ${f.n}</small></span><span class="np-place">${ok?'만들기':'재료 부족'}</span>${invCount('furn:'+id)?`<span class="np-day">가진 것 ${invCount('furn:'+id)}</span>`:''}</button>`;
   }).join('') + '<p class="mnote">만든 가구는 내 집 안에서 [꾸미기]로 놓아요.</p>', b=>{
     if (b.dataset.id==='plot'){
       if (!pc) return; if (me.inv.gold < pc[0] || invCount(pc[1]) < pc[2]) return toast('재료가 모자라요');
       me.inv.gold -= pc[0]; invAdd(pc[1], -pc[2]); me.plots = next; me.gardens.push(null); me.inv.garden++; syncStats();
-      saveMe(); renderHud(); toast('텃밭 1칸을 받았어요! 집 앞 + 자리에 놓아요'); return workshopPanel();
+      saveMe(); renderHud(); toast('텃밭 1 칸을 받았어요! 집 앞 + 자리에 놓아요'); return workshopPanel();
     }
     const f = FURN[b.dataset.id];
     if (me.inv.gold < f.gold || invCount(f.need) < f.n) return toast('재료가 모자라요');
@@ -2051,10 +2051,10 @@ function clothesPanel(){
   const tabs = CH.CATS.map(([k,l])=>`<button class="mini" data-tab="${k}" style="${k===shopTab?'':'background:#fff'}">${l}</button>`).join('');
   const rows = Object.entries(cat).map(([id,it])=>{
     const own = CLOSET().includes(id) || it.price===0 && !it.need, on = wearing(id) || (id==='none' && (slot==='hat' ? me.look.hat==='none' : slot==='acc' ? me.look.acc==='none' : false));
-    const cost = it.need ? `${it.price?it.price+'G + ':''}${itemName(it.need)} ${invCount(it.need)}/${it.n}` : `${it.price}G`;
+    const cost = it.need ? `${it.price?it.price+' G + ':''}${itemName(it.need)} ${invCount(it.need)}/${it.n}` : `${it.price} G`;
     const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
     return `<button class="tile ${on?'on':''}" data-id="${id}" title="${esc(it.name)}">${id==='none' ? '<span style="font-size:30px;line-height:44px">✕</span>' : `<img class="ic" src="${wearPreview(tryOn(me.look, slot, id))}" alt="">`}<em>${esc(it.name)}</em><s style="color:${own?'var(--soft)':can?'#e48fac':'#c9b3bc'}">${own ? (on ? '입는 중' : '입기') : cost}</s></button>`; }).join('');
-  openPanel(`몽실 옷가게 · 💰 ${me.inv.gold}G`, `<div style="display:flex;gap:5px;flex-wrap:wrap">${tabs}</div><p class="mnote" style="margin:4px 2px 0">산 옷은 옷장에 들어가고, 갈아입는 건 공짜예요. 세트를 입으면 상의·하의는 가려져요.</p><div class="bag-grid">${rows}</div>`);
+  openPanel(`몽실 옷가게 · 💰 ${me.inv.gold} G`, `<div style="display:flex;gap:5px;flex-wrap:wrap">${tabs}</div><p class="mnote" style="margin:4px 2px 0">산 옷은 옷장에 들어가고, 갈아입는 건 공짜예요. 세트를 입으면 상의·하의는 가려져요.</p><div class="bag-grid">${rows}</div>`);
   const pn = $('npcPanel');
   pn.querySelectorAll('[data-tab]').forEach(b=>b.onclick = ()=>{ shopTab = b.dataset.tab; clothesPanel(); });
   pn.querySelectorAll('.tile[data-id]').forEach(b=>b.onclick = ()=>{
@@ -2062,7 +2062,7 @@ function clothesPanel(){
     if (CLOSET().includes(id) || (it.price===0 && !it.need)){ if (!CLOSET().includes(id)) CLOSET().push(id); return wear(slot, id); }
     const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
     if (!can) return toast(it.need ? '재료나 돈이 모자라요' : '돈이 모자라요');
-    say(it.name, it.need ? `${it.price?it.price+'G와 ':''}${itemName(it.need)} ${it.n}개로 만들까요?` : `${it.price}G에 살까요? 사면 옷장에 들어가요.`, [[it.need ? '만들기' : '사기', ()=>{
+    say(it.name, it.need ? `${it.price?it.price+' G와 ':''}${itemName(it.need)} ${it.n} 개로 만들까요?` : `${it.price} G에 살까요? 사면 옷장에 들어가요.`, [[it.need ? '만들기' : '사기', ()=>{
       me.inv.gold -= it.price; if (it.need) invAdd(it.need, -it.n); CLOSET().push(id); stat('bought'); syncStats(); renderHud(); closeTalk(); wear(slot, id); toast(`${it.name}을(를) ${it.need?'만들어':'사서'} 입었어요!`); }], ['그만두기', ()=>{ closeTalk(); clothesPanel(); }]], '', true);
   });
 }
@@ -2076,11 +2076,11 @@ function museumPanel(){
   for (const [k] of itemsOf('ore')){ const id = k.slice(4); if (!os.has(id)) rows.push({cat:'o', id, key:k, name:ORES[id].name}); }
   for (const [k] of itemsOf('loot')){ const id = k.slice(5); if (!ms.has(id)) rows.push({cat:'m', id, key:k, name:MONSTERS[id].drop}); }
   const total = museumTotal();
-  openPanel(`올리 박물관 · 기증 ${total}/120`, `<div class="np"><span class="np-name">물고기 ${fs.size}/50 · 광석 ${os.size}/40 · 몬스터 전리품 ${ms.size}/30</span><span class="np-keep" style="color:var(--soft)">10개 기증할 때마다 300G와 올리의 호감도 +20</span></div>` +
+  openPanel(`올리 박물관 · 기증 ${total}/120`, `<div class="np"><span class="np-name">물고기 ${fs.size}/50 · 광석 ${os.size}/40 · 몬스터 전리품 ${ms.size}/30</span><span class="np-keep" style="color:var(--soft)">10 개 기증할 때마다 300 G와 올리의 호감도 +20</span></div>` +
     (rows.length ? rows.map((r,i)=>`<button class="np" data-id="${i}"><span class="np-name">${iconImg(r.key)}${r.name}</span><span class="np-place">기증하기</span></button>`).join('') : '<p class="mnote">기증할 새 물건이 없어요. 아직 박물관에 없는 물고기·광석·전리품을 가져와요.</p>'), b=>{
       const r = rows[+b.dataset.id]; invAdd(r.key, -1);
       me.museum = me.museum || {}; me.museum[r.cat] = [...museumSet(r.cat), r.id].join(',');
-      const t = museumTotal(); if (t % 10 === 0){ me.inv.gold += 800; addPts(NPC.olly, 20); toast(`기증 ${t}개 달성! 800G를 받았어요`); } else toast(`${r.name}을(를) 기증했어요`);
+      const t = museumTotal(); if (t % 10 === 0){ me.inv.gold += 800; addPts(NPC.olly, 20); toast(`기증 ${t} 개 달성! 800 G를 받았어요`); } else toast(`${r.name}을(를) 기증했어요`);
       saveMe(); renderHud(); museumPanel();
     });
 }
@@ -2099,7 +2099,7 @@ function rainWater(t){
   if (!isRain() || t - rainT < 20000) return; rainT = t;
   let n = 0; const now = Date.now();
   for (const g of me.gardens) if (g && g.crop){ const c = cropNow(g.crop, now); if (c.stage < 4 && !c.wateredAt){ g.crop = {type:c.type, stage:c.stage, wateredAt:now}; n++; } else g.crop = c; }
-  if (n){ saveMe(); toast(`비가 와서 텃밭 ${n}칸에 물이 들었어요`); }
+  if (n){ saveMe(); toast(`비가 와서 텃밭 ${n} 칸에 물이 들었어요`); }
 }
 const drops = Array.from({length:70}, (_,i)=>({x:Math.random(), y:Math.random(), s:.6+Math.random()*.6}));
 function drawWeather(c, t){
@@ -2120,12 +2120,12 @@ function contestSubmit(id, size){
   if (me.contest.w === weekKey() && me.contest.size >= size) return;
   me.contest = {w:weekKey(), size};
   if (net.contestSubmit) net.contestSubmit(weekKey(), size).catch(()=>{});
-  toast(`이번 주 낚시 대회 기록! ${FISH[id].name} ${size}cm`);
+  toast(`이번 주 낚시 대회 기록! ${FISH[id].name} ${size} cm`);
 }
 function contestPanel(){
   const f = FISH[contestFish()], zn = {pond:'사탕 연못', beach:'등대 해변', seacave:'비밀 해식 동굴'}[f.zone];
-  const rows = contestBoard.slice(0,10).map((r,i)=>`<div class="np"><span class="np-name">${i+1}등 ${esc(r.nick)}</span><span class="np-place">${r.size}cm</span></div>`).join('');
-  openPanel('이번 주 낚시 대회', `<div class="np"><span class="np-name">대회 물고기: ${f.name} <small>${zn}${f.time==='night'?' · 밤':f.time==='day'?' · 낮':''}</small></span><span class="np-keep" style="color:var(--soft)">가장 큰 ${f.name}을(를) 낚은 사람이 1등! 기록은 낚는 순간 자동으로 올라가요. 매주 월요일에 새 대회가 열려요.</span></div>${rows || '<p class="mnote">아직 기록이 없어요. 첫 기록의 주인공이 되어 봐요!</p>'}`);
+  const rows = contestBoard.slice(0,10).map((r,i)=>`<div class="np"><span class="np-name">${i+1} 등 ${esc(r.nick)}</span><span class="np-place">${r.size} cm</span></div>`).join('');
+  openPanel('이번 주 낚시 대회', `<div class="np"><span class="np-name">대회 물고기: ${f.name} <small>${zn}${f.time==='night'?' · 밤':f.time==='day'?' · 낮':''}</small></span><span class="np-keep" style="color:var(--soft)">가장 큰 ${f.name}을(를) 낚은 사람이 1 등! 기록은 낚는 순간 자동으로 올라가요. 매주 월요일에 새 대회가 열려요.</span></div>${rows || '<p class="mnote">아직 기록이 없어요. 첫 기록의 주인공이 되어 봐요!</p>'}`);
 }
 
 // ===== 친구에게 선물 보내기 =====
@@ -2137,16 +2137,16 @@ function sendMenu(){
   say('선물 보내기', '무엇을 보낼까요?', items.slice(0,24).map(([k,n])=>[`${itemName(k)} (${n})`, ()=>{
     say('선물 보내기', `${itemName(k)}을(를) 누구에게 보낼까요?`, friends.map(([id,p])=>[p.nick, async ()=>{
       if (!invCount(k)) return closeTalk();
-      try { await net.mailSend(id, k); invAdd(k, -1); saveMe(); renderHud(); closeTalk(); toast(`${p.nick}님에게 ${itemName(k)}을(를) 보냈어요`); }
+      try { await net.mailSend(id, k); invAdd(k, -1); saveMe(); renderHud(); closeTalk(); toast(`${p.nick} 님에게 ${itemName(k)}을(를) 보냈어요`); }
       catch(e){ toast('보내지 못했어요. 잠시 뒤 다시 해 봐요'); }
     }]), '', false, true);
   }]), '', false, true);
 }
 function onMail(m, remove){
   if (!m || typeof m.item!=='string' || !/^(dish|crop|fish|ore|loot|seed|furn):[a-z0-9_]{2,8}$/.test(m.item)) return remove();
-  if (invRoom(m.item) < 1){ addLog(`${String(m.nick||'누군가').slice(0,8)}님이 보낸 ${itemName(m.item)}이(가) 우편함에 있어요 (가방이 가득 차서 못 받았어요)`, true); return; }
+  if (invRoom(m.item) < 1){ addLog(`${String(m.nick||'누군가').slice(0,8)} 님이 보낸 ${itemName(m.item)}이(가) 우편함에 있어요 (가방이 가득 차서 못 받았어요)`, true); return; }
   invAdd(m.item, 1); saveMe(); renderHud(); remove();
-  addLog(`${String(m.nick||'누군가').slice(0,8)}님이 ${itemName(m.item)}을(를) 보냈어요!`, true);
+  addLog(`${String(m.nick||'누군가').slice(0,8)} 님이 ${itemName(m.item)}을(를) 보냈어요!`, true);
 }
 
 // ===== 경제: 판매처 · 오늘의 시세 · 거래소 =====
@@ -2162,7 +2162,7 @@ const BUYERS = {
 };
 const SELL_CATS = {crop:'작물', fish:'물고기', ore:'광석', loot:'전리품', dish:'요리', furn:'가구'};
 const baseKey = key => { const [cat, id] = key.split(':'); return cat==='fish' ? 'fish:'+parseFish(id).id : key; };
-// 오늘의 인기 품목: 작물·물고기·광석에서 하나씩, 오늘은 2배 값
+// 오늘의 인기 품목: 작물·물고기·광석에서 하나씩, 오늘은 2 배 값
 function hotToday(){
   const d = today(), pick = (list, salt) => list[hash(d+salt) % list.length];
   return [ 'crop:'+pick(Object.keys(CROPS),'c'), 'fish:'+pick(Object.keys(FISH),'f'), 'ore:'+pick(Object.keys(ORES).filter(id=>ORES[id].tier<=3),'o') ];
@@ -2191,23 +2191,23 @@ function sellPanel(n){
   const rows = by.cats.flatMap(cat=>itemsOf(cat).map(([k,c])=>({k,c,cat})));
   const all = rows.reduce((a,r)=>a+sellTotal(r.k, r.c, n), 0);
   const bon = Object.entries(by.bonus).map(([c,b])=>`${SELL_CATS[c]} +${Math.round((b-1)*100)}%`).concat(heartsN(n) >= 7 ? ['친한 친구 +10%'] : []).join(' · ');
-  openPanel(`${n.name}에게 팔기 · 💰 ${me.inv.gold}G`,
-    `<p class="mnote" style="margin-top:0">${esc(by.line)}${bon ? ` <b style="color:var(--ink)">${bon}</b>` : ''}<br>오늘의 인기: ${hotToday().map(k=>itemName(k)).join(', ')} (2배)</p>` +
-    (rows.length ? `<button class="mini" id="spAll" style="align-self:flex-start">전부 팔기 +${all}G</button>` +
-      rows.map(r=>`<button class="np" data-id="${r.k}"><span class="np-name">${iconImg(r.k)}${esc(itemName(r.k))} <small>×${r.c}</small></span><span class="np-place">${unitPrice(r.k, n)}G ${trend(r.k)}</span><span class="np-day">전부 ${sellTotal(r.k, r.c, n)}G</span></button>`).join('')
+  openPanel(`${n.name}에게 팔기 · 💰 ${me.inv.gold} G`,
+    `<p class="mnote" style="margin-top:0">${esc(by.line)}${bon ? ` <b style="color:var(--ink)">${bon}</b>` : ''}<br>오늘의 인기: ${hotToday().map(k=>itemName(k)).join(', ')} (2 배)</p>` +
+    (rows.length ? `<button class="mini" id="spAll" style="align-self:flex-start">전부 팔기 +${all} G</button>` +
+      rows.map(r=>`<button class="np" data-id="${r.k}"><span class="np-name">${iconImg(r.k)}${esc(itemName(r.k))} <small>×${r.c}</small></span><span class="np-place">${unitPrice(r.k, n)} G ${trend(r.k)}</span><span class="np-day">전부 ${sellTotal(r.k, r.c, n)} G</span></button>`).join('')
       : `<p class="mnote">${n.name}에게 팔 수 있는 물건이 없어요.</p>`),
     b=>{ const k = b.dataset.id, c = invCount(k);
-      const opts = [[`1개 팔기 (+${sellTotal(k,1,n)}G)`, ()=>{ const g = sellItem(k,1,n); saveMe(); renderHud(); toast(`${itemName(k)} 1개 · +${g}G`, k); sellPanel(n); }]];
-      if (c > 1) opts.push([`${c}개 전부 팔기 (+${sellTotal(k,c,n)}G)`, ()=>{ const g = sellItem(k,c,n); saveMe(); renderHud(); toast(`${itemName(k)} ${c}개 · +${g}G`, k); sellPanel(n); }]);
+      const opts = [[`1 개 팔기 (+${sellTotal(k,1,n)} G)`, ()=>{ const g = sellItem(k,1,n); saveMe(); renderHud(); toast(`${itemName(k)} 1 개 · +${g} G`, k); sellPanel(n); }]];
+      if (c > 1) opts.push([`${c} 개 전부 팔기 (+${sellTotal(k,c,n)} G)`, ()=>{ const g = sellItem(k,c,n); saveMe(); renderHud(); toast(`${itemName(k)} ${c} 개 · +${g} G`, k); sellPanel(n); }]);
       opts.push(['그만두기', ()=>sellPanel(n)]);
-      withIcon(k); say(itemName(k), `오늘 시세 ${Math.round(marketMul(k)*100)}% · 1개 ${unitPrice(k,n)}G`, opts, '같은 물건을 많이 팔면 값이 조금씩 내려가요', true); });
-  const allBtn = $('spAll'); if (allBtn) allBtn.onclick = ()=>{ let g = 0; for (const r of rows) g += sellItem(r.k, r.c, n); saveMe(); renderHud(); toast(`전부 팔았어요 · +${g}G`); sellPanel(n); };
+      withIcon(k); say(itemName(k), `오늘 시세 ${Math.round(marketMul(k)*100)}% · 1 개 ${unitPrice(k,n)} G`, opts, '같은 물건을 많이 팔면 값이 조금씩 내려가요', true); });
+  const allBtn = $('spAll'); if (allBtn) allBtn.onclick = ()=>{ let g = 0; for (const r of rows) g += sellItem(r.k, r.c, n); saveMe(); renderHud(); toast(`전부 팔았어요 · +${g} G`); sellPanel(n); };
 }
 function pricePanel(){
   const hot = hotToday();
   const pick = (cat, list) => list.map(id=>cat+':'+id).sort((a,b)=>marketMul(b)-marketMul(a));
   const sec = (label, keys) => `<div class="bag-sec"><b>${label}</b>${keys.slice(0,5).map(k=>`<div class="np"><span class="np-name">${iconImg(k)}${esc(itemName(k))}</span><span class="np-place">${Math.round(marketMul(k)*100)}% ${trend(k)}</span></div>`).join('')}</div>`;
-  openPanel('오늘의 시세', `<p class="mnote" style="margin-top:0">시세는 매일 아침 바뀌어요. 인기 품목은 2배! 전문 상인(하나·루루·펭펭·도도·비비·단단)에게 팔면 더 비싸요.</p>
+  openPanel('오늘의 시세', `<p class="mnote" style="margin-top:0">시세는 매일 아침 바뀌어요. 인기 품목은 2 배! 전문 상인(하나·루루·펭펭·도도·비비·단단)에게 팔면 더 비싸요.</p>
     ${sec('오늘의 인기 품목', hot)}${sec('작물 비싼 순', pick('crop', Object.keys(CROPS)).filter(k=>!hot.includes(k)))}${sec('물고기 비싼 순', pick('fish', Object.keys(FISH)).filter(k=>!hot.includes(k)))}${sec('광석 비싼 순', pick('ore', Object.keys(ORES)).filter(k=>!hot.includes(k)))}`);
 }
 
@@ -2221,7 +2221,7 @@ function onMarket(v){
   // 내 물건이 팔렸으면 골드를 받아요
   for (const [id,l] of Object.entries(market)) if (l.uid===uid && l.buyer){
     net.marketCollect(id).then(ok=>{ if (!ok) return; const g = Math.floor(l.price*(1-MARKET_FEE)); me.inv.gold += g; me.earned = (me.earned||0) + g; saveMe(); renderHud();
-      stat('marketSold'); addLog(`거래소: ${String(l.bnick||'누군가').slice(0,8)}님이 ${itemName(l.item)} ${l.n}개를 샀어요! +${g}G`, true); }).catch(()=>{});
+      stat('marketSold'); addLog(`거래소: ${String(l.bnick||'누군가').slice(0,8)} 님이 ${itemName(l.item)} ${l.n} 개를 샀어요! +${g} G`, true); }).catch(()=>{});
   }
   if (!$('npcPanel').hidden && $('npcPanel').dataset.market) marketPanel();
 }
@@ -2229,38 +2229,38 @@ function marketPanel(){
   const list = Object.entries(market).filter(([,l])=>!l.buyer).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
   const mine = list.filter(([,l])=>l.uid===uid), others = list.filter(([,l])=>l.uid!==uid);
   const row = ([id,l]) => { const each = Math.round(l.price/l.n), ref = unitPrice(l.item);
-    return `<button class="np" data-id="${id}"><span class="np-name">${iconImg(l.item)}${esc(itemName(l.item))} <small>×${l.n} · ${esc(String(l.nick||'').slice(0,8))}</small></span><span class="np-place">${l.price}G</span><span class="np-day">${l.uid===uid ? '내리기' : `개당 ${each}G · 상점 시세 ${ref}G`}</span></button>`; };
-  openPanel(`거래소 · 💰 ${me.inv.gold}G`,
-    `<p class="mnote" style="margin-top:0">친구들이 올린 물건을 사거나, 내 물건을 원하는 값에 올려요. 팔리면 수수료 5%를 빼고 골드가 들어와요. (최대 ${MARKET_MAX}개)</p>
+    return `<button class="np" data-id="${id}"><span class="np-name">${iconImg(l.item)}${esc(itemName(l.item))} <small>×${l.n} · ${esc(String(l.nick||'').slice(0,8))}</small></span><span class="np-place">${l.price} G</span><span class="np-day">${l.uid===uid ? '내리기' : `개당 ${each} G · 상점 시세 ${ref} G`}</span></button>`; };
+  openPanel(`거래소 · 💰 ${me.inv.gold} G`,
+    `<p class="mnote" style="margin-top:0">친구들이 올린 물건을 사거나, 내 물건을 원하는 값에 올려요. 팔리면 수수료 5%를 빼고 골드가 들어와요. (최대 ${MARKET_MAX} 개)</p>
      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="mkAdd">물건 올리기</button><button class="mini" id="mkPrice">오늘의 시세</button></div>
      <div class="bag-sec"><b>사고 싶은 물건 ${others.length}</b>${others.map(row).join('') || '<p class="mnote">아직 올라온 물건이 없어요.</p>'}</div>
      ${mine.length ? `<div class="bag-sec"><b>내가 올린 물건 ${mine.length}/${MARKET_MAX}</b>${mine.map(row).join('')}</div>` : ''}`,
     b=>{ const id = b.dataset.id, l = market[id]; if (!l) return;
-      if (l.uid===uid) return say('거래소', `${itemName(l.item)} ${l.n}개를 내릴까요?`, [['내리기', async ()=>{ if (await net.marketCancel(id)){ invAdd(l.item, l.n); saveMe(); renderHud(); toast('물건을 돌려받았어요'); } else toast('이미 팔렸거나 내릴 수 없어요'); closeTalk(); marketPanel(); }], ['그만두기', marketPanel]], '', true);
+      if (l.uid===uid) return say('거래소', `${itemName(l.item)} ${l.n} 개를 내릴까요?`, [['내리기', async ()=>{ if (await net.marketCancel(id)){ invAdd(l.item, l.n); saveMe(); renderHud(); toast('물건을 돌려받았어요'); } else toast('이미 팔렸거나 내릴 수 없어요'); closeTalk(); marketPanel(); }], ['그만두기', marketPanel]], '', true);
       if (me.inv.gold < l.price) return toast('골드가 모자라요');
-      if (invRoom(l.item) < l.n) return toast(`${itemName(l.item)}은(는) 가방에 ${invRoom(l.item)}개까지만 더 넣을 수 있어요`);
+      if (invRoom(l.item) < l.n) return toast(`${itemName(l.item)}은(는) 가방에 ${invRoom(l.item)} 개까지만 더 넣을 수 있어요`);
       withIcon(l.item);
-      say('거래소', `${String(l.nick||'').slice(0,8)}님의 ${itemName(l.item)} ${l.n}개를 ${l.price}G에 살까요?`, [['사기', async ()=>{
+      say('거래소', `${String(l.nick||'').slice(0,8)} 님의 ${itemName(l.item)} ${l.n} 개를 ${l.price} G에 살까요?`, [['사기', async ()=>{
         if (me.inv.gold < l.price) return toast('골드가 모자라요');
-        if (await net.marketBuy(id)){ me.inv.gold -= l.price; invAdd(l.item, l.n); stat('marketBought'); saveMe(); renderHud(); toast(`${itemName(l.item)} ${l.n}개를 샀어요!`, l.item); }
+        if (await net.marketBuy(id)){ me.inv.gold -= l.price; invAdd(l.item, l.n); stat('marketBought'); saveMe(); renderHud(); toast(`${itemName(l.item)} ${l.n} 개를 샀어요!`, l.item); }
         else toast('앗, 이미 다른 사람이 샀어요');
-        closeTalk(); marketPanel(); }], ['그만두기', marketPanel]], `상점 시세로는 개당 ${unitPrice(l.item)}G예요`, true); });
+        closeTalk(); marketPanel(); }], ['그만두기', marketPanel]], `상점 시세로는 개당 ${unitPrice(l.item)} G예요`, true); });
   $('npcPanel').dataset.market = '1';
   $('mkAdd').onclick = marketAdd; $('mkPrice').onclick = pricePanel;
 }
 function marketAdd(){
-  if (Object.values(market).filter(l=>l.uid===uid && !l.buyer).length >= MARKET_MAX) return toast(`한 번에 ${MARKET_MAX}개까지 올릴 수 있어요`);
+  if (Object.values(market).filter(l=>l.uid===uid && !l.buyer).length >= MARKET_MAX) return toast(`한 번에 ${MARKET_MAX} 개까지 올릴 수 있어요`);
   const items = ['crop','fish','ore','loot','dish','seed','furn'].flatMap(cat=>itemsOf(cat));
   if (!items.length) return toast('올릴 물건이 없어요');
   say('물건 올리기', '무엇을 올릴까요?', items.slice(0,30).map(([k,c])=>[`${itemName(k)} (${c})`, ()=>{
     const ns = [...new Set([1, 5, 10, Math.min(c, 99)])].filter(x=>x<=c);
-    say('물건 올리기', `${itemName(k)}을(를) 몇 개 올릴까요?`, ns.map(q=>[`${q}개`, ()=>{
+    say('물건 올리기', `${itemName(k)}을(를) 몇 개 올릴까요?`, ns.map(q=>[`${q} 개`, ()=>{
       const base = unitPrice(k) * q;
       const ps = [...new Set([.8, 1, 1.3, 1.6, 2].map(m=>Math.max(1, Math.round(base*m/5)*5 || 1)))];
-      say('물건 올리기', `${itemName(k)} ${q}개, 얼마에 팔까요?\n(상점 시세로는 ${base}G)`, ps.map(p=>[`${p}G`, async ()=>{
+      say('물건 올리기', `${itemName(k)} ${q} 개, 얼마에 팔까요?\n(상점 시세로는 ${base} G)`, ps.map(p=>[`${p} G`, async ()=>{
         if (invCount(k) < q) return closeTalk();
         invAdd(k, -q); saveMe(); renderHud();
-        try { await net.marketList({uid, nick:me.nick, item:k, n:q, price:p}); toast(`${itemName(k)} ${q}개를 ${p}G에 올렸어요`); }
+        try { await net.marketList({uid, nick:me.nick, item:k, n:q, price:p}); toast(`${itemName(k)} ${q} 개를 ${p} G에 올렸어요`); }
         catch(e){ invAdd(k, q); saveMe(); renderHud(); toast('올리지 못했어요. 잠시 뒤 다시 해 봐요'); }
         closeTalk(); marketPanel();
       }]).concat([['그만두기', marketPanel]]), '', false, true);
@@ -2268,7 +2268,7 @@ function marketAdd(){
   }]), '', false, true);
 }
 
-// ===== 섬 주식: 주민 가게 8곳의 주식. 10분마다 값이 바뀌고, 모두에게 같은 값이에요 =====
+// ===== 섬 주식: 주민 가게 8곳의 주식. 10 분마다 값이 바뀌고, 모두에게 같은 값이에요 =====
 // [id, 이름, 기준가, 주민, 흔들림(높을수록 위험), 좋은 소식, 나쁜 소식]
 const STOCK_LIST = [
   ['s1','모모 케이크',120,'momo',.022,'새 딸기 케이크가 대박 났대요!','오븐이 고장 나서 하루 쉰대요…'],
@@ -2320,11 +2320,11 @@ function stockPanel(){
   const own = myStocks(), news = stockNews(today());
   let value = 0, cost = 0; for (const [id,h] of Object.entries(own)){ value += stockPrice(id)*h.n; cost += h.cost; }
   const left = STOCK_TICK - (Date.now() - STOCK_EPOCH) % STOCK_TICK;
-  openPanel(`섬 주식 · 💰 ${me.inv.gold}G`,
-    `<p class="mnote" style="margin-top:0">10분마다 값이 바뀌어요 (다음 변동까지 ${fmtLeft(left)}). 사고팔 때 수수료 1%.<br>📰 ${esc(STOCKS[news.good].name)}: ${esc(STOCKS[news.good].good)}<br>📰 ${esc(STOCKS[news.bad].name)}: ${esc(STOCKS[news.bad].bad)}</p>
-     ${Object.keys(own).length ? `<div class="np"><span class="np-name">내 주식 평가액 ${value}G</span><span class="np-place" style="color:${pctColor(value-cost)}">${value-cost>=0?'+':''}${value-cost}G</span></div>` : ''}` +
+  openPanel(`섬 주식 · 💰 ${me.inv.gold} G`,
+    `<p class="mnote" style="margin-top:0">10 분마다 값이 바뀌어요 (다음 변동까지 ${fmtLeft(left)}). 사고팔 때 수수료 1%.<br>📰 ${esc(STOCKS[news.good].name)}: ${esc(STOCKS[news.good].good)}<br>📰 ${esc(STOCKS[news.bad].name)}: ${esc(STOCKS[news.bad].bad)}</p>
+     ${Object.keys(own).length ? `<div class="np"><span class="np-name">내 주식 평가액 ${value} G</span><span class="np-place" style="color:${pctColor(value-cost)}">${value-cost>=0?'+':''}${value-cost} G</span></div>` : ''}` +
     STOCK_LIST.map(([id])=>{ const s = STOCKS[id], ch = stockChange(id), h = own[id];
-      return `<button class="np" data-id="${id}" style="grid-template-columns:1fr auto auto;align-items:center"><span class="np-name">${esc(s.name)}<small>${h ? ` · ${h.n}주 보유` : ''}</small></span>${stockSpark(id)}<span class="np-place" style="min-width:64px"><b style="font-weight:inherit;color:var(--ink)">${stockPrice(id)}G</b><br><span style="color:${pctColor(ch)}">${pct(ch)}</span></span></button>`; }).join(''),
+      return `<button class="np" data-id="${id}" style="grid-template-columns:1fr auto auto;align-items:center"><span class="np-name">${esc(s.name)}<small>${h ? ` · ${h.n} 주 보유` : ''}</small></span>${stockSpark(id)}<span class="np-place" style="min-width:64px"><b style="font-weight:inherit;color:var(--ink)">${stockPrice(id)} G</b><br><span style="color:${pctColor(ch)}">${pct(ch)}</span></span></button>`; }).join(''),
     b=>stockDetail(b.dataset.id));
   $('npcPanel').dataset.stock = '1';
 }
@@ -2333,12 +2333,12 @@ function stockTrade(id, n){
   if (n > 0){
     const total = Math.ceil(p*n*(1+STOCK_FEE)); if (me.inv.gold < total) return toast('골드가 모자라요');
     me.inv.gold -= total; const h = own[id] = own[id] || {n:0, cost:0}; h.n += n; h.cost += total;
-    toast(`${STOCKS[id].name} ${n}주를 샀어요 · -${total}G`);
+    toast(`${STOCKS[id].name} ${n} 주를 샀어요 · -${total} G`);
   } else {
     const h = own[id]; n = Math.min(-n, h?.n||0); if (!n) return;
     const got = Math.floor(p*n*(1-STOCK_FEE)); h.cost = Math.round(h.cost * (h.n-n)/h.n); h.n -= n; if (!h.n) delete own[id];
     me.inv.gold += got; me.earned = (me.earned||0) + got; if (got > h.cost*n/(h.n+n)) stat('stockProfit', Math.round(got - h.cost*n/(h.n+n))); syncStats();
-    toast(`${STOCKS[id].name} ${n}주를 팔았어요 · +${got}G`);
+    toast(`${STOCKS[id].name} ${n} 주를 팔았어요 · +${got} G`);
   }
   saveMe(); renderHud(); stockDetail(id);
 }
@@ -2347,11 +2347,11 @@ function stockDetail(id){
   const canBuy = Math.floor(me.inv.gold / (p*(1+STOCK_FEE)));
   const buys = [...new Set([1, 10, canBuy])].filter(n=>n>=1 && n<=canBuy);
   const n = NPC[s.npc];
-  openPanel(`${s.name} · ${p}G`,
+  openPanel(`${s.name} · ${p} G`,
     `<div class="np" style="display:block"><div style="display:flex;justify-content:space-between"><span>오늘 <b style="font-weight:inherit;color:${pctColor(ch)}">${pct(ch)}</b></span><small style="color:var(--soft)">최근 하루</small></div>${stockSpark(id, 144, 320, 90).replace('width="320"','width="100%" preserveAspectRatio="none"')}</div>
-     <p class="mnote">${n ? esc(n.name)+'의 가게예요. ' : ''}흔들림 ${'●'.repeat(Math.min(5, Math.ceil(s.vol/.015)))}${'○'.repeat(5-Math.min(5, Math.ceil(s.vol/.015)))}${h ? `<br>보유 ${h.n}주 · 평균 ${Math.round(h.cost/h.n)}G · 지금 팔면 ${Math.floor(p*h.n*(1-STOCK_FEE))}G (<span style="color:${pctColor(p*h.n*(1-STOCK_FEE)-h.cost)}">${Math.floor(p*h.n*(1-STOCK_FEE))-h.cost>=0?'+':''}${Math.floor(p*h.n*(1-STOCK_FEE))-h.cost}G</span>)` : ''}</p>
-     <div style="display:flex;gap:6px;flex-wrap:wrap">${buys.map(q=>`<button class="mini" data-q="${q}">${q===canBuy && q>10 ? '최대 ' : ''}${q}주 사기</button>`).join('') || '<span class="mnote">골드가 모자라요</span>'}</div>
-     ${h ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${[...new Set([1, 10, h.n])].filter(q=>q<=h.n).map(q=>`<button class="mini" data-q="-${q}">${q===h.n && q>1 ? '전부 ' : ''}${q}주 팔기</button>`).join('')}</div>` : ''}
+     <p class="mnote">${n ? esc(n.name)+'의 가게예요. ' : ''}흔들림 ${'●'.repeat(Math.min(5, Math.ceil(s.vol/.015)))}${'○'.repeat(5-Math.min(5, Math.ceil(s.vol/.015)))}${h ? `<br>보유 ${h.n} 주 · 평균 ${Math.round(h.cost/h.n)} G · 지금 팔면 ${Math.floor(p*h.n*(1-STOCK_FEE))} G (<span style="color:${pctColor(p*h.n*(1-STOCK_FEE)-h.cost)}">${Math.floor(p*h.n*(1-STOCK_FEE))-h.cost>=0?'+':''}${Math.floor(p*h.n*(1-STOCK_FEE))-h.cost} G</span>)` : ''}</p>
+     <div style="display:flex;gap:6px;flex-wrap:wrap">${buys.map(q=>`<button class="mini" data-q="${q}">${q===canBuy && q>10 ? '최대 ' : ''}${q} 주 사기</button>`).join('') || '<span class="mnote">골드가 모자라요</span>'}</div>
+     ${h ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${[...new Set([1, 10, h.n])].filter(q=>q<=h.n).map(q=>`<button class="mini" data-q="-${q}">${q===h.n && q>1 ? '전부 ' : ''}${q} 주 팔기</button>`).join('')}</div>` : ''}
      <button class="mini" id="stBack" style="align-self:flex-start;background:#fff">← 주식 목록</button>`);
   $('npcPanel').querySelectorAll('button[data-q]').forEach(b=>b.onclick = ()=>stockTrade(id, +b.dataset.q));
   $('stBack').onclick = stockPanel;
@@ -2380,18 +2380,18 @@ function checkAchievements(){
   if (got){ saveMe(); renderHud(); flushAch(); }
 }
 let achToastT = 0;
-function flushAch(){ if (!achQueue.length) return; const a = achQueue.shift(); toast(`${a.icon} 업적 달성! ${a.name} · +${a.reward.gold}G · 칭호 획득`); setExpr('sparkle', 2500); clearTimeout(achToastT); achToastT = setTimeout(flushAch, 2800); }
+function flushAch(){ if (!achQueue.length) return; const a = achQueue.shift(); toast(`${a.icon} 업적 달성! ${a.name} · +${a.reward.gold} G · 칭호 획득`); setExpr('sparkle', 2500); clearTimeout(achToastT); achToastT = setTimeout(flushAch, 2800); }
 const titleOf = id => (ACHIEVEMENTS.find(a=>a.id===id)||{}).reward?.title || '';
 function achPanel(){
   syncStats(); const st = stats(), done = me.ach || [];
   const rows = ACHIEVEMENTS.map(a=>{ const ok = done.includes(a.id), v = Math.min(st[a.stat]||0, a.n);
-    return `<button class="np ${ok?'':'dim'}" data-id="${a.id}" style="${ok?'':'opacity:.7'}"><span class="np-name">${a.icon} ${esc(a.name)} <small>${esc(a.desc)}</small></span><span class="np-place">${ok ? (me.title===a.id ? '칭호 사용 중' : '칭호 쓰기') : `${v}/${a.n}`}</span><span class="np-day">${ok ? '달성 · '+a.reward.gold+'G' : ''}</span></button>`; }).join('');
+    return `<button class="np ${ok?'':'dim'}" data-id="${a.id}" style="${ok?'':'opacity:.7'}"><span class="np-name">${a.icon} ${esc(a.name)} <small>${esc(a.desc)}</small></span><span class="np-place">${ok ? (me.title===a.id ? '칭호 사용 중' : '칭호 쓰기') : `${v}/${a.n}`}</span><span class="np-day">${ok ? '달성 · '+a.reward.gold+' G' : ''}</span></button>`; }).join('');
   openPanel(`업적 ${done.length}/${ACHIEVEMENTS.length}`, `<p class="mnote" style="margin-top:0">달성한 업적의 칭호를 고르면 이름 위에 보여요.${me.title ? ` 지금 칭호: <b>${esc(titleOf(me.title))}</b>` : ''}</p><div style="display:flex;gap:6px"><button class="mini" id="achNone">칭호 없음</button></div>${rows}`,
     b=>{ const id = b.dataset.id; if (!done.includes(id)) return; me.title = me.title===id ? '' : id; saveMe(); achPanel(); });
   $('achNone').onclick = ()=>{ me.title = ''; saveMe(); achPanel(); };
 }
 
-// ===== 주민 퀘스트: 주민마다 6개가 이어져요 =====
+// ===== 주민 퀘스트: 주민마다 6 개가 이어져요 =====
 function qState(){ me.q = me.q || {done:[], active:{}, prog:{}}; me.q.done = me.q.done||[]; me.q.active = me.q.active||{}; me.q.prog = me.q.prog||{}; return me.q; }
 function questFor(n){ const list = NPC_QUESTS[n.id]||[]; const q = qState(); return list.find(x=>!q.done.includes(x.id)) || null; }
 function questAvail(n, qq){ const list = NPC_QUESTS[n.id]||[], i = list.indexOf(qq); return heartsN(n) >= (qq.unlock||0) && (i===0 || qState().done.includes(list[i-1].id)); }
@@ -2422,7 +2422,7 @@ function questActions(n){
     me.inv.gold += qq.reward.gold||0; for (const [k,c] of (qq.reward.items||[])){ if (k.startsWith('hat:')){ CLOSET().push(k.slice(4)); } else invAdd(k, c); }
     if (qq.reward.pts) addPts(n, qq.reward.pts);
     stat('questsDone'); saveMe(); renderHud(); setExpr('happy', 3000);
-    const rw = [qq.reward.gold ? qq.reward.gold+'G' : '', ...(qq.reward.items||[]).map(([k,c])=>k.startsWith('hat:') ? `${CH.HATS[k.slice(4)]?.name||'모자'}` : `${itemName(k)} ${c}`), qq.reward.pts ? `호감도 +${qq.reward.pts}` : ''].filter(Boolean).join(' · ');
+    const rw = [qq.reward.gold ? qq.reward.gold+' G' : '', ...(qq.reward.items||[]).map(([k,c])=>k.startsWith('hat:') ? `${CH.HATS[k.slice(4)]?.name||'모자'}` : `${itemName(k)} ${c}`), qq.reward.pts ? `호감도 +${qq.reward.pts}` : ''].filter(Boolean).join(' · ');
     questPages(n, qq.done, null, '보상: '+rw); }]];
   return [[`📜 진행 중: ${qq.title} (${questCount(qq)}/${qq.n})`, ()=>say(title(n), fillName(qq.progress), npcActions(n), `${qTypeLabel[qq.type]}: ${qTarget(qq)} ${questCount(qq)}/${qq.n}`)]];
 }
@@ -2446,7 +2446,7 @@ function bossAlive(){ return zoneId==='deepforest' && boss && boss.gen===today()
 function updateBoss(dt, t){
   if (zoneId!=='deepforest' || !boss) return;
   if (boss.gen===today() && boss.hp <= 0){
-    if (me.bossClaim !== today() && (me.bossHit||0) === today()){ me.bossClaim = today(); me.inv.gold += 3000; stat('bossKills'); invAdd('loot:m16', 1); addPts(NPC.bibi, 30); saveMe(); renderHud(); say('먼지 여왕을 물리쳤어요!', '섬 주민들과 힘을 합쳐 먼지 여왕을 물리쳤어요!\n먼지 숲이 조금 맑아진 것 같아요.', [], '보상 3000G · 여왕의 리본 · 비비 호감도 +30'); }
+    if (me.bossClaim !== today() && (me.bossHit||0) === today()){ me.bossClaim = today(); me.inv.gold += 3000; stat('bossKills'); invAdd('loot:m16', 1); addPts(NPC.bibi, 30); saveMe(); renderHud(); say('먼지 여왕을 물리쳤어요!', '섬 주민들과 힘을 합쳐 먼지 여왕을 물리쳤어요!\n먼지 숲이 조금 맑아진 것 같아요.', [], '보상 3000 G · 여왕의 리본 · 비비 호감도 +30'); }
     return;
   }
   const d = Math.hypot(pos.x-BOSS.x, pos.y-BOSS.y);
@@ -2487,7 +2487,7 @@ function makeWish(){
   let msg;
   if (r < .3){ invAdd('seed:c30', 1); msg = '반짝이는 씨앗이 떨어졌어요! (황금딸기 씨앗)'; }
   else if (r < .45){ invAdd('ore:o38', 1); msg = '하늘에서 별빛 수정이 떨어졌어요!'; }
-  else if (r < .75){ me.inv.gold += 300; msg = '주머니가 묵직해졌어요. (300G)'; }
+  else if (r < .75){ me.inv.gold += 300; msg = '주머니가 묵직해졌어요. (300 G)'; }
   else { const n = NPCS[Math.floor(Math.random()*NPCS.length)]; addPts(n, 15); msg = `왠지 ${n.name}이(가) 내 생각을 하고 있을 것 같아요. (${n.name} 호감도 +15)`; }
   saveMe(); renderHud();
   say('별빛 언덕 · 소원', `별똥별에 소원을 빌었어요…\n${msg}`);
@@ -2498,7 +2498,7 @@ function promiseTree(){
     '리본에는 섬의 첫 주민들이 남긴 글씨가 적혀 있어요.\n"이 섬을 누구에게나 돌아올 곳으로."'];
   if (h >= 7) pages.push('토토가 말했던 그 약속이 이거였구나.\n가장 낮은 가지에 아직 아무것도 적히지 않은 리본이 있어요.');
   if (k >= 7) pages.push('리본 하나에 아기 강아지 발자국이 찍혀 있어요.\n콩이가 처음 섬에 온 날의 흔적일까요?');
-  let i = 0; const show = ()=> i < pages.length-1 ? say('약속 나무', pages[i], [['다음', ()=>{ i++; show(); }]], '', true) : say('약속 나무', pages[i], isNight() && stars.length ? [['별똥별에 소원 빌기', makeWish]] : [], isNight() ? '밤하늘에 별똥별이 지나가면 소원을 빌 수 있어요' : '밤(오후 7시~새벽 5시)에 오면 별똥별이 떨어져요');
+  let i = 0; const show = ()=> i < pages.length-1 ? say('약속 나무', pages[i], [['다음', ()=>{ i++; show(); }]], '', true) : say('약속 나무', pages[i], isNight() && stars.length ? [['별똥별에 소원 빌기', makeWish]] : [], isNight() ? '밤하늘에 별똥별이 지나가면 소원을 빌 수 있어요' : '밤(오후 7 시~새벽 5 시)에 오면 별똥별이 떨어져요');
   show();
 }
 
@@ -2561,7 +2561,7 @@ function showBag(){
   const grid = cats.map(([cat,label])=>{ const it = itemsOf(cat); if (!it.length) return '';
     return `<div class="bag-sec"><b>${label}</b><div class="bag-grid">${it.map(([k,n])=>`<button class="tile${n>=STACK_MAX?' full':''}" data-k="${k}" title="${esc(itemName(k))}${n>=STACK_MAX?' · 가득 참':''}">${iconImg(k)}<i>${n}</i>${cat==='fish' ? `<s>${'★'.repeat(parseFish(k.slice(5)).st)}</s>` : cat==='seed' ? '<s>씨앗</s>' : ''}</button>`).join('')}</div></div>`; }).join('');
   const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
-  openPanel(`가방 · 💰 ${me.inv.gold}G · ❤️ ${Math.ceil(playerHp)}`,
+  openPanel(`가방 · 💰 ${me.inv.gold} G · ❤️ ${Math.ceil(playerHp)}`,
     `<div class="np"><span class="np-name">도구 <small>${tools}</small></span></div>${grid || '<p class="mnote">가방이 비어 있어요.</p>'}
      <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">친구에게 선물 보내기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">섬 주식</button><button class="mini" id="bgCloset">옷장</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`);
   $('bgCloset').onclick = clothesPanel; $('bgQuest').onclick = questLog; $('bgAch').onclick = achPanel;
@@ -2572,10 +2572,10 @@ function showBag(){
 }
 function itemInfo(k){
   const [cat, id] = k.split(':'), acts = [];
-  let desc = `${invCount(k)}/${STACK_MAX}개 · 팔면 1개 ${itemPrice(k)}G`;
+  let desc = `${invCount(k)}/${STACK_MAX} 개 · 팔면 1 개 ${itemPrice(k)} G`;
   const lore = loreOf(cat==='fish' ? parseFish(id).id : id); if (lore) desc = lore.desc + '\n' + desc;
   if (cat==='dish'){ desc += ` · 먹으면 체력 +${DISHES[id].heal}`; acts.push(['먹기', ()=>{ eatDish(id); closeTalk(); showBag(); }]); }
-  if (cat==='fish'){ const p = parseFish(id), d = (me.dex||{})[p.id]; desc = `${'★'.repeat(p.st)}${'☆'.repeat(3-p.st)} · ` + desc + (d ? ` · 최고 기록 ${d.best}cm` : ''); }
+  if (cat==='fish'){ const p = parseFish(id), d = (me.dex||{})[p.id]; desc = `${'★'.repeat(p.st)}${'☆'.repeat(3-p.st)} · ` + desc + (d ? ` · 최고 기록 ${d.best} cm` : ''); }
   if (cat==='ore') desc = `희귀도 ${TIER_STAR(ORES[id].tier)} · ` + desc;
   if (cat==='loot') desc = `${MONSTERS[id].name}의 전리품 · ` + desc;
   if (cat==='seed') desc = `다 크는 데 ${fmtMin(CROPS[id].min)} · ` + desc;
@@ -2589,7 +2589,7 @@ function dexGrid(title, entries){
 function dexInfo(aid, got, name){ const l = loreOf(aid); if (!got) return say('???', '아직 만나지 못했어요.', [], l ? l.tip : ''); withIcon(aid.startsWith('f') ? 'fish:'+aid+'_1' : aid.startsWith('o') ? 'ore:'+aid : aid.startsWith('m') ? 'loot:'+aid : aid.startsWith('c') ? 'crop:'+aid : 'dish:'+aid); say(name, l ? l.desc : '', [], l ? l.tip : '', false); }
 function showDex(){
   const zn = {pond:'연못', beach:'바다', seacave:'해식 동굴'}, tm = {any:'', day:' 낮', night:' 밤'};
-  dexGrid(`물고기 도감 ${Object.keys(me.dex||{}).length}/50`, Object.entries(FISH).map(([id,f])=>{ const d = (me.dex||{})[id]; return {aid:id, got:!!d, name:f.name, sub: d ? `${'★'.repeat(d.st)} ${d.best}cm` : zn[f.zone]+tm[f.time]}; }));
+  dexGrid(`물고기 도감 ${Object.keys(me.dex||{}).length}/50`, Object.entries(FISH).map(([id,f])=>{ const d = (me.dex||{})[id]; return {aid:id, got:!!d, name:f.name, sub: d ? `${'★'.repeat(d.st)} ${d.best} cm` : zn[f.zone]+tm[f.time]}; }));
 }
 function oreDex(){
   const zn = t => t.sea ? '해식 동굴' : t.tier >= 3 ? '의문의 동굴' : '광산';
@@ -2703,7 +2703,7 @@ function sendPresence(t){
   const sig = JSON.stringify(tgt ? {...p, x:0, y:0, dir:0, mv:0} : p);
   let go = false;
   if (tgt !== lastTarget) go = true;                              // 목적지가 바뀌면 바로 보내요 (나머지는 각자 화면에서 걸어가요)
-  else if (keyMoving) go = t-lastPres >= 250;                     // 키보드로 걸을 땐 0.25초마다
+  else if (keyMoving) go = t-lastPres >= 250;                     // 키보드로 걸을 땐 0.25 초마다
   else if (sig !== presSig) go = t-lastPres >= 120;               // 멈춤, 방향, 이모티콘
   if (!go) return;
   lastTarget = tgt; presSig = sig; lastPres = t;
@@ -2807,7 +2807,7 @@ function buildStatic(){
     else {
       c.save(); c.setLineDash([6,5]); c.lineWidth=2; c.strokeStyle='#ffffffcc'; c.beginPath(); c.roundRect(L.x-48,L.y-78,96,78,12); c.stroke(); c.restore();
       d.rr(L.x-2,L.y-40,4,24,2,'#c79a74'); d.rr(L.x-20,L.y-56,40,18,5,'#e8c39e');
-      c.font='bold 15px "Dongle",sans-serif'; c.textAlign='center'; c.fillStyle='#7a5040'; c.fillText(`${i+1}번 빈 집터`, L.x, L.y-43);
+      c.font='bold 15px "Dongle",sans-serif'; c.textAlign='center'; c.fillStyle='#7a5040'; c.fillText(`${i+1} 번 빈 집터`, L.x, L.y-43);
     }
   });
   // 출구 표지판
