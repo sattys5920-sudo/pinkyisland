@@ -306,7 +306,7 @@ export const ART_PART = {
     d.line(c => { for (let i = 0; i < 3; i++) { const a = i * PI / 3; c.moveTo(15 + Math.cos(a) * 4, -9 + Math.sin(a) * 4); c.lineTo(15 - Math.cos(a) * 4, -9 - Math.sin(a) * 4); } }, '#ffe14f', .9);
     d.ell(-15, 12, 3, 1.5, '#5cb85c');
   },
-  // 피시 앤 칩스: 체크무늬 종이 콘 + 튀김 생선 + 감자튀김 막대
+  // 피시 앤드 칩스: 체크무늬 종이 콘 + 튀김 생선 + 감자튀김 막대
   d22: (d) => {
     [[-8, -4, -.3], [-3, -7, -.1], [2, -6, .1], [7, -5, .3], [-5, -2, -.2]].forEach(([x, y, a]) => {
       d.ctx.save(); d.ctx.translate(x, y); d.ctx.rotate(a); d.rr(-1.6, -9, 3.2, 14, 1, '#ffd25a'); d.ctx.restore();
