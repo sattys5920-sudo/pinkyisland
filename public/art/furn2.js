@@ -1,4 +1,4 @@
-// 가구 그림 2탄 20종. (x,y)는 바닥에 닿는 점, 위로(-y) 약 90px·폭 약 100px 안에 그려요.
+// 가구 그림 2탄 20 종. (x,y)는 바닥에 닿는 점, 위로(-y) 약 90px·폭 약 100px 안에 그려요.
 // FURN_LIST 와 같은 형식: [이름, 골드, 재료, 개수, 모양 id, 기본색]
 export const FURN2 = [
   ['책 더미', 300, 'ore:o01', 3, 'bookpile', '#ff9fbf'],
@@ -37,7 +37,7 @@ const macaron = (d, x, y, r, col) => {
 };
 
 export const FURN2_DRAW = {
-  // 책 더미: 알록달록 책 5권 + 꼭대기에 작은 머그컵
+  // 책 더미: 알록달록 책 5 권 + 꼭대기에 작은 머그컵
   bookpile: (d, x, y, col) => {
     const books = [[col, 44, 0], ['#a9d8ff', 40, 2], ['#ffe066', 42, -3], ['#b5e6a3', 36, 1], ['#c9a6ff', 32, -2]];
     books.forEach(([bc, w, off], i) => {

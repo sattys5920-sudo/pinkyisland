@@ -1,4 +1,4 @@
-// 수확 작물 아이콘 30종 (c01..c30). (0,0) 중심, 약 -22..22 범위.
+// 수확 작물 아이콘 30 종 (c01..c30). (0,0) 중심, 약 -22..22 범위.
 const PI = Math.PI;
 const leafShape = (d, x, y, len, wid, ang, col) => {
   const c = d.ctx, ca = Math.cos(ang), sa = Math.sin(ang);
@@ -176,7 +176,7 @@ export const ART_PART = {
     for (let i = 0; i < 5; i++) { const a = i * 2 * PI / 5; d.ell(20 + Math.cos(a) * 2.2, Math.sin(a) * 2.2, 1.8, 1.8, '#ffe066'); }
     c.restore();
   },
-  // 파프리카: 4개 로브 종 모양 + 굵은 초록 꼭지
+  // 파프리카: 4 개 로브 종 모양 + 굵은 초록 꼭지
   c17: (d) => {
     const c = d.ctx;
     d.shape(() => { c.beginPath(); c.moveTo(-14, -8); c.quadraticCurveTo(-18, 6, -11, 15); c.quadraticCurveTo(-7, 19, -3, 15); c.quadraticCurveTo(0, 19, 3, 15); c.quadraticCurveTo(7, 19, 11, 15); c.quadraticCurveTo(18, 6, 14, -8); c.quadraticCurveTo(7, -13, 0, -9); c.quadraticCurveTo(-7, -13, -14, -8); c.closePath(); }, '#ff7a3d', [0, 3, 16]);

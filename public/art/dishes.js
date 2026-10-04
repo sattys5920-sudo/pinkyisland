@@ -1,4 +1,4 @@
-// 요리 아이콘 24종 (d01..d24). (0,0) 중심, 약 -22..22 범위.
+// 요리 아이콘 24 종 (d01..d24). (0,0) 중심, 약 -22..22 범위.
 const PI = Math.PI;
 const steam = (d, xs, y0, col = '#ffffff') => {
   xs.forEach((x, i) => d.line(c => { c.moveTo(x, y0); c.quadraticCurveTo(x - 3, y0 - 4, x, y0 - 8); c.quadraticCurveTo(x + 3, y0 - 12, x, y0 - 15 + (i % 2) * 2); }, col, 1.6));

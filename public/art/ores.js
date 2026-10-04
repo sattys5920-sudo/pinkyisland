@@ -1,4 +1,4 @@
-// 광석/보석 40종 그림 (o01..o40). (0,0) 중심, 약 -22..+22.
+// 광석/보석 40 종 그림 (o01..o40). (0,0) 중심, 약 -22..+22.
 const poly = (d, pts, col, box) => d.shape(() => { const c = d.ctx; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); }, col, box || [0, 0, 16]);
 const blob = (d, pts, col, box) => d.shape(() => { const c = d.ctx, n = pts.length; c.beginPath(); const m = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; let s = m(pts[n - 1], pts[0]); c.moveTo(s[0], s[1]); for (let i = 0; i < n; i++) { const p = pts[i], q = m(p, pts[(i + 1) % n]); c.quadraticCurveTo(p[0], p[1], q[0], q[1]); } c.closePath(); }, col, box || [0, 0, 16]);
 const facet = (d, segs, col, w = 0.7) => d.line(c => { for (const s of segs) { c.moveTo(s[0], s[1]); for (let i = 2; i < s.length; i += 2) c.lineTo(s[i], s[i + 1]); } }, col, w);
