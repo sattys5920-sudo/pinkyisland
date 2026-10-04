@@ -3,7 +3,7 @@ export function mixHex(a, b, k){ const A=parseInt(a.slice(1),16), B=parseInt(b.s
 export function mattePainter(ctx){
   function paint(path, col, [cx,cy,r], opt={}){
     ctx.save();
-    if (r >= 5 && !opt.noShadow){ ctx.save(); ctx.translate(Math.min(1.5, r*.06), Math.min(2.2, Math.max(.8, r*.1))); ctx.globalAlpha = .13; path(ctx); ctx.fillStyle = '#4a2a3a'; ctx.fill(); ctx.restore(); }
+    if (r >= 5 && !opt.noShadow){ const k = opt.shadow ?? 1; ctx.save(); ctx.translate(Math.min(1.5, r*.06)*k, Math.min(2.2, Math.max(.8, r*.1))*k); ctx.globalAlpha = .13*Math.min(1, k+.3); path(ctx); ctx.fillStyle = '#4a2a3a'; ctx.fill(); ctx.restore(); }
     const g = ctx.createLinearGradient(cx-r*.6, cy-r, cx+r*.4, cy+r);
     g.addColorStop(0, mixHex(col, '#fffaf4', opt.flat ? .08 : .16)); g.addColorStop(.55, col); g.addColorStop(1, mixHex(col, '#3a2030', opt.flat ? .08 : .16));
     path(ctx); ctx.fillStyle = g; ctx.fill();
@@ -72,9 +72,14 @@ function hairKit(d, x, y, R, hc){
   const u = v => v*R;
   const K = {
     // 돔: 윗머리 덮개. cy = 아랫선 높이, rx·ry 크기
-    dome:(rx=1.24, ry=.78, cy=-.42)=>d.shape(c=>{ c.beginPath(); c.ellipse(x, y+u(cy), u(rx), u(ry), 0, Math.PI, 0); c.closePath(); }, hc, [x, y-u(.6), u(1.15)]),
+    // 돔: 윗머리 덮개. 옆은 관자놀이(귀 위)까지 감싸 내려오고, 안쪽 경계는 둥근 아치 헤어라인 → 이마·옆에 피부 줄이 안 생겨요
+    dome:(rx=1.24, ry=.78, cy=-.42)=>d.shape(c=>{ const sb = Math.max(cy+.32, -.08), hl = cy-.04;
+      c.beginPath(); c.moveTo(x-u(rx), y+u(sb)); c.lineTo(x-u(rx), y+u(cy));
+      c.ellipse(x, y+u(cy), u(rx), u(ry), 0, Math.PI, 0); c.lineTo(x+u(rx), y+u(sb));
+      c.quadraticCurveTo(x+u(rx*.98), y+u(hl+.02), x+u(rx*.62), y+u(hl)); c.quadraticCurveTo(x, y+u(hl-.14), x-u(rx*.62), y+u(hl)); c.quadraticCurveTo(x-u(rx*.98), y+u(hl+.02), x-u(rx), y+u(sb));
+      c.closePath(); }, hc, [x, y-u(.6), u(1.15)], {shadow:.3}),
     // 바가지: 돔 + 옆이 눈 높이까지 내려오는 덮개
-    helmet:(rx=1.26, top=1.2, bottom=.15)=>d.shape(c=>{ c.beginPath(); c.moveTo(x-u(rx), y+u(bottom)); c.lineTo(x-u(rx), y-u(.2)); c.ellipse(x, y-u(.2), u(rx), u(top-.2), 0, Math.PI, 0); c.lineTo(x+u(rx), y+u(bottom)); c.closePath(); }, hc, [x, y-u(.4), u(1.2)]),
+    helmet:(rx=1.26, top=1.2, bottom=.15)=>d.shape(c=>{ c.beginPath(); c.moveTo(x-u(rx), y+u(bottom)); c.lineTo(x-u(rx), y-u(.2)); c.ellipse(x, y-u(.2), u(rx), u(top-.2), 0, Math.PI, 0); c.lineTo(x+u(rx), y+u(bottom)); c.closePath(); }, hc, [x, y-u(.4), u(1.2)], {shadow:.3}),
     lock:(x0,y0,x1,y1,w,bend=0)=>lock(d, hc, x+u(x0), y+u(y0), x+u(x1), y+u(y1), u(w), u(bend)),
     back:(w, top, h, r=.6)=>d.shape(c=>{ c.beginPath(); c.roundRect(x-u(w/2), y+u(top), u(w), u(h), u(r)); }, hc, [x, y+u(top+h/2), u(w/2)]),
     ball:(bx, by, r)=>d.circle(x+u(bx), y+u(by), u(r), hc),
@@ -100,7 +105,7 @@ export const HAIR = {
   center: {g:'m', label:'가운데 가르마', back:K=>{}, front:K=>{ K.dome(); K.curtain(); K.gloss(); }},
   perm:   {g:'m', label:'소프트 펌',  back:K=>{ K.back(2.3,-.6,1.1,.7); }, front:K=>{ K.dome(1.26,.85,-.4); K.lock(.2,-1.05,-.9,-.02,.44,-.5); K.lock(.2,-1.05,-.4,.0,.4,.25); K.lock(.2,-1.05,.2,-.22,.34,-.2); K.lock(.3,-1.0,.9,-.1,.4,.4); K.ball(-1.12,.3,.24); K.ball(1.12,.3,.24); K.ball(-1.0,-.35,.2); K.ball(1.05,-.4,.2); K.gloss(); }},
   twoblock:{g:'m', label:'투블럭',    back:K=>{}, front:K=>{ K.dome(1.1,.85,-.5); K.lock(.2,-1.1,-.9,-.1,.44,-.35); K.lock(.2,-1.15,-.3,-.05,.38,-.15); K.lock(.2,-1.1,.3,-.2,.34,.05); K.lock(.25,-1.1,.85,-.2,.36,.25); K.gloss(); }},
-  slick:  {g:'m', label:'올백',       back:K=>{}, front:K=>{ K.dome(1.22,1.05,-.45); K.lock(-.7,-.55,-.4,-1.2,.3,-.1); K.lock(0,-.55,.05,-1.25,.32,0); K.lock(.7,-.55,.45,-1.2,.3,.1); K.gloss(0,-1.0,.6,.18); }},
+  slick:  {g:'m', label:'올백',       back:K=>{}, front:K=>{ K.dome(1.22,1.05,-.45); K.lock(-.7,-.66,-.4,-1.22,.3,-.1); K.lock(0,-.72,.05,-1.27,.32,0); K.lock(.7,-.66,.45,-1.22,.3,.1); K.gloss(0,-1.0,.6,.18); }},
   wolf:   {g:'m', label:'울프컷',     back:K=>{ K.lock(-.9,-.3,-1.05,1.0,.3,-.1); K.lock(.9,-.3,1.05,1.0,.3,.1); K.lock(0,-.2,.0,.9,.5,0); }, front:K=>{ K.dome(1.26,1.05); K.spikes(4,.15); K.sweepL(); K.gloss(); }},
   longm:  {g:'m', label:'장발',       back:K=>{ K.back(2.5,-.6,2.0,.6); }, front:K=>{ K.dome(); K.curtain(); K.sides(1.3,.32,-.3,1.12); K.gloss(); }},
 
@@ -161,7 +166,7 @@ function sideHair(d, x, y, R, hc, id, layer){
     k.quadraticCurveTo(x-u(.95), y+u(nape+.12), x-u(.6), y+u(nape-.05));
     k.lineTo(x-u(.42), y-u(.15));
     k.quadraticCurveTo(x+u(.2), y+u(fy-.1), x+u(.98), y+u(fy)); // 이마는 앞머리 선까지 머리카락으로 덮여요
-    k.closePath(); }, hc, [x-u(.3), y-u(.5), u(1.15)]);
+    k.closePath(); }, hc, [x-u(.3), y-u(.5), u(1.15)], {shadow:.3});
   // 앞머리
   const f = sp.fringe;
   if (f==='sweep' || f==='short'){ const e = f==='short' || sp.short ? -.3 : -.02; L(-.1,-1.1, .98, e, .42, .15); L(0,-1.1, .62, e-.18, .32, .05); }
