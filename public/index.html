@@ -2076,7 +2076,7 @@ function museumPanel(){
   for (const [k] of itemsOf('ore')){ const id = k.slice(4); if (!os.has(id)) rows.push({cat:'o', id, key:k, name:ORES[id].name}); }
   for (const [k] of itemsOf('loot')){ const id = k.slice(5); if (!ms.has(id)) rows.push({cat:'m', id, key:k, name:MONSTERS[id].drop}); }
   const total = museumTotal();
-  openPanel(`올리 박물관 · 기증 ${total}/120`, `<div class="np"><span class="np-name">물고기 ${fs.size}/50 · 광석 ${os.size}/40 · 몬스터 전리품 ${ms.size}/30</span><span class="np-keep" style="color:var(--soft)">10 개 기증할 때마다 300 G와 올리의 호감도 +20</span></div>` +
+  openPanel(`올리 박물관 · 기증 ${total}/120`, `<div class="np"><span class="np-name">물고기 ${fs.size}/50 · 광석 ${os.size}/40 · 몬스터 전리품 ${ms.size}/30</span><span class="np-keep" style="color:var(--soft)">10 개 기증할 때마다 800 G와 올리의 호감도 +20</span></div>` +
     (rows.length ? rows.map((r,i)=>`<button class="np" data-id="${i}"><span class="np-name">${iconImg(r.key)}${r.name}</span><span class="np-place">기증하기</span></button>`).join('') : '<p class="mnote">기증할 새 물건이 없어요. 아직 박물관에 없는 물고기·광석·전리품을 가져와요.</p>'), b=>{
       const r = rows[+b.dataset.id]; invAdd(r.key, -1);
       me.museum = me.museum || {}; me.museum[r.cat] = [...museumSet(r.cat), r.id].join(',');
