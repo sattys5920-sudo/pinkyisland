@@ -60,6 +60,9 @@ export const ACHIEVEMENTS = [
   { id:'closet_60',  name:'런웨이의 여왕',     desc:'옷 60 벌 모두 모으기',           stat:'closetCount', n:60,      reward:{gold:15000, title:'런웨이의 여왕'},     icon:'💃' },
   { id:'furn_10',    name:'아늑한 집주인',     desc:'가구 10 개 모으기',              stat:'furnCount',   n:10,      reward:{gold:2000,  title:'아늑한 집주인'},     icon:'🛋️' },
   { id:'furn_20',    name:'인테리어 장인',     desc:'가구 20 개 모두 모으기',         stat:'furnCount',   n:20,      reward:{gold:8000,  title:'인테리어 장인'},     icon:'🪑' },
+  { id:'house_3',    name:'아늑한 거실',       desc:'집을 3 단계로 늘리기',           stat:'houseLevel',  n:3,       reward:{gold:4000,  title:'아늑한 거실'},       icon:'🏡' },
+  { id:'house_5',    name:'꿈의 저택 주인',    desc:'집을 5 단계 꿈의 저택으로 늘리기', stat:'houseLevel',  n:5,       reward:{gold:30000, title:'꿈의 저택 주인'},    icon:'👑' },
+  { id:'interior_10',name:'인테리어 디자이너', desc:'벽지·바닥 10 종 모으기',          stat:'interiorCount', n:10,    reward:{gold:8000,  title:'인테리어 디자이너'}, icon:'🛋️' },
 
   // ── 우정 ──
   { id:'hearts_7',   name:'마음을 여는 열쇠',  desc:'누군가와 하트 7 달성하기',      stat:'maxHearts',   n:7,       reward:{gold:1500,  title:'마음을 여는 열쇠'},  icon:'🔑' },
