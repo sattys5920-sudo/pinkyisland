@@ -269,16 +269,20 @@ function hairSide(d, x, y, R, L, sp, layer){
   }
   // 귀: 머리 옆면 가운데보다 조금 뒤 (덮개보다 먼저 그려서 머리선이 귀를 감싸게)
   d.ell(x-u(.42), y+u(.14), u(.17), u(.22), L.skin); d.ell(x-u(.42), y+u(.15), u(.08), u(.12), mixHex(L.skin, '#c97a70', .25), {flat:true, noShadow:true});
-  const fy = sp.sf==='up' ? -.72 : -.12, nape = ln.nape;
-  d.shape(k=>{ k.beginPath(); k.moveTo(x+u(.98), y+u(fy));
-    k.quadraticCurveTo(x+u(.98), y-u(1.22), x, y-u(1.25));
+  // 앞머리 끝 높이: 옆에서 봐도 이마가 비치지 않게 덮개가 이 선까지 내려와요 (올림머리만 이마를 드러내요)
+  const FB = {sweep:-.02, short:-.16, straight:-.02, curtain:-.06, comma:-.04, gile:.08, thin:-.04, up:-.72};
+  const fy = FB[sp.sf] ?? -.04, nape = ln.nape, fx = sp.sf==='up' ? 1.0 : 1.21;
+  d.shape(k=>{ k.beginPath(); k.moveTo(x+u(fx), y+u(fy));
+    if (sp.sf==='up') k.quadraticCurveTo(x+u(.98), y-u(1.22), x, y-u(1.25));
+    else { k.lineTo(x+u(1.21), y-u(.5)); k.quadraticCurveTo(x+u(1.22), y-u(1.22), x, y-u(1.25)); }  // 머리 앞 윤곽 바깥으로 감싸 내려와요
     k.quadraticCurveTo(x-u(1.34), y-u(1.2), x-u(1.32), y-u(.15));
     k.lineTo(x-u(1.25), y+u(nape));
     k.quadraticCurveTo(x-u(.95), y+u(nape+.12), x-u(.66), y+u(nape-.04));
     k.quadraticCurveTo(x-u(.62), y+u(.12), x-u(.62), y-u(.08)); // 귀 뒤로 돌아서
     k.quadraticCurveTo(x-u(.45), y-u(.22), x-u(.24), y-u(.12)); // 귀 위
     k.lineTo(x-u(.2), y+u(.1)); k.lineTo(x-u(.08), y-u(.18)); // 구레나룻
-    k.quadraticCurveTo(x+u(.3), y+u(fy-.08), x+u(.98), y+u(fy));
+    if (sp.sf==='up') k.quadraticCurveTo(x+u(.3), y+u(fy-.08), x+u(fx), y+u(fy));
+    else k.bezierCurveTo(x+u(.15), y+u(fy-.04), x+u(.6), y+u(fy+.03), x+u(fx), y+u(fy)); // 이마를 덮는 아래 경계 = 앞머리 끝
     k.closePath(); }, hc, [x-u(.3), y-u(.5), u(1.15)], {shadow:.3});
   if (ln.mass) T.tail(-.2, -.85, -.6, Math.min(ln.mass, 1.2), .34, -.12); // 귀를 덮고 어깨 뒤로 흐르는 옆머리
   if (sp.wave && !ln.mass){ T.ball(-1.24, nape-.22, .25); T.ball(-.95, nape-.1, .23); T.ball(-1.3, -.35, .2); }
