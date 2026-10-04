@@ -97,98 +97,239 @@ function hairKit(d, x, y, R, hc){
   };
   return K;
 }
+// ===== 머리 모양 30종 (남 15 · 여 15) =====
+// 모든 머리는 같은 '정수리 윤곽'(가로 반지름 1.27R, 위 끝 -1.25R)에서 시작해서
+// 앞모습·옆모습·뒷모습이 하나의 덩어리로 이어지게 그려요. 단위는 머리 반지름 R, 원점은 머리 중심.
+//   len   : 길이 (LENS)   fr: 정면 앞머리   sf: 옆모습 앞머리
+//   wave  : 0 생머리 · 1 잔웨이브 · 2 펌   curl: 끝만 안으로 C컬   layer: 끝을 층지게
+//   tie   : pony 포니테일 · sidepony · bun 똥머리 · twinbun · twin 양갈래 · braid 땋은 머리 · halfup 반묶음
+const CROWN = {rx:1.27, cy:-.3, ry:.95};
+// side: 정면에서 얼굴 옆으로 내려오는 옆머리 끝 / back: 뒷모습 끝 / mass: 등 뒤로 늘어지는 덩어리 끝(없으면 0) / nape: 옆모습 뒷목 끝
+const LENS = {
+  tight:   {side:-.14, back:.42, mass:0,    nape:.4},
+  short:   {side:-.06, back:.52, mass:0,    nape:.5},
+  ear:     {side:.3,   back:.72, mass:0,    nape:.66},
+  nape:    {side:.22,  back:1.08, mass:0,   nape:.95},
+  chin:    {side:.98,  back:1.08, mass:1.08, nape:.8},
+  shoulder:{side:1.3,  back:1.42, mass:1.42, nape:.8},
+  long:    {side:1.78, back:1.92, mass:1.92, nape:.8},
+};
 export const HAIR = {
   // ---------- 남 15 ----------
-  short:  {g:'m', label:'숏컷',       back:K=>{}, front:K=>{ K.dome(); K.short(); K.gloss(); }},
-  part:   {g:'m', label:'가르마',     back:K=>{}, front:K=>{ K.dome(); K.sweepR(); K.gloss(); }},
-  dandy:  {g:'m', label:'댄디컷',     back:K=>{}, front:K=>{ K.helmet(1.26,1.2,-.25); K.straight(-.02); K.gloss(); }},
-  center: {g:'m', label:'가운데 가르마', back:K=>{}, front:K=>{ K.dome(); K.curtain(); K.gloss(); }},
-  perm:   {g:'m', label:'소프트 펌',  back:K=>{ K.back(2.3,-.6,1.1,.7); }, front:K=>{ K.dome(1.26,.85,-.4); K.lock(.2,-1.05,-.9,-.02,.44,-.5); K.lock(.2,-1.05,-.4,.0,.4,.25); K.lock(.2,-1.05,.2,-.22,.34,-.2); K.lock(.3,-1.0,.9,-.1,.4,.4); K.ball(-1.12,.3,.24); K.ball(1.12,.3,.24); K.ball(-1.0,-.35,.2); K.ball(1.05,-.4,.2); K.gloss(); }},
-  twoblock:{g:'m', label:'투블록',    back:K=>{}, front:K=>{ K.dome(1.1,.85,-.5); K.lock(.2,-1.1,-.9,-.1,.44,-.35); K.lock(.2,-1.15,-.3,-.05,.38,-.15); K.lock(.2,-1.1,.3,-.2,.34,.05); K.lock(.25,-1.1,.85,-.2,.36,.25); K.gloss(); }},
-  slick:  {g:'m', label:'올백',       back:K=>{}, front:K=>{ K.dome(1.22,1.05,-.45); K.lock(-.7,-.66,-.4,-1.22,.3,-.1); K.lock(0,-.72,.05,-1.27,.32,0); K.lock(.7,-.66,.45,-1.22,.3,.1); K.gloss(0,-1.0,.6,.18); }},
-  wolf:   {g:'m', label:'울프컷',     back:K=>{ K.lock(-.9,-.3,-1.05,1.0,.3,-.1); K.lock(.9,-.3,1.05,1.0,.3,.1); K.lock(0,-.2,.0,.9,.5,0); }, front:K=>{ K.dome(1.26,1.05); K.spikes(4,.15); K.sweepL(); K.gloss(); }},
-  longm:  {g:'m', label:'장발',       back:K=>{ K.back(2.5,-.6,2.0,.6); }, front:K=>{ K.dome(); K.curtain(); K.sides(1.3,.32,-.3,1.12); K.gloss(); }},
-
-  comma:  {g:'m', label:'쉼표머리',   back:K=>{}, front:K=>{ K.dome(1.22,.8,-.42); K.lock(-.15,-1.05,-.95,-.15,.4,-.35); K.lock(.1,-1.08,-.35,.05,.42,-.55); K.lock(.2,-1.05,.3,-.2,.34,.3); K.lock(.35,-1.0,.95,-.2,.36,.3); K.gloss(); }},
-  gile:   {g:'m', label:'가일컷',     back:K=>{}, front:K=>{ K.dome(1.22,.8,-.42); K.lock(.55,-1.05,-1.0,.15,.46,-.5); K.lock(.55,-1.05,-.45,.05,.4,-.3); K.lock(.55,-1.0,.1,-.25,.3,-.05); K.lock(.6,-1.0,1.0,-.25,.34,.2); K.lock(-1.1,-.3,-1.12,.35,.3,-.05); K.gloss(); }},
-  seethru:{g:'m', label:'시스루뱅',   back:K=>{}, front:K=>{ K.dome(1.22,.8,-.42); const dy=[.0,-.06,.03,-.04,.02]; for (let i=0;i<5;i++){ const lx=-.8+i*.4; K.lock(lx*.4,-1.05,lx,-.02+dy[i],.25,lx*.12); } K.lock(-1.1,-.3,-1.1,.3,.28,-.05); K.lock(1.1,-.3,1.1,.3,.28,.05); K.gloss(); }},
-  layered:{g:'m', label:'레이어드컷', back:K=>{ K.back(2.4,-.6,1.5,.7); }, front:K=>{ K.dome(1.24,.8,-.42); K.curtain(); K.lock(-1.12,-.3,-1.2,.7,.34,-.1); K.lock(1.12,-.3,1.2,.7,.34,.1); K.lock(-1.05,.2,-1.15,.95,.28,-.05); K.lock(1.05,.2,1.15,.95,.28,.05); K.gloss(); }},
-  softwave:{g:'m', label:'내추럴 웨이브', back:K=>{ K.back(2.4,-.6,1.3,.7); }, front:K=>{ K.dome(1.26,.85,-.4); K.lock(0,-1.05,-1.0,.05,.42,-.25); K.lock(0,-1.05,-.55,-.05,.36,.15); K.lock(0,-1.05,-.15,-.3,.3,-.1); K.lock(0,-1.05,1.0,.05,.42,.25); K.lock(0,-1.05,.55,-.05,.36,-.15); K.lock(0,-1.05,.15,-.3,.3,.1); K.ball(-1.15,.45,.22); K.ball(1.15,.45,.22); K.gloss(); }},
-  asperm: {g:'m', label:'애즈펌',     back:K=>{ K.back(2.3,-.6,1.2,.7); }, front:K=>{ K.dome(1.24,.85,-.4); K.lock(0,-1.05,-.95,.0,.42,-.45); K.lock(0,-1.05,-.5,-.02,.36,-.2); K.lock(0,-1.05,.95,.0,.42,.45); K.lock(0,-1.05,.5,-.02,.36,.2); K.ball(-.95,.08,.2); K.ball(.95,.08,.2); K.ball(-1.15,.5,.22); K.ball(1.15,.5,.22); K.gloss(); }},
+  short:   {g:'m', label:'숏컷',         len:'short', fr:'short',    sf:'short'},
+  part:    {g:'m', label:'가르마',       len:'short', fr:'sweepR',   sf:'sweep'},
+  dandy:   {g:'m', label:'댄디컷',       len:'ear',   fr:'straight', sf:'straight'},
+  center:  {g:'m', label:'가운데 가르마', len:'short', fr:'curtain',  sf:'curtain'},
+  perm:    {g:'m', label:'소프트 펌',    len:'ear',   fr:'perm',     sf:'sweep', wave:2},
+  twoblock:{g:'m', label:'투블록',       len:'tight', fr:'twoblock', sf:'sweep'},
+  slick:   {g:'m', label:'올백',         len:'short', fr:'up',       sf:'up'},
+  wolf:    {g:'m', label:'울프컷',       len:'nape',  fr:'wolf',     sf:'sweep', layer:true},
+  longm:   {g:'m', label:'장발',         len:'shoulder', fr:'curtain', sf:'curtain'},
+  comma:   {g:'m', label:'쉼표머리',     len:'short', fr:'comma',    sf:'comma'},
+  gile:    {g:'m', label:'가일컷',       len:'ear',   fr:'gile',     sf:'gile'},
+  seethru: {g:'m', label:'시스루뱅',     len:'short', fr:'thin',     sf:'thin'},
+  layered: {g:'m', label:'레이어드컷',   len:'chin',  fr:'curtain',  sf:'curtain', layer:true},
+  softwave:{g:'m', label:'내추럴 웨이브', len:'ear',  fr:'softwave', sf:'curtain', wave:1},
+  asperm:  {g:'m', label:'애즈펌',       len:'ear',   fr:'asperm',   sf:'curtain', wave:2},
   // ---------- 여 15 ----------
-  ccurl:  {g:'f', label:'C컬 단발',   back:K=>{ K.back(2.5,-.7,1.6,.7); K.ball(-1.0,.95,.3); K.ball(1.0,.95,.3); K.ball(-.45,1.05,.28); K.ball(.45,1.05,.28); }, front:K=>{ K.dome(); K.sweepR(); K.sides(.8,.34,-.3); K.gloss(); }},
-  bob:    {g:'f', label:'단발',       back:K=>{ K.back(2.52,-.7,1.75,.7); }, front:K=>{ K.dome(); K.sweepR(); K.sides(.9,.34,-.3); K.gloss(); }},
-  long:   {g:'f', label:'긴 생머리',  back:K=>{ K.back(2.56,-.6,2.5,.6); }, front:K=>{ K.dome(); K.sweepR(); K.sides(1.7,.34,-.3); K.gloss(); }},
-  pony:   {g:'f', label:'포니테일',   back:K=>{ K.lock(1.05,-.7,1.3,.9,.32,.35); K.ball(1.05,-.72,.3); }, front:K=>{ K.dome(); K.sweepL(); K.gloss(); }},
-  wave:   {g:'f', label:'웨이브',     back:K=>{ K.back(2.5,-.6,1.6,.7); K.curls(1.05, 6, .3, 1.25); K.curls(.65, 2, .32, 1.3); }, front:K=>{ K.dome(); K.curtain(); K.curls(.3, 2, .3, 1.28); K.gloss(); }},
-  bun:    {g:'f', label:'똥머리',     back:K=>{ K.ball(0,-1.3,.4); }, front:K=>{ K.dome(1.2,1.0,-.4); K.lock(-.8,-.5,-.1,-1.1,.26,-.2); K.lock(.8,-.5,.1,-1.1,.26,.2); K.lock(.3,-1.0,-.6,-.2,.26,-.15); K.gloss(0,-1.0,.5,.15); }},
-  twin:   {g:'f', label:'양갈래',     back:K=>{ K.lock(-1.1,-.3,-1.4,1.0,.3,-.3); K.lock(1.1,-.3,1.4,1.0,.3,.3); K.ball(-1.1,-.35,.26); K.ball(1.1,-.35,.26); }, front:K=>{ K.dome(); K.straight(-.05); K.gloss(); }},
-  braid:  {g:'f', label:'땋은 머리',  back:K=>{ for (let i=0;i<5;i++) K.ball(1.05+(i%2?.08:-.08), -.3+i*.3, .22); }, front:K=>{ K.dome(); K.sweepR(); K.sides(.5,.3,-.3); K.gloss(); }},
-  twinbun:{g:'f', label:'트윈 번',    back:K=>{ K.ball(-1.0,-1.05,.34); K.ball(1.0,-1.05,.34); }, front:K=>{ K.dome(1.2,1.0,-.35); K.lock(-.6,-.5,-.9,-1.0,.26,-.1); K.lock(.6,-.5,.9,-1.0,.26,.1); K.lock(.2,-1.0,-.5,-.2,.26,-.1); K.gloss(0,-1.0,.5,.15); }},
-  shortbob:{g:'f', label:'앞머리 단발', back:K=>{ K.back(2.5,-.7,1.4,.7); }, front:K=>{ K.dome(); K.straight(-.05); K.sides(.7,.34,-.3); K.gloss(); }},
-  sidepony:{g:'f', label:'사이드 포니', back:K=>{ K.lock(-1.1,-.2,-1.25,1.2,.34,-.3); K.ball(-1.1,-.25,.3); }, front:K=>{ K.dome(); K.sweepR(); K.gloss(); }},
-  halfup: {g:'f', label:'반묶음',     back:K=>{ K.back(2.5,-.6,2.3,.6); K.ball(0,-1.25,.28); }, front:K=>{ K.dome(1.2,1.0,-.35); K.curtain(); K.sides(1.5,.3,-.3); K.gloss(); }},
-  bangslong:{g:'f', label:'뱅 긴 머리', back:K=>{ K.back(2.56,-.6,2.5,.6); }, front:K=>{ K.dome(); K.straight(-.02); K.sides(1.7,.34,-.3); K.gloss(); }},
-  pixie:  {g:'f', label:'픽시컷',     back:K=>{}, front:K=>{ K.dome(1.22,.85,-.4); K.lock(.4,-1.0,-1.0,.0,.38,-.35); K.lock(.4,-1.05,-.4,-.1,.34,-.15); K.lock(.4,-1.0,.15,-.28,.3,0); K.lock(.45,-1.0,.75,-.3,.3,.15); K.lock(-.9,-.3,-1.08,.25,.26,-.05); K.gloss(); }},
-  medium: {g:'f', label:'레이어드 미디엄', back:K=>{ K.back(2.5,-.6,2.0,.7); K.lock(-1.1,.2,-1.3,1.2,.3,-.2); K.lock(1.1,.2,1.3,1.2,.3,.2); }, front:K=>{ K.dome(); K.curtain(); K.sides(1.2,.32,-.3); K.gloss(); }},
+  ccurl:   {g:'f', label:'C컬 단발',     len:'chin',  fr:'sweepR',   sf:'sweep', curl:true},
+  bob:     {g:'f', label:'단발',         len:'chin',  fr:'sweepR',   sf:'sweep'},
+  long:    {g:'f', label:'긴 생머리',    len:'long',  fr:'sweepR',   sf:'sweep'},
+  pony:    {g:'f', label:'포니테일',     len:'tight', fr:'sweepL',   sf:'sweep', tie:'pony'},
+  wave:    {g:'f', label:'웨이브',       len:'shoulder', fr:'curtain', sf:'curtain', wave:2},
+  bun:     {g:'f', label:'똥머리',       len:'tight', fr:'upbun',    sf:'up', tie:'bun'},
+  twin:    {g:'f', label:'양갈래',       len:'tight', fr:'straight', sf:'straight', tie:'twin'},
+  braid:   {g:'f', label:'땋은 머리',    len:'tight', fr:'sweepR',   sf:'sweep', tie:'braid'},
+  twinbun: {g:'f', label:'트윈 번',      len:'tight', fr:'upbun',    sf:'up', tie:'twinbun'},
+  shortbob:{g:'f', label:'앞머리 단발',  len:'chin',  fr:'straight', sf:'straight'},
+  sidepony:{g:'f', label:'사이드 포니',  len:'tight', fr:'sweepR',   sf:'sweep', tie:'sidepony'},
+  halfup:  {g:'f', label:'반묶음',       len:'long',  fr:'curtain',  sf:'curtain', tie:'halfup'},
+  bangslong:{g:'f', label:'뱅 긴 머리',  len:'long',  fr:'straight', sf:'straight'},
+  pixie:   {g:'f', label:'픽시컷',       len:'short', fr:'pixie',    sf:'sweep'},
+  medium:  {g:'f', label:'레이어드 미디엄', len:'shoulder', fr:'curtain', sf:'curtain', layer:true},
 };
-
-// ---------- 옆모습 머리 (오른쪽을 보는 기준, 앞 = +x) ----------
-// fringe: 앞머리 종류 / fall: 뒤로 늘어지는 길이(R 단위) / tail: 포니테일 / bun: [x,y,r] / braid / twin / curls / curlEnd / thin
-const SIDE_SPEC = {
-  short:{fringe:'short'}, part:{fringe:'sweep'}, dandy:{fringe:'straight'}, center:{fringe:'curtain'}, perm:{fringe:'sweep', curls:true},
-  twoblock:{fringe:'sweep'}, slick:{fringe:'up'}, wolf:{fringe:'sweep', fall:.9}, longm:{fringe:'curtain', fall:1.3}, comma:{fringe:'comma'},
-  gile:{fringe:'gile'}, seethru:{fringe:'thin'}, layered:{fringe:'curtain', fall:.7}, softwave:{fringe:'curtain', curls:true, fall:.35}, asperm:{fringe:'curtain', curls:true},
-  ccurl:{fringe:'sweep', fall:.9, curlEnd:true}, bob:{fringe:'sweep', fall:.9}, long:{fringe:'sweep', fall:1.8}, pony:{fringe:'sweep', tail:true}, wave:{fringe:'curtain', fall:1.2, curls:true},
-  bun:{fringe:'up', bun:[-.45,-1.2,.4]}, twin:{fringe:'straight', twin:true}, braid:{fringe:'sweep', braid:true}, twinbun:{fringe:'up', bun:[-.55,-1.05,.34]}, shortbob:{fringe:'straight', fall:.7},
-  sidepony:{fringe:'sweep', tail:true, low:true}, halfup:{fringe:'curtain', fall:1.5, bun:[-.35,-1.2,.28]}, bangslong:{fringe:'straight', fall:1.8}, pixie:{fringe:'sweep', short:true}, medium:{fringe:'curtain', fall:1.2},
+// 정면 앞머리 (hairKit 의 가닥으로)
+const FRINGE = {
+  short:K=>K.short(), sweepR:K=>K.sweepR(), sweepL:K=>K.sweepL(), curtain:K=>K.curtain(), straight:K=>K.straight(-.04),
+  comma:K=>{ K.lock(-.15,-1.05,-.95,-.15,.4,-.35); K.lock(.1,-1.08,-.35,.05,.42,-.55); K.lock(.2,-1.05,.3,-.2,.34,.3); K.lock(.35,-1.0,.95,-.2,.36,.3); },
+  gile:K=>{ K.lock(.55,-1.05,-1.0,.15,.46,-.5); K.lock(.55,-1.05,-.45,.05,.4,-.3); K.lock(.55,-1.0,.1,-.25,.3,-.05); K.lock(.6,-1.0,1.0,-.25,.34,.2); },
+  thin:K=>{ const dy=[.0,-.06,.03,-.04,.02]; for (let i=0;i<5;i++){ const lx=-.8+i*.4; K.lock(lx*.4,-1.05,lx,-.02+dy[i],.25,lx*.12); } },
+  up:K=>{ K.lock(-.7,-.62,-.4,-1.2,.3,-.1); K.lock(0,-.68,.05,-1.24,.32,0); K.lock(.7,-.62,.45,-1.2,.3,.1); },
+  upbun:K=>{ K.lock(-.75,-.55,-.15,-1.12,.26,-.18); K.lock(.75,-.55,.15,-1.12,.26,.18); K.lock(.35,-1.0,-.55,-.28,.26,-.15); },
+  twoblock:K=>{ K.lock(.2,-1.1,-.9,-.1,.44,-.35); K.lock(.2,-1.15,-.3,-.05,.38,-.15); K.lock(.2,-1.1,.3,-.2,.34,.05); K.lock(.25,-1.1,.85,-.2,.36,.25); },
+  perm:K=>{ K.lock(.2,-1.05,-.9,-.02,.44,-.5); K.lock(.2,-1.05,-.4,.0,.4,.25); K.lock(.2,-1.05,.2,-.22,.34,-.2); K.lock(.3,-1.0,.9,-.1,.4,.4); },
+  wolf:K=>{ K.sweepL(); K.lock(-1.1,-.3,-1.16,.45,.28,-.06); K.lock(1.1,-.3,1.16,.45,.28,.06); },
+  softwave:K=>{ K.lock(0,-1.05,-1.0,.05,.42,-.25); K.lock(0,-1.05,-.55,-.05,.36,.15); K.lock(0,-1.05,-.15,-.3,.3,-.1); K.lock(0,-1.05,1.0,.05,.42,.25); K.lock(0,-1.05,.55,-.05,.36,-.15); K.lock(0,-1.05,.15,-.3,.3,.1); },
+  asperm:K=>{ K.lock(0,-1.05,-.95,.0,.42,-.45); K.lock(0,-1.05,-.5,-.02,.36,-.2); K.lock(0,-1.05,.95,.0,.42,.45); K.lock(0,-1.05,.5,-.02,.36,.2); },
+  pixie:K=>{ K.lock(.4,-1.0,-1.0,.0,.38,-.35); K.lock(.4,-1.05,-.4,-.1,.34,-.15); K.lock(.4,-1.0,.15,-.28,.3,0); K.lock(.45,-1.0,.75,-.3,.3,.15); },
 };
-function sideHair(d, x, y, R, hc, id, layer){
-  const sp = SIDE_SPEC[id] || SIDE_SPEC.short, u = v => v*R, c = d.ctx;
-  const L = (x0,y0,x1,y1,w,b=0,round=true)=>lock(d, hc, x+u(x0), y+u(y0), x+u(x1), y+u(y1), u(w), u(b), round);
+const TIE_COL = '#ff9fc4';
+function hairTools(d, x, y, R, hc){
+  const u = v => v*R, dark = mixHex(hc, '#1a0f14', .3), deep = mixHex(hc, '#1a0f14', .42), c = d.ctx;
+  const T = {
+    u, dark, deep,
+    crownArc:k=>k.ellipse(x, y+u(CROWN.cy), u(CROWN.rx), u(CROWN.ry), 0, Math.PI, 0),
+    // 가닥 결: 어두운 곡선 몇 줄
+    strand:(pts, a=.32, w=.06)=>d.line(k=>{ k.moveTo(x+u(pts[0]), y+u(pts[1])); k.quadraticCurveTo(x+u(pts[2]), y+u(pts[3]), x+u(pts[4]), y+u(pts[5])); }, dark, u(w), a),
+    gloss:(gx, gy, rx=.62, ry=.2)=>{ c.save(); c.globalAlpha=.16; c.fillStyle='#fff6ee'; c.beginPath(); c.ellipse(x+u(gx), y+u(gy), u(rx), u(ry), -.15, 0, 7); c.fill(); c.restore(); },
+    ball:(bx, by, r, col=hc)=>d.circle(x+u(bx), y+u(by), u(r), col),
+    tie:(bx, by, r=.15)=>{ d.ell(x+u(bx), y+u(by), u(r*1.25), u(r), TIE_COL); d.dot(x+u(bx-r*.35), y+u(by-r*.3), u(r*.28), '#fff', .7); },
+    tail:(x0, y0, x1, y1, w, bend)=>lock(d, hc, x+u(x0), y+u(y0), x+u(x1), y+u(y1), u(w), u(bend)),
+    braid:(x0, y0, x1, y1, n=5, r=.21)=>{ for (let i=0;i<n;i++){ const t = i/(n-1); d.circle(x+u(x0+(x1-x0)*t+(i%2?.05:-.05)), y+u(y0+(y1-y0)*t), u(r*(1-t*.18)), hc); } },
+  };
+  return T;
+}
+// 뒤로 늘어지는 덩어리(정면·뒷모습 공용 윤곽): 정수리에서 그대로 내려와 끝에서 둥글게 모여요
+function massPath(k, x, y, u, L, flare, curlIn){
+  const ox = CROWN.rx;
+  k.moveTo(x-u(ox), y+u(CROWN.cy)); k.ellipse(x, y+u(CROWN.cy), u(ox), u(CROWN.ry), 0, Math.PI, 0);
+  k.bezierCurveTo(x+u(ox+flare*.4), y+u(L*.35), x+u(ox+flare), y+u(L*.7), x+u(ox+flare*.7), y+u(L-.12));
+  k.quadraticCurveTo(x+u(ox+flare*.4), y+u(L+(curlIn?.06:0)), x+u(ox-.3), y+u(L));
+  k.lineTo(x-u(ox-.3), y+u(L));
+  k.quadraticCurveTo(x-u(ox+flare*.4), y+u(L+(curlIn?.06:0)), x-u(ox+flare*.7), y+u(L-.12));
+  k.bezierCurveTo(x-u(ox+flare), y+u(L*.7), x-u(ox+flare*.4), y+u(L*.35), x-u(ox), y+u(CROWN.cy));
+  k.closePath();
+}
+function waveEdge(T, L, side, n, r){ // 웨이브: 옆선과 끝에 둥근 컬
+  for (let i=0;i<n;i++){ const t = (i+1)/(n+1), yy = -.1 + (L+.1)*t; for (const s of side) T.ball(s*(CROWN.rx+.06+Math.sin(i*1.7)*.04), yy, r); }
+}
+// ---------- 정면 ----------
+function hairFront(d, x, y, R, L, sp, layer){
+  const hc = L.hairColor, T = hairTools(d, x, y, R, hc), u = T.u, ln = LENS[sp.len] || LENS.short;
   if (layer==='back'){
-    // 뒤로 늘어지는 머리: 뒷통수 아래에서 등 뒤로
-    if (sp.fall){ d.shape(k=>{ k.beginPath(); k.roundRect(x-u(1.32), y-u(.35), u(.95), u(.35+sp.fall), u(.4)); }, hc, [x-u(.85), y+u(sp.fall/2), u(.9)]);
-      if (sp.curlEnd){ d.circle(x-u(.6), y+u(sp.fall-.2), u(.3), hc); d.circle(x-u(1.1), y+u(sp.fall-.1), u(.3), hc); }
-      if (sp.curls){ for (let i=0;i<3;i++) d.circle(x-u(1.25)+u(i*.35), y+u(sp.fall-.25+(i%2)*.15), u(.27), hc); } }
-    if (sp.tail){ const ty = sp.low ? .1 : -.55; L(-1.1, ty, -1.45, ty+1.5, .34, -.45); d.circle(x-u(1.1), y+u(ty), u(.3), hc); }
-    if (sp.braid){ for (let i=0;i<5;i++) d.circle(x-u(1.15)+u(i%2?.07:-.07), y-u(.3)+u(i*.32), u(.22), hc); }
-    if (sp.twin){ L(-1.15, -.2, -1.45, 1.0, .3, -.25); d.circle(x-u(1.15), y-u(.25), u(.26), hc); }
-    if (sp.curls && !sp.fall){ for (let i=0;i<3;i++) d.circle(x-u(1.2)+u(i*.2), y-u(.1)+u(i*.3), u(.26), hc); }
+    if (sp.tie==='bun') T.ball(0, -1.32, .42);
+    if (sp.tie==='twinbun'){ T.ball(-.95, -1.08, .36); T.ball(.95, -1.08, .36); }
+    if (sp.tie==='halfup') T.ball(0, -1.3, .27);
+    if (sp.tie==='pony'){ T.tail(.75, -.85, 1.42, .95, .34, .35); }
+    if (sp.tie==='twin'){ T.tail(-1.12, -.22, -1.42, 1.05, .3, -.28); T.tail(1.12, -.22, 1.42, 1.05, .3, .28); }
+    if (ln.mass){
+      d.shape(k=>{ k.beginPath(); massPath(k, x, y, u, ln.mass, sp.wave ? .16 : .08, sp.curl); }, hc, [x, y+u(ln.mass/2-.3), u(1.35)], {shadow:.35});
+      // 안쪽(목 뒤) 그늘: 머리카락 덩어리의 속
+      d.shape(k=>{ k.beginPath(); k.roundRect(x-u(.92), y+u(.45), u(1.84), u(ln.mass-.5), u(.35)); }, T.deep, [x, y+u(ln.mass/2), u(.9)], {flat:true, noShadow:true});
+      if (sp.wave) waveEdge(T, ln.mass, [-1, 1], 3, .2);
+      if (sp.curl){ T.ball(-1.05, ln.mass-.06, .25); T.ball(1.05, ln.mass-.06, .25); }
+      if (sp.layer) for (const s of [-1, 1]) T.tail(s*1.2, ln.mass*.55, s*1.32, ln.mass+.08, .22, s*.06);
+    }
     return;
   }
-  // 덮개: 이마 끝 → 정수리 → 뒷통수 → 뒷목, 안쪽은 귀 뒤로
-  const fy = sp.fringe==='up' ? -.72 : -.12, nape = sp.fall ? .3 : .55;
+  // 앞 덮개: 정수리 → 관자놀이 → (길이에 따라) 얼굴 옆을 따라 내려오는 옆머리. 안쪽은 이마 헤어라인
+  const ox = CROWN.rx, sb = ln.side, ix = sb > .5 ? .98 : sb > .1 ? 1.06 : 1.13, fl = sb > .5 ? .05 : 0;
+  d.shape(k=>{ k.beginPath();
+    k.moveTo(x-u(ox+fl), y+u(sb-.14)); k.lineTo(x-u(ox), y+u(CROWN.cy)); T.crownArc(k); k.lineTo(x+u(ox+fl), y+u(sb-.14));
+    k.quadraticCurveTo(x+u(ox+fl), y+u(sb), x+u((ox+ix)/2), y+u(sb)); k.quadraticCurveTo(x+u(ix), y+u(sb), x+u(ix), y+u(sb-.16));
+    k.lineTo(x+u(ix), y-u(.28));
+    k.quadraticCurveTo(x+u(ix*.96), y-u(.47), x+u(.62), y-u(.5)); k.quadraticCurveTo(x, y-u(.64), x-u(.62), y-u(.5)); k.quadraticCurveTo(x-u(ix*.96), y-u(.47), x-u(ix), y-u(.28));
+    k.lineTo(x-u(ix), y+u(sb-.16)); k.quadraticCurveTo(x-u(ix), y+u(sb), x-u((ox+ix)/2), y+u(sb)); k.quadraticCurveTo(x-u(ox+fl), y+u(sb), x-u(ox+fl), y+u(sb-.14));
+    k.closePath(); }, hc, [x, y-u(.5), u(1.2)], {shadow:.3});
+  if (sb > .5) for (const s of [-1, 1]){ T.strand([s*1.12, -.2, s*1.18, sb*.5, s*1.1, sb-.1]); }
+  if (sp.wave && !ln.mass){ for (const s of [-1, 1]){ T.ball(s*1.2, Math.max(sb, .05)-.1, .25); T.ball(s*1.25, -.32, .2); } }
+  if (sp.wave && ln.mass) for (const s of [-1, 1]){ T.ball(s*1.08, sb-.05, .2); }
+  if (sp.curl) for (const s of [-1, 1]) T.ball(s*1.02, sb-.04, .2);
+  if (sp.layer && ln.mass) for (const s of [-1, 1]) T.tail(s*1.05, sb*.45, s*1.0, sb+.08, .2, s*-.05);
+  // 정수리 가르마 결
+  T.strand([0, -1.22, -.35, -1.0, -.75, -.72], .22); T.strand([0, -1.22, .35, -1.0, .75, -.72], .22);
+  const K = hairKit(d, x, y, R, hc); (FRINGE[sp.fr] || FRINGE.short)(K);
+  if (sp.tie==='sidepony'){ T.tail(-1.15, -.05, -1.35, 1.25, .34, -.3); T.tie(-1.15, -.06); }
+  if (sp.tie==='braid'){ T.braid(1.08, -.15, 1.16, 1.15, 6); T.tie(1.16, 1.25, .12); }
+  if (sp.tie==='twin'){ T.tie(-1.13, -.22); T.tie(1.13, -.22); }
+  if (sp.tie==='bun' || sp.tie==='twinbun') { /* 앞에서는 머리끈이 안 보여요 */ }
+  T.gloss(-.25, -.95);
+}
+// ---------- 옆모습 (오른쪽을 보는 기준, 앞 = +x) ----------
+const SIDE_FR = {
+  sweep:(L)=>{ L(-.1,-1.12, .98, -.02, .42, .15); L(0,-1.12, .62, -.2, .32, .05); },
+  short:(L)=>{ L(-.1,-1.12, .98, -.3, .42, .15); L(0,-1.12, .62, -.48, .32, .05); },
+  straight:(L, d, x, y, u, hc)=>{ d.shape(k=>{ k.beginPath(); k.roundRect(x+u(.1), y-u(1.05), u(.92), u(1.03), [u(.12),u(.12),u(.3),u(.3)]); }, hc, [x+u(.55), y-u(.5), u(.6)], {seam:true, shadow:.4}); L(.3,-.9,.95,-.02,.3,.05); },
+  curtain:(L)=>{ L(.2,-1.12, 1.0, -.08, .4, .25); L(.1,-1.12, .5, -.25, .28, .05); },
+  comma:(L)=>{ L(-.05,-1.14, .98, -.05, .44, .45); L(.05,-1.12, .55, -.3, .3, .1); },
+  gile:(L)=>{ L(-.1,-1.12, 1.05, .28, .46, .3); L(0,-1.12, .6, -.2, .3, .05); },
+  thin:(L)=>{ for (let i=0;i<5;i++) L(.05+i*.04,-1.08, .32+i*.17, -.03-(i%2)*.07, .24, .1); },
+  up:(L)=>{ L(.2,-.95, -.4,-1.28, .3, .05); L(.6,-.8, 0,-1.3, .3, .05); },
+};
+function hairSide(d, x, y, R, L, sp, layer){
+  const hc = L.hairColor, T = hairTools(d, x, y, R, hc), u = T.u, ln = LENS[sp.len] || LENS.short;
+  if (layer==='back'){
+    if (sp.tie==='bun') T.ball(-.5, -1.25, .42);
+    if (sp.tie==='twinbun'){ T.ball(-.2, -1.18, .34); T.ball(-.62, -1.05, .36); }
+    if (sp.tie==='halfup') T.ball(-.72, -1.05, .27);
+    if (sp.tie==='pony') T.tail(-1.22, -.62, -1.62, .95, .36, -.4);
+    if (sp.tie==='twin') T.tail(-1.0, -.2, -1.38, 1.05, .3, -.28);
+    if (ln.mass){ // 뒤통수에서 등 뒤로 이어지는 머리: 덮개의 뒷선과 같은 선에서 출발
+      const M = ln.mass, fl = sp.wave ? .16 : .08;
+      d.shape(k=>{ k.beginPath(); k.moveTo(x+u(.1), y-u(1.24)); k.quadraticCurveTo(x-u(1.34), y-u(1.2), x-u(1.32), y-u(.15));
+        k.bezierCurveTo(x-u(1.34+fl), y+u(M*.5), x-u(1.36+fl), y+u(M-.3), x-u(1.18), y+u(M));
+        k.quadraticCurveTo(x-u(.8), y+u(M+.06), x-u(.42), y+u(M-.06));
+        k.quadraticCurveTo(x-u(.25), y+u(M*.6), x-u(.3), y+u(.3)); k.lineTo(x+u(.1), y-u(.2)); k.closePath(); }, hc, [x-u(.6), y+u(M/2-.4), u(1.2)], {shadow:.35});
+      if (sp.wave) for (let i=0;i<3;i++) T.ball(-1.3-fl*.5, .2+(M-.2)*(i+1)/4, .2);
+      if (sp.curl) T.ball(-1.0, M-.05, .25);
+      if (sp.layer) T.tail(-1.2, M*.5, -1.32, M+.08, .22, -.06);
+      T.strand([-1.1, -.2, -1.22, M*.5, -1.1, M-.12]); T.strand([-.7, .1, -.75, M*.5, -.65, M-.1], .25);
+    }
+    return;
+  }
+  // 귀: 머리 옆면 가운데보다 조금 뒤 (덮개보다 먼저 그려서 머리선이 귀를 감싸게)
+  d.ell(x-u(.42), y+u(.14), u(.17), u(.22), L.skin); d.ell(x-u(.42), y+u(.15), u(.08), u(.12), mixHex(L.skin, '#c97a70', .25), {flat:true, noShadow:true});
+  const fy = sp.sf==='up' ? -.72 : -.12, nape = ln.nape;
   d.shape(k=>{ k.beginPath(); k.moveTo(x+u(.98), y+u(fy));
-    k.quadraticCurveTo(x+u(.95), y-u(1.18), x, y-u(1.22));
-    k.quadraticCurveTo(x-u(1.32), y-u(1.18), x-u(1.28), y-u(.1));
-    k.lineTo(x-u(1.22), y+u(nape));
-    k.quadraticCurveTo(x-u(.95), y+u(nape+.12), x-u(.6), y+u(nape-.05));
-    k.lineTo(x-u(.42), y-u(.15));
-    k.quadraticCurveTo(x+u(.2), y+u(fy-.1), x+u(.98), y+u(fy)); // 이마는 앞머리 선까지 머리카락으로 덮여요
+    k.quadraticCurveTo(x+u(.98), y-u(1.22), x, y-u(1.25));
+    k.quadraticCurveTo(x-u(1.34), y-u(1.2), x-u(1.32), y-u(.15));
+    k.lineTo(x-u(1.25), y+u(nape));
+    k.quadraticCurveTo(x-u(.95), y+u(nape+.12), x-u(.66), y+u(nape-.04));
+    k.quadraticCurveTo(x-u(.62), y+u(.12), x-u(.62), y-u(.08)); // 귀 뒤로 돌아서
+    k.quadraticCurveTo(x-u(.45), y-u(.22), x-u(.24), y-u(.12)); // 귀 위
+    k.lineTo(x-u(.2), y+u(.1)); k.lineTo(x-u(.08), y-u(.18)); // 구레나룻
+    k.quadraticCurveTo(x+u(.3), y+u(fy-.08), x+u(.98), y+u(fy));
     k.closePath(); }, hc, [x-u(.3), y-u(.5), u(1.15)], {shadow:.3});
-  // 앞머리
-  const f = sp.fringe;
-  if (f==='sweep' || f==='short'){ const e = f==='short' || sp.short ? -.3 : -.02; L(-.1,-1.1, .98, e, .42, .15); L(0,-1.1, .62, e-.18, .32, .05); }
-  else if (f==='straight'){ d.shape(k=>{ k.beginPath(); k.roundRect(x+u(.1), y-u(1.0), u(.92), u(.98), [u(.1),u(.1),u(.3),u(.3)]); }, hc, [x+u(.55), y-u(.5), u(.6)], {seam:true}); L(.3,-.9,.95,-.02,.3,.05); }
-  else if (f==='curtain'){ L(.2,-1.1, 1.0, -.08, .4, .25); L(.1,-1.1, .5, -.25, .28, .05); }
-  else if (f==='comma'){ L(-.05,-1.12, .98, -.05, .44, .45); L(.05,-1.1, .55, -.3, .3, .1); }
-  else if (f==='gile'){ L(-.1,-1.1, 1.05, .28, .46, .3); L(0,-1.1, .6, -.2, .3, .05); }
-  else if (f==='thin'){ for (let i=0;i<5;i++) L(.05+i*.04,-1.05, .32+i*.17, -.03-(i%2)*.07, .24, .1); }
-  else if (f==='up'){ L(.2,-.95, -.4,-1.3, .3, .05); L(.6,-.8, 0,-1.3, .3, .05); }
-  if (sp.bun) d.circle(x+u(sp.bun[0]), y+u(sp.bun[1]), u(sp.bun[2]), hc);
-  const g=d.ctx; g.save(); g.globalAlpha=.14; g.fillStyle='#fff6ee'; g.beginPath(); g.ellipse(x-u(.3), y-u(.95), u(.6), u(.2), -.1, 0, 7); g.fill(); g.restore();
+  if (ln.mass) T.tail(-.2, -.85, -.6, Math.min(ln.mass, 1.2), .34, -.12); // 귀를 덮고 어깨 뒤로 흐르는 옆머리
+  if (sp.wave && !ln.mass){ T.ball(-1.24, nape-.22, .25); T.ball(-.95, nape-.1, .23); T.ball(-1.3, -.35, .2); }
+  T.strand([-.1, -1.22, -.85, -1.0, -1.15, -.35], .22); T.strand([.3, -1.15, -.3, -.75, -.6, -.2], .18);
+  const Lk = (x0,y0,x1,y1,w,b=0)=>lock(d, hc, x+u(x0), y+u(y0), x+u(x1), y+u(y1), u(w), u(b));
+  (SIDE_FR[sp.sf] || SIDE_FR.sweep)(Lk, d, x, y, u, hc);
+  if (sp.tie==='pony') T.tie(-1.22, -.62);
+  if (sp.tie==='bun') T.tie(-.42, -.92, .13);
+  if (sp.tie==='twin'){ T.tail(-.62, -.15, -.92, 1.05, .3, -.25); T.tie(-.62, -.15); }
+  if (sp.tie==='sidepony'){ T.tail(-.72, .12, -.95, 1.3, .34, -.25); T.tie(-.72, .1); }
+  if (sp.tie==='braid'){ T.braid(-.62, .05, -.78, 1.2, 6); T.tie(-.78, 1.3, .12); }
+  T.gloss(-.3, -.95);
+}
+// ---------- 뒷모습 ----------
+function hairBack(d, x, y, R, L, sp){
+  const hc = L.hairColor, T = hairTools(d, x, y, R, hc), u = T.u, ln = LENS[sp.len] || LENS.short, B = ln.back, ox = CROWN.rx;
+  if (sp.tie==='pony') T.tail(0, -.5, .06, 1.15, .44, .08);
+  if (sp.tie==='twin'){ T.tail(-1.12, -.22, -1.42, 1.05, .3, -.28); T.tail(1.12, -.22, 1.42, 1.05, .3, .28); }
+  if (ln.mass){
+    d.shape(k=>{ k.beginPath(); massPath(k, x, y, u, B, sp.wave ? .16 : .08, sp.curl); }, hc, [x, y+u(B/2-.3), u(1.35)], {shadow:.35});
+  } else {
+    // 짧은 머리: 뒤통수를 감싸고 뒷목에서 가닥 끝이 살짝 갈라져요
+    const tips = sp.len==='nape' ? 4 : 3;
+    d.shape(k=>{ k.beginPath(); k.moveTo(x-u(ox), y+u(CROWN.cy)); T.crownArc(k);
+      k.quadraticCurveTo(x+u(ox+.02), y+u(B*.55), x+u(ox-.12), y+u(B-.08));
+      for (let i=0;i<tips;i++){ const x0 = ox-.12 - (2*(ox-.12))*(i/tips), x1 = ox-.12 - (2*(ox-.12))*((i+1)/tips), xm = (x0+x1)/2;
+        k.quadraticCurveTo(x+u(xm+.06), y+u(B+(sp.len==='nape'?.22:.07)), x+u(x1), y+u(B-.04)); }
+      k.quadraticCurveTo(x-u(ox+.02), y+u(B*.55), x-u(ox), y+u(CROWN.cy)); k.closePath(); }, hc, [x, y-u(.3), u(1.25)], {shadow:.35});
+  }
+  // 가마와 결
+  const Bend = Math.min(B, 1.0) - .1;
+  for (const s of [-1, -.4, .4, 1]) T.strand([.08, -.9, s*.75, -.4, s*(1.0), Bend], .2);
+  d.line(k=>{ k.arc(x+u(.08), y-u(.88), u(.12), 0, 5); }, T.dark, u(.05), .35);
+  if (ln.mass){ if (sp.wave){ for (let i=0;i<5;i++) T.ball(-1.0+i*.5, B-.04, .24); waveEdge(T, B, [-1, 1], 3, .2); }
+    if (sp.curl) for (let i=0;i<4;i++) T.ball(-.9+i*.6, B-.04, .25);
+    if (sp.layer) for (const s of [-1, 0, 1]) T.tail(s*.7, B*.6, s*.78, B+.1, .24, s*.05); }
+  if (sp.wave && !ln.mass) for (let i=0;i<4;i++) T.ball(-.9+i*.6, B-.02, .22);
+  if (sp.tie==='pony') T.tie(0, -.5, .17);
+  if (sp.tie==='bun'){ T.ball(0, -1.18, .42); T.tie(0, -.82, .14); }
+  if (sp.tie==='twinbun'){ T.ball(-.95, -1.05, .36); T.ball(.95, -1.05, .36); }
+  if (sp.tie==='halfup'){ T.ball(0, -.85, .27); T.tie(0, -.62, .12); }
+  if (sp.tie==='twin'){ T.tie(-1.13, -.22); T.tie(1.13, -.22); }
+  if (sp.tie==='sidepony'){ T.tail(1.15, -.05, 1.35, 1.25, .34, .3); T.tie(1.15, -.06); }
+  if (sp.tie==='braid'){ T.braid(-1.08, -.15, -1.16, 1.15, 6); T.tie(-1.16, 1.25, .12); }
+  T.gloss(0, -.95, .7, .22);
 }
 function hair(d, x, y, L, side, R, layer, up=false){
-  const st = HAIR[L.hair] || HAIR.short, c = d.ctx;
-  if (up){ // 뒷모습: 뒷통수 전체가 머리카락
-    const K = hairKit(d, x, y, R, L.hairColor);
-    d.shape(k=>{ k.beginPath(); k.ellipse(x, y-R*.12, R*1.26, R*1.12, 0, 0, 7); }, L.hairColor, [x, y-R*.2, R*1.2]);
-    st.back(K); K.gloss(0, -.95, .75, .22); return;
-  }
-  if (side){ sideHair(d, x, y, R, L.hairColor, L.hair, layer); return; }
-  const K = hairKit(d, x, y, R, L.hairColor);
-  (layer==='back' ? st.back : st.front)(K);
+  const sp = HAIR[L.hair] || HAIR.short;
+  if (up){ hairBack(d, x, y, R, L, sp); return; }
+  if (side){ hairSide(d, x, y, R, L, sp, layer); return; }
+  hairFront(d, x, y, R, L, sp, layer);
 }
 
 
@@ -208,8 +349,14 @@ const stripe = (d, g, col, n=3) => { if (g.up) return; for (let i=0;i<n;i++) d.r
 const front = (d, g, col) => { if (!g.up) d.rr(-BW*.16, BY+1.5, BW*.32, BH*.55, 2.5, col, {flat:true}); };
 const pants = (d, g, col, h=.4) => d.rr(-g.bw*.42, BY+BH*(1-h-.05), g.bw*.84, BH*h, 3, col);
 const skirt = (d, g, col, flare=1.15, h=.42) => d.shape(c=>{ c.beginPath(); c.moveTo(-g.bw*.42, BY+BH*(1-h-.05)); c.lineTo(g.bw*.42, BY+BH*(1-h-.05)); c.lineTo(g.bw*.5*flare, BY+BH*.98); c.quadraticCurveTo(0, BY+BH*1.08, -g.bw*.5*flare, BY+BH*.98); c.closePath(); }, col, [0, BY+BH*.8, g.bw*.6]);
-const legs = (d, g, col) => { if (!g.side){ d.rr(-5.6, -6.5-g.a, 4.4, 6.5, 2, col); d.rr(1.2, -6.5-g.b, 4.4, 6.5, 2, col); } else { d.rr(-2.6-g.step*1.5, -6.5, 4.4, 6.5, 2, col); } };
-const shoe = (d, g, col, o={}) => { const [l,r] = g.side ? [-2.5-g.step*1.8, 1.5+g.step*1.8] : [-5, 5]; d.ell(l, -1.5-(g.side?0:g.a), 4.4, 2.8, col, o); d.ell(r, -1.5-(g.side?0:g.b), 4.4, 2.8, col, o); };
+// 발 위치: 정면은 좌우 두 발, 옆모습은 앞뒤로 엇갈리는 두 발 (뒤쪽 발은 조금 어둡게)
+const feet = g => g.side ? [{x:-.3-g.step*2.2, lift:0, back:true}, {x:-.3+g.step*2.2, lift:0}] : [{x:-3.4, lift:g.a}, {x:3.4, lift:g.b}];
+const shade = (col, f) => f.back ? mixHex(col, '#2a1a24', .14) : col;
+const legs = (d, g, col) => { for (const f of feet(g)) d.rr(f.x-2.2, -6.5-f.lift, 4.4, 6.5, 2, shade(col, f)); };
+// 신발: 다리 끝을 감싸는 작은 신발 (다리보다 살짝 넓게, 옆모습은 앞코가 앞으로)
+const shoe = (d, g, col, o={}) => { for (const f of feet(g)) d.ell(f.x+(g.side?.9:0), -1.5-f.lift, g.side?3.3:2.9, 2.0, shade(col, f), o); };
+const shaft = (d, g, col, h, o={}) => { for (const f of feet(g)) d.rr(f.x-2.4, -1.6-f.lift-h, 4.8, h+.6, 1.6, shade(col, f), o); };
+const band = (d, g, col, y, w=1.3, o={flat:true, noShadow:true}) => { for (const f of feet(g)) d.rr(f.x-2.5+(g.side?.6:0), y-f.lift, 5, w, w/2, shade(col, f), o); };
 const dress = (d, g, col, trim) => { torso(d, g, col); skirt(d, g, col, 1.3, .5); if (trim && !g.up) d.rr(-g.bw*.42, BY+BH*.5, g.bw*.84, 1.6, .8, trim, {flat:true, noShadow:true}); };
 
 export const TOPS = {
@@ -275,16 +422,16 @@ export const ACCS = {
   earring:{name:'꽃 귀걸이', price:480, draw:(d,g)=>{ if (g.up) return; for (const e of (g.side ? [R*1.15] : [-R*1.2, R*1.2])){ d.dot(e, HY+R*.35, 1.5, '#ff8fc4'); d.dot(e, HY+R*.35, .6, '#ffe066'); } }},
 };
 export const SHOES = {
-  sh01:{name:'운동화',     price:0,   draw:(d,g)=>{ shoe(d,g,'#fffaf4'); }},
-  sh02:{name:'메리제인',   price:480, draw:(d,g)=>{ shoe(d,g,'#5a3a44'); if(!g.side){ d.line(k=>{ k.moveTo(-8,-2.6); k.lineTo(-2,-2.6); k.moveTo(2,-2.6); k.lineTo(8,-2.6); }, '#5a3a44', 1, .9); } }},
-  sh03:{name:'노랑 장화',  price:570, draw:(d,g)=>{ shoe(d,g,'#ffd45a'); if(!g.side){ d.rr(-7,-6.5-g.a,4.2,5,1.5,'#ffd45a'); d.rr(2.8,-6.5-g.b,4.2,5,1.5,'#ffd45a'); } else { d.rr(-4.5-g.step*1.8,-6.5,4.2,5,1.5,'#ffd45a'); } }},
-  sh04:{name:'샌들',       price:400, draw:(d,g)=>{ shoe(d,g,g.sk,{noShadow:true}); shoe(d,g,'#d9a06a',{flat:true,noShadow:true}); if(!g.side) d.line(k=>{ k.moveTo(-7.5,-2.4); k.lineTo(-2.5,-2.4); k.moveTo(2.5,-2.4); k.lineTo(7.5,-2.4); }, '#c9895a', 1.2, .9); }},
-  sh05:{name:'갈색 부츠',  price:700, draw:(d,g)=>{ shoe(d,g,'#8a5a3c'); if(!g.side){ d.rr(-7,-6-g.a,4.2,4.5,1.5,'#8a5a3c'); d.rr(2.8,-6-g.b,4.2,4.5,1.5,'#8a5a3c'); } else d.rr(-4.5-g.step*1.8,-6,4.2,4.5,1.5,'#8a5a3c'); }},
-  sh06:{name:'슬리퍼',     price:310, draw:(d,g)=>{ shoe(d,g,'#a9c7ef'); if(!g.side){ d.rr(-7.5,-3.2,5,1.6,.8,'#8fb3e2',{flat:true,noShadow:true}); d.rr(2.5,-3.2,5,1.6,.8,'#8fb3e2',{flat:true,noShadow:true}); } }},
-  sh07:{name:'토끼 슬리퍼', price:660, draw:(d,g)=>{ shoe(d,g,'#fff0f5'); if(!g.side) for (const x of [-5,5]){ d.dot(x-1.3,-2.2,.5,'#5a3a44'); d.dot(x+1.3,-2.2,.5,'#5a3a44'); d.ell(x-1.5,-5,1,2,'#fff0f5',{noShadow:true}); d.ell(x+1.5,-5,1,2,'#fff0f5',{noShadow:true}); } }},
-  sh08:{name:'빨간 하이탑', price:620, draw:(d,g)=>{ shoe(d,g,'#e85d5d'); if(!g.side){ d.rr(-7,-5-g.a,4.2,3.5,1.5,'#e85d5d'); d.rr(2.8,-5-g.b,4.2,3.5,1.5,'#e85d5d'); d.rr(-8.6,-1.6-g.a,7.4,1.4,.7,'#fffaf4',{flat:true,noShadow:true}); d.rr(1.2,-1.6-g.b,7.4,1.4,.7,'#fffaf4',{flat:true,noShadow:true}); } }},
-  sh09:{name:'로퍼',       price:570, draw:(d,g)=>{ shoe(d,g,'#3f3a4a'); if(!g.side){ d.rr(-6.2,-3,2.4,1,.5,'#c9a85a',{flat:true,noShadow:true}); d.rr(3.8,-3,2.4,1,.5,'#c9a85a',{flat:true,noShadow:true}); } }},
-  sh10:{name:'털 부츠',    price:750, draw:(d,g)=>{ shoe(d,g,'#d9b38c'); if(!g.side){ d.rr(-7.2,-6.5-g.a,4.6,5,1.8,'#d9b38c'); d.rr(2.6,-6.5-g.b,4.6,5,1.8,'#d9b38c'); d.rr(-7.4,-6.8-g.a,5,1.8,.9,'#fff6ea',{flat:true,noShadow:true}); d.rr(2.4,-6.8-g.b,5,1.8,.9,'#fff6ea',{flat:true,noShadow:true}); } }},
+  sh01:{name:'운동화',     price:0,   draw:(d,g)=>{ shoe(d,g,'#fffaf4'); band(d,g,'#e9dfe4',-1.1,.9); }},
+  sh02:{name:'메리제인',   price:480, draw:(d,g)=>{ shoe(d,g,'#5a3a44'); if(!g.side) band(d,g,'#5a3a44',-3.4,.9); }},
+  sh03:{name:'노랑 장화',  price:570, draw:(d,g)=>{ shaft(d,g,'#ffd45a',4.6); shoe(d,g,'#ffd45a'); }},
+  sh04:{name:'샌들',       price:400, draw:(d,g)=>{ shoe(d,g,g.sk,{noShadow:true}); band(d,g,'#d9a06a',-2.6,1.1); band(d,g,'#c9895a',-.9,.9); }},
+  sh05:{name:'갈색 부츠',  price:700, draw:(d,g)=>{ shaft(d,g,'#8a5a3c',4.0); shoe(d,g,'#8a5a3c'); }},
+  sh06:{name:'슬리퍼',     price:310, draw:(d,g)=>{ shoe(d,g,'#a9c7ef'); band(d,g,'#8fb3e2',-2.8,1.5); }},
+  sh07:{name:'토끼 슬리퍼', price:660, draw:(d,g)=>{ shoe(d,g,'#fff0f5'); for (const f of feet(g)){ const x = f.x+(g.side?1.6:0), y = -1.5-f.lift; if (!g.up){ d.dot(x-(g.side?0:1.1), y-.4, .45, '#5a3a44'); if(!g.side) d.dot(x+1.1, y-.4, .45, '#5a3a44'); } d.ell(x-.9, y-2.4, .8, 1.6, '#fff0f5', {noShadow:true}); d.ell(x+.9, y-2.4, .8, 1.6, '#fff0f5', {noShadow:true}); } }},
+  sh08:{name:'빨간 하이탑', price:620, draw:(d,g)=>{ shaft(d,g,'#e85d5d',2.8); shoe(d,g,'#e85d5d'); band(d,g,'#fffaf4',-1.0,1.1); }},
+  sh09:{name:'로퍼',       price:570, draw:(d,g)=>{ shoe(d,g,'#3f3a4a'); if(!g.up) for (const f of feet(g)) d.rr(f.x-1.2+(g.side?1.3:0), -2.9-f.lift, 2.4, .9, .45, '#c9a85a', {flat:true, noShadow:true}); }},
+  sh10:{name:'털 부츠',    price:750, draw:(d,g)=>{ shaft(d,g,'#d9b38c',4.4); shoe(d,g,'#d9b38c'); for (const f of feet(g)) d.rr(f.x-2.7, -6.9-f.lift, 5.4, 1.9, .95, '#fff6ea', {noShadow:true}); }},
 };
 export const CATS = [['top','상의',TOPS],['bottom','하의',BOTTOMS],['set','세트',SETS],['hat','모자',HATS],['acc','액세서리',ACCS],['shoes','신발',SHOES]];
 export const FREE = ['t01','t02','b01','b02','s01','sh01'];
@@ -316,18 +463,13 @@ export function figure(d, L, dir, t, walk, expr){
   const set = SETS[L.set], top = TOPS[L.top] || TOPS.t01, bottom = BOTTOMS[L.bottom] || BOTTOMS.b01;
   const hat = HATS[L.hat] || HATS.none, acc = ACCS[L.acc] || ACCS.none, shoes = SHOES[L.shoes] || SHOES.sh01;
   if (!up) hair(d, 0, HY, L, side, R, 'back');
-  else if (!(L.hair==='long' || L.hair==='bangslong' || L.hair==='halfup' || L.hair==='longm' || L.hair==='hime')) {}
-  // 신발 → 하의 → 상의 (세트면 한 번에)
-  shoes.draw(d, g);
-  if (set) set.draw(d, g); else { bottom.draw(d, g); top.draw(d, g); }
-  if (up && (L.hair==='long' || L.hair==='bangslong' || L.hair==='halfup' || L.hair==='longm')) { const K = hairKit(d, 0, HY, R, L.hairColor); (HAIR[L.hair]||HAIR.long).back(K); }
+  // 하의(다리) → 신발 → 상의. 세트는 한 번에 그리고 신발을 마지막에
+  if (set){ set.draw(d, g); shoes.draw(d, g); } else { bottom.draw(d, g); shoes.draw(d, g); top.draw(d, g); }
   // 머리
   if (!side) { d.ell(-R*1.2, HY+R*.1, 2.4, 3, L.skin); d.ell(R*1.2, HY+R*.1, 2.4, 3, L.skin); }
-  else d.ell(-R*.5, HY+R*.12, 2.6, 3.2, L.skin); // 옆모습: 귀는 머리 가운데 뒤쪽
   headShape(d, 0, HY, R, L.skin);
   if (!up) face(d, side ? R*.22 : 0, HY+R*.28, L, side, expr);
-  if (up) hair(d, 0, HY, L, side, R, 'back', true);
-  else hair(d, 0, HY, L, side, R, 'front');
+  hair(d, 0, HY, L, side, R, 'front', up);
   acc.draw(d, g); hat.draw(d, g);
   c.restore();
 }
