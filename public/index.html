@@ -27,6 +27,13 @@ button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-offset:2px}
 #hud{left:calc(env(safe-area-inset-left,0px) + 10px)!important;font-size:18px!important;gap:6px 10px!important;flex-wrap:wrap;max-width:calc(100vw - 20px - min(260px,46vw) - 10px);position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:10px;display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:20px;z-index:5}
 #hud u{text-decoration:none;font-size:.62em;margin-right:3px;vertical-align:1px}
+img.ui{width:1.05em;height:1.05em;vertical-align:-.2em;margin:0 .12em}
+#hud img.ui{width:20px;height:20px;vertical-align:-4px;margin:0 3px 0 0}
+img.mi{width:30px;height:30px;vertical-align:middle;display:block}
+img.bi{width:34px;height:34px;display:block;pointer-events:none}
+.emo img.bi{width:30px;height:30px;margin:auto}
+.btn img.ui{width:1.15em;height:1.15em}
+.np-name img.ui{width:28px;height:28px;vertical-align:-8px;margin:0 6px 0 0}
 #hud b{font-weight:inherit}
 #hud i{width:14px;height:14px;border-radius:5px;display:inline-block;vertical-align:-2px;margin-right:4px}
 #quest{right:calc(env(safe-area-inset-right,0px) + 10px)!important;position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;max-width:min(260px,46vw);padding:8px 12px;font-size:19px;z-index:5}
@@ -208,7 +215,7 @@ body.typing #chatin{background:#fff}
 <div id="dim"></div>
 <div id="npcPanel" class="pill" hidden></div>
 <div id="mapPanel" class="pill" hidden></div>
-<div id="sideBtns" hidden><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="decoBtn" class="round" hidden>꾸미기</button><button id="swingBtn" class="round swing" hidden>휘두르기</button></div>
+<div id="sideBtns" hidden><button id="menuBtn" class="round" aria-label="메뉴">메뉴</button><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="decoBtn" class="round" hidden>꾸미기</button><button id="swingBtn" class="round swing" hidden>휘두르기</button></div>
 <div id="fade"></div>
 <div id="fishGame" class="pill" hidden><b id="fgTitle">무언가 걸렸어요!</b><div id="fgTrack"><div id="fgZone"></div><div id="fgBob"></div></div><div id="fgMeter"><div id="fgBar"></div></div><p id="fgText"></p><small>누른 채 좌우로 움직여 찌를 따라가요 (키보드: ← →)</small></div>
 <div id="toast" class="pill" style="opacity:0"></div>
@@ -222,6 +229,7 @@ import { QUESTS as NPC_QUESTS } from './quests.js';
 import { LORE } from './lore.js';
 import { ACHIEVEMENTS } from './achievements.js';
 import { SITUATIONS } from './situations.js';
+import { UI, EMOJI_UI } from './art/ui.js';
 import { FURN2, FURN2_DRAW } from './art/furn2.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
@@ -914,6 +922,16 @@ function showLogin(auth, mode='login'){
   };
   setTimeout(()=>{ (savedId ? $('lpw') : $('lid')).focus(); }, 50);
 }
+function menuPanel(){
+  let id = ''; try { id = localStorage.getItem('pinky-id') || ''; } catch(e){}
+  const row = (key, icon, label, sub) => `<button class="np" data-id="${key}" style="grid-template-columns:auto 1fr;align-items:center"><span>${ui(icon,'mi')}</span><span class="np-name">${label}${sub ? ` <small>${sub}</small>` : ''}</span></button>`;
+  openPanel('메뉴',
+    `<div class="np" style="grid-template-columns:auto 1fr;align-items:center"><span>${ui('people','mi')}</span><span class="np-name">${esc(me.nick)} <small>${solo ? '혼자 보기 모드' : id ? '아이디 ' + esc(id) : '로그인 중'}</small></span></div>` +
+    row('bag','bag','가방','아이템·도감·거래') + row('closet','shirt','옷장','갈아입기') + row('quest','scroll','퀘스트','진행 중인 부탁') + row('ach','trophy','업적','칭호 고르기') + row('map','map','섬 지도','') +
+    `<button class="btn ghost" id="logoutBig" style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px">${ui('door','mi')}로그아웃</button>`,
+    b=>({bag:showBag, closet:clothesPanel, quest:questLog, ach:achPanel, map:()=>{ $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }})[b.dataset.id]?.());
+  $('logoutBig').onclick = ()=>{ if (confirm('로그아웃할까요? 캐릭터와 집은 아이디에 저장돼 있어요.')) logout(); };
+}
 async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); }
 // 글꼴이 다 내려받히기 전에 그린 캔버스(지형·스프라이트)는 기본 글꼴로 굳어 버려요. 먼저 기다리고, 늦게 오면 캐시를 지워 다시 그려요.
 const fontReady = (async()=>{ try { await Promise.race([document.fonts.load('700 20px "Dongle"', '핑키 디저트 아일랜드 가나다 ABC 123'), new Promise(r=>setTimeout(r, 3000))]); } catch(e){} })();
@@ -1033,9 +1051,11 @@ function enterGame(doc){
   for (const id of ['hud','quest','bar','chatbox','sideBtns']) $(id).hidden = false;
   $('npcBtn').onclick = ()=>togglePanel('npcPanel', renderNpcPanel);
   $('mapBtn').onclick = ()=>togglePanel('mapPanel', renderMap);
+  document.querySelectorAll('.emo').forEach(b=>{ const k = b.id==='emoBtn' ? 'smile' : EMOJI_UI[b.dataset.e]; if (k) b.innerHTML = ui(k,'bi'); });
   $('emoBtn').onclick = ()=>{ $('emorow').hidden = !$('emorow').hidden; };
   $('dim').onclick = ()=>{ $('npcPanel').hidden = true; $('mapPanel').hidden = true; };
   $('decoBtn').onclick = decorMenu;
+  $('menuBtn').onclick = menuPanel;
   $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); swing(); });
   const L = LOTS[me.lot]; pos.dir = 'down';
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
@@ -1048,28 +1068,28 @@ function enterGame(doc){
 }
 function renderHud(){
   const online = 1 + others.size;
-  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span><u>💰</u>${me.inv.gold}G</span><span><u>📍</u>${Z().name}</span><span><u>👥</u>${Math.min(online,MAX)}/${MAX}</span><span><u>❤️</u><b id="hpv">${Math.ceil(playerHp)}</b></span>`;
+  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold}G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span><span>${ui('hp')}<b id="hpv">${Math.ceil(playerHp)}</b></span>`;
   $('quest').hidden = me.quest >= 6; $('quest').innerHTML = `<b>할 일</b>${QUESTS[Math.min(me.quest,6)]}`;
-  const it = [['💧','물뿌리개',me.inv.can],['🎣','낚싯대',me.inv.rod],['⛏️','곡괭이',me.inv.pick],['🗡️',me.inv.sword ? `${weapon().name} (공격력 ${weapon().atk})` : '검',me.inv.sword]];
+  const it = [['can','물뿌리개',me.inv.can],['rod','낚싯대',me.inv.rod],['pick','곡괭이',me.inv.pick],['sword',me.inv.sword ? `${weapon().name} (공격력 ${weapon().atk})` : '검',me.inv.sword]];
   $('swingBtn').hidden = !me.inv.sword;
-  $('bar').innerHTML = it.map(([e,n,c])=>`<div class="${c?'':'off'}" title="${n}" aria-label="${n}${c?'':' 없음'}">${e}</div>`).join('') + `<div id="bagBtn" title="가방" aria-label="가방" style="cursor:pointer">🎒</div>`;
+  $('bar').innerHTML = it.map(([e,n,c])=>`<div class="${c?'':'off'}" title="${n}" aria-label="${n}${c?'':' 없음'}">${ui(e,'bi')}</div>`).join('') + `<div id="bagBtn" title="가방" aria-label="가방" style="cursor:pointer">${ui('bag','bi')}</div>`;
   $('bagBtn').onclick = showBag;
   if (!$('npcPanel').hidden && $('npcPanel').dataset.kind==='npc') renderNpcPanel();
 }
 let toastT = 0;
-function toast(t, key){ const el = $('toast'); el.innerHTML = (key ? iconImg(key, 'tic') : '') + esc(t); el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(()=>el.style.opacity=0, 2600); }
+function toast(t, key){ const el = $('toast'); el.innerHTML = (key ? iconImg(key, 'tic') : '') + deEmoji(esc(t)); el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(()=>el.style.opacity=0, 2600); }
 function addLog(t, sys){
   const p = document.createElement('p'); p.textContent = t; if (sys) p.className = 'sys';
   const log = $('log'); log.append(p); while (log.children.length > 3) log.firstChild.remove();
   setTimeout(()=>{ p.style.opacity = 0; }, 8000); setTimeout(()=>p.remove(), 9500);
 }
 function say(name, text, actions=[], note='', noClose=false, choice=false){
-  $('talkName').textContent = name; $('talkText').textContent = text;
+  $('talkName').textContent = name; $('talkText').innerHTML = deEmoji(esc(text));
   const ti = $('talkIcon'); if (talkIconNext){ const a = artIdOf(talkIconNext); ti.src = iconURL(a, 128); ti.hidden = false; talkIconNext = null; } else ti.hidden = true;
   $('talkNote').textContent = note; $('talkNote').hidden = !note;
   const act = $('talkAct'); act.innerHTML = ''; act.classList.toggle('choices', choice);
   const list = noClose ? actions : [...actions, ['닫기', closeTalk]];
-  for (const [label, fn] of list){ const b = document.createElement('button'); b.className = choice ? 'btn choice' : label==='닫기'&&actions.length ? 'btn ghost' : 'btn'; b.textContent = label; b.onclick = fn; act.append(b); }
+  for (const [label, fn] of list){ const b = document.createElement('button'); b.className = choice ? 'btn choice' : label==='닫기'&&actions.length ? 'btn ghost' : 'btn'; b.innerHTML = deEmoji(esc(label)); b.onclick = fn; act.append(b); }
   $('talk').hidden = false;
 }
 function closeTalk(){ $('talk').hidden = true; }
@@ -1732,7 +1752,7 @@ function contentTarget(w){
 function seedShop(){
   $('npcPanel').dataset.kind = 'other';
   $('npcPanel').hidden = false; $('mapPanel').hidden = true; closeTalk();
-  $('npcPanel').innerHTML = `<div class="np-head"><b>모모의 씨앗 가게 · 💰 ${me.inv.gold}G</b><button class="mini" id="ssClose">닫기</button></div>` +
+  $('npcPanel').innerHTML = `<div class="np-head"><b>모모의 씨앗 가게 · ${ui('coin')} ${me.inv.gold}G</b><button class="mini" id="ssClose">닫기</button></div>` +
     Object.entries(CROPS).map(([id,c])=>`<button class="np" data-id="${id}"><span class="np-name">${iconImg('crop:'+id)}${c.name} 씨앗 <small>${fmtMin(c.min)} · 수확 ${c.y1===c.y2?c.y1:c.y1+'~'+c.y2}개 · 1개 ${c.sell}G</small></span><span class="np-place">${c.seed}G</span>${invCount('seed:'+id)?`<span class="np-day">가진 씨앗 ${invCount('seed:'+id)}</span>`:''}</button>`).join('');
   $('ssClose').onclick = ()=>{ $('npcPanel').hidden = true; };
   $('npcPanel').querySelectorAll('.np[data-id]').forEach(b=>b.onclick = ()=>{
@@ -1814,7 +1834,7 @@ function drawSlot(d, s, g, now, mine){
     else { d.rr(x-2,y-30,4,30,2,'#5aa857'); d.ell(x-6,y-14,6,2.4,'leaf'); d.ell(x+6,y-20,6,2.4,'leaf'); d.ell(x,y-32,4.5,7,col); }
   }
   if (mine && st<4 && !cr.wateredAt){ const b = Math.sin(now/250)*2; d.dot(x+13,y-28+b,4,'#6fc3ff'); d.tri([[x+9.8,y-29+b],[x+13,y-36+b],[x+16.2,y-29+b]],'#6fc3ff'); }
-  if (mine && st===4){ const b = Math.sin(now/250)*2; c.font='14px sans-serif'; c.textAlign='center'; c.fillText('✨', x+14, y-26+b); }
+  if (mine && st===4){ const b = Math.sin(now/250)*2; c.drawImage(uiCanvas('sparkle', 64), x+5, y-38+b, 18, 18); }
 }
 
 // ===== 요리 (단단 카페) =====
@@ -1857,7 +1877,7 @@ function eatDish(id){ invAdd('dish:'+id, -1); playerHp = Math.min(PLAYER_MAX_HP,
 // ===== 공통 패널 =====
 function openPanel(title, body, onClick){
   closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.market; delete p.dataset.stock;
-  p.innerHTML = `<div class="np-head"><b>${title}</b><button class="mini" id="pnClose">닫기</button></div>${body}`;
+  p.innerHTML = deEmoji(`<div class="np-head"><b>${title}</b><button class="mini" id="pnClose">닫기</button></div>${body}`);
   $('pnClose').onclick = ()=>{ p.hidden = true; };
   if (onClick) p.querySelectorAll('.np[data-id]').forEach(b=>b.onclick = ()=>onClick(b));
 }
@@ -2518,6 +2538,20 @@ function iconURL(aid, size=96, silhouette=false){
   const url = c.toDataURL(); iconCache.set(k, url); return url;
 }
 const iconImg = (key, cls='ic') => { const a = artIdOf(key); return a ? `<img class="${cls}" src="${iconURL(a)}" alt="">` : ''; };
+// ===== UI 아이콘: 이모지 대신 클레이 아이콘 (art/ui.js) =====
+const uiCache = new Map();
+function uiCanvas(name, size=64){
+  const k = name+'|'+size; if (uiCache.has(k)) return uiCache.get(k);
+  const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d'), s = size/52;
+  x.setTransform(s,0,0,s,size/2,size/2);
+  try { (UI[name] || UI.star)(painter(x)); } catch(e){}
+  uiCache.set(k, c); return c;
+}
+const uiUrlCache = new Map();
+const uiURL = (name, size=64) => { const k = name+'|'+size; if (!uiUrlCache.has(k)) uiUrlCache.set(k, uiCanvas(name, size).toDataURL()); return uiUrlCache.get(k); };
+const ui = (name, cls='ui') => `<img class="${cls}" src="${uiURL(name)}" alt="">`;
+const EMOJI_RE = new RegExp(Object.keys(EMOJI_UI).sort((a,b)=>b.length-a.length).map(e=>e.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'), 'gu');
+const deEmoji = html => String(html).replace(EMOJI_RE, e => ui(EMOJI_UI[e])); // 이미 이스케이프된 HTML 속 이모지를 아이콘으로
 let talkIconNext = null;
 const withIcon = key => { talkIconNext = key; };
 
@@ -2712,7 +2746,7 @@ function signPost(d, text, x, y){
 }
 function drawZonePlace(d, z, p){
   const c = d.ctx;
-  if (p.kind==='house'){ drawBuilding(d, p.x, p.y, p.roof, p.label, p.wide ? 140 : 92); c.font='22px sans-serif'; c.textAlign='center'; c.fillText(p.icon||'', p.x, p.y-108); }
+  if (p.kind==='house'){ drawBuilding(d, p.x, p.y, p.roof, p.label, p.wide ? 140 : 92); const ik = EMOJI_UI[p.icon]; if (ik) c.drawImage(uiCanvas(ik, 96), p.x-15, p.y-128, 30, 30); }
   else if (p.kind==='fountain'){ d.ell(p.x,p.y,200,110,'path'); d.circle(p.x,p.y,40,'#ffd1e1'); d.circle(p.x,p.y,28,'water'); d.circle(p.x-6,p.y-8,9,'waterHi'); }
   else if (p.kind==='pond'){ d.ell(p.x,p.y,p.rx,p.ry,'water'); d.ell(p.x-p.rx*.3,p.y-p.ry*.35,p.rx*.25,10,'waterHi'); d.circle(p.x+p.rx*.5,p.y+p.ry*.3,9,'leaf'); d.circle(p.x-p.rx*.55,p.y+p.ry*.4,7,'leaf'); d.dot(p.x+p.rx*.5,p.y+p.ry*.3-2,2.5,'#ff8fc4'); }
   else if (p.kind==='field'){
@@ -2791,6 +2825,8 @@ function tag(c, text, x, y, color){
   c.fillStyle='#6b3a4d'; c.fillText(text, x+(color?2:0), y+1);
 }
 function bubble(c, text, x, y){
+  const ik = EMOJI_UI[text];
+  if (ik){ c.fillStyle='#fff'; c.beginPath(); c.roundRect(x-18, y-34, 36, 34, 14); c.fill(); c.beginPath(); c.moveTo(x-5,y); c.lineTo(x,y+6); c.lineTo(x+5,y); c.fill(); c.drawImage(uiCanvas(ik, 96), x-14, y-31, 28, 28); return; }
   c.font='bold 19px "Dongle",sans-serif'; c.textAlign='center';
   const w = Math.min(200, c.measureText(text).width + 18);
   c.fillStyle='#fff'; c.beginPath(); c.roundRect(x-w/2, y-24, w, 24, 12); c.fill();
@@ -2840,7 +2876,7 @@ function talkBubble(key, x, y, t){
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-80);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { iconURL, situationsNow, situationLine, showLogin, logout, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { iconURL, uiURL, menuPanel, situationsNow, situationLine, showLogin, logout, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
 </body>
 </html>
