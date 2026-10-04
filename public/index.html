@@ -127,6 +127,8 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 .opts button.sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--pinkd)}
 .nick{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .nick input{font:700 25px "Dongle",sans-serif;border:2px solid var(--line);border-radius:12px;padding:6px 12px;width:min(220px,60vw);color:var(--ink)}
+.tabs{display:flex;gap:6px;margin:4px 0 10px}.tab{border:0;border-radius:12px;padding:6px 18px;font-size:21px;background:#fff;color:var(--soft);box-shadow:inset 0 -2px 0 #f6e6ec}.tab.on{background:var(--pink);color:var(--ink);box-shadow:inset 0 -3px 0 #f2c3d3}
+.lform{display:flex;flex-direction:column;gap:8px;max-width:360px}.field{display:flex;flex-direction:column;gap:2px}.field b{font-size:18px;color:var(--soft)}.field input{font:700 23px "Dongle",sans-serif;border:2px solid var(--line);border-radius:12px;padding:8px 12px;color:var(--ink);background:#fff;width:100%;box-sizing:border-box}
 .err{color:#d6335f;font-size:19px;min-height:1.4em;margin:0}
 .roofs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
 .roofs button{border:2px solid transparent;background:#fff;border-radius:14px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:19px}
@@ -867,24 +869,60 @@ const collecting = new Set();
 let app = null, F = null; // F: 필요할 때만 불러오는 Firebase 함수들
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 function start(){ net.listen(); }
-function showLogin(auth){
+// ===== 로그인: 아이디(영어)·비밀번호(5자 이상). Firebase 이메일 로그인을 아이디 형태로 감싸요.
+const ID_RE = /^[a-zA-Z][a-zA-Z0-9_]{2,15}$/;
+const idEmail = id => `${id.toLowerCase()}@pinkyisland.app`;
+const pwPad = pw => pw + '·pinky'; // Firebase 최소 6자 규칙을 맞추기 위한 고정 꼬리표 (5자 비밀번호 허용)
+const AUTH_MSG = {
+  'auth/operation-not-allowed': 'Firebase 콘솔 > Authentication > 로그인 방법에서 "이메일/비밀번호"를 켜 주세요.',
+  'auth/email-already-in-use': '이미 있는 아이디예요. 로그인하거나 다른 아이디를 골라 주세요.',
+  'auth/invalid-credential': '아이디 또는 비밀번호가 맞지 않아요.', 'auth/wrong-password': '비밀번호가 맞지 않아요.', 'auth/user-not-found': '없는 아이디예요. 먼저 가입해 주세요.',
+  'auth/too-many-requests': '너무 여러 번 시도했어요. 잠시 뒤 다시 해 주세요.', 'auth/network-request-failed': '인터넷 연결을 확인해 주세요.',
+};
+function showLogin(auth, mode='login'){
   obc.dataset.step = 'login';
+  let savedId = ''; try { savedId = localStorage.getItem('pinky-id') || ''; } catch(e){}
+  const signup = mode==='signup';
   obc.innerHTML = `<h1>핑키 디저트 아일랜드</h1>
-    <p class="sub">14명이 함께 사는 디저트 섬이에요. 로그인하면 내 캐릭터와 집이 저장돼요.</p>
-    <div class="act" style="justify-content:flex-start"><button class="btn" id="gl">구글로 시작하기</button><button class="btn ghost" id="gu">게스트로 시작하기</button></div>
-    <p class="err" id="err"></p>
-    <div class="note">게스트는 이 브라우저에만 저장돼요. 다른 기기에서도 이어 하려면 구글로 시작해 주세요.<br>카카오톡 같은 앱 안에서 열었다면 구글 로그인이 막힐 수 있어요. 그럴 땐 크롬이나 사파리로 열어 주세요.</div>`;
-  $('gl').onclick = () => F.signInWithPopup(auth, new F.GoogleAuthProvider()).catch(()=>{ $('err').textContent = '구글 로그인에 실패했어요. 크롬이나 사파리에서 다시 시도하거나 게스트로 시작해 주세요.'; });
-  $('gu').onclick = () => F.signInAnonymously(auth).catch(()=>{ $('err').textContent = '게스트로 시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.'; });
+    <p class="sub">14명이 함께 사는 디저트 섬이에요. ${signup ? '아이디와 비밀번호를 정하면 가입 완료!' : '아이디와 비밀번호로 들어가요.'}</p>
+    <div class="tabs"><button class="tab ${signup?'':'on'}" data-m="login">로그인</button><button class="tab ${signup?'on':''}" data-m="signup">가입하기</button></div>
+    <form id="lf" class="lform" autocomplete="on">
+      <label class="field"><b>아이디</b><input id="lid" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="16" placeholder="영어 3~16자" value="${esc(savedId)}"></label>
+      <label class="field"><b>비밀번호</b><input id="lpw" name="password" type="password" autocomplete="${signup?'new-password':'current-password'}" maxlength="40" placeholder="5자 이상"></label>
+      ${signup ? '<label class="field"><b>비밀번호 확인</b><input id="lpw2" type="password" autocomplete="new-password" maxlength="40" placeholder="한 번 더"></label>' : ''}
+      <p class="err" id="err"></p>
+      <div class="act"><button class="btn" id="lgo" type="submit">${signup ? '가입하고 시작하기' : '들어가기'}</button></div>
+    </form>
+    <div class="note">${signup ? '아이디는 영어로 시작하고 영어·숫자·_만 쓸 수 있어요. 비밀번호는 5자 이상이면 돼요. 가입하면 바로 닉네임과 캐릭터를 고를 수 있어요.' : '처음이면 <b>가입하기</b>를 눌러 아이디를 만들어 주세요. 다른 기기에서도 같은 아이디로 이어서 할 수 있어요.'}</div>`;
+  obc.querySelectorAll('.tab').forEach(b=>b.onclick = ()=>showLogin(auth, b.dataset.m));
+  $('lf').onsubmit = async e => {
+    e.preventDefault();
+    const id = $('lid').value.trim(), pw = $('lpw').value, err = $('err');
+    if (!ID_RE.test(id)) return err.textContent = '아이디는 영어로 시작하고, 영어·숫자·_ 3~16자여야 해요.';
+    if (pw.length < 5) return err.textContent = '비밀번호는 5자 이상이어야 해요.';
+    if (signup && pw !== $('lpw2').value) return err.textContent = '비밀번호 확인이 달라요.';
+    $('lgo').disabled = true; err.textContent = signup ? '가입하는 중…' : '들어가는 중…';
+    try {
+      if (signup) await F.createUserWithEmailAndPassword(auth, idEmail(id), pwPad(pw));
+      else await F.signInWithEmailAndPassword(auth, idEmail(id), pwPad(pw));
+      try { localStorage.setItem('pinky-id', id); } catch(e){}
+    } catch(ex){
+      $('lgo').disabled = false;
+      err.textContent = AUTH_MSG[ex.code] || `${signup ? '가입' : '로그인'}에 실패했어요. (${ex.code || ex.message})`;
+      if (!signup && (ex.code==='auth/user-not-found' || ex.code==='auth/invalid-credential')) err.textContent += ' 처음이면 가입하기를 눌러 주세요.';
+    }
+  };
+  setTimeout(()=>{ (savedId ? $('lpw') : $('lid')).focus(); }, 50);
 }
+async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); }
 // 글꼴이 다 내려받히기 전에 그린 캔버스(지형·스프라이트)는 기본 글꼴로 굳어 버려요. 먼저 기다리고, 늦게 오면 캐시를 지워 다시 그려요.
 const fontReady = (async()=>{ try { await Promise.race([document.fonts.load('700 20px "Dongle"', '핑키 디저트 아일랜드 가나다 ABC 123'), new Promise(r=>setTimeout(r, 3000))]); } catch(e){} })();
 if (document.fonts) document.fonts.addEventListener('loadingdone', ()=>{ staticSig = ''; spriteCache.clear(); });
+const configured = firebaseConfig && firebaseConfig.apiKey && !String(firebaseConfig.apiKey).startsWith('YOUR');
+if (!configured) solo = true; // 모듈 끝의 디버그 API(__pinky)가 바로 알 수 있게 await 전에 정해요
 (async function boot(){
   await fontReady;
-  const configured = firebaseConfig && firebaseConfig.apiKey && !String(firebaseConfig.apiKey).startsWith('YOUR');
   if (!configured){
-    solo = true;
     try { uid = localStorage.getItem('pinky-uid'); } catch(e){}
     if (!uid){ uid = 'local-' + Math.random().toString(36).slice(2,10); try { localStorage.setItem('pinky-uid', uid); } catch(e){} }
     net = soloNet(); start(); return;
@@ -1254,7 +1292,8 @@ function renderMap(){
     const npcs = NPCS.filter(n=>n.zone===id).map(n=>n.name).join(' ');
     return `<div class="mz ${id===zoneId?'here':''}" style="grid-column:${z.grid[0]+1};grid-row:${z.grid[1]+1}"><b>${z.name}</b>${npcs?`<small>${npcs}</small>`:''}${counts[id]?`<i>${id===zoneId?'나 · ':''}${counts[id]}명</i>`:''}</div>`;
   }).join('');
-  $('mapPanel').innerHTML = `<div class="np-head"><b>섬 지도</b><button class="mini" id="mpClose">닫기</button></div><div class="mgrid">${cells}</div><p class="mnote">구역 끝의 표지판 쪽 길로 걸어가면 다음 구역으로 넘어가요.</p>`;
+  $('mapPanel').innerHTML = `<div class="np-head"><b>섬 지도</b><button class="mini" id="mpClose">닫기</button></div><div class="mgrid">${cells}</div><p class="mnote">구역 끝의 표지판 쪽 길로 걸어가면 다음 구역으로 넘어가요. <button class="mini" id="logoutBtn" style="float:right">로그아웃</button></p>`;
+  $('logoutBtn').onclick = ()=>{ if (confirm('로그아웃할까요? 캐릭터와 집은 아이디에 저장돼 있어요.')) logout(); };
   $('mpClose').onclick = ()=>{ $('mapPanel').hidden = true; };
 }
 
@@ -2801,7 +2840,7 @@ function talkBubble(key, x, y, t){
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-80);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { iconURL, situationsNow, situationLine, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { iconURL, situationsNow, situationLine, showLogin, logout, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
 </body>
 </html>

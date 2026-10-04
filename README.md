@@ -5,14 +5,14 @@
 - 화면: `public/index.html` (게임 전체가 이 파일 하나에 있어요)
 - 주민 대사·스토리: `public/npcs.js` (대사를 고치거나 늘릴 때는 이 파일만 고치면 돼요)
 - 저장과 실시간 접속: Firebase Realtime Database
-- 로그인: Firebase 인증 (구글 / 게스트)
+- 로그인: 아이디(영어 3~16자) + 비밀번호(5자 이상). Firebase 이메일/비밀번호 인증을 아이디 형태로 감싸요 (`아이디@pinkyisland.app`, 비밀번호 뒤에 고정 꼬리표를 붙여 6자 규칙을 맞춤)
 - 배포: `main` 브랜치에 푸시하면 GitHub Actions가 Firebase Hosting에 올려요
 
 ## 처음 한 번만 하는 설정
 
 ### 1. Firebase 프로젝트 만들기
 1. https://console.firebase.google.com 에서 **프로젝트 추가**
-2. **Authentication > 시작하기 > 로그인 방법**에서 **Google**과 **익명**을 사용 설정
+2. **Authentication > 시작하기 > 로그인 방법**에서 **이메일/비밀번호**를 사용 설정 (구글·익명은 필요 없어요)
 3. **Realtime Database > 데이터베이스 만들기**
    - 위치: 싱가포르(`asia-southeast1`) 추천
    - **잠금 모드**로 시작 (규칙은 배포할 때 `database.rules.json`으로 덮어써요)
