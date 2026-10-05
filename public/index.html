@@ -2721,6 +2721,26 @@ function promiseTree(){
 
 // ===== 아이템 그림 (물고기·작물·광석·몬스터는 public/art/ 의 종류별 그림) =====
 const ART = {...ART_FISH_A, ...ART_FISH_B, ...ART_CROPS, ...ART_ORES, ...ART_MON, ...ART_DISH};
+// 작물: 캐릭터와 같은 부드러운 매트 점토로 그리고, 제일 큰 몸통에 작은 얼굴(구슬 눈·볼·작은 입)을 붙여요
+const CROP_FACE = {}; // 작물마다 얼굴 자리 [x, y, 크기] (그림에서 가장 넓게 칠한 부분을 찾아 정해요)
+const FACE_FIX = {c02:[0,8,5], c13:[0,-3,4.6], c18:[0,-6,5.5], c20:[0,-2,6.5], c26:[0,-2,6], c09:[0,-6,5.5]};
+function cropFaceOf(id, fn){
+  if (CROP_FACE[id]) return CROP_FACE[id];
+  if (FACE_FIX[id]) return CROP_FACE[id] = FACE_FIX[id];
+  let best = null; const add = (x, y, r, a) => { if (!best || a > best[3]) best = [x, y, r, a]; };
+  const rec = { ctx: new Proxy({}, {get:()=>()=>{}, set:()=>true}),
+    circle:(x,y,r)=>add(x, y, r, r*r*3.14), ell:(x,y,rx,ry)=>add(x, y, Math.min(rx,ry), rx*ry*3.14), rr:(x,y,w,h)=>add(x+w/2, y+h/2, Math.min(w,h)/2, w*h),
+    shape:(f,k,box)=>{ if (box) add(box[0], box[1], box[2], box[2]*box[2]*2); }, dot:()=>{}, line:()=>{}, stitch:()=>{}, tri:()=>{} };
+  try { fn(rec, 0); } catch(e){}
+  return CROP_FACE[id] = best ? [best[0], best[1] + best[2]*.08, Math.max(4.2, Math.min(9, best[2]*.62))] : [0, 0, 6];
+}
+function cropFace(d, id, fn){
+  const [x, y, k] = cropFaceOf(id, fn), ink = '#2b2228', e = k*.42;
+  for (const s of [-1, 1]){ d.ell(x + s*e, y, k*.13, k*.18, ink, {flat:true, noShadow:true}); d.dot(x + s*e + k*.04, y - k*.08, k*.055, '#ffffff', .95); d.ell(x + s*k*.78, y + k*.3, k*.2, k*.12, '#ff7fa0', {flat:true, noShadow:true}); }
+  d.line(c=>{ c.moveTo(x - k*.12, y + k*.22); c.quadraticCurveTo(x, y + k*.36, x + k*.12, y + k*.22); }, ink, Math.max(.5, k*.07), .85);
+}
+for (const id of Object.keys(ART_CROPS)){ const base = ART[id];
+  ART[id] = (d, t) => { const m = CH.mattePainter(d.ctx); m.tri = d.tri; m.stitch = d.stitch; base(m, t); cropFace(m, id, base); }; }
 globalThis.shade = shade;
 const iconCache = new Map();
 function artIdOf(key){
