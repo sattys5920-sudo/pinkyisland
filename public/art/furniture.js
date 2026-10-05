@@ -17,7 +17,7 @@ export const FURN_ALL = [
   ['욕조', 2000, 'ore:o15', 3, 'bath', '#f4fbff'], ['도넛 의자', 2200, 'ore:o18', 2, 'donutChair', '#ff9fc4'], ['마카롱 타워', 2800, 'ore:o24', 2, 'macaronTower', '#ffd6e8'],
   ['주크박스', 3200, 'ore:o20', 3, 'jukebox', '#ff7a90'], ['폭신 빈백', 3600, 'ore:o26', 2, 'beanbag', '#9fe0c9'], ['컵케이크 조명', 4400, 'ore:o29', 2, 'cupcakeLamp', '#fff3a8'],
   ['동그란 TV', 5000, 'ore:o27', 2, 'tv', '#ffb3d9'], ['초승달 침대', 8000, 'ore:o37', 2, 'moonBed', '#fff0a0'],
-  ['오투모 인형', 3500, 'ore:o25', 3, 'otumoDoll', '#c9d0dc'], ['토끼 인형', 700, 'ore:o16', 1, 'bunnyDoll', '#ffe6ee'], ['펭귄 인형', 700, 'ore:o10', 2, 'pengDoll', '#5b6a8a'],
+  ['오투모 인형', 3500, 'ore:o25', 3, 'otumoDoll', '#fbfbfd'], ['토끼 인형', 700, 'ore:o16', 1, 'bunnyDoll', '#ffe6ee'], ['펭귄 인형', 700, 'ore:o10', 2, 'pengDoll', '#5b6a8a'],
 ];
 
 const PI = Math.PI;
@@ -78,17 +78,19 @@ export const FURN_DRAW = {
     d.rr(x - 30, y - 24, 60, 24, 11, '#ffffff'); d.rr(x - 26, y - 16, 52, 16, 8, '#ffc2d6'); d.rr(x - 24, y - 28, 20, 10, 5, '#fff7ee');
     for (const [a, b, r] of [[20, -62, 2.6], [30, -48, 2], [-34, -76, 2.4]]) d.circle(x + a, y + b, r, '#fff6c8'); },
   // ===== 인형 =====
-  otumoDoll: (d, x, y, col) => { // 각진 로봇: 네모 머리·네모 몸·네모 발 (모서리만 살짝 둥글게)
-    for (const s of [-1, 1]) d.rr(x + s * 7 - 5, y - 8, 10, 8, 2, tone(col, -.2));
-    for (const s of [-1, 1]) d.rr(x + s * 15 - 3.5, y - 26, 7, 14, 2, tone(col, -.1));
-    d.rr(x - 12, y - 30, 24, 24, 3, tone(col, -.06)); d.rr(x - 7, y - 24, 14, 9, 2, '#9aa3b4', flat);
-    for (const [a, c] of [[-3.4, '#6fe0ff'], [0, '#7dff9a'], [3.4, '#ff8fb0']]) d.rr(x + a - 1.1, y - 21, 2.2, 2.2, .5, c, flat);
-    d.rr(x - 3, y - 34, 6, 5, 1, '#9aa3b4');
-    d.line(c => { c.moveTo(x, y - 62); c.lineTo(x, y - 70); }, '#8e97a8', 1.6); d.rr(x - 2.6, y - 74, 5.2, 5.2, 1, '#ff6f6f');
-    for (const s of [-1, 1]) d.rr(x + s * 18 - 3, y - 54, 6, 12, 1.5, '#aeb6c4');
-    d.rr(x - 16, y - 63, 32, 30, 4, col); d.rr(x - 16, y - 55, 32, 5, 1, '#9aa3b4', flat);
-    for (const [a, b] of [[-13, -60], [13, -60], [-13, -37], [13, -37]]) d.dot(x + a, y + b, .8, '#8e97a8');
-    dollFace(d, x, y - 44, .9); },
+  otumoDoll: (d, x, y, col) => { // 오투모: 하얀 동그란 헬멧 머리 + 검은 바이저 + 파란 머리띠 + 노란 귀 + 하얀 몸
+    const W = '#fbfbfd', Y = '#ffb627', B = '#3f6fe0';
+    for (const s of [-1, 1]) oval(d, x + s * 6, y - 3, 5, 3.4, 0, '#e8e8f0');
+    d.ell(x, y - 15, 11, 12, W); d.circle(x, y - 14, 4.4, '#d6dbe6', flat); d.circle(x, y - 14, 2.2, '#9aa3b4', flat);
+    for (const s of [-1, 1]) { d.circle(x + s * 13, y - 16, 4.4, Y); for (const k of [-1, 0, 1]) d.circle(x + s * (16 + Math.abs(k)), y - 18 + k * 3, 1.8, Y); }
+    for (const s of [-1, 1]) oval(d, x + s * 18, y - 42, 5, 7, s * .2, Y);
+    d.circle(x, y - 40, 18, W);
+    d.line(c => c.arc(x, y - 40, 18.5, PI * 1.08, PI * 1.92), B, 4.4);
+    d.rr(x - 5, y - 58.5, 10, 4, 2, '#2b3a6a', flat);
+    d.rr(x - 17, y - 42, 34, 11, 5.5, '#2b2b36');
+    for (const s of [-1, 1]) { d.ell(x + s * 5.5, y - 36.5, 1.6, 2.2, '#9fe8ff', flat); d.dot(x + s * 5.5 + .5, y - 37.5, .5, '#ffffff'); }
+    for (const s of [-1, 1]) d.ell(x + s * 10, y - 27, 2.2, 1.3, '#ff9fb8', flat);
+    d.dot(x - 8, y - 50, 3, '#ffffff', .8); },
   bunnyDoll: (d, x, y, col) => { for (const s of [-1, 1]) d.circle(x + s * 8, y - 5, 5, col); d.ell(x, y - 14, 11, 11, col); d.rr(x - 8, y - 18, 16, 8, 4, '#ffb3c6', flat); for (const s of [-1, 1]) { oval(d, x + s * 5, y - 50, 4, 11, s * .15, col); oval(d, x + s * 5, y - 50, 2, 8, s * .15, '#ffc3d6', flat); } d.circle(x, y - 32, 12, col); dollFace(d, x, y - 31, .85); },
   pengDoll: (d, x, y, col) => { for (const s of [-1, 1]) oval(d, x + s * 6, y - 2, 4.4, 2.6, 0, '#ffb347'); d.ell(x, y - 18, 14, 17, col); d.ell(x, y - 14, 9, 11, '#ffffff', flat); for (const s of [-1, 1]) oval(d, x + s * 14, y - 18, 3.4, 8, s * -.3, col); d.circle(x, y - 34, 12, col); d.ell(x, y - 32, 9, 8, '#ffffff', flat); oval(d, x, y - 30, 2.6, 1.6, 0, '#ffb347'); dollFace(d, x, y - 33, .75); d.rr(x - 11, y - 25, 22, 4, 2, '#ff8fb0'); },
 };

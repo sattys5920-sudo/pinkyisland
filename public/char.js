@@ -524,12 +524,12 @@ export const HATS = {
   fedora:{name:'페도라', price:980, draw:(d,g)=>{ d.ell(0, HY-R*.62, R*1.78, R*.32, '#6b5a4c'); d.shape(k=>{ k.beginPath(); k.moveTo(-R*1.3,HY-R*.66); k.lineTo(-R*1.2,HY-R*1.35); k.quadraticCurveTo(-R*.6,HY-R*1.62,0,HY-R*1.38); k.quadraticCurveTo(R*.6,HY-R*1.62,R*1.2,HY-R*1.35); k.lineTo(R*1.3,HY-R*.66); k.quadraticCurveTo(0,HY-R*.56,-R*1.3,HY-R*.66); k.closePath(); }, '#7a6857', [0,HY-R*1.05,R*1.2]); d.shape(k=>{ k.beginPath(); k.moveTo(-R*1.28,HY-R*.92); k.quadraticCurveTo(0,HY-R*.84,R*1.28,HY-R*.92); k.lineTo(R*1.3,HY-R*.7); k.quadraticCurveTo(0,HY-R*.62,-R*1.3,HY-R*.7); k.closePath(); }, '#3a3040', [0,HY-R*.8,R], {flat:true, noShadow:true}); }},
   frog:  {name:'개구리 모자', price:880, draw:(d,g)=>{ cap(d,'#9fd28a',1.38,1.42,-.3,.06); for (const ex of (g.side ? [.35] : [-.55,.55])){ d.circle(R*ex, HY-R*1.32, R*.4, '#9fd28a'); if (!g.up){ d.circle(R*ex, HY-R*1.34, R*.26, '#fffaf2', {flat:true}); d.dot(R*ex+.5, HY-R*1.34, R*.13, '#2b2228'); d.dot(R*ex+.1, HY-R*1.42, .5, '#fff'); } } if (!g.up && !g.side){ d.dot(-R*.95, HY-R*.62, .9, '#ff9fb0'); d.dot(R*.95, HY-R*.62, .9, '#ff9fb0'); d.line(k=>{ k.moveTo(-R*.5,HY-R*.62); k.quadraticCurveTo(0,HY-R*.48,R*.5,HY-R*.62); }, '#6fae5a', .8, .9); } }},
   trapper:{name:'귀달이 털모자', price:900, draw:(d,g)=>{ for (const sx of (g.side ? [-.38] : [-1.28, 1.28])) d.ell(R*sx, HY+R*.12, R*.34, R*.58, '#c99a6e'); cap(d,'#c99a6e',1.38,1.42,-.42,.06); d.shape(k=>{ k.beginPath(); k.moveTo(-R*1.4,HY-R*.68); k.quadraticCurveTo(0,HY-R*.58,R*1.4,HY-R*.68); k.lineTo(R*1.4,HY-R*.36); k.quadraticCurveTo(0,HY-R*.24,-R*1.4,HY-R*.36); k.closePath(); }, '#fff6ea', [0,HY-R*.5,R*1.3]); for (const sx of (g.side ? [-.38] : [-1.28, 1.28])) d.ell(R*sx, HY+R*.54, R*.3, R*.18, '#fff6ea', {flat:true}); }},
-  robot: {name:'오투모 모자', price:3500, draw:(d,g)=>{ const ax = g.side ? -R*.1 : 0; d.line(k=>{ k.moveTo(ax, HY-R*1.38); k.lineTo(ax+R*.12, HY-R*1.82); }, '#8e97a8', 1.1, .95); d.circle(ax+R*.12, HY-R*1.86, 2.2, '#ff6f6f');
-    for (const sx of (g.side ? [-.36] : [-1.38, 1.38])){ d.rr(R*sx-2.4, HY-R*.28, 4.8, R*.62, 1.6, '#aeb6c4'); d.circle(R*sx, HY-R*.02, 1.3, '#ffd23f', {flat:true}); }
-    cap(d,'#c9d0dc',1.36,1.4,-.36,.04);
-    d.shape(k=>{ k.beginPath(); k.moveTo(-R*1.38,HY-R*.66); k.quadraticCurveTo(0,HY-R*.56,R*1.38,HY-R*.66); k.lineTo(R*1.38,HY-R*.34); k.quadraticCurveTo(0,HY-R*.24,-R*1.38,HY-R*.34); k.closePath(); }, '#9aa3b4', [0,HY-R*.5,R*1.3]);
-    if (!g.up){ const xs = g.side ? [R*.45, R*.85] : [-R*.6, -R*.2, R*.2, R*.6]; xs.forEach((x,i)=>d.dot(x, HY-R*.5, 1, ['#6fe0ff','#7dff9a','#ffd23f','#ff8fb0'][i%4])); }
-    d.line(k=>{ for (const a of [-.55, .55]){ k.moveTo(R*a, HY-R*1.32); k.lineTo(R*a, HY-R*.7); } }, '#aeb6c4', .6, .7); if (!g.up) for (const [x,y] of [[-.85,-1.0],[.85,-1.0]]) d.dot(R*x, HY+R*y, .6, '#8e97a8'); }},
+  robot: {name:'오투모 모자', price:3500, main:'#fbfbfd', draw:(d,g)=>{ // 하얀 헬멧 + 파란 머리띠 + 노란 귀
+    for (const sx of (g.side ? [-.36] : [-1.38, 1.38])){ d.ell(R*sx, HY-R*.15, R*.3, R*.42, '#ffb627'); if (!g.side) d.circle(R*sx*1.12, HY-R*.15, R*.12, '#ffb627'); }
+    cap(d,'#fbfbfd',1.36,1.42,-.42,.06);
+    d.line(k=>{ k.ellipse(0, HY-R*.48, R*1.36, R*.98, 0, Math.PI*1.08, Math.PI*1.92); }, '#3f6fe0', 3.2, .95);
+    if (!g.up) d.rr(-R*.32, HY-R*1.46, R*.64, R*.24, R*.12, '#2b3a6a', {flat:true, noShadow:true});
+    d.dot(-R*.55, HY-R*1.05, 2.4, '#ffffff', .8); }},
 };
 export const ACCS = {
   none:   {name:'없음', price:0, draw:()=>{}},
