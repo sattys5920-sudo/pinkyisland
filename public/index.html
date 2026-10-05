@@ -17,6 +17,7 @@
 <style>
 :root{--ink:#2a2429;--soft:#6f6569;--card:#fffdfd;--pink:#fbdbe5;--pinkd:#e48fac;--line:#f7e6ec;--sea:#cfeefb}
 [hidden]{display:none!important}
+button,a,label,input,select,.tile,.btn,.pill{touch-action:manipulation}
 html,body{height:100%;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 @supports (height:100dvh){html,body{height:100dvh}}
 @font-face{font-family:"Dongle";font-style:normal;font-weight:400 700;font-display:swap;src:url("fonts/Dongle.woff2") format("woff2")}
@@ -50,10 +51,12 @@ img.bi{width:34px;height:34px;display:block;pointer-events:none}
 #emorow{display:flex;gap:6px;pointer-events:auto}
 #log p{background:rgba(255,255,255,.72);border-radius:10px;padding:2px 10px;align-self:flex-start;max-width:100%;text-shadow:none}
 #chatin{flex:1;min-width:0;font:700 20px "Dongle",sans-serif;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fffffff0;color:var(--ink)}
+.emo.send{width:auto;padding:0 12px;font:700 21px "Dongle",sans-serif;color:#fff;background:#ff8fb6;box-shadow:inset 0 -2px 0 #e06a96}
 .emo{border:0;border-radius:12px;background:#fff;width:44px;min-height:44px;font-size:25px;box-shadow:inset 0 -2px 0 #f6e6ec}
 #talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:min(520px,calc(100vw - 20px));padding:14px 16px;z-index:13}
 #talk h3{margin:0 0 4px;font-size:25px;color:var(--ink)}
 #talk p{margin:0 0 10px;font-size:21px;white-space:pre-line}
+#talk .sd{color:#9a8792;font-weight:400;font-style:italic}
 #talk #talkNote{font-size:18px;color:var(--soft);margin-top:-6px}
 #talk .act{flex-wrap:wrap}
 #talk .act.choices{flex-direction:column;align-items:stretch}
@@ -249,6 +252,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
   <div id="emorow" hidden><button class="emo" data-e="👋" aria-label="손 흔들기">👋</button><button class="emo" data-e="❤️" aria-label="하트">❤️</button><button class="emo" data-e="✨" aria-label="반짝">✨</button><button class="emo" data-e="😢" aria-label="눈물">😢</button></div>
   <div id="chatrow">
     <input id="chatin" maxlength="80" placeholder="채팅하기" autocomplete="off">
+    <button class="emo send" id="sendBtn" aria-label="보내기">보내기</button>
     <button class="emo" id="emoBtn" aria-label="이모티콘">😊</button>
   </div>
 </div>
@@ -1191,7 +1195,7 @@ function addLog(t, sys){
   setTimeout(()=>{ p.style.opacity = 0; }, 8000); setTimeout(()=>p.remove(), 9500);
 }
 function say(name, text, actions=[], note='', noClose=false, choice=false){
-  $('talkName').textContent = name; $('talkText').innerHTML = deEmoji(esc(text));
+  $('talkName').textContent = name; $('talkText').innerHTML = deEmoji(esc(text)).replace(/\(([^()]*)\)/g, '<span class="sd">$1</span>');
   const ti = $('talkIcon'); if (talkIconNext){ const a = artIdOf(talkIconNext); ti.src = iconURL(a, 128); ti.hidden = false; talkIconNext = null; } else ti.hidden = true;
   $('talkNote').textContent = note; $('talkNote').hidden = !note;
   const act = $('talkAct'); act.innerHTML = ''; act.classList.toggle('choices', choice);
@@ -1221,7 +1225,6 @@ function addPts(n, v){
   return [4,7,10].filter(h => before < h && after >= h && !r['ev'+h]);
 }
 // 하트 4·7·10이 되는 순간 그 주민의 이야기가 열려요
-function missedEvents(n){ const r = relOf(n.id), h = heartsN(n); return [4,7,10].filter(k => h >= k && !r['ev'+k]); }
 function playEvents(n, list){
   const h = list[0]; if (h==null) return closeTalk();
   const ev = (n.events && n.events[h]) || {title:'조금 더 가까워졌어요', pages:['(조금 더 가까워진 것 같다)'], keepsake:''};
@@ -1229,19 +1232,22 @@ function playEvents(n, list){
   let i = 0;
   const show = () => {
     const last = i === pages.length-1;
-    if (!last) return say(`${n.name} · ${ev.title}`, pages[i], [['다음', ()=>{ i++; show(); }]], `${i+1}/${pages.length}`, true);
+    const ch = chaptersOf(n).find(c=>c.kind==='event' && c.key===h), head = ch ? `★ ${chapterHead(n, ch)}` : `${n.name} · ${ev.title}`;
+    if (!last) return say(head, pages[i], [['다음', ()=>{ i++; show(); }]], `${i+1}/${pages.length}`, true);
     const r = relOf(n.id); r['ev'+h] = true;
     me.inv.gold += STORY_GOLD[h];
     if (ev.keepsake){ me.keep = me.keep || {}; me.keep[n.id] = [...(me.keep[n.id]||[]), ev.keepsake]; }
     saveMe(); renderHud();
     const rest = list.slice(1);
-    say(`${n.name} · ${ev.title}`, pages[i], rest.length ? [['다음 이야기', ()=>playEvents(n, rest)]] : [],
+    r.storyDay = today();
+    say(head, pages[i], rest.length ? [['다음 이야기', ()=>playEvents(n, rest)]] : npcActions(n),
       `관계가 '${TIERS[tierOf(h)]}'(으)로 깊어졌어요 · ${STORY_GOLD[h]} G${ev.keepsake ? ` · 기념품 '${ev.keepsake}'` : ''}`);
   };
   show();
 }
 function npcActions(n){
   const r = relOf(n.id), acts = [...questActions(n)];
+  if ((r.seen || r.ev4)) acts.push(['지난 이야기', ()=>storyReplay(n)]);
   if (n.id==='momo') acts.push(...sellActions(n));
   if (n.id==='dandan') acts.push(['요리하기', cookPanel]);
   if (n.id!=='momo' && BUYERS[n.id]) acts.push(['물건 팔기', ()=>sellPanel(n)]);
@@ -1271,47 +1277,80 @@ function giveGift(n, item){
   const r = relOf(n.id);
   if (r.giftDay === today() || !(invCount(item)>0)) return closeTalk();
   invAdd(item, -1); r.giftDay = today(); setExpr('wink', 2500); stat('giftsGiven'); questEvent('gift', n.id);
-  const taste = tasteOf(n, item), ups = addPts(n, GIFT_PTS[taste]);
+  const taste = tasteOf(n, item); addPts(n, GIFT_PTS[taste]);
   saveMe(); renderHud();
   const text = pickLine(n.react && n.react[taste], n.id+'r') || {loved:'정말 좋아해! 고마워!', liked:'고마워!', neutral:'고마워.', disliked:'음.... 마음만 받을게.'}[taste];
   const note = `${itemName(item)} 선물 · 호감도 ${GIFT_PTS[taste]>0?'+':''}${GIFT_PTS[taste]}`;
-  if (ups.length) say(title(n), text, [['이야기 듣기', ()=>playEvents(n, ups)]], note + ' · 무언가 이야기하고 싶은 눈치예요', true);
-  else say(title(n), text, [], note);
+  const more = storyButton(n);
+  if (more.length) say(title(n), text, more, note + ' · 무언가 이야기하고 싶은 눈치예요');
+  else say(title(n), text, [], [note, storyHint(n)].filter(Boolean).join(' · '));
 }
-// ===== 대화: 주민이 3~5 줄 말하고 → 선택지 → 대답에 따라 3~5 줄 더 =====
-function pickTalk(n){
-  const r = relOf(n.id), tier = tierOf(heartsN(n)), talks = n.talks || [];
-  const seen = (r.seen||'').split(',');
-  const next = talks.find(t=>!seen.includes(t.id));
-  if (next && next.tier <= tier) return {talk:next, fresh:true};
-  if (next) return {locked:true};
-  const cur = talks.filter(t=>t.tier===tier);
-  return cur.length ? {talk:cur[Math.floor(Math.random()*cur.length)]} : {};
+// ===== 주민 이야기: 하트마다 한 화씩 열려요 =====
+// ♥0 1화 → ♥1 2화 → ♥2 3화 → ♥3 4화 → ♥4 스토리 → ♥5 → ♥6 → ♥7 스토리 → ♥8 → ♥9 → ♥10 스토리 → 그 뒤 이야기 2 화 (마지막 화는 다음 날)
+// 대화는 주민이 몇 장 말하고 → 선택지 → 대답. 스토리(이벤트)는 관계 단계가 바뀌는 큰 이야기예요.
+const CHAPTERS = [['t','1a',0], ['t','1b',1], ['t','1c',2], ['t','1d',3], ['e',4,4], ['t','2a',5], ['t','2b',6], ['e',7,7], ['t','3a',8], ['t','3b',9], ['e',10,10], ['t','4a',10], ['t','4b',10]];
+const seenSet = r => new Set((r.seen||'').split(',').filter(Boolean));
+function chapterInfo(n, c, i){ const [k, key, h] = c; if (k==='e'){ const ev = (n.events||{})[key]; return ev ? {i, kind:'event', key, h, title:ev.title} : null; } const t = (n.talks||[]).find(x=>x.id===n.id+'-'+key); return t ? {i, kind:'talk', key, h, talk:t, title:t.title||''} : null; }
+function chaptersOf(n){ return CHAPTERS.map((c,i)=>chapterInfo(n, c, i)).filter(Boolean); }
+const chapterDone = (n, r, c) => c.kind==='event' ? !!r['ev'+c.key] : seenSet(r).has(c.talk.id);
+// 다음에 들을 이야기: {ch, ready, why}
+function nextChapter(n){
+  const r = relOf(n.id), h = heartsN(n), list = chaptersOf(n), ch = list.find(c=>!chapterDone(n, r, c));
+  if (!ch) return {done:true, total:list.length};
+  if (h < ch.h) return {ch, ready:false, why:'heart', total:list.length};
+  if (ch.key==='4b' && r.storyDay===today()) return {ch, ready:false, why:'tomorrow', total:list.length};
+  return {ch, ready:true, total:list.length};
 }
-function runTalk(n, talk, opening, note, ups){
+const chapterHead = (n, ch, total) => `${n.name} 이야기 · ${ch.i+1}화${ch.title ? ` 「${ch.title}」` : ''}`;
+function storyHint(n){
+  const nx = nextChapter(n), r = relOf(n.id);
+  if (nx.done) return `${n.name}의 이야기를 모두 들었어요`;
+  if (nx.why==='tomorrow') return '내일 또 이야기해 줄 것 같아요';
+  if (nx.why==='heart'){ const need = nx.ch.h*50 - (r.pts||0); return `다음 이야기까지 호감도 ${Math.max(0, need)} (♥${nx.ch.h})`; }
+  return '';
+}
+// 지금 들을 수 있는 이야기가 있으면 들려줘요
+function playNext(n, opening='', note=''){
+  const nx = nextChapter(n); if (!nx.ready) return false;
+  if (nx.ch.kind==='event') playEvents(n, [nx.ch.key]); else runTalk(n, nx.ch, opening, note);
+  return true;
+}
+// 호감도가 오른 뒤: 새 이야기가 열렸으면 '이야기 듣기' 버튼을 붙여요
+function storyButton(n){ const nx = nextChapter(n); return nx.ready ? [[nx.ch.kind==='event' ? '★ 이야기 듣기' : '이야기 듣기', ()=>playNext(n)]] : []; }
+function runTalk(n, ch, opening, note){
+  const talk = ch.talk, total = chaptersOf(n).length, head = chapterHead(n, ch, total);
   const lines = [opening, ...talk.lines].filter(Boolean).map(fillName);
   let i = 0;
   const show = () => {
-    const nt = i===0 ? note : '';
-    if (i < lines.length-1) return say(title(n), lines[i], [['다음', ()=>{ i++; show(); }]], nt, true);
-    say(title(n), lines[i], talk.choices.map(c=>[fillName(c.text), ()=>choose(c)]), nt, true, true);
+    const nt = i===0 ? [note, `♥${heartsN(n)} · ${TIERS[tierOf(heartsN(n))]}`].filter(Boolean).join(' · ') : `${i+1}/${lines.length}`;
+    if (i < lines.length-1) return say(head, lines[i], [['다음', ()=>{ i++; show(); }]], nt, true);
+    say(head, lines[i], talk.choices.map(c=>[fillName(c.text), ()=>choose(c)]), nt, true, true);
   };
   const choose = c => {
-    const r = relOf(n.id); let gain = 0, more = [];
-    if (r.choiceDay !== today()){ r.choiceDay = today(); gain = (c.pts||0) * CHOICE_MUL; more = addPts(n, gain); }
-    r.seen = [...(r.seen||'').split(',').filter(Boolean).filter(x=>x!==talk.id), talk.id].slice(-40).join(',');
+    const r = relOf(n.id); let gain = 0;
+    if (r.choiceDay !== today()){ r.choiceDay = today(); gain = (c.pts||0) * CHOICE_MUL; addPts(n, gain); }
+    r.seen = [...seenSet(r)].filter(x=>x!==talk.id).concat(talk.id).slice(-60).join(','); r.storyDay = today();
     saveMe(); renderHud();
     const rep = (c.reply||['...']).map(fillName); let j = 0;
     const after = () => {
-      if (j < rep.length-1) return say(title(n), rep[j], [['다음', ()=>{ j++; after(); }]], '', true);
-      const all = [...new Set([...ups, ...more])].sort((a,b)=>a-b);
-      const nt = gain ? `대답에 ${gain>0 ? '마음이 열렸어요' : '조금 서운해해요'} · 호감도 ${gain>0?'+':''}${gain}` : '';
-      if (all.length) say(title(n), rep[j], [['이야기 듣기', ()=>playEvents(n, all)]], nt ? nt+' · 무언가 이야기하고 싶은 눈치예요' : '무언가 이야기하고 싶은 눈치예요', true);
-      else say(title(n), rep[j], npcActions(n), nt);
+      if (j < rep.length-1) return say(head, rep[j], [['다음', ()=>{ j++; after(); }]], '', true);
+      const nt = [gain ? `대답에 ${gain>0 ? '마음이 열렸어요' : '조금 서운해해요'} · 호감도 ${gain>0?'+':''}${gain}` : '', storyHint(n)].filter(Boolean).join(' · ');
+      const more = storyButton(n);
+      say(head, rep[j], more.length ? more : npcActions(n), more.length ? [nt, '무언가 더 이야기하고 싶은 눈치예요'].filter(Boolean).join(' · ') : nt, !!more.length);
     };
     after();
   };
   show();
+}
+// 지난 이야기 다시 보기 (호감도는 안 올라요)
+function storyReplay(n){
+  const r = relOf(n.id), list = chaptersOf(n), done = list.filter(c=>chapterDone(n, r, c));
+  if (!done.length) return say(title(n), '아직 들은 이야기가 없어요.', npcActions(n));
+  say(`${n.name} 이야기 · ${done.length}/${list.length}화`, '다시 보고 싶은 이야기를 골라요.', done.map(c=>[`${c.i+1}화${c.kind==='event' ? ' ★' : ''} ${c.title}`, ()=>{
+    const pages = (c.kind==='event' ? n.events[c.key].pages : c.talk.lines).map(fillName); let k = 0;
+    const show = () => say(chapterHead(n, c, list.length), pages[k], k < pages.length-1 ? [['다음', ()=>{ k++; show(); }]] : [['목록', ()=>storyReplay(n)]], `${k+1}/${pages.length}`, k < pages.length-1);
+    show();
+  }]), '★ = 관계가 깊어진 날의 이야기');
 }
 // ===== 상황별 대사: 지금 섬·플레이어 상태에 맞는 상황을 우선순위대로 골라요 (대사는 situations.js) =====
 function kstDate(){ const d = new Date(Date.now() + 9*3600000); return {m:d.getUTCMonth()+1, d:d.getUTCDate(), w:d.getUTCDay()}; }
@@ -1370,9 +1409,8 @@ function situationLine(n, isNew){
 function talkTo(n){
   const r = relOf(n.id), first = r.talkDay !== today();
   const sit = situationLine(n, !r.pts && !r.talkDay); // 호감도가 오르기 전에 상황을 봐야 '첫 만남'을 알아요
-  let note = '', ups = []; questEvent('talk', n.id);
-  if (first){ r.talkDay = today(); ups = addPts(n, TALK_PTS); note = `오늘 첫 대화 · 호감도 +${TALK_PTS}`; }
-  ups = [...new Set([...ups, ...missedEvents(n)])].sort((a,b)=>a-b); // 퀘스트·심부름 보상 등으로 넘어가서 못 본 이야기도 이번에 들려줘요
+  let note = ''; questEvent('talk', n.id);
+  if (first){ r.talkDay = today(); addPts(n, TALK_PTS); note = `오늘 첫 대화 · 호감도 +${TALK_PTS}`; }
   if (n.id==='dodo' && !me.inv.pick){ me.inv.pick = true; note = [note, '도도에게 곡괭이를 받았어요! 바위를 눌러 캐 봐요'].filter(Boolean).join(' · '); }
   if (n.id==='bibi' && !me.inv.sword){ me.inv.sword = true; me.inv.weapon = 'w1'; me.inv.weapons = ['w1']; note = [note, '비비에게 나무 검을 받았어요! 몬스터를 바라보고 휘두르기(F 키)를 눌러 싸워요'].filter(Boolean).join(' · '); }
   if (n.id==='lulu' && !me.inv.rod){ me.inv.rod = true; note = [note, '루루에게 낚싯대를 받았어요! 물을 눌러 낚시해 봐요'].filter(Boolean).join(' · '); }
@@ -1383,19 +1421,17 @@ function talkTo(n){
   if (n.id==='hana' && me.quest < 6){
     if (me.quest<=1) text = '안녕! 나는 하나야! 먼저 웰컴 팩을 열고, 집 앞 빈자리에 텃밭 2 칸을 놓아 봐!';
     else if (me.quest===2){ me.inv.can = true; me.quest = 3; tutorialFix(); text = '텃밭 다 놓았구나! 자, 내 물뿌리개 줄게! 토마토 씨앗 심고 물 줘 봐! 헤헤.'; }
-    else if (me.quest<5) text = '씨앗 심고 물 주면 30 초마다 한 단계씩 자라! 단계마다 물 또 줘야 해!';
+    else if (me.quest<5) text = '씨앗 심고 물 한 번만 주면 새싹, 잎, 꽃 거쳐서 저절로 빨개져! 헤헤.';
     else text = '토마토가 빨개지면 텃밭을 눌러서 수확해!';
   }
   if (n.id==='hana' && me.quest>=6 && !countOf('seed') && !me.gardens.some(g=>g&&g.crop) && me.inv.gold < CROPS.c01.seed){ invAdd('seed:c01', 2); toast('하나가 토마토 씨앗 2 개를 나눠 줬어요'); }
   saveMe(); renderHud();
-  const pk = text ? {} : pickTalk(n);
-  if (pk.talk && pk.fresh) return runTalk(n, pk.talk, opening, note, ups);
-  if (!text && !first && sit && Math.random() < .65) text = sit; // 다시 말 걸면 지금 상황 얘기를 자주 해요
-  else if (pk.talk) return runTalk(n, pk.talk, opening, note, ups);
-  if (!text) text = [opening, pickLine(n.lines && n.lines[tierOf(heartsN(n))], n.id+'l')].filter(Boolean).join('\n') || '...';
-  if (pk.locked) note = [note, '조금 더 친해지면 다음 이야기를 들려줄 것 같아요'].filter(Boolean).join(' · ');
-  if (ups.length) say(title(n), text, [['이야기 듣기', ()=>playEvents(n, ups)]], (note ? note+' · ' : '') + '무언가 이야기하고 싶은 눈치예요', true);
-  else say(title(n), text, npcActions(n), note);
+  if (!text && playNext(n, '', note)) return; // 들을 차례인 이야기가 있으면 바로 들려줘요 (하트마다 한 화)
+  // 아직 다음 이야기 차례가 아니면: 지금 하트에 맞는 평소 말 (하트가 오를 때마다 조금씩 달라져요)
+  const h = heartsN(n), pool = (n.lines && n.lines[tierOf(h)]) || [], heartLine = pool.length ? fillName(pool[h % pool.length]) : '';
+  if (!text) text = first ? [opening, heartLine].filter(Boolean).join('\n') : (sit && Math.random() < .5 ? sit : heartLine) || '...';
+  note = [note, storyHint(n)].filter(Boolean).join(' · ');
+  say(title(n), text, npcActions(n), note);
 }
 
 // ===== 주민 목록 / 지도 =====
@@ -1405,7 +1441,7 @@ function renderNpcPanel(){
   $('npcPanel').dataset.kind = 'npc';
   $('npcPanel').innerHTML = `<div class="np-head"><b>섬 주민 14 명</b><button class="mini" id="npClose">닫기</button></div>` + NPCS.map(n=>{
     const r = relOf(n.id), keep = (me.keep && me.keep[n.id]) || [];
-    return `<button class="np" data-id="${n.id}"><span class="np-name">${n.name} <small>${n.animal} · ${n.role}</small></span><span class="np-place">${ZONES[n.zone].name}</span><span class="np-h">${'♥'.repeat(heartsN(n))}${'♡'.repeat(10-heartsN(n))} <small>${TIERS[tierOf(heartsN(n))]}</small></span><span class="np-day">${r.talkDay===d?'대화 ✓':'대화 ·'} ${r.giftDay===d?'선물 ✓':'선물 ·'}</span>${keep.length?`<span class="np-keep">기념품: ${keep.map(esc).join(', ')}</span>`:''}</button>`;
+    return `<button class="np" data-id="${n.id}"><span class="np-name">${n.name} <small>${n.animal} · ${n.role}</small></span><span class="np-place">${ZONES[n.zone].name}</span><span class="np-h">${'♥'.repeat(heartsN(n))}${'♡'.repeat(10-heartsN(n))} <small>${TIERS[tierOf(heartsN(n))]} · 이야기 ${chaptersOf(n).filter(c=>chapterDone(n, r, c)).length}/${chaptersOf(n).length}화</small></span><span class="np-day">${r.talkDay===d?'대화 ✓':'대화 ·'} ${r.giftDay===d?'선물 ✓':'선물 ·'}</span>${keep.length?`<span class="np-keep">기념품: ${keep.map(esc).join(', ')}</span>`:''}</button>`;
   }).join('');
   $('npClose').onclick = ()=>{ $('npcPanel').hidden = true; };
   $('npcPanel').querySelectorAll('.np').forEach(b=>b.onclick = ()=>{
@@ -1614,8 +1650,8 @@ const CROP_LIST = [
   ['커피콩',390,260,347,2,4,'#6b3a2a','tall'], ['사탕수수',420,280,560,1,3,'#ffb3d9','tall'], ['황금딸기',480,320,853,1,2,'#ffd23f','fruit'],
 ];
 const CROPS = Object.fromEntries(CROP_LIST.map((c,i)=>['c'+String(i+1).padStart(2,'0'), {name:c[0], min:c[1], seed:c[2], sell:c[3], y1:c[4], y2:c[5], color:c[6], shape:c[7]}]));
-const stageMs = type => (CROPS[type] || CROPS.c01).min * 60000 / 4; // 4 단계, 단계마다 물 한 번
-function cropNow(c, now){ if (!c) return null; if (c.wateredAt && c.stage<4 && now >= c.wateredAt + stageMs(c.type)) return {type:c.type, stage:c.stage+1, wateredAt:null}; return c; }
+const stageMs = type => (CROPS[type] || CROPS.c01).min * 60000 / 4; // 4 단계. 심고 물을 한 번 주면 씨앗 → 새싹 → 잎 → 꽃 → 열매까지 저절로 자라요
+function cropNow(c, now){ if (!c || !c.wateredAt || c.stage >= 4) return c; const ms = stageMs(c.type), k = Math.min(4 - c.stage, Math.floor((now - c.wateredAt) / ms)); return k > 0 ? {type:c.type, stage:c.stage+k, wateredAt:c.wateredAt + k*ms} : c; }
 
 // ===== 광석 40 종 =====
 // [이름, 희귀도 1~5, 판매가, 색, 바다 광석 여부]
@@ -1919,8 +1955,8 @@ function useSlot(i){
       if (!me.inv.can) return toast('물뿌리개가 필요해요. 하나를 찾아가요.');
       g.crop = {type:c.type, stage:c.stage, wateredAt:now};
       if (me.quest===3 || me.quest===4) me.quest = 5;
-      toast(`물을 줬어요. ${fmtLeft(stageMs(c.type))} 뒤에 자라요`);
-    } else return toast(`${cd.name} · ${STAGE_NAMES[c.stage]} 단계 · ${fmtLeft(c.wateredAt+stageMs(c.type)-now)} 뒤에 자라요`);
+      toast(`물을 줬어요. 이제 저절로 자라서 ${fmtLeft(stageMs(c.type) * (4 - c.stage))} 뒤에 수확할 수 있어요`);
+    } else return toast(`${cd.name} · ${STAGE_NAMES[c.stage]} 단계 · ${fmtLeft(c.wateredAt + stageMs(c.type)*(4 - c.stage) - now)} 뒤에 수확해요`);
   }
   saveMe(); renderHud();
 }
@@ -2641,10 +2677,10 @@ function questActions(n){
     if (qq.type==='collect') invAdd(qq.key, -qq.n);
     q.done.push(qq.id); delete q.active[n.id]; delete q.prog[qq.id];
     me.inv.gold += qq.reward.gold||0; for (const [k,c] of (qq.reward.items||[])){ if (k.startsWith('hat:')){ CLOSET().push(k.slice(4)); } else invAdd(k, c); }
-    const ups = qq.reward.pts ? addPts(n, qq.reward.pts) : [];
+    if (qq.reward.pts) addPts(n, qq.reward.pts);
     stat('questsDone'); saveMe(); renderHud(); setExpr('happy', 3000);
     const rw = [qq.reward.gold ? qq.reward.gold+' G' : '', ...(qq.reward.items||[]).map(([k,c])=>k.startsWith('hat:') ? `${CH.HATS[k.slice(4)]?.name||'모자'}` : `${itemName(k)} ${c}`), qq.reward.pts ? `호감도 +${qq.reward.pts}` : ''].filter(Boolean).join(' · ');
-    questPages(n, qq.done, ups.length ? ()=>playEvents(n, ups) : null, '보상: '+rw + (ups.length ? ' · 무언가 이야기하고 싶은 눈치예요' : '')); }]];
+    const more = storyButton(n); questPages(n, qq.done, more.length ? more[0][1] : null, '보상: '+rw + (more.length ? ' · 무언가 이야기하고 싶은 눈치예요' : '')); }]];
   return [[`📜 진행 중: ${qq.title} (${questCount(qq)}/${qq.n})`, ()=>say(title(n), fillName(qq.progress), npcActions(n), `${qTypeLabel[qq.type]}: ${qTarget(qq)} ${questCount(qq)}/${qq.n}`)]];
 }
 function questLog(){
@@ -2861,6 +2897,12 @@ addEventListener('keydown', e=>{
   if (e.key===' '||e.key.toLowerCase()==='e'){ e.preventDefault(); if (!fishTap()){ if (me.inv.sword && nearFoe()) swing(); else interactNear(); } }
 });
 addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
+$('sendBtn').addEventListener('pointerdown', e=>e.preventDefault()); // 눌러도 키패드가 내려가지 않게
+$('sendBtn').addEventListener('click', ()=>{ if ($('chatin').value.trim()) sendChat(); else $('chatin').focus(); });
+// 확대 막기: 두 손가락 벌리기·두 번 톡 확대로 화면이 갑자기 커지지 않게 고정해요
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, e=>e.preventDefault(), {passive:false});
+document.addEventListener('touchmove', e=>{ if (e.touches.length > 1) e.preventDefault(); }, {passive:false});
+document.addEventListener('dblclick', e=>e.preventDefault(), {passive:false});
 function sendChat(){
   const inp = $('chatin'), t = inp.value.trim(); inp.value = ''; inp.blur();
   if (!t) return;
