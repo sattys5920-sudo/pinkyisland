@@ -254,7 +254,7 @@ import { LORE } from './lore.js';
 import { ACHIEVEMENTS } from './achievements.js';
 import { SITUATIONS } from './situations.js';
 import { UI, EMOJI_UI } from './art/ui.js';
-import { FURN2, FURN2_DRAW } from './art/furn2.js';
+import { FURN_ALL, FURN_DRAW } from './art/furniture.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
 import { ART_PART as ART_CROPS } from './art/crops.js';
@@ -2005,16 +2005,7 @@ function errandPanel(){
 // ===== 보리 공방: 텃밭 늘리기 · 가구 =====
 const PLOT_COST = {3:[1000,'ore:o11',3], 4:[2500,'ore:o12',3], 5:[6000,'ore:o21',2], 6:[12000,'ore:o30',1]};
 // [이름, 골드, 재료, 개수, 모양, 색]
-const FURN_LIST = [
-  ['나무 의자',160,'ore:o01',2,'chair','#c98e5b'], ['나무 탁자',300,'ore:o01',4,'table','#c98e5b'], ['포근한 침대',800,'ore:o05',3,'bed','#ff9fbf'],
-  ['책장',600,'ore:o01',5,'shelf','#a8744f'], ['둥근 러그',240,'ore:o06',2,'rug','#ffd3e2'], ['작은 화분',120,'ore:o05',1,'plant','#6cc46a'],
-  ['스탠드 조명',400,'ore:o03',2,'lamp','#ffe066'], ['말랑 소파',1000,'ore:o16',2,'sofa','#a9d8ff'], ['옷장',900,'ore:o01',6,'wardrobe','#d9a46f'],
-  ['어항',1200,'ore:o15',2,'tank','#8fd3f5'], ['벽난로',1600,'ore:o11',4,'fire','#c9b8a6'], ['피아노',2400,'ore:o13',4,'piano','#3b3b46'],
-  ['괘종시계',1400,'ore:o04',3,'clock','#8a5a3b'], ['큰 거울',1300,'ore:o12',2,'mirror','#e8f4ff'], ['곰 인형',600,'ore:o17',1,'bear','#d9a46f'],
-  ['황금 트로피',3000,'ore:o21',3,'trophy','#ffd23f'], ['자수정 램프',2600,'ore:o23',2,'crystal','#b57bff'], ['별빛 조명',6000,'ore:o38',1,'star','#fff6b0'],
-  ['보물 상자',4000,'ore:o22',2,'chest','#a8744f'], ['케이크 장식장',1800,'ore:o20',2,'cake','#ff9fc4'],
-];
-FURN_LIST.push(...FURN2);
+const FURN_LIST = FURN_ALL; // 가구 43 종 (art/furniture.js)
 const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5]}]));
 function workshopPanel(){
   const plots = me.plots || 2, next = plots + 1, pc = PLOT_COST[next];
@@ -2049,30 +2040,8 @@ function furnOf(owner){ const p = owner===uid ? me : players[owner]; return (p &
 let decorating = null; // 고른 가구 id
 function drawFurn(d, f, x, y){
   if (f.f && !f._flipping){ const c = d.ctx; c.save(); c.translate(x, 0); c.scale(-1, 1); c.translate(-x, 0); drawFurn(d, {...f, _flipping:true}, x, y); c.restore(); return; }
-  const F = FURN[f.id]; if (!F) return; const col = F.color, c = d.ctx;
-  switch (F.shape){
-    case 'chair': d.rr(x-12,y-34,24,20,6,col); d.rr(x-14,y-16,28,8,4,shade(col,.15)); d.rr(x-12,y-8,4,10,2,shade(col,-.2)); d.rr(x+8,y-8,4,10,2,shade(col,-.2)); break;
-    case 'table': d.rr(x-30,y-26,60,12,6,col); d.rr(x-24,y-14,6,16,2,shade(col,-.2)); d.rr(x+18,y-14,6,16,2,shade(col,-.2)); break;
-    case 'bed': d.rr(x-36,y-40,72,44,10,'#ffffff'); d.rr(x-36,y-20,72,24,8,col); d.rr(x-30,y-36,24,12,6,'#fff7ee'); break;
-    case 'shelf': d.rr(x-24,y-64,48,66,6,col); for (const yy of [-50,-30,-10]) { d.rr(x-20,y+yy,40,3,1,shade(col,-.2)); d.rr(x-16,y+yy-12,6,12,2,'#ff8fb3'); d.rr(x-6,y+yy-10,5,10,2,'#7cc8ff'); } break;
-    case 'rug': d.ell(x,y-6,44,16,col); d.stitch(c=>c.ellipse(x,y-6,36,11,0,0,7),'#ffffff',.6); break;
-    case 'plant': d.rr(x-9,y-14,18,16,5,'#c98e5b'); d.circle(x-6,y-22,8,col); d.circle(x+6,y-24,8,col); d.circle(x,y-32,8,shade(col,.2)); break;
-    case 'lamp': d.rr(x-2,y-44,4,44,2,'#8a7a6a'); d.tri([[x-14,y-40],[x,y-60],[x+14,y-40]],col); d.ell(x,y,10,3,'#8a7a6a'); break;
-    case 'sofa': d.rr(x-40,y-40,80,26,10,col); d.rr(x-46,y-24,92,24,10,shade(col,-.1)); d.rr(x-48,y-36,12,32,6,col); d.rr(x+36,y-36,12,32,6,col); break;
-    case 'wardrobe': d.rr(x-26,y-76,52,78,8,col); d.line(c=>{c.moveTo(x,y-72);c.lineTo(x,y);},shade(col,-.3),2); d.dot(x-5,y-36,2,'#ffd23f'); d.dot(x+5,y-36,2,'#ffd23f'); break;
-    default: if (FURN2_DRAW[F.shape]) { FURN2_DRAW[F.shape](d, x, y, col); break; }
-    case 'tank': d.rr(x-30,y-46,60,40,8,col); d.rr(x-30,y-8,60,10,3,'#8a7a6a'); d.ell(x-8,y-28,7,4,'#ff8f7a'); d.ell(x+12,y-20,5,3,'#ffd23f'); break;
-    case 'fire': d.rr(x-34,y-56,68,58,8,col); d.rr(x-20,y-34,40,34,10,'#3b2f2f'); d.tri([[x-10,y-4],[x,y-28+Math.sin(performance.now()/120)*3],[x+10,y-4]],'#ff8c1a'); break;
-    case 'piano': d.rr(x-40,y-50,80,40,8,col); d.rr(x-40,y-18,80,8,2,'#ffffff'); for (let i=0;i<7;i++) d.rr(x-36+i*11,y-18,4,5,1,'#3b3b46'); break;
-    case 'clock': d.rr(x-14,y-80,28,82,8,col); d.circle(x,y-62,10,'#fff7ee'); d.line(c=>{c.moveTo(x,y-62);c.lineTo(x,y-69);c.moveTo(x,y-62);c.lineTo(x+5,y-62);},'#3b3b46',1.4); break;
-    case 'mirror': d.rr(x-18,y-70,36,70,16,'#c9a6ff'); d.rr(x-13,y-64,26,58,12,col); break;
-    case 'bear': d.circle(x-9,y-36,5,col); d.circle(x+9,y-36,5,col); d.circle(x,y-28,10,col); d.ell(x,y-10,11,10,col); d.dot(x-3,y-29,1.4,'eye'); d.dot(x+3,y-29,1.4,'eye'); break;
-    case 'trophy': d.rr(x-10,y-12,20,12,3,'#a8744f'); d.rr(x-3,y-22,6,10,2,col); d.shape(()=>{c.beginPath();c.arc(x,y-34,12,0,Math.PI);c.closePath();},col,[x,y-30,12]); break;
-    case 'crystal': d.rr(x-8,y-10,16,10,3,'#8a7a6a'); d.tri([[x-10,y-10],[x,y-42],[x+10,y-10]],col); d.dot(x,y-24,8,'#ffffff',.25); break;
-    case 'star': d.rr(x-2,y-40,4,40,2,'#c9c9d6'); for (let a=0;a<6.28;a+=1.256) d.tri([[x,y-52],[x+Math.cos(a)*14,y-52+Math.sin(a)*14],[x+Math.cos(a+.6)*6,y-52+Math.sin(a+.6)*6]],col); break;
-    case 'chest': d.rr(x-24,y-30,48,32,6,col); d.rr(x-24,y-30,48,10,6,shade(col,.15)); d.rr(x-4,y-22,8,8,2,'#ffd23f'); break;
-    case 'cake': d.rr(x-24,y-40,48,42,6,'#ffffff'); d.rr(x-16,y-34,32,10,4,col); d.rr(x-12,y-22,24,8,3,'#fff3a8'); d.circle(x,y-38,3,'#ff4f6d'); break;
-  }
+  const F = FURN[f.id]; if (!F || !FURN_DRAW[F.shape]) return;
+  FURN_DRAW[F.shape](CH.mattePainter(d.ctx), x, y, F.color); // 유아용 점토: 캐릭터와 같은 매트 페인터
 }
 let movingFurn = -1;
 function houseTap(w){
