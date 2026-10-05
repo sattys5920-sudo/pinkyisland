@@ -1253,7 +1253,8 @@ function addPts(n, v){
 function playEvents(n, list){
   const h = list[0]; if (h==null) return closeTalk();
   const ev = (n.events && n.events[h]) || {title:'조금 더 가까워졌어요', pages:['(조금 더 가까워진 것 같다)'], keepsake:''};
-  const pages = ev.pages.map(fillName);
+  const evCh = chaptersOf(n).find(c=>c.kind==='event' && c.key===h), rc = evCh && !relOf(n.id)['ev'+h] ? recallLine(n, evCh) : '';
+  const pages = [rc, ...ev.pages].filter(Boolean).map(fillName);
   let i = 0;
   const show = () => {
     const last = i === pages.length-1;
@@ -1325,6 +1326,20 @@ function nextChapter(n){
   if (ch.key==='4b' && r.storyDay===today()) return {ch, ready:false, why:'tomorrow', total:list.length};
   return {ch, ready:true, total:list.length};
 }
+// 앞 화에서 고른 대답을 기억해서: 다음 화 첫마디(recall)와 화 사이 평소 말(after)을 그 대답에 맞춰요
+const pickOf = (r, talkId) => (r.pick||{})[talkId];
+function recallLine(n, ch){
+  const list = chaptersOf(n), prev = list[list.findIndex(c=>c.i===ch.i) - 1], r = relOf(n.id);
+  if (!prev || prev.kind!=='talk') return '';
+  const rc = ch.kind==='talk' ? ch.talk.recall : (n.events[ch.key]||{}).recall, k = pickOf(r, prev.talk.id);
+  return rc && k != null && rc[k] ? fillName(rc[k]) : '';
+}
+function afterLine(n){
+  const r = relOf(n.id), done = chaptersOf(n).filter(c=>chapterDone(n, r, c)), last = done[done.length-1]; if (!last) return '';
+  const pool = last.kind==='talk' ? (last.talk.after||[])[pickOf(r, last.talk.id) ?? 0] : (n.events[last.key]||{}).after;
+  if (!pool || !pool.length) return '';
+  r.idle = (r.idle||0) + 1; return fillName(pool[r.idle % pool.length]);
+}
 const chapterHead = (n, ch, total) => `${n.name} 이야기 · ${ch.i+1}화${ch.title ? ` 「${ch.title}」` : ''}`;
 function storyHint(n){
   const nx = nextChapter(n), r = relOf(n.id);
@@ -1343,7 +1358,7 @@ function playNext(n, opening='', note=''){
 function storyButton(n){ const nx = nextChapter(n); return nx.ready ? [[nx.ch.kind==='event' ? '★ 이야기 듣기' : '이야기 듣기', ()=>playNext(n)]] : []; }
 function runTalk(n, ch, opening, note){
   const talk = ch.talk, total = chaptersOf(n).length, head = chapterHead(n, ch, total);
-  const lines = [opening, ...talk.lines].filter(Boolean).map(fillName);
+  const lines = [recallLine(n, ch), ...talk.lines].filter(Boolean).map(fillName);
   let i = 0;
   const show = () => {
     const nt = i===0 ? [note, `♥${heartsN(n)} · ${TIERS[tierOf(heartsN(n))]}`].filter(Boolean).join(' · ') : `${i+1}/${lines.length}`;
@@ -1353,6 +1368,7 @@ function runTalk(n, ch, opening, note){
   const choose = c => {
     const r = relOf(n.id); let gain = 0;
     if (r.choiceDay !== today()){ r.choiceDay = today(); gain = (c.pts||0) * CHOICE_MUL; addPts(n, gain); }
+    r.pick = {...(r.pick||{}), [talk.id]: talk.choices.indexOf(c)};
     r.seen = [...seenSet(r)].filter(x=>x!==talk.id).concat(talk.id).slice(-60).join(','); r.storyDay = today();
     saveMe(); renderHud();
     const rep = (c.reply||['...']).map(fillName); let j = 0;
@@ -1450,8 +1466,8 @@ function talkTo(n){
   saveMe(); renderHud();
   if (!text && playNext(n, '', note)) return; // 들을 차례인 이야기가 있으면 바로 들려줘요 (하트마다 한 화)
   // 아직 다음 이야기 차례가 아니면: 지금 하트에 맞는 평소 말 (하트가 오를 때마다 조금씩 달라져요)
-  const h = heartsN(n), pool = (n.lines && n.lines[tierOf(h)]) || [], heartLine = pool.length ? fillName(pool[h % pool.length]) : '';
-  if (!text) text = first ? [opening, heartLine].filter(Boolean).join('\n') : (sit && Math.random() < .5 ? sit : heartLine) || '...';
+  const h = heartsN(n), pool = (n.lines && n.lines[tierOf(h)]) || [], heartLine = pool.length ? fillName(pool[h % pool.length]) : '', aft = afterLine(n) || heartLine;
+  if (!text) text = (first ? [opening, aft].filter(Boolean).join('\n') : aft) || '...';
   note = [note, storyHint(n)].filter(Boolean).join(' · ');
   say(title(n), text, npcActions(n), note);
 }
