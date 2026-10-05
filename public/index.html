@@ -215,9 +215,19 @@ body.typing #chatin{background:#fff}
 .adm-p{display:flex;justify-content:space-between;gap:8px;background:rgba(255,255,255,.08);color:#f4eef2;border:0;border-radius:10px;padding:2px 10px;text-align:left}.adm-p.on{background:#ff9fc4;color:#2a2429}
 .adm-r{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}.adm-r small{grid-column:2}
 .adm-r i{width:9px;height:9px;border-radius:50%;background:#6e6470;display:inline-block}.adm-r i.on{background:#7dff9a}
+body.admin #toast{z-index:40;background:rgba(28,22,30,.92);color:#f4eef2;border-radius:14px}
+button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 4px;border-radius:10px}button.adm-r:hover{background:rgba(255,255,255,.08)}
+.adm-tbl{position:absolute;left:50%;top:66px;transform:translateX(-50%);width:min(1120px,calc(100% - 20px));max-height:calc(100% - 80px);background:rgba(28,22,30,.94);border-radius:16px;padding:8px 12px 10px;pointer-events:auto;display:flex;flex-direction:column;gap:6px;z-index:2}
+.adm-tbl-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.adm-tbl-head b{font-size:24px}.adm-tbl-head small{opacity:.75;font-size:17px;margin-right:auto}
+.adm-tbl-scroll{overflow:auto}.adm-tbl table{border-collapse:separate;border-spacing:3px;font-size:18px;white-space:nowrap}
+.adm-tbl th{position:sticky;top:0;background:#1c161e;font-weight:400;opacity:.85;padding:2px 6px}.adm-tbl th:first-child,.adm-tbl td:first-child{position:sticky;left:0;background:#1c161e;text-align:left;z-index:1}
+.adm-tbl td{text-align:center;padding:2px 6px;border-radius:8px;position:relative}.adm-tbl td.g{text-align:right;font-variant-numeric:tabular-nums}
+.adm-tbl td.t1{background:rgba(255,255,255,.06)}.adm-tbl td.t2{background:#5d4558}.adm-tbl td.t3{background:#9a4f78}.adm-tbl td.t4{background:#ff9fc4;color:#2a2429}
+.adm-tbl td em{position:absolute;right:2px;top:2px;width:6px;height:6px;border-radius:50%;background:#7dff9a}.adm-tbl tr.sel td{outline:2px solid #ff9fc4}
 @media (max-width:640px){
   .adm-zones{top:auto;bottom:10px;left:10px;right:10px;flex-direction:row;overflow-x:auto;max-height:none}.adm-zone{min-width:auto;white-space:nowrap}
   .adm-side{top:auto;bottom:58px;left:10px;right:10px;width:auto;max-height:38%}
+  .adm-tbl{top:104px;max-height:calc(100% - 170px)}
 }
 </style>
 </head>
@@ -3074,7 +3084,7 @@ function frame(t){
   requestAnimationFrame(frame);
 }
 // ===== 관리자 CCTV: 캐릭터 없이 구역을 골라 보거나 접속한 사람을 따라가며 지켜봐요 =====
-let world = {}, cam = {follow:null, zone:'village'};
+let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
 function onWorld(w){ world = w || {}; if (admin) renderAdmin(); }
 const kstClock = () => new Date(Date.now() + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
 const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : (ZONES[z]?.name || '집터');
@@ -3101,11 +3111,25 @@ function renderAdmin(){
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>바꾸면 접속한 모든 사람에게 바로 전달돼요. 게임 화면 연출은 다음 업데이트에서 붙어요.</small></div>
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
-      <div class="adm-sec"><b>주민 ${regs.length} 명</b>${regs.map(([id,p])=>`<div class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></div>`).join('')}</div>
-    </div>`;
+      <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="table" class="adm-btn">자금 · 호감도 표</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
+    </div>${admTbl !== null ? adminTable(regs) : ''}`;
+  const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
+}
+// 모두의 현재 자금과 주민 14 명과의 호감도 (칸 = 하트 수, 색 = 관계 단계, 초록 점 = 오늘 대화함)
+let admScroll = [0, 0];
+function adminTable(regs){
+  const d = today(), rows = [...regs].sort(([,a],[,b])=>(b.inv?.gold||0) - (a.inv?.gold||0));
+  const cell = (p, n) => { const r = (p.rel||{})[n.id] || {}, h = heartsOf(r.pts), ev = [4,7,10].filter(k=>r['ev'+k]).map(k=>'♥'+k).join(' ');
+    return `<td class="t${tierOf(h)}" title="${esc(p.nick)} → ${esc(n.name)} · ${TIERS[tierOf(h)]} · 호감도 ${r.pts||0}/500 · 본 이야기 ${ev || '없음'}${r.talkDay===d ? ' · 오늘 대화함' : ''}">${h}${r.talkDay===d ? '<em></em>' : ''}</td>`; };
+  return `<div class="adm-tbl"><div class="adm-tbl-head"><b>자금 · 호감도</b><small>숫자 = 하트 (0~10) · 색 = 관계 단계 (아는 사이 → 괜찮은 사람 → 친한 친구 → 소중한 짝) · 초록 점 = 오늘 대화함 · 칸을 누르면 자세히</small><button data-a="tclose" class="adm-btn">닫기</button></div>
+    <div class="adm-tbl-scroll"><table><thead><tr><th>닉네임</th><th>자금</th>${NPCS.map(n=>`<th>${esc(n.name)}</th>`).join('')}<th>♥ 합계</th></tr></thead><tbody>${rows.map(([id,p])=>`<tr class="${admTbl===id ? 'sel' : ''}"><td>${esc(p.nick)}</td><td class="g">${Number(p.inv?.gold||0).toLocaleString()} G</td>${NPCS.map(n=>cell(p, n)).join('')}<td>${NPCS.reduce((a,n)=>a + heartsOf(((p.rel||{})[n.id]||{}).pts), 0)}</td></tr>`).join('') || `<tr><td colspan="${NPCS.length+3}">아직 주민이 없어요</td></tr>`}</tbody></table></div></div>`;
 }
 function adminClick(e){
+  const td = e.target.closest('.adm-tbl td[title]'); if (td) return toast(td.title);
   const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.a==='table'){ admTbl = admTbl===null ? '' : null; admScroll = [0, 0]; return renderAdmin(); }
+  if (b.dataset.a==='tclose'){ admTbl = null; return renderAdmin(); }
+  if (b.dataset.p){ admTbl = admTbl===b.dataset.p ? null : b.dataset.p; return renderAdmin(); }
   if (b.dataset.z){ cam.follow = null; cam.zone = b.dataset.z; const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2); renderAdmin(); }
   else if (b.dataset.f){ cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) net.setWorld({dark:v, darkAt:Date.now()}).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
