@@ -1,4 +1,4 @@
-// ===== 플레이어·주민 캐릭터: 매트 클레이 피규어 (표정 15 · 머리 39 · 옷·모자·액세서리·신발 126 × 색 5 · 주민 동물 14) =====
+// ===== 플레이어·주민 캐릭터: 매트 클레이 피규어 (표정 15 · 머리 39 · 옷·모자·액세서리·신발 126 × 색 5 · 주민 동물 18) =====
 export function mixHex(a, b, k){ const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16); const f=(x,y)=>Math.round(x+(y-x)*k); return '#'+[f(A>>16,B>>16),f(A>>8&255,B>>8&255),f(A&255,B&255)].map(v=>v.toString(16).padStart(2,'0')).join(''); }
 export function mattePainter(ctx){
   function paint(path, col, [cx,cy,r], opt={}){
@@ -677,6 +677,34 @@ const roundEars = (P, col, inner, r=.32, x=.78, y=.86) => { const {d, side, up} 
   for (const sx of (side ? [-.2] : [-1, 1])){ const ex = side ? R*sx : sx*R*x; d.circle(ex, HY - R*y, R*r, col); if (!up && inner) d.circle(ex, HY - R*(y-.04), R*r*.55, inner, {flat:true, noShadow:true}); } };
 const tailBall = (P, col, r=3.4) => { const {d, side, up} = P; if (up) d.circle(0, BY + BH*.58, r, col); else if (side) d.circle(-BW*.42, BY + BH*.6, r, col); };
 export const ANIMALS = {
+  // 사슴: 옆으로 뻗은 귀, 작은 뿔, 이마의 흰 점
+  deer:{ tail:P=>tailBall(P, '#ffffff', 3),
+    ears:P=>{ const {d, side, up, A} = P; for (const sx of (side ? [-.25] : [-1, 1])){ const ex = side ? R*sx : sx*R*1.06; d.shape(k=>{ k.beginPath(); k.ellipse(ex, HY - R*.46, R*.44, R*.2, side ? -.3 : sx*-.42, 0, Math.PI*2); }, A.fur, [ex, HY - R*.46, R*.4]); if (!up && !side) d.shape(k=>{ k.beginPath(); k.ellipse(ex, HY - R*.46, R*.26, R*.09, sx*-.42, 0, Math.PI*2); }, '#ffd2c2', [ex, HY - R*.46, 2], {flat:true, noShadow:true}); } },
+    top:P=>{ const {d, side} = P; for (const sx of (side ? [1] : [-1, 1])){ const x0 = side ? -R*.05 : sx*R*.4; d.line(k=>{ k.moveTo(x0, HY - R*.92); k.quadraticCurveTo(x0 + sx*R*.08, HY - R*1.3, x0 + sx*R*.3, HY - R*1.62); k.moveTo(x0 + sx*R*.07, HY - R*1.22); k.lineTo(x0 + sx*R*.46, HY - R*1.34); k.moveTo(x0 + sx*R*.17, HY - R*1.44); k.lineTo(x0 - sx*R*.06, HY - R*1.7); }, '#a8744f', 2.3, 1); } },
+    head:P=>{ if (P.up || P.side) return; for (const [x,y] of [[-.5,-.5],[.55,-.55],[-.2,-.74],[.25,-.36]]) P.d.dot(R*x, HY + R*y, 1.2, '#fff6ea', .9); },
+    snout:P=>muzzle(P, P.A.fur2, 4.2, 3, '#3a2a2a', 1.1) },
+  // 늑대: 뾰족 귀, 얼굴 가운데 흰 털, 끝이 흰 복슬 꼬리
+  wolf:{ tail:P=>{ const {d, side, up, A} = P; const tx = up ? 0 : side ? -BW*.7 : BW*.55; d.shape(k=>{ k.beginPath(); k.ellipse(tx, BY+BH*.42, R*.38, R*.74, up ? 0 : side ? -.6 : .55, 0, Math.PI*2); }, A.fur, [tx, BY+BH*.4, R*.6]); d.circle(tx + (up ? 0 : side ? -4 : 3), BY+BH*.42 - R*.58, R*.24, A.fur2); },
+    ears:P=>triEars(P, P.A.fur, '#ffd2dc', P.A.dark, 1.62, .4, .58),
+    head:P=>{ if (P.up || P.side) return; const {d, fx, fy, A} = P; d.shape(k=>{ k.beginPath(); k.moveTo(fx, fy-7.5); k.quadraticCurveTo(fx-3.5, fy-2, fx-7.5, fy+4); k.quadraticCurveTo(fx, fy+11, fx+7.5, fy+4); k.quadraticCurveTo(fx+3.5, fy-2, fx, fy-7.5); k.closePath(); }, A.fur2, [fx, fy+2, 6], {flat:true, noShadow:true}); },
+    snout:P=>muzzle(P, P.A.fur2, 4.8, 3.3, '#2f2f3a', 1.25) },
+  // 호랑이: 둥근 귀, 이마·볼 줄무늬, 줄무늬 꼬리
+  tiger:{ tail:P=>{ const {d, side, up, A} = P; const s = side ? -1 : 1, p0 = up ? [0, BY+BH*.62] : [side ? -BW*.4 : BW*.35, BY+BH*.62], p1 = up ? [R*.7, BY+BH*.45] : [p0[0] + s*BW*.6, BY+BH*.55], p2 = up ? [R*.5, BY-1] : [p0[0] + s*BW*.42, BY-1];
+      d.line(k=>{ k.moveTo(...p0); k.quadraticCurveTo(...p1, ...p2); }, A.fur, 3.4, 1);
+      for (const t of [.35, .6, .85]){ const q = i => (1-t)*(1-t)*p0[i] + 2*(1-t)*t*p1[i] + t*t*p2[i]; d.circle(q(0), q(1), 1.5, '#5a3a2a', {flat:true, noShadow:true}); } },
+    ears:P=>roundEars(P, P.A.fur, '#fff1e6', .3, .8, .84),
+    head:P=>{ if (P.up) return; const {d, side} = P; d.line(k=>{ if (side){ k.moveTo(-R*.15, HY-R*.98); k.lineTo(-R*.02, HY-R*.72); k.moveTo(-R*.55, HY-R*.86); k.lineTo(-R*.38, HY-R*.62); }
+      else { k.moveTo(0, HY-R*1.0); k.lineTo(0, HY-R*.74); k.moveTo(-R*.34, HY-R*.96); k.lineTo(-R*.25, HY-R*.76); k.moveTo(R*.34, HY-R*.96); k.lineTo(R*.25, HY-R*.76); for (const s of [-1,1]){ k.moveTo(s*R*1.0, HY+R*.08); k.lineTo(s*R*.76, HY+R*.14); k.moveTo(s*R*.98, HY+R*.32); k.lineTo(s*R*.78, HY+R*.34); } } }, '#5a3a2a', 1.4, .85); },
+    snout:P=>muzzle(P, P.A.fur2, 4.8, 3.2, '#e8899c', 1.1) },
+  // 고래: 귀 대신 머리 위 물줄기, 밝은 턱, 등 뒤 꼬리지느러미
+  whale:{ tail:P=>{ const {d, side, up, A} = P; const tx = up ? 0 : side ? -BW*.62 : BW*.6, ty = BY+BH*.3, s = side ? -1 : 1;
+      d.ell(tx, ty+3, 2.6, 5, A.fur); for (const r of [-1, 1]) d.shape(k=>{ k.beginPath(); k.ellipse(tx + (up ? r*R*.28 : s*R*.06 + r*R*.22), ty - 4 - (r===s ? 1.5 : 0), R*.34, R*.13, r*-.5, 0, Math.PI*2); }, A.fur, [tx, ty-4, R*.3]); },
+    ears:()=>{},
+    head:P=>{ if (P.up) return; const {d, side, A} = P; d.shape(k=>{ k.beginPath(); k.ellipse(side ? R*.25 : 0, HY + R*.5, side ? R*.8 : R*.92, R*.46, 0, 0, Math.PI); k.closePath(); }, A.fur2, [0, HY + R*.6, R*.6], {flat:true, noShadow:true});
+      d.line(k=>{ for (const dy of [.66, .8]){ k.moveTo((side ? R*.0 : -R*.42), HY + R*dy); k.lineTo((side ? R*.55 : R*.42), HY + R*dy); } }, SH(A.fur, -.1), .6, .5); },
+    top:P=>{ const {d, side} = P; const x = side ? -R*.1 : 0, y = HY - R*1.02; d.line(k=>{ k.moveTo(x, y); k.lineTo(x, y - 4); }, '#9fd6ff', 1.6, .9); for (const [dx,dy,r] of [[-3.4,-5.4,1.6],[0,-7,1.8],[3.4,-5.4,1.6]]) d.circle(x+dx, y+dy, r, '#bfe6ff', {flat:true}); },
+    snout:()=>{} },
+
   rabbit:{ tail:P=>tailBall(P, '#ffffff', 3.8), ears:()=>{}, snout:P=>muzzle(P, '#ffffff', 4.2, 3, '#e8899c', 1),
     top:P=>{ const {d, side, up, A} = P; for (const sx of (side ? [-.12] : [-1, 1])){ const ex = side ? R*sx - 1 : sx*R*.42, tilt = side ? -.18 : sx*.12; d.shape(k=>{ k.beginPath(); k.ellipse(ex, HY - R*1.62, R*.27, R*.66, tilt, 0, Math.PI*2); }, A.fur, [ex, HY - R*1.6, R*.4]); if (!up) d.shape(k=>{ k.beginPath(); k.ellipse(ex, HY - R*1.6, R*.13, R*.48, tilt, 0, Math.PI*2); }, '#ffc3d6', [ex, HY - R*1.6, 2], {flat:true, noShadow:true}); } } },
   cat:{ tail:P=>{ const {d, side, up, A} = P; d.line(k=>{ if (up){ k.moveTo(0, BY+BH*.62); k.quadraticCurveTo(R*.6, BY+BH*.4, R*.4, BY); } else { k.moveTo(-BW*.4, BY+BH*.62); k.quadraticCurveTo(-BW*.95, BY+BH*.5, -BW*.75, BY-2); } }, A.fur, 3.2, 1); },
