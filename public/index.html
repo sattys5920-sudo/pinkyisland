@@ -51,7 +51,7 @@ img.bi{width:34px;height:34px;display:block;pointer-events:none}
 #log p{background:rgba(255,255,255,.72);border-radius:10px;padding:2px 10px;align-self:flex-start;max-width:100%;text-shadow:none}
 #chatin{flex:1;min-width:0;font:700 20px "Dongle",sans-serif;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fffffff0;color:var(--ink)}
 .emo{border:0;border-radius:12px;background:#fff;width:44px;min-height:44px;font-size:25px;box-shadow:inset 0 -2px 0 #f6e6ec}
-#talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:min(520px,calc(100vw - 20px));padding:14px 16px;z-index:8}
+#talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:min(520px,calc(100vw - 20px));padding:14px 16px;z-index:12}
 #talk h3{margin:0 0 4px;font-size:25px;color:var(--ink)}
 #talk p{margin:0 0 10px;font-size:21px;white-space:pre-line}
 #talk #talkNote{font-size:18px;color:var(--soft);margin-top:-6px}
@@ -262,16 +262,23 @@ import { ART_PART as ART_ORES } from './art/ores.js';
 import { ART_PART as ART_MON } from './art/monsters.js';
 import { ART_PART as ART_DISH } from './art/dishes.js';
 const P = {grass:'#b5e6a3',grass2:'#9fdb8c',path:'#ffe0bf',water:'#9fd9ff',waterHi:'#e8f7ff',cream:'#fff0e0',pink:'#ffa6c9',choco:'#9a5a45',cherry:'#ff5a78',candyA:'#ffa6cf',candyB:'#fff09a',stick:'#fff',soil:'#d69a70',berry:'#ff5a78',leaf:'#6cc46a',rock:'#c3b8d2',gem:'#bf8cff',dust:'#bdb5c9',blush:'#ffadc4',eye:'#5b3345',stitch:'#ffffff',bubble:'#fff',text:'#8a4b63'};
-const STARTERS = [['t01|b01','기본 티 + 청바지'],['t02|b02','줄무늬 티 + 반바지'],['t01|b02','기본 티 + 반바지'],['s01','멜빵바지']];
-const OPT = {
+// 캐릭터 만들기: 피부·머리·표정과 기본 옷(상의 5 · 하의 5 · 신발 3)을 색까지 골라요. 기본 옷은 다섯 색 모두 무료
+const BASIC = cat => Object.keys(CH[cat]).filter(id => CH.FREE.includes(id));
+const OPT = () => ({
   skin:  { label:'피부색', color:true, v:CH.SKINS },
   hairA: { label:'머리 모양 (남)', target:'hair', v:CH.HAIR_M.map(k=>[k, CH.HAIR[k].label]) },
   hairB: { label:'머리 모양 (여)', target:'hair', v:CH.HAIR_F.map(k=>[k, CH.HAIR[k].label]) },
   hairColor: { label:'머리 색', color:true, v:CH.HAIR_COLORS },
-  starter: { label:'시작 옷 (옷가게에서 더 살 수 있어요)', target:'starter', v:STARTERS },
-};
-let EDIT = { ...CH.defaultLook(), starter:'t01|b01' };
-function applyStarter(L){ const st = L.starter || 't01|b01'; const n = {...L}; delete n.starter; if (st.startsWith('s')){ n.set = st; } else { const [t,b] = st.split('|'); n.top = t; n.bottom = b; n.set = ''; } return n; }
+  expr:  { label:'표정 (한 번 고르면 계속 이 얼굴이에요)', v:CH.EXPRS },
+  top:   { label:'상의', v:BASIC('TOPS').map(id=>[id, CH.TOPS[id].name]) },
+  tc:    { label:'상의 색', swatch:CH.colorsOf('top', EDIT.top) },
+  bottom:{ label:'하의', v:BASIC('BOTTOMS').map(id=>[id, CH.BOTTOMS[id].name]) },
+  bc:    { label:'하의 색', swatch:CH.colorsOf('bottom', EDIT.bottom) },
+  shoes: { label:'신발', v:BASIC('SHOES').map(id=>[id, CH.SHOES[id].name]) },
+  sc:    { label:'신발 색', swatch:CH.colorsOf('shoes', EDIT.shoes) },
+});
+let EDIT = { ...CH.defaultLook(), tc:'0', bc:'0', sc:'0' };
+function applyStarter(L){ const n = {...L, set:'', cc:{top:+L.tc||0, bottom:+L.bc||0, shoes:+L.sc||0}}; delete n.tc; delete n.bc; delete n.sc; return n; }
 
 function shade(hex,k){const n=parseInt(hex.slice(1),16);const f=v=>Math.max(0,Math.min(255,Math.round(k>0?v+(255-v)*k:v*(1+k))));return `rgb(${f(n>>16)},${f(n>>8&255)},${f(n&255)})`;}
 
@@ -352,12 +359,12 @@ function drawPlayer(c, x, y, L, dir, t, walk, s=1, expr='dot'){
   const sp = sprite(key, B.w, B.h, B.ox, B.oy, d=>CH.figure(CH.mattePainter(d.ctx), L, dir, t2, walk, expr));
   c.drawImage(sp.c, x - sp.ox*s, y - sp.oy*s, sp.c.width/sp.sc*s, sp.c.height/sp.sc*s);
 }
-// 표정: 잠깐 바뀌었다가 돌아와요. 밤(0~5 시)에 가만히 있으면 졸린 눈
-let exprNow = 'dot', exprUntil = 0;
-function setExpr(e, ms=2000){ exprNow = e; exprUntil = performance.now() + ms; }
-function myExpr(){ if (performance.now() < exprUntil) return exprNow; const h = kstHour(); return (h < 5 && !pos.moving) ? 'sleepy' : 'dot'; }
+// 표정: 캐릭터를 만들 때 고른 표정을 계속 써요 (상황에 따라 바뀌지 않아요)
+function setExpr(){}
+function myExpr(){ return (me && me.look && me.look.expr) || 'dot'; }
 // 동물 주민: 걷기 8 단계, 서 있기 4 단계
 function drawCritter(c, x, y, v, t, walk, s=1, flip=false){
+  if (v && v.a1) return drawPlayer(c, x, y, v.a1, walk ? (flip ? 'left' : 'right') : 'down', t, walk, s, 'dot');
   if (flip){ c.save(); c.translate(x, 0); c.scale(-1, 1); drawCritter(c, 0, y, v, t, walk, s, false); c.restore(); return; }
   const ph = t*7 + x*.3, q = walk ? qphase(ph, 8) : qphase(t*2 + x, 4);
   const key = 'c|'+JSON.stringify(v)+'|'+(walk?'w':'i')+q+'|'+Math.round(view.dpr*view.zoom*2);
@@ -756,6 +763,19 @@ const NPC_LOOKS = [
   {name:'콩이', animal:'강아지', kind:'dog', fur:'#f2d2a0', fur2:'#fff3df', outfit:'uniform', color:'#5361b3', pants:'#3d4785', acc:'police', eyes:'round'},
   {name:'밤이', animal:'고슴도치', kind:'hedgehog', fur:'#f3d6b8', fur2:'#fff1e3', outfit:'dress', color:'#ffb3d9', acc:'flower', eyes:'lash'},
 ];
+// 주민 새 모습: 플레이어와 같은 몸에 동물 귀·주둥이·꼬리를 붙이고, 하는 일에 맞는 옷을 입어요 (모자는 안 써요)
+const NPC_A1 = {
+  하나:['rabbit','#fff6f0',{set:'s09', shoes:'sh03'}], 모모:['cat','#ffc98f',{set:'s08', acc:'bowtie', shoes:'sh09'}],
+  루루:['otter','#b98a64',{top:'t02', bottom:'b17', shoes:'sh04'}], 도도:['mole','#7a6a72',{top:'t14', bottom:'b21', shoes:'sh05'}],
+  비비:['fox','#ff9a4d',{top:'t09', bottom:'b21', acc:'scarf', shoes:'sh05'}], 토토:['turtle','#a8dc8f',{top:'t28', bottom:'b04', acc:'glassR', shoes:'sh09'}],
+  보리:['bear','#b98256',{top:'t14', bottom:'b01', shoes:'sh05', cc:{top:3}}], 몽실:['sheep','#fffaf0',{set:'s02', shoes:'sh12'}],
+  토리:['squirrel','#d9894f',{top:'t17', bottom:'b30', acc:'backpack', shoes:'sh01'}], 올리:['owl','#a98366',{set:'s13', acc:'glassR', shoes:'sh09'}],
+  펭펭:['penguin','#454a63',{top:'t02', bottom:'b11', acc:'scarf', shoes:'sh13', cc:{acc:3}}], 단단:['panda','#ffffff',{set:'s08', acc:'bowtie', shoes:'sh11', cc:{acc:2}}],
+  콩이:['dog','#f2d2a0',{set:'s21', shoes:'sh11'}], 밤이:['hedgehog','#e8c9a6',{top:'t25', bottom:'b20', shoes:'sh12'}],
+};
+for (const v of NPC_LOOKS){ const a = NPC_A1[v.name]; if (!a) continue; const [kind, fur, look] = a;
+  v.a1 = {skin:fur, hair:'none', hairColor:'#000000', top:'t01', bottom:'b01', set:'', hat:'none', acc:'none', shoes:'sh01', expr:'dot', cc:{}, ...look,
+    animal:{kind, fur, fur2:mixHex(fur, '#ffffff', .55), dark:mixHex(fur, '#2a1a24', .28)}}; }
 
 // ===== 상태 =====
 let uid = null, solo = false, net = null;
@@ -777,7 +797,8 @@ function fromDB(p){
   for (const k of ['seeds','crops','fish','ores','loot']) inv[k] = {...(inv[k]||{})};
   if (inv.seed){ inv.seeds.c01 = (inv.seeds.c01||0) + inv.seed; } delete inv.seed;
   if (inv.tomato){ inv.crops.c01 = (inv.crops.c01||0) + inv.tomato; } delete inv.tomato;
-  const closet = [...new Set([...CH.FREE, ...(p.closet||[]), ...(p.hats ? p.hats.split(',') : []), ...CH.lookItems(CH.migrateLook(p.look))])].filter(id=>CH.ITEM(id));
+  const lk = CH.migrateLook(p.look), worn = Object.entries(lk.cc||{}).filter(([,c])=>c).map(([slot,c])=>{ const id = slot==='set' ? lk.set : lk[slot]; return id ? id+'#'+c : null; }).filter(Boolean);
+  const closet = [...new Set([...CH.FREE, ...(p.closet||[]), ...(p.hats ? p.hats.split(',') : []), ...CH.lookItems(lk), ...worn])].filter(k=>CH.ITEM(k.split('#')[0]));
   return { ...p, look:CH.migrateLook(p.look), closet, rel:p.rel||{}, inv,
     gardens:Array.from({length:Math.max(2, Math.min(6, p.plots||2))}, (_,i)=>i).map(i=>{ const s = g[i]; if (!s) return null; return {crop: s.stage>=0 ? {type:s.type||'c01', stage:s.stage, wateredAt:s.wateredAt||null} : null}; }) };
 }
@@ -1095,11 +1116,12 @@ function renderOb(){
 }
 function renderCtrls(){
   const el = $('ctrls'); if (!el) return;
-  el.innerHTML = Object.entries(OPT).map(([k,o])=>`<div class="row"><b>${o.label}</b><div class="opts">${
+  el.innerHTML = Object.entries(OPT()).map(([k,o])=>`<div class="row"><b>${o.label}</b><div class="opts">${
+    o.swatch ? o.swatch.map((col,i)=>`<button class="sw" style="background:${col}" data-k="${k}" data-v="${i}" aria-pressed="${String(EDIT[k])===String(i)}" aria-label="${o.label} ${i+1}"></button>`).join('') :
     o.v.map(v=>{ const [val,name] = Array.isArray(v)?v:[v,v]; const key = o.target||k; const on = EDIT[key]===val;
       return o.color ? `<button class="sw" style="background:${val}" data-k="${key}" data-v="${val}" aria-pressed="${on}" aria-label="${o.label}"></button>`
                      : `<button data-k="${key}" data-v="${val}" aria-pressed="${on}">${name}</button>`; }).join('')}</div></div>`).join('');
-  el.onclick = e=>{ const b = e.target.closest('button'); if (!b) return; EDIT[b.dataset.k] = b.dataset.v; renderCtrls(); };
+  el.onclick = e=>{ const b = e.target.closest('button'); if (!b) return; EDIT[b.dataset.k] = b.dataset.v; if (b.dataset.k==='top') EDIT.tc = '0'; if (b.dataset.k==='bottom') EDIT.bc = '0'; if (b.dataset.k==='shoes') EDIT.sc = '0'; renderCtrls(); };
 }
 function sizePrev(){ const c = $('obprev'); if (!c) return; const r = c.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio||1); c.width = r.width*dpr; c.height = r.height*dpr; }
 
@@ -2218,30 +2240,46 @@ const previewCache = new Map();
 function wearPreview(L, size=96){
   const key = JSON.stringify(L)+'|'+size; if (previewCache.has(key)) return previewCache.get(key);
   const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d');
-  const sc = size/64; x.setTransform(sc,0,0,sc,size/2, size-8);
+  const sc = size/80; x.setTransform(sc,0,0,sc,size/2, size-5); // 새 몸은 키가 커서 모자까지 다 들어가게
   try { CH.figure(CH.mattePainter(x), L, 'down', 0, false, 'dot'); } catch(e){}
   const url = c.toDataURL(); if (previewCache.size > 200) previewCache.clear(); previewCache.set(key, url); return url;
 }
-function tryOn(L, slot, id){ const n = {...L}; if (slot==='set'){ n.set = id; } else if (slot==='top' || slot==='bottom'){ n.set = ''; n[slot] = id; } else n[slot] = id; return n; }
-function wear(slot, id){ me.look = tryOn(me.look, slot, id); saveMe(); spriteCache.clear(); toast(id==='none' ? '벗었어요' : `${CH.ITEM(id).name}을(를) 입었어요`); clothesPanel(); }
+// 옷마다 색 5 가지. 옷장에는 '아이디'(1 번 색) 또는 '아이디#색번호'로 들어가요. 기본 옷은 모든 색이 무료
+const ownKey = (id, c) => c ? `${id}#${c}` : id;
+const freeItem = it => it && it.price===0 && !it.need;
+const owns = (id, c=0) => freeItem(CH.ITEM(id)) || CLOSET().includes(ownKey(id, c));
+const ownsAny = id => freeItem(CH.ITEM(id)) || CLOSET().some(k=>k.split('#')[0]===id);
+function tryOn(L, slot, id, c=0){ const n = {...L, cc:{...(L.cc||{}), [slot]:c}}; if (slot==='set'){ n.set = id; } else if (slot==='top' || slot==='bottom'){ n.set = ''; n[slot] = id; } else n[slot] = id; return n; }
+function wear(slot, id, c=0){ me.look = tryOn(me.look, slot, id, c); saveMe(); spriteCache.clear(); toast(id==='none' ? '벗었어요' : `${CH.ITEM(id).name}을(를) 입었어요`); if (id==='none') clothesPanel(); else colorPanel(slot, id); }
 function clothesPanel(){
   const [slot, label, cat] = CH.CATS.find(c=>c[0]===shopTab);
   const tabs = CH.CATS.map(([k,l])=>`<button class="mini" data-tab="${k}" style="${k===shopTab?'':'background:#fff'}">${l}</button>`).join('');
   const rows = Object.entries(cat).map(([id,it])=>{
-    const own = CLOSET().includes(id) || it.price===0 && !it.need, on = wearing(id) || (id==='none' && (slot==='hat' ? me.look.hat==='none' : slot==='acc' ? me.look.acc==='none' : false));
+    const own = ownsAny(id), on = wearing(id) || (id==='none' && (slot==='hat' ? me.look.hat==='none' : slot==='acc' ? me.look.acc==='none' : false));
     const cost = it.need ? `${it.price?it.price+' G + ':''}${itemName(it.need)} ${invCount(it.need)}/${it.n}` : `${it.price} G`;
     const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
     return `<button class="tile ${on?'on':''}" data-id="${id}" title="${esc(it.name)}">${id==='none' ? '<span style="font-size:30px;line-height:44px">✕</span>' : `<img class="ic" src="${wearPreview(tryOn(me.look, slot, id))}" alt="">`}<em>${esc(it.name)}</em><s style="color:${own?'var(--soft)':can?'#e48fac':'#c9b3bc'}">${own ? (on ? '입는 중' : '입기') : cost}</s></button>`; }).join('');
-  openPanel(`몽실 옷가게 · 💰 ${me.inv.gold} G`, `<div style="display:flex;gap:5px;flex-wrap:wrap">${tabs}</div><p class="mnote" style="margin:4px 2px 0">산 옷은 옷장에 들어가고, 갈아입는 건 공짜예요. 세트를 입으면 상의·하의는 가려져요.</p><div class="bag-grid">${rows}</div>`);
+  openPanel(`몽실 옷가게 · 💰 ${me.inv.gold} G`, `<div style="display:flex;gap:5px;flex-wrap:wrap">${tabs}</div><p class="mnote" style="margin:4px 2px 0">옷을 누르면 색 5 가지 중에서 골라요. 산 옷은 옷장에 들어가고, 갈아입는 건 공짜예요. 한 벌을 입으면 상의·하의는 가려져요.</p><div class="bag-grid">${rows}</div>`);
   const pn = $('npcPanel');
   pn.querySelectorAll('[data-tab]').forEach(b=>b.onclick = ()=>{ shopTab = b.dataset.tab; clothesPanel(); });
-  pn.querySelectorAll('.tile[data-id]').forEach(b=>b.onclick = ()=>{
-    const id = b.dataset.id, it = cat[id];
-    if (CLOSET().includes(id) || (it.price===0 && !it.need)){ if (!CLOSET().includes(id)) CLOSET().push(id); return wear(slot, id); }
-    const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
+  pn.querySelectorAll('.tile[data-id]').forEach(b=>b.onclick = ()=>{ const id = b.dataset.id; if (id==='none') return wear(slot, id); colorPanel(slot, id); });
+}
+// 색 고르기: 같은 옷의 다섯 색을 입어 본 모습으로 보여 주고, 가진 색은 바로 입고 없는 색은 사요
+function colorPanel(slot, id){
+  const it = CH.ITEM(id), cols = CH.colorsOf(slot, id), cur = wearing(id) ? (me.look.cc?.[slot] || 0) : -1, free = freeItem(it);
+  const cost = it.need ? `${it.price ? it.price+' G + ' : ''}${itemName(it.need)} ${it.n} 개` : `${it.price} G`;
+  const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
+  const tiles = cols.map((col, c)=>{ const own = owns(id, c);
+    return `<button class="tile ${cur===c?'on':''}" data-c="${c}"><img class="ic" src="${wearPreview(tryOn(me.look, slot, id, c))}" alt=""><em><i style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${col || '#ccc'};vertical-align:-1px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)"></i> ${c+1} 번 색</em><s style="color:${own?'var(--soft)':can?'#e48fac':'#c9b3bc'};text-decoration:none">${own ? (cur===c ? '입는 중' : '가짐') : cost}</s></button>`; }).join('');
+  openPanel(`${it.name} · 색 고르기 · ${me.inv.gold} G`, `<button class="mini" id="cpBack" style="background:#fff">← 목록으로</button><p class="mnote" style="margin:4px 2px 0">${free ? '기본 옷이라 모든 색이 무료예요.' : '색마다 따로 사요. 산 색은 옷장에 들어가고 언제든 갈아입을 수 있어요.'}</p><div class="bag-grid">${tiles}</div>`);
+  const pn = $('npcPanel');
+  $('cpBack').onclick = ()=>clothesPanel();
+  pn.querySelectorAll('.tile[data-c]').forEach(b=>b.onclick = ()=>{
+    const c = +b.dataset.c;
+    if (owns(id, c)){ if (!free && !CLOSET().includes(ownKey(id, c))) CLOSET().push(ownKey(id, c)); return wear(slot, id, c); }
     if (!can) return toast(it.need ? '재료나 돈이 모자라요' : '돈이 모자라요');
-    say(it.name, it.need ? `${it.price?it.price+' G와 ':''}${itemName(it.need)} ${it.n} 개로 만들까요?` : `${it.price} G에 살까요? 사면 옷장에 들어가요.`, [[it.need ? '만들기' : '사기', ()=>{
-      me.inv.gold -= it.price; if (it.need) invAdd(it.need, -it.n); CLOSET().push(id); stat('bought'); syncStats(); renderHud(); closeTalk(); wear(slot, id); toast(`${it.name}을(를) ${it.need?'만들어':'사서'} 입었어요!`); }], ['그만두기', ()=>{ closeTalk(); clothesPanel(); }]], '', true);
+    say(it.name, it.need ? `${it.price?it.price+' G와 ':''}${itemName(it.need)} ${it.n} 개로 ${c+1} 번 색을 만들까요?` : `${c+1} 번 색을 ${it.price} G에 살까요? 사면 옷장에 들어가요.`, [[it.need ? '만들기' : '사기', ()=>{
+      me.inv.gold -= it.price; if (it.need) invAdd(it.need, -it.n); CLOSET().push(ownKey(id, c)); stat('bought'); syncStats(); renderHud(); closeTalk(); wear(slot, id, c); toast(`${it.name}(${c+1} 번 색)을(를) ${it.need?'만들어':'사서'} 입었어요!`); }], ['그만두기', ()=>{ closeTalk(); colorPanel(slot, id); }]], '', true);
   });
 }
 
@@ -3015,7 +3053,7 @@ function bubble(c, text, x, y){
 let lastT = performance.now(), lastFade = -1;
 function frame(t){
   const dt = Math.min(.05, (t-lastT)/1000); lastT = t;
-  if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,108); c.scale(1.7,1.7); CH.figure(d, L, dir, t/1000, true, 'dot'); c.restore(); } } }
+  if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,110); c.scale(1.45,1.45); CH.figure(d, L, dir, t/1000, true, L.expr); c.restore(); } } }
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
     if (admin){ moveOthers(dt); adminCam(); }
@@ -3034,7 +3072,7 @@ function frame(t){
     drawRocks(d, t);
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
-      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-50, null)})),
+      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50), null)})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'), label:()=>{ tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-80); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
