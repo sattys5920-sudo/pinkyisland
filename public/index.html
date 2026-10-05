@@ -1439,9 +1439,9 @@ function playEvents(n, list){
   const ev = (n.events && n.events[h]) || {title:'조금 더 가까워졌어요', pages:['(조금 더 가까워진 것 같다)'], keepsake:''};
   const evCh = chaptersOf(n).find(c=>c.kind==='event' && c.key===h), r = relOf(n.id), rc = evCh && !r['ev'+h] ? recallLine(n, evCh) : '';
   const first = !r['ev'+h];
-  if (first){ r['ev'+h] = true; me.inv.gold += STORY_GOLD[h]; if (ev.keepsake){ me.keep = me.keep || {}; me.keep[n.id] = [...(me.keep[n.id]||[]), ev.keepsake]; } r.storyDay = today(); saveMe(); renderHud(); }
+  if (first){ r['ev'+h] = true; me.inv.gold += STORY_GOLD[h]; if (ev.keepsake){ me.keep = me.keep || {}; me.keep[n.id] = [...(me.keep[n.id]||[]), fillName(ev.keepsake)]; } r.storyDay = today(); saveMe(); renderHud(); }
   const rest = list.slice(1);
-  const reward = first ? [{who:'narr', text:`관계가 '${TIERS[tierOf(h)]}'(으)로 깊어졌어요 · ${STORY_GOLD[h]} G${ev.keepsake ? ` · 기념품 '${ev.keepsake}'` : ''}`}] : [];
+  const reward = first ? [{who:'narr', text:`관계가 '${TIERS[tierOf(h)]}'(으)로 깊어졌어요 · ${STORY_GOLD[h]} G${ev.keepsake ? ` · 기념품 '${fillName(ev.keepsake)}'` : ''}`}] : [];
   story({n, title:{sub:`${n.name} 이야기 · ${evCh ? evCh.i+1 : ''}화`, main:ev.title, star:true}, beats:[...toBeats([rc, ...ev.pages]), ...reward], acts: rest.length ? [['다음 이야기', ()=>playEvents(n, rest)]] : npcActions(n), hint: rest.length ? '' : storyHint(n)});
 }
 function npcActions(n){
@@ -1635,7 +1635,7 @@ function renderNpcPanel(){
   const d = today();
   $('npcPanel').dataset.kind = 'npc';
   $('npcPanel').innerHTML = `<div class="np-head"><b>섬 주민 14 명</b><button class="mini" id="npClose">닫기</button></div>` + NPCS.map(n=>{
-    const r = relOf(n.id), keep = (me.keep && me.keep[n.id]) || [];
+    const r = relOf(n.id), keep = ((me.keep && me.keep[n.id]) || []).map(fillName); // 예전에 '{name}' 그대로 저장된 기념품도 이름으로
     return `<button class="np" data-id="${n.id}"><span class="np-name">${n.name} <small>${n.animal} · ${n.role}</small></span><span class="np-place">${ZONES[n.zone].name}</span><span class="np-h">${'♥'.repeat(heartsN(n))}${'♡'.repeat(10-heartsN(n))} <small>${TIERS[tierOf(heartsN(n))]} · 이야기 ${chaptersOf(n).filter(c=>chapterDone(n, r, c)).length}/${chaptersOf(n).length}화</small></span><span class="np-day">${r.talkDay===d?'대화 ✓':'대화 ·'} ${r.giftDay===d?'선물 ✓':'선물 ·'}</span>${keep.length?`<span class="np-keep">기념품: ${keep.map(esc).join(', ')}</span>`:''}</button>`;
   }).join('');
   $('npClose').onclick = ()=>{ $('npcPanel').hidden = true; };
