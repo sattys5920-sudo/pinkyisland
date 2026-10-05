@@ -58,6 +58,49 @@ img.bi{width:34px;height:34px;display:block;pointer-events:none}
 #talk h3{margin:0 0 4px;font-size:25px;color:var(--ink)}
 #talk p{margin:0 0 10px;font-size:21px;white-space:pre-line}
 #talk .sd{color:#9a8792;font-weight:400;font-style:italic}
+/* ===== 이야기 대화창 ===== */
+@font-face{font-family:"Pretendard";font-weight:500;font-display:swap;src:url(fonts/Pretendard-Medium.subset.woff2) format("woff2")}
+@font-face{font-family:"Pretendard";font-weight:600 700;font-display:swap;src:url(fonts/Pretendard-SemiBold.subset.woff2) format("woff2")}
+@font-face{font-family:"Pretendard";font-weight:800 900;font-display:swap;src:url(fonts/Pretendard-ExtraBold.subset.woff2) format("woff2")}
+:root{--dlg-k:1}
+#dlgDim{position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:13}
+body.dlg-on #bar,body.dlg-on #sideBtns,body.dlg-on #chatbox,body.dlg-on #quest{visibility:hidden}
+body.dlg-on #toast{z-index:16}
+#dlg{position:fixed;left:calc(env(safe-area-inset-left,0px) + 12px);right:calc(env(safe-area-inset-right,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);max-width:560px;margin:0 auto;min-height:140px;box-sizing:border-box;padding:34px 20px 20px;background:#fffafc;border:2px solid #f3d6e2;border-radius:24px;box-shadow:0 6px 0 #f0d3df,0 14px 30px rgba(90,40,64,.22);z-index:14;font-family:Pretendard,"Gowun Dodum",system-ui,sans-serif;color:#3a2c33;user-select:none;-webkit-user-select:none;cursor:pointer;touch-action:manipulation}
+#dlg .dlg-who{position:absolute;top:-34px;left:16px;display:flex;align-items:flex-end;gap:8px;pointer-events:none}
+#dlg .dlg-who.right{left:auto;right:58px;flex-direction:row-reverse}
+#dlg .dlg-who.off{visibility:hidden}
+#dlg .dlg-face{width:64px;height:64px;border-radius:50%;border:3px solid #fff;box-sizing:content-box;background:#ffe8f1;box-shadow:0 3px 8px rgba(90,40,64,.18);object-fit:cover}
+#dlg .dlg-name{margin-bottom:12px;background:var(--nc,#d0457a);color:#fff;font-weight:800;font-size:16px;line-height:1;padding:7px 12px;border-radius:999px;box-shadow:0 2px 0 rgba(0,0,0,.12);white-space:nowrap}
+#dlg .dlg-heart{margin-bottom:15px;display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#c2456f}
+#dlg .dlg-heart em{display:block;width:34px;height:6px;border-radius:3px;background:#f6dbe6;overflow:hidden}#dlg .dlg-heart em s{display:block;height:100%;background:#ff7aa8;text-decoration:none}
+#dlg .dlg-who.right .dlg-heart{display:none}
+#dlg .dlg-logbtn{position:absolute;top:10px;right:12px;width:34px;height:34px;border-radius:50%;border:2px solid #f3d6e2;background:#fff;display:grid;place-items:center;padding:0;cursor:pointer}
+#dlg .dlg-body{position:relative;min-height:calc(18px*var(--dlg-k)*1.6*2)}
+#dlg .dlg-text{margin:0;font-size:calc(18px*var(--dlg-k));line-height:1.6;font-weight:500;white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere;padding-right:34px}
+#dlg .dlg-text.narr{font-size:calc(15px*var(--dlg-k));color:#7a6670;font-weight:500}
+#dlg .dlg-text.narr::before{content:'✦ ';color:#e79bbb}
+#dlg .dlg-more{position:absolute;right:0;bottom:2px;font-size:13px;color:#e07aa3;animation:dlgBob 1.1s ease-in-out infinite}
+@keyframes dlgBob{50%{transform:translateY(4px)}}
+#dlg .dlg-choices{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+#dlg .dlg-choices button{height:48px;width:100%;border:2px solid #f3d6e2;border-radius:16px;background:#fff0f6;color:#3a2c33;font:600 calc(16px*var(--dlg-k)) Pretendard,system-ui,sans-serif;text-align:left;padding:0 16px;box-shadow:0 3px 0 #f0d3df;cursor:pointer}
+#dlg .dlg-choices button:active{transform:translateY(2px);box-shadow:0 1px 0 #f0d3df}
+#dlg .dlg-hint{margin:10px 0 0;font-size:13px;color:#9a8792}
+#dlg .dlg-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+#dlg .dlg-acts button{border:0;border-radius:999px;background:#ffe3ee;color:#5a3a4a;font:600 14px Pretendard,system-ui,sans-serif;padding:8px 12px;cursor:pointer;box-shadow:0 2px 0 #f2c9d9}
+#dlg .dlg-acts button.ghost{background:#fff;border:2px solid #f3d6e2;box-shadow:none}
+#dlg .dlg-acts img{width:16px;height:16px;vertical-align:-3px;margin-right:2px}
+#dlg .dlg-pop{position:absolute;top:-58px;left:92px;background:#fff;border:2px solid #ffc2d7;color:#d0457a;font:800 15px Pretendard,system-ui,sans-serif;padding:4px 10px;border-radius:999px;opacity:0;pointer-events:none}
+#dlg .dlg-pop.on{animation:dlgPop 1.8s ease-out forwards}
+@keyframes dlgPop{0%{opacity:0;transform:translateY(8px)}15%{opacity:1;transform:translateY(0)}75%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
+#dlgCard{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);z-index:15;background:#fffafc;border:2px solid #f3d6e2;border-radius:24px;padding:18px 28px;text-align:center;box-shadow:0 6px 0 #f0d3df,0 16px 34px rgba(90,40,64,.25);font-family:Pretendard,system-ui,sans-serif;animation:dlgCard 1.5s ease forwards;pointer-events:none;max-width:calc(100vw - 48px)}
+#dlgCard small{display:block;font-size:14px;color:#9a8792;font-weight:600}#dlgCard b{display:block;margin-top:4px;font-size:22px;color:#3a2c33;font-weight:800}
+@keyframes dlgCard{0%{opacity:0;transform:translate(-50%,-40%) scale(.96)}18%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
+#dlgLog{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 60px);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);max-width:560px;margin:0 auto;z-index:17;background:#fffafc;border:2px solid #f3d6e2;border-radius:24px;display:flex;flex-direction:column;font-family:Pretendard,system-ui,sans-serif;color:#3a2c33;box-shadow:0 14px 30px rgba(90,40,64,.25)}
+#dlgLog .dl-head{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:2px solid #f6e3eb}#dlgLog .dl-head b{font-size:17px;margin-right:auto;white-space:nowrap}#dlgLog .dl-head span{white-space:nowrap}#dlgLog .dl-head{gap:5px}
+#dlgLog .dl-head button{border:2px solid #f3d6e2;background:#fff;border-radius:999px;padding:4px 9px;font-size:14px;font-weight:600;font-family:inherit;color:#5a3a4a;cursor:pointer;white-space:nowrap;line-height:1.2}#dlgLog .dl-head button.on{background:#ffe3ee}
+#dlgLog .dl-list{overflow:auto;padding:12px 16px 20px;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+#dlgLog .dl-row{font-size:calc(15px*var(--dlg-k));line-height:1.55}#dlgLog .dl-row b{display:block;font-size:13px;color:var(--nc,#d0457a)}#dlgLog .dl-row.narr{color:#7a6670}#dlgLog .dl-row.narr::before{content:'✦ ';color:#e79bbb}#dlgLog .dl-row.player{text-align:right}
 #talk #talkNote{font-size:18px;color:var(--soft);margin-top:-6px}
 #talk .act{flex-wrap:wrap}
 #talk .act.choices{flex-direction:column;align-items:stretch}
@@ -257,6 +300,11 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
     <button class="emo" id="emoBtn" aria-label="이모티콘">😊</button>
   </div>
 </div>
+<div id="dlgDim" hidden></div>
+<div id="dlg" hidden><div class="dlg-who"><img class="dlg-face" alt=""><span class="dlg-name"></span><span class="dlg-heart"><i>♥</i><em><s></s></em><b></b></span></div><span class="dlg-pop"></span>
+  <button class="dlg-logbtn" aria-label="대화 기록"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 4h10M3 8h10M3 12h6" stroke="#d0457a" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg></button>
+  <div class="dlg-body"><p class="dlg-text"></p><span class="dlg-more">▼</span></div><div class="dlg-choices"></div><p class="dlg-hint" hidden></p><div class="dlg-acts"></div></div>
+<div id="dlgLog" hidden><div class="dl-head"><b>대화 기록</b><span style="font-size:13px;color:#9a8792">글자</span><button data-k="s">작게</button><button data-k="m">보통</button><button data-k="l">크게</button><button data-x="1">닫기</button></div><div class="dl-list"></div></div>
 <div id="talk" class="pill" hidden><img id="talkIcon" alt="" hidden><h3 id="talkName"></h3><p id="talkText"></p><p id="talkNote" hidden></p><div class="act" id="talkAct"></div></div>
 <div id="dim"></div>
 <div id="npcPanel" class="pill" hidden></div>
@@ -1061,9 +1109,9 @@ function menuPanel(){
   const row = (key, icon, label, sub) => `<button class="np" data-id="${key}" style="grid-template-columns:auto 1fr;align-items:center"><span>${ui(icon,'mi')}</span><span class="np-name">${label}${sub ? ` <small>${sub}</small>` : ''}</span></button>`;
   openPanel('메뉴',
     `<div class="np" style="grid-template-columns:auto 1fr;align-items:center"><span>${ui('people','mi')}</span><span class="np-name">${esc(me.nick)} <small>${solo ? '혼자 보기 모드' : id ? '아이디 ' + esc(id) : '로그인 중'}</small></span></div>` +
-    row('bag','bag','가방','아이템·도감·거래') + row('closet','shirt','옷장','갈아입기') + row('quest','scroll','퀘스트','진행 중인 부탁') + row('ach','trophy','업적','칭호 고르기') + row('map','map','섬 지도','') +
+    row('bag','bag','가방','아이템·도감·거래') + row('closet','shirt','옷장','갈아입기') + row('quest','scroll','퀘스트','진행 중인 부탁') + row('ach','trophy','업적','칭호 고르기') + row('map','map','섬 지도','') + row('dlgsize','scroll','대화 글자 크기',{s:'작게',m:'보통',l:'크게'}[dlgSize]) + row('dlglog','scroll','대화 기록','최근 대사 다시 보기') +
     `<button class="btn ghost" id="logoutBig" style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px">${ui('door','mi')}로그아웃</button>`,
-    b=>({bag:showBag, closet:clothesPanel, quest:questLog, ach:achPanel, map:()=>{ $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }})[b.dataset.id]?.());
+    b=>({bag:showBag, closet:clothesPanel, quest:questLog, ach:achPanel, dlgsize:()=>{ setDlgSize({s:'m', m:'l', l:'s'}[dlgSize]); menuPanel(); }, dlglog:()=>{ $('npcPanel').hidden = true; dlgLogOpen(); }, map:()=>{ $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }})[b.dataset.id]?.());
   $('logoutBig').onclick = ()=>{ if (confirm('로그아웃할까요? 캐릭터와 집은 아이디에 저장돼 있어요.')) logout(); };
 }
 async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); }
@@ -1230,6 +1278,139 @@ function say(name, text, actions=[], note='', noClose=false, choice=false){
 }
 function closeTalk(){ $('talk').hidden = true; }
 
+// ===== 이야기 대화창: 초상화 + 이름표, 한 번에 한 덩어리, 타자 효과, 탭해서 계속 =====
+// story({n, beats:[{who:'npc'|'player'|'narr', text}], title:{sub, main, star}, choices:[[글, 함수]], acts:[[글, 함수]], hint})
+const NPC_COLOR = {hana:'#c93d6c', momo:'#a8561b', lulu:'#2f6aa8', dodo:'#5f5160', bibi:'#b4481a', toto:'#3f7a2e', bori:'#7f5230', mongsil:'#8a4fb3', tori:'#9a4f22', olly:'#6e5236', pengpeng:'#34466e', dandan:'#3b3b44', kongi:'#8a5a16', bami:'#b03a64'};
+const PLAYER_COLOR = '#c2457a', PAUSE = '\u0007', DLG_K = {s:.88, m:1, l:1.16};
+let dlgSize = 'm'; try { dlgSize = localStorage.getItem('pinky-dlgsize') || 'm'; } catch(e){}
+function setDlgSize(k){ dlgSize = DLG_K[k] ? k : 'm'; document.documentElement.style.setProperty('--dlg-k', DLG_K[dlgSize]); try { localStorage.setItem('pinky-dlgsize', dlgSize); } catch(e){} document.querySelectorAll('#dlgLog [data-k]').forEach(b=>b.classList.toggle('on', b.dataset.k===dlgSize)); }
+setDlgSize(dlgSize);
+const dlgHistory = []; let dlg = null, dlgNpc = null;
+const cho = ch => { const c = ch.charCodeAt(0) - 0xAC00; return c >= 0 && c < 11172 ? Math.floor(c/588) : -2; };
+// 말줄임표는 '……' 하나로, 더듬는 말("저, 저기")은 쉼표 대신 짧게 끊어요
+function dlgText(t){
+  t = fillName(String(t||'')).replace(/[.…]{2,}[,.]?/g, '……').replace(/……(\s*……)+/g, '……');
+  return t.replace(/(^|[\s"'“‘(~])([가-힣]{1,2}), (?=([가-힣]))/g, (m, a, b, c) => cho(b[0]) === cho(c) ? a + b + PAUSE + ' ' : m);
+}
+// 장(page)을 덩어리로: (지문)은 따로, 대사는 3 줄 안쪽으로
+function toBeats(pages, who='npc'){
+  const out = [];
+  for (const pg of pages){ if (!pg) continue; let buf = [];
+    const flush = () => { if (buf.length){ out.push({who, text:buf.join('\n')}); buf = []; } };
+    for (const line of dlgText(pg).split('\n')) for (const part of line.split(/(\([^()]*\))/)){
+      const p = part.trim(); if (!p) continue;
+      if (/^\(.*\)$/.test(p)){ flush(); out.push({who:'narr', text:p.slice(1, -1).trim()}); }
+      else { if (buf.length && (buf.join('').length + p.length > 52 || buf.length >= 3)) flush(); buf.push(p); }
+    }
+    flush();
+  }
+  return out;
+}
+function exprOf(t, who){
+  if (/울먹|눈물|흑|훌쩍|엉엉/.test(t)) return 'sad';
+  if (/히익|깜짝|앗|헉|\?!|!\?/.test(t)) return 'surprised';
+  if (/헤헤|하하|호호|허허|좋아|최고|고마|기뻐|신난|냠|웃/.test(t)) return 'happy';
+  if (t.includes(PAUSE) || /부끄|얼굴을 가린/.test(t)) return 'shy';
+  if (/음냐|졸려|하아암/.test(t)) return 'sleepy';
+  if (/흥\.|흥!|뭘 봐/.test(t)) return 'angry';
+  return who==='player' ? 'happy' : 'dot';
+}
+const faceCache = new Map();
+function faceURL(L, expr){
+  const key = JSON.stringify(L) + '|' + expr; if (faceCache.has(key)) return faceCache.get(key);
+  const c = document.createElement('canvas'); c.width = c.height = 132; const x = c.getContext('2d');
+  x.fillStyle = '#ffeaf2'; x.fillRect(0, 0, 132, 132);
+  x.setTransform(2.5, 0, 0, 2.5, 66, 66 + 2.5*44);
+  try { CH.figure(CH.mattePainter(x), L, 'down', 0, false, expr); } catch(e){}
+  const u = c.toDataURL(); if (faceCache.size > 120) faceCache.clear(); faceCache.set(key, u); return u;
+}
+let dlgPts0 = null; // 말 걸기 전 호감도 (오늘 첫 대화 +15 도 끝에 하트로 보여 주려고)
+const npcLook = n => (n && n.look && n.look.a1) || CH.defaultLook();
+function story(o){
+  closeTalk(); $('npcPanel').hidden = true;
+  if (dlg && dlg.timer) clearTimeout(dlg.timer);
+  dlg = {...o, i:-1, pts0: o.n ? (dlgPts0 ?? relOf(o.n.id).pts ?? 0) : 0, waiting:false}; dlgPts0 = null;
+  dlgNpc = o.n ? o.n.id : null;
+  document.body.classList.add('dlg-on'); $('dlgDim').hidden = false; $('dlg').hidden = false;
+  $('dlg').querySelector('.dlg-choices').innerHTML = ''; $('dlg').querySelector('.dlg-acts').innerHTML = ''; $('dlg').querySelector('.dlg-hint').hidden = true;
+  if (o.title){
+    const card = document.createElement('div'); card.id = 'dlgCard'; card.innerHTML = `<small>${o.title.star ? '★ ' : ''}${esc(o.title.sub)}</small>${o.title.main ? `<b>「${esc(o.title.main)}」</b>` : ''}`;
+    document.getElementById('dlgCard')?.remove(); document.body.appendChild(card); dlg.card = true; $('dlg').style.visibility = 'hidden';
+    const me0 = dlg; setTimeout(()=>{ card.remove(); if (dlg !== me0) return; dlg.card = false; $('dlg').style.visibility = ''; dlgNext(); }, 1500);
+  } else { $('dlg').style.visibility = ''; dlgNext(); }
+}
+// 지금 대화에 덩어리를 더 붙여서 이어 가요 (선택지를 고른 뒤 등)
+function dlgMore(beats, o={}){ if (!dlg) return; Object.assign(dlg, {beats:[...dlg.beats, ...beats], choices:o.choices||null, acts:o.acts||null, hint:o.hint||dlg.hint, waiting:false}); $('dlg').querySelector('.dlg-choices').innerHTML = ''; dlgNext(); }
+function dlgSpeaker(b){
+  const who = $('dlg').querySelector('.dlg-who'), n = dlg.n, isP = b.who==='player';
+  who.classList.toggle('off', b.who==='narr'); who.classList.toggle('right', isP);
+  if (b.who==='narr') return;
+  const L = isP ? me.look : npcLook(n), name = isP ? me.nick : (n ? n.name : '');
+  who.querySelector('.dlg-face').src = faceURL(L, exprOf(b.text, b.who));
+  const tagEl = who.querySelector('.dlg-name'); tagEl.textContent = name; tagEl.style.setProperty('--nc', isP ? PLAYER_COLOR : (n && NPC_COLOR[n.id]) || '#c93d6c');
+  if (n && !isP){ const r = relOf(n.id), h = heartsN(n); who.querySelector('.dlg-heart b').textContent = h; who.querySelector('.dlg-heart s').style.width = (h >= 10 ? 100 : ((r.pts||0) % 50) * 2) + '%'; }
+}
+function dlgNext(){
+  if (!dlg) return;
+  dlg.i++;
+  if (dlg.i >= dlg.beats.length) return dlgEnd();
+  const b = dlg.beats[dlg.i], el = $('dlg').querySelector('.dlg-text');
+  dlgSpeaker(b);
+  el.classList.toggle('narr', b.who==='narr');
+  dlgHistory.push({who:b.who, name: b.who==='player' ? me.nick : b.who==='narr' ? '' : (dlg.n ? dlg.n.name : ''), npc: dlg.n && dlg.n.id, text:b.text.replaceAll(PAUSE, '')}); if (dlgHistory.length > 300) dlgHistory.shift();
+  $('dlg').querySelector('.dlg-more').hidden = true;
+  const chars = Array.from(b.text); let k = 0, shown = '';
+  dlg.typing = true; dlg.full = b.text.replaceAll(PAUSE, '');
+  const step = () => {
+    if (!dlg || !dlg.typing) return;
+    if (k >= chars.length) return dlgTyped();
+    const ch = chars[k++];
+    if (ch === PAUSE){ dlg.timer = setTimeout(step, 300); return; }
+    shown += ch; el.textContent = shown; dlg.timer = setTimeout(step, 25); // 초당 40 자
+  };
+  el.textContent = ''; step();
+}
+function dlgTyped(){ if (!dlg) return; clearTimeout(dlg.timer); dlg.typing = false; $('dlg').querySelector('.dlg-text').textContent = dlg.full; if (dlg.i >= dlg.beats.length-1) return dlgEnd(); $('dlg').querySelector('.dlg-more').hidden = false; }
+function dlgEnd(){
+  if (!dlg) return; if (dlg.i >= dlg.beats.length) dlg.i = dlg.beats.length - 1;
+  dlg.waiting = true; $('dlg').querySelector('.dlg-more').hidden = true;
+  const box = $('dlg');
+  if (dlg.choices && dlg.choices.length){
+    box.querySelector('.dlg-choices').innerHTML = dlg.choices.map(([t], i)=>`<button data-c="${i}">${esc(t)}</button>`).join('');
+    box.querySelectorAll('.dlg-choices button').forEach(b=>b.onclick = e=>{ e.stopPropagation(); const fn = dlg.choices[+b.dataset.c][1]; box.querySelector('.dlg-choices').innerHTML = ''; fn(); });
+    return;
+  }
+  const acts = dlg.acts || (dlg.n ? npcActions(dlg.n) : []);
+  box.querySelector('.dlg-acts').innerHTML = acts.map(([t], i)=>`<button data-a="${i}">${deEmoji(esc(t))}</button>`).join('') + `<button class="ghost" data-a="x">닫기</button>`;
+  box.querySelectorAll('.dlg-acts button').forEach(b=>b.onclick = e=>{ e.stopPropagation(); const fn = b.dataset.a==='x' ? null : acts[+b.dataset.a][1]; dlgClose(); if (fn) fn(); });
+  const hint = box.querySelector('.dlg-hint'); hint.textContent = dlg.hint || ''; hint.hidden = !dlg.hint;
+  if (dlg.n){ const gain = (relOf(dlg.n.id).pts||0) - dlg.pts0; dlg.pts0 = relOf(dlg.n.id).pts||0; if (gain){ const pop = box.querySelector('.dlg-pop'); pop.textContent = `♥ ${gain > 0 ? '+' : ''}${gain}`; pop.classList.remove('on'); void pop.offsetWidth; pop.classList.add('on'); dlgSpeaker({who:'npc', text:''}); } }
+  dlg.done && dlg.done();
+}
+function dlgClose(){ if (dlg && dlg.timer) clearTimeout(dlg.timer); dlg = null; dlgNpc = null; $('dlg').hidden = true; $('dlgDim').hidden = true; document.body.classList.remove('dlg-on'); document.getElementById('dlgCard')?.remove(); }
+function dlgTap(){
+  if (!dlg || dlg.card) return;
+  if (dlg.typing) return dlgTyped();
+  if (dlg.waiting) return;
+  dlgNext();
+}
+// 탭 = 다음, 길게 누르면 빨리 넘기기
+{ let hold = 0, ff = 0, skipClick = false;
+  const down = e => { if (e.target.closest('button')) return; hold = setTimeout(()=>{ skipClick = true; ff = setInterval(()=>{ if (!dlg || dlg.waiting) return stop(); dlgTap(); }, 90); }, 450); };
+  const stop = () => { clearTimeout(hold); clearInterval(ff); hold = ff = 0; };
+  for (const id of ['dlg', 'dlgDim']){ const el = $(id);
+    el.addEventListener('pointerdown', down); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, stop);
+    el.addEventListener('click', e=>{ if (e.target.closest('button')) return; if (skipClick){ skipClick = false; return; } dlgTap(); }); }
+  $('dlg').querySelector('.dlg-logbtn').onclick = e=>{ e.stopPropagation(); dlgLogOpen(); };
+  $('dlgLog').addEventListener('click', e=>{ const b = e.target.closest('button'); if (!b) return; if (b.dataset.x) $('dlgLog').hidden = true; else if (b.dataset.k){ setDlgSize(b.dataset.k); dlgLogOpen(); } });
+}
+function dlgLogOpen(){
+  const L = $('dlgLog'); L.hidden = false; setDlgSize(dlgSize);
+  const list = L.querySelector('.dl-list');
+  list.innerHTML = dlgHistory.map(h=>`<div class="dl-row ${h.who}" style="--nc:${h.who==='player' ? PLAYER_COLOR : NPC_COLOR[h.npc] || '#c93d6c'}">${h.name ? `<b>${esc(h.name)}</b>` : ''}${esc(h.text).replace(/\n/g, '<br>')}</div>`).join('') || '<div class="dl-row narr">아직 나눈 대화가 없어요</div>';
+  list.scrollTop = list.scrollHeight;
+}
+
 // ===== 주민 호감도: 1~3 아는 사이 / 4~6 괜찮은 사람 / 7~9 친한 친구 / 10 소중한 짝 =====
 function relOf(id){ me.rel = me.rel || {}; return me.rel[id] = me.rel[id] || {pts:0, talkDay:0, giftDay:0}; }
 function heartsN(n){ return heartsOf(relOf(n.id).pts); }
@@ -1251,25 +1432,14 @@ function addPts(n, v){
 }
 // 하트 4·7·10이 되는 순간 그 주민의 이야기가 열려요
 function playEvents(n, list){
-  const h = list[0]; if (h==null) return closeTalk();
+  const h = list[0]; if (h==null) return dlgClose();
   const ev = (n.events && n.events[h]) || {title:'조금 더 가까워졌어요', pages:['(조금 더 가까워진 것 같다)'], keepsake:''};
-  const evCh = chaptersOf(n).find(c=>c.kind==='event' && c.key===h), rc = evCh && !relOf(n.id)['ev'+h] ? recallLine(n, evCh) : '';
-  const pages = [rc, ...ev.pages].filter(Boolean).map(fillName);
-  let i = 0;
-  const show = () => {
-    const last = i === pages.length-1;
-    const ch = chaptersOf(n).find(c=>c.kind==='event' && c.key===h), head = ch ? `★ ${chapterHead(n, ch)}` : `${n.name} · ${ev.title}`;
-    if (!last) return say(head, pages[i], [['다음', ()=>{ i++; show(); }]], `${i+1}/${pages.length}`, true);
-    const r = relOf(n.id); r['ev'+h] = true;
-    me.inv.gold += STORY_GOLD[h];
-    if (ev.keepsake){ me.keep = me.keep || {}; me.keep[n.id] = [...(me.keep[n.id]||[]), ev.keepsake]; }
-    saveMe(); renderHud();
-    const rest = list.slice(1);
-    r.storyDay = today();
-    say(head, pages[i], rest.length ? [['다음 이야기', ()=>playEvents(n, rest)]] : npcActions(n),
-      `관계가 '${TIERS[tierOf(h)]}'(으)로 깊어졌어요 · ${STORY_GOLD[h]} G${ev.keepsake ? ` · 기념품 '${ev.keepsake}'` : ''}`);
-  };
-  show();
+  const evCh = chaptersOf(n).find(c=>c.kind==='event' && c.key===h), r = relOf(n.id), rc = evCh && !r['ev'+h] ? recallLine(n, evCh) : '';
+  const first = !r['ev'+h];
+  if (first){ r['ev'+h] = true; me.inv.gold += STORY_GOLD[h]; if (ev.keepsake){ me.keep = me.keep || {}; me.keep[n.id] = [...(me.keep[n.id]||[]), ev.keepsake]; } r.storyDay = today(); saveMe(); renderHud(); }
+  const rest = list.slice(1);
+  const reward = first ? [{who:'narr', text:`관계가 '${TIERS[tierOf(h)]}'(으)로 깊어졌어요 · ${STORY_GOLD[h]} G${ev.keepsake ? ` · 기념품 '${ev.keepsake}'` : ''}`}] : [];
+  story({n, title:{sub:`${n.name} 이야기 · ${evCh ? evCh.i+1 : ''}화`, main:ev.title, star:true}, beats:[...toBeats([rc, ...ev.pages]), ...reward], acts: rest.length ? [['다음 이야기', ()=>playEvents(n, rest)]] : npcActions(n), hint: rest.length ? '' : storyHint(n)});
 }
 function npcActions(n){
   const r = relOf(n.id), acts = [...questActions(n)];
@@ -1307,8 +1477,7 @@ function giveGift(n, item){
   const text = pickLine(n.react && n.react[taste], n.id+'r') || {loved:'정말 좋아해! 고마워!', liked:'고마워!', neutral:'고마워.', disliked:'음.... 마음만 받을게.'}[taste];
   const note = `${itemName(item)} 선물 · 호감도 ${GIFT_PTS[taste]>0?'+':''}${GIFT_PTS[taste]}`;
   const more = storyButton(n);
-  if (more.length) say(title(n), text, more, note + ' · 무언가 이야기하고 싶은 눈치예요');
-  else say(title(n), text, [], [note, storyHint(n)].filter(Boolean).join(' · '));
+  story({n, beats:[{who:'narr', text:`${itemName(item)}을(를) 선물했어요`}, ...toBeats([text])], acts: more.length ? more : [], hint: more.length ? '무언가 이야기하고 싶은 눈치예요' : storyHint(n)});
 }
 // ===== 주민 이야기: 하트마다 한 화씩 열려요 =====
 // ♥0 1화 → ♥1 2화 → ♥2 3화 → ♥3 4화 → ♥4 스토리 → ♥5 → ♥6 → ♥7 스토리 → ♥8 → ♥9 → ♥10 스토리 → 그 뒤 이야기 2 화 (마지막 화는 다음 날)
@@ -1357,39 +1526,24 @@ function playNext(n, opening='', note=''){
 // 호감도가 오른 뒤: 새 이야기가 열렸으면 '이야기 듣기' 버튼을 붙여요
 function storyButton(n){ const nx = nextChapter(n); return nx.ready ? [[nx.ch.kind==='event' ? '★ 이야기 듣기' : '이야기 듣기', ()=>playNext(n)]] : []; }
 function runTalk(n, ch, opening, note){
-  const talk = ch.talk, total = chaptersOf(n).length, head = chapterHead(n, ch, total);
-  const lines = [recallLine(n, ch), ...talk.lines].filter(Boolean).map(fillName);
-  let i = 0;
-  const show = () => {
-    const nt = i===0 ? [note, `♥${heartsN(n)} · ${TIERS[tierOf(heartsN(n))]}`].filter(Boolean).join(' · ') : `${i+1}/${lines.length}`;
-    if (i < lines.length-1) return say(head, lines[i], [['다음', ()=>{ i++; show(); }]], nt, true);
-    say(head, lines[i], talk.choices.map(c=>[fillName(c.text), ()=>choose(c)]), nt, true, true);
-  };
+  const talk = ch.talk, pre = note ? [{who:'narr', text:note}] : [];
   const choose = c => {
-    const r = relOf(n.id); let gain = 0;
-    if (r.choiceDay !== today()){ r.choiceDay = today(); gain = (c.pts||0) * CHOICE_MUL; addPts(n, gain); }
+    const r = relOf(n.id);
+    if (r.choiceDay !== today()){ r.choiceDay = today(); addPts(n, (c.pts||0) * CHOICE_MUL); }
     r.pick = {...(r.pick||{}), [talk.id]: talk.choices.indexOf(c)};
     r.seen = [...seenSet(r)].filter(x=>x!==talk.id).concat(talk.id).slice(-60).join(','); r.storyDay = today();
     saveMe(); renderHud();
-    const rep = (c.reply||['...']).map(fillName); let j = 0;
-    const after = () => {
-      if (j < rep.length-1) return say(head, rep[j], [['다음', ()=>{ j++; after(); }]], '', true);
-      const nt = [gain ? `대답에 ${gain>0 ? '마음이 열렸어요' : '조금 서운해해요'} · 호감도 ${gain>0?'+':''}${gain}` : '', storyHint(n)].filter(Boolean).join(' · ');
-      const more = storyButton(n);
-      say(head, rep[j], more.length ? more : npcActions(n), more.length ? [nt, '무언가 더 이야기하고 싶은 눈치예요'].filter(Boolean).join(' · ') : nt, !!more.length);
-    };
-    after();
+    const more = storyButton(n);
+    dlgMore([{who:'player', text:dlgText(c.text)}, ...toBeats(c.reply||['……'])], {acts: more.length ? [...more, ...npcActions(n)] : npcActions(n), hint: more.length ? '무언가 더 이야기하고 싶은 눈치예요' : storyHint(n)});
   };
-  show();
+  story({n, title:{sub:`${n.name} 이야기 · ${ch.i+1}화`, main:ch.title}, beats:[...pre, ...toBeats([recallLine(n, ch), ...talk.lines])], choices: talk.choices.map(c=>[dlgText(c.text).replaceAll(PAUSE, ''), ()=>choose(c)])});
 }
 // 지난 이야기 다시 보기 (호감도는 안 올라요)
 function storyReplay(n){
   const r = relOf(n.id), list = chaptersOf(n), done = list.filter(c=>chapterDone(n, r, c));
   if (!done.length) return say(title(n), '아직 들은 이야기가 없어요.', npcActions(n));
   say(`${n.name} 이야기 · ${done.length}/${list.length}화`, '다시 보고 싶은 이야기를 골라요.', done.map(c=>[`${c.i+1}화${c.kind==='event' ? ' ★' : ''} ${c.title}`, ()=>{
-    const pages = (c.kind==='event' ? n.events[c.key].pages : c.talk.lines).map(fillName); let k = 0;
-    const show = () => say(chapterHead(n, c, list.length), pages[k], k < pages.length-1 ? [['다음', ()=>{ k++; show(); }]] : [['목록', ()=>storyReplay(n)]], `${k+1}/${pages.length}`, k < pages.length-1);
-    show();
+    story({n, title:{sub:`${n.name} 이야기 · ${c.i+1}화`, main:c.title, star:c.kind==='event'}, beats:toBeats(c.kind==='event' ? n.events[c.key].pages : c.talk.lines), acts:[['목록', ()=>storyReplay(n)]]});
   }]), '★ = 관계가 깊어진 날의 이야기');
 }
 // ===== 상황별 대사: 지금 섬·플레이어 상태에 맞는 상황을 우선순위대로 골라요 (대사는 situations.js) =====
@@ -1447,7 +1601,7 @@ function situationLine(n, isNew){
 function talkTo(n){
   const r = relOf(n.id), first = r.talkDay !== today();
   const sit = situationLine(n, !r.pts && !r.talkDay); // 호감도가 오르기 전에 상황을 봐야 '첫 만남'을 알아요
-  let note = ''; questEvent('talk', n.id);
+  let note = ''; questEvent('talk', n.id); dlgPts0 = r.pts || 0;
   if (first){ r.talkDay = today(); addPts(n, TALK_PTS); note = `오늘 첫 대화 · 호감도 +${TALK_PTS}`; }
   if (n.id==='dodo' && !me.inv.pick){ me.inv.pick = true; note = [note, '도도에게 곡괭이를 받았어요! 바위를 눌러 캐 봐요'].filter(Boolean).join(' · '); }
   if (n.id==='bibi' && !me.inv.sword){ me.inv.sword = true; me.inv.weapon = 'w1'; me.inv.weapons = ['w1']; note = [note, '비비에게 나무 검을 받았어요! 몬스터를 바라보고 휘두르기(F 키)를 눌러 싸워요'].filter(Boolean).join(' · '); }
@@ -1464,12 +1618,12 @@ function talkTo(n){
   }
   if (n.id==='hana' && me.quest>=6 && !countOf('seed') && !me.gardens.some(g=>g&&g.crop) && me.inv.gold < CROPS.c01.seed){ invAdd('seed:c01', 2); toast('하나가 토마토 씨앗 2 개를 나눠 줬어요'); }
   saveMe(); renderHud();
-  if (!text && playNext(n, '', note)) return; // 들을 차례인 이야기가 있으면 바로 들려줘요 (하트마다 한 화)
+  if (!text && playNext(n, '', note.replace(/^오늘 첫 대화 · 호감도 \+\d+( · )?/, ''))) return; // 들을 차례인 이야기가 있으면 바로 들려줘요 (하트마다 한 화)
   // 아직 다음 이야기 차례가 아니면: 지금 하트에 맞는 평소 말 (하트가 오를 때마다 조금씩 달라져요)
   const h = heartsN(n), pool = (n.lines && n.lines[tierOf(h)]) || [], heartLine = pool.length ? fillName(pool[h % pool.length]) : '', aft = afterLine(n) || heartLine;
   if (!text) text = (first ? [opening, aft].filter(Boolean).join('\n') : aft) || '...';
-  note = [note, storyHint(n)].filter(Boolean).join(' · ');
-  say(title(n), text, npcActions(n), note);
+  const sys = note.replace(/^오늘 첫 대화 · 호감도 \+\d+( · )?/, ''); // 호감도는 끝나고 하트로 보여 줘요
+  story({n, beats:[...(sys ? [{who:'narr', text:sys}] : []), ...toBeats([text])], hint: storyHint(n)});
 }
 
 // ===== 주민 목록 / 지도 =====
@@ -2682,8 +2836,7 @@ function questEvent(type, key, n=1){
   if (changed) saveMe();
 }
 function questPages(n, pages, after, note){ // 페이지를 차례로 보여 주고 마지막에 after 실행
-  const show = i => say(title(n), fillName(pages[i]), i < pages.length-1 ? [['다음', ()=>show(i+1)]] : (after ? [['확인', after]] : npcActions(n)), i===pages.length-1 ? (note||'') : '', true);
-  show(0);
+  story({n, beats:[...toBeats(pages), ...(note ? [{who:'narr', text:note}] : [])], acts: after ? [['확인', after]] : npcActions(n)});
 }
 const qTypeLabel = {collect:'가져오기', catch:'낚기', kill:'물리치기', mine:'캐기', cook:'요리하기', sell:'팔기', gift:'선물하기', talk:'말 걸기'};
 function qTarget(qq){ if (qq.type==='talk' || qq.type==='gift') return NPC[qq.key]?.name || qq.key; if (qq.type==='sell') return SELL_CATS[qq.key] || qq.key; if (qq.type==='kill') return MONSTERS[qq.key]?.name || qq.key; return itemName(qq.key); }
@@ -2907,6 +3060,7 @@ $('chatin').addEventListener('blur', ()=>{ setTimeout(keyboardLayout, 50); setTi
 const typing = () => document.activeElement && document.activeElement.tagName==='INPUT';
 addEventListener('keydown', e=>{
   if (!me || obStep) return;
+  if (dlg && !typing()){ if (e.key==='Enter' || e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); dlgTap(); } else if (e.key==='Escape' && dlg.waiting) dlgClose(); return; }
   if (e.key==='Enter'){ if (typing()){ sendChat(); } else { $('chatin').focus(); } e.preventDefault(); return; }
   if (e.key==='Escape'){ closeTalk(); $('chatin').blur(); return; }
   if (typing()) return;
@@ -3146,7 +3300,7 @@ function frame(t){
     drawRocks(d, t);
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
-      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50), null)})),
+      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'), label:()=>{ tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-80); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
