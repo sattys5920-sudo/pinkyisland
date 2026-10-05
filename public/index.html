@@ -482,7 +482,9 @@ const NPCS = [
 for (const n of NPCS){ n.homeX = n.x; n.homeY = n.y; Object.assign(n, NPC_TEXT[n.id] || {}); }
 queueMicrotask(()=>{ for (const n of NPCS) n.look = NPC_LOOKS.find(v=>v.name===n.name) || {kind:n.sp.kind, fur:n.sp.fur, acc:n.sp.acc}; });
 const NPC = Object.fromEntries(NPCS.map(n=>[n.id,n]));
-const GIFT_PTS = {loved:40, liked:25, neutral:15, disliked:-10};
+// 호감도 속도: 매일 대화 + 좋아하는 선물 + 이틀에 한 번 퀘스트면 일주일쯤에 ♥10 (하트 1 개 = 50)
+const TALK_PTS = 15, CHOICE_MUL = 2;
+const GIFT_PTS = {loved:50, liked:35, neutral:20, disliked:-10};
 const TIERS = [null, '아는 사이', '괜찮은 사람', '친한 친구', '소중한 짝'];
 const STORY_GOLD = {4:100, 7:300, 10:1000};
 const DAILY_GOLD = 150;
@@ -1197,6 +1199,7 @@ function addPts(n, v){
   return [4,7,10].filter(h => before < h && after >= h && !r['ev'+h]);
 }
 // 하트 4·7·10이 되는 순간 그 주민의 이야기가 열려요
+function missedEvents(n){ const r = relOf(n.id), h = heartsN(n); return [4,7,10].filter(k => h >= k && !r['ev'+k]); }
 function playEvents(n, list){
   const h = list[0]; if (h==null) return closeTalk();
   const ev = (n.events && n.events[h]) || {title:'조금 더 가까워졌어요', pages:['(조금 더 가까워진 것 같다)'], keepsake:''};
@@ -1273,7 +1276,7 @@ function runTalk(n, talk, opening, note, ups){
   };
   const choose = c => {
     const r = relOf(n.id); let gain = 0, more = [];
-    if (r.choiceDay !== today()){ r.choiceDay = today(); gain = c.pts||0; more = addPts(n, gain); }
+    if (r.choiceDay !== today()){ r.choiceDay = today(); gain = (c.pts||0) * CHOICE_MUL; more = addPts(n, gain); }
     r.seen = [...(r.seen||'').split(',').filter(Boolean).filter(x=>x!==talk.id), talk.id].slice(-40).join(',');
     saveMe(); renderHud();
     const rep = (c.reply||['...']).map(fillName); let j = 0;
@@ -1346,7 +1349,8 @@ function talkTo(n){
   const r = relOf(n.id), first = r.talkDay !== today();
   const sit = situationLine(n, !r.pts && !r.talkDay); // 호감도가 오르기 전에 상황을 봐야 '첫 만남'을 알아요
   let note = '', ups = []; questEvent('talk', n.id);
-  if (first){ r.talkDay = today(); ups = addPts(n, 10); note = '오늘 첫 대화 · 호감도 +10'; }
+  if (first){ r.talkDay = today(); ups = addPts(n, TALK_PTS); note = `오늘 첫 대화 · 호감도 +${TALK_PTS}`; }
+  ups = [...new Set([...ups, ...missedEvents(n)])].sort((a,b)=>a-b); // 퀘스트·심부름 보상 등으로 넘어가서 못 본 이야기도 이번에 들려줘요
   if (n.id==='dodo' && !me.inv.pick){ me.inv.pick = true; note = [note, '도도에게 곡괭이를 받았어요! 바위를 눌러 캐 봐요'].filter(Boolean).join(' · '); }
   if (n.id==='bibi' && !me.inv.sword){ me.inv.sword = true; me.inv.weapon = 'w1'; me.inv.weapons = ['w1']; note = [note, '비비에게 나무 검을 받았어요! 몬스터를 바라보고 휘두르기(F 키)를 눌러 싸워요'].filter(Boolean).join(' · '); }
   if (n.id==='lulu' && !me.inv.rod){ me.inv.rod = true; note = [note, '루루에게 낚싯대를 받았어요! 물을 눌러 낚시해 봐요'].filter(Boolean).join(' · '); }
@@ -2608,10 +2612,10 @@ function questActions(n){
     if (qq.type==='collect') invAdd(qq.key, -qq.n);
     q.done.push(qq.id); delete q.active[n.id]; delete q.prog[qq.id];
     me.inv.gold += qq.reward.gold||0; for (const [k,c] of (qq.reward.items||[])){ if (k.startsWith('hat:')){ CLOSET().push(k.slice(4)); } else invAdd(k, c); }
-    if (qq.reward.pts) addPts(n, qq.reward.pts);
+    const ups = qq.reward.pts ? addPts(n, qq.reward.pts) : [];
     stat('questsDone'); saveMe(); renderHud(); setExpr('happy', 3000);
     const rw = [qq.reward.gold ? qq.reward.gold+' G' : '', ...(qq.reward.items||[]).map(([k,c])=>k.startsWith('hat:') ? `${CH.HATS[k.slice(4)]?.name||'모자'}` : `${itemName(k)} ${c}`), qq.reward.pts ? `호감도 +${qq.reward.pts}` : ''].filter(Boolean).join(' · ');
-    questPages(n, qq.done, null, '보상: '+rw); }]];
+    questPages(n, qq.done, ups.length ? ()=>playEvents(n, ups) : null, '보상: '+rw + (ups.length ? ' · 무언가 이야기하고 싶은 눈치예요' : '')); }]];
   return [[`📜 진행 중: ${qq.title} (${questCount(qq)}/${qq.n})`, ()=>say(title(n), fillName(qq.progress), npcActions(n), `${qTypeLabel[qq.type]}: ${qTarget(qq)} ${questCount(qq)}/${qq.n}`)]];
 }
 function questLog(){
