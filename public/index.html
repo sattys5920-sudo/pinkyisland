@@ -554,17 +554,17 @@ const THEME = {
 
 // 동물 주민 12 명: 자리와 모습, 좋아하는 선물 (대사는 npcs.js)
 const NPCS = [
-  {id:'hana', name:'하나', animal:'토끼', role:'꼬마 농부', zone:'meadow', x:1040, y:520, sp:{kind:'rabbit', fur:'#fff6f0', acc:'straw'}, tastes:{loved:['crop'], liked:['seed'], disliked:['ore']}},
-  {id:'momo', name:'모모', animal:'고양이', role:'케이크 가게 주인', zone:'village', x:420, y:412, sp:{kind:'cat', fur:'#ffc98f', acc:'apron'}, tastes:{loved:['crop:c12','crop:c30','dish'], liked:['crop','fish'], disliked:['loot']}},
+  {id:'hana', name:'하나', animal:'여우', role:'꼬마 농부', zone:'meadow', x:1040, y:520, sp:{kind:'fox', fur:'#ff9a4d', acc:'straw'}, tastes:{loved:['crop'], liked:['seed'], disliked:['ore']}},
+  {id:'momo', name:'모모', animal:'호랑이', role:'케이크 가게 주인', zone:'village', x:420, y:412, sp:{kind:'cat', fur:'#ffc98f', acc:'apron'}, tastes:{loved:['crop:c12','crop:c30','dish'], liked:['crop','fish'], disliked:['loot']}},
   {id:'dodo', name:'도도', animal:'두더지', role:'광부 아저씨', zone:'minegate', x:960, y:720, sp:{kind:'mole', fur:'#7a6a72', acc:'helmet'}, tastes:{loved:['ore'], liked:['crop:c07'], disliked:['crop:c09','crop:c13','crop:c18','crop:c20','crop:c26']}},
-  {id:'toto', name:'토토', animal:'거북이', role:'섬 촌장 할아버지', zone:'village', x:720, y:620, sp:{kind:'turtle', fur:'#a8dc8f', acc:'glasses'}, tastes:{loved:['crop:c28'], liked:['crop','fish']}},
+  {id:'toto', name:'토토', animal:'고래', role:'섬 촌장 할아버지', zone:'village', x:720, y:620, sp:{kind:'turtle', fur:'#a8dc8f', acc:'glasses'}, tastes:{loved:['crop:c28'], liked:['crop','fish']}},
   {id:'bori', name:'보리', animal:'곰', role:'목수·대장장이', zone:'workshop', x:520, y:552, sp:{kind:'bear', fur:'#b98256', acc:'none'}, tastes:{loved:['crop:c29'], liked:['ore']}},
   {id:'mongsil', name:'몽실', animal:'양', role:'옷가게 재봉사', zone:'village', x:1180, y:412, sp:{kind:'sheep', fur:'#fffaf0', acc:'bow'}, tastes:{loved:['crop:c26'], liked:['crop:c09','crop:c13','crop:c18'], disliked:['fish','loot']}},
   {id:'tori', name:'토리', animal:'다람쥐', role:'우체부', zone:'village', x:1180, y:912, roam:true, sp:{kind:'squirrel', fur:'#d9894f', acc:'bag'}, tastes:{loved:['crop:c11'], liked:['crop'], disliked:['ore']}},
-  {id:'olly', name:'올리', animal:'부엉이', role:'박물관 관장', zone:'museum', x:560, y:472, sp:{kind:'owl', fur:'#a98366', acc:'none'}, tastes:{liked:['ore','fish','loot']}},
+  {id:'olly', name:'올리', animal:'사슴', role:'박물관 관장', zone:'museum', x:560, y:472, sp:{kind:'owl', fur:'#a98366', acc:'none'}, tastes:{liked:['ore','fish','loot']}},
   {id:'pengpeng', name:'펭펭', animal:'펭귄', role:'등대지기', zone:'beach', x:1130, y:660, sp:{kind:'penguin', fur:'#454a63', acc:'none'}, tastes:{loved:['fish']}},
   {id:'dandan', name:'단단', animal:'판다', role:'카페 사장', zone:'village', x:420, y:912, sp:{kind:'panda', fur:'#ffffff', acc:'chef'}, tastes:{loved:['crop','fish','dish'], disliked:['ore']}},
-  {id:'kongi', name:'콩이', animal:'강아지', role:'마을 경비대', zone:'village', x:880, y:900, sp:{kind:'dog', fur:'#f2d2a0', acc:'collar'}, tastes:{liked:['loot','fish'], disliked:['crop:c08']}},
+  {id:'kongi', name:'콩이', animal:'늑대', role:'마을 경비대', zone:'village', x:880, y:900, sp:{kind:'dog', fur:'#f2d2a0', acc:'collar'}, tastes:{liked:['loot','fish'], disliked:['crop:c08']}},
   {id:'bami', name:'밤이', animal:'고슴도치', role:'꽃집 주인', zone:'meadow', x:460, y:452, sp:{kind:'hedgehog', fur:'#e8c9a6', acc:'flower'}, tastes:{loved:['crop:c09','crop:c13','crop:c18','crop:c20','crop:c26'], liked:['seed'], disliked:['fish','loot']}},
 ];
 for (const n of NPCS){ if (n.zone!=='home'){ n.x = zk(n.x); n.y = zk(n.y); } n.homeX = n.x; n.homeY = n.y; Object.assign(n, NPC_TEXT[n.id] || {}); }
@@ -870,28 +870,28 @@ function critter(d, x, y, v, t, walk=true, s=1){
 
 // 주민 모습 (이름으로 찾아요)
 const NPC_LOOKS = [
-  {name:'하나', animal:'토끼', kind:'rabbit', fur:'#fff6f0', fur2:'#ffffff', outfit:'overall', color:'#ffe9a8', color2:'#ff9fbf', pants:'#ff9fbf', acc:'straw', eyes:'round'},
-  {name:'모모', animal:'고양이', kind:'cat', fur:'#ffc98f', fur2:'#fff3e0', outfit:'apron', color:'#ff9fc4', color2:'#ffffff', acc:'', eyes:'smile'},
+  {name:'하나', animal:'여우', kind:'fox', fur:'#ff9a4d', fur2:'#ffffff', outfit:'overall', color:'#ffe9a8', color2:'#ff9fbf', pants:'#ff9fbf', acc:'straw', eyes:'round'},
+  {name:'모모', animal:'호랑이', kind:'cat', fur:'#ffa94d', fur2:'#fff3e0', outfit:'apron', color:'#ff9fc4', color2:'#ffffff', acc:'', eyes:'smile'},
   {name:'도도', animal:'두더지', kind:'mole', fur:'#6f6470', outfit:'overall', color:'#9aa0a6', color2:'#d9823b', pants:'#d9823b', acc:'helmet'},
-  {name:'토토', animal:'거북이', kind:'turtle', fur:'#a8dc8f', outfit:'vest', color:'#f3ead2', color2:'#c98e5b', pants:'#8a7a6a', acc:'glasses', eyes:'smile'},
+  {name:'토토', animal:'고래', kind:'turtle', fur:'#7fa8d9', outfit:'vest', color:'#f3ead2', color2:'#c98e5b', pants:'#8a7a6a', acc:'glasses', eyes:'smile'},
   {name:'보리', animal:'곰', kind:'bear', fur:'#b98256', fur2:'#ecd2b0', outfit:'apron', color:'#7cc4a0', color2:'#8a5a3b', pants:'#5b4a3f', acc:'', eyes:'round'},
   {name:'몽실', animal:'양', kind:'sheep', fur:'#ffffff', face:'#f6e0d0', outfit:'dress', color:'#c9a6ff', acc:'bow', eyes:'lash'},
   {name:'토리', animal:'다람쥐', kind:'squirrel', fur:'#d9894f', outfit:'uniform', color:'#5b8cff', pants:'#4b5aa8', acc:'bag', eyes:'round'},
-  {name:'올리', animal:'부엉이', kind:'owl', fur:'#a98366', fur2:'#f3dcc4', outfit:'vest', color:'#fff7ee', color2:'#5c7a4f', pants:'#6b5a4a', acc:''},
+  {name:'올리', animal:'사슴', kind:'owl', fur:'#c98e5b', fur2:'#f3dcc4', outfit:'vest', color:'#fff7ee', color2:'#5c7a4f', pants:'#6b5a4a', acc:''},
   {name:'펭펭', animal:'펭귄', kind:'penguin', fur:'#454a63', outfit:'sailor', color:'#ffffff', color2:'#5b8cff', pants:'#454a63', acc:''},
   {name:'단단', animal:'판다', kind:'panda', fur:'#ffffff', outfit:'chef', color:'#ffffff', acc:'chef', eyes:'round'},
-  {name:'콩이', animal:'강아지', kind:'dog', fur:'#f2d2a0', fur2:'#fff3df', outfit:'uniform', color:'#5361b3', pants:'#3d4785', acc:'police', eyes:'round'},
+  {name:'콩이', animal:'늑대', kind:'dog', fur:'#9aa3b5', fur2:'#fff3df', outfit:'uniform', color:'#5361b3', pants:'#3d4785', acc:'police', eyes:'round'},
   {name:'밤이', animal:'고슴도치', kind:'hedgehog', fur:'#f3d6b8', fur2:'#fff1e3', outfit:'dress', color:'#ffb3d9', acc:'flower', eyes:'lash'},
 ];
 // 주민 새 모습: 플레이어와 같은 몸에 동물 귀·주둥이·꼬리를 붙이고, 하는 일에 맞는 옷을 입어요 (모자는 안 써요)
 const NPC_A1 = {
-  하나:['rabbit','#fff6f0',{set:'s09', shoes:'sh03'}], 모모:['cat','#ffc98f',{set:'s08', acc:'bowtie', shoes:'sh09'}],
+  하나:['fox','#ff9a4d',{set:'s09', shoes:'sh03'}], 모모:['tiger','#ffa94d',{set:'s08', acc:'bowtie', shoes:'sh09'}],
   도도:['mole','#7a6a72',{top:'t14', bottom:'b21', shoes:'sh05'}],
-  토토:['turtle','#a8dc8f',{top:'t28', bottom:'b04', acc:'glassR', shoes:'sh09'}],
+  토토:['whale','#7fa8d9',{top:'t28', bottom:'b04', acc:'glassR', shoes:'sh09'}],
   보리:['bear','#b98256',{top:'t14', bottom:'b01', shoes:'sh05', cc:{top:3}}], 몽실:['sheep','#fffaf0',{set:'s02', shoes:'sh12'}],
-  토리:['squirrel','#d9894f',{top:'t17', bottom:'b30', acc:'backpack', shoes:'sh01'}], 올리:['owl','#a98366',{set:'s13', acc:'glassR', shoes:'sh09'}],
+  토리:['squirrel','#d9894f',{top:'t17', bottom:'b30', acc:'backpack', shoes:'sh01'}], 올리:['deer','#c98e5b',{set:'s13', acc:'glassR', shoes:'sh09'}],
   펭펭:['penguin','#454a63',{top:'t02', bottom:'b11', acc:'scarf', shoes:'sh13', cc:{acc:3}}], 단단:['panda','#ffffff',{set:'s08', acc:'bowtie', shoes:'sh11', cc:{acc:2}}],
-  콩이:['dog','#f2d2a0',{set:'s21', shoes:'sh11'}], 밤이:['hedgehog','#e8c9a6',{top:'t25', bottom:'b20', shoes:'sh12'}],
+  콩이:['wolf','#9aa3b5',{set:'s21', shoes:'sh11'}], 밤이:['hedgehog','#e8c9a6',{top:'t25', bottom:'b20', shoes:'sh12'}],
 };
 for (const v of NPC_LOOKS){ const a = NPC_A1[v.name]; if (!a) continue; const [kind, fur, look] = a;
   v.a1 = {skin:fur, hair:'none', hairColor:'#000000', top:'t01', bottom:'b01', set:'', hat:'none', acc:'none', shoes:'sh01', expr:'dot', cc:{}, ...look,
