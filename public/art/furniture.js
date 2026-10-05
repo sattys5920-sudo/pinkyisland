@@ -16,7 +16,7 @@ export const FURN_ALL = [
   ['오븐', 1400, 'ore:o14', 3, 'oven', '#ff9fbf'], ['화장대', 1500, 'ore:o12', 3, 'vanity', '#ffd3e2'], ['캣타워', 1700, 'ore:o19', 2, 'catTower', '#f0d5b0'],
   ['욕조', 2000, 'ore:o15', 3, 'bath', '#f4fbff'], ['도넛 의자', 2200, 'ore:o18', 2, 'donutChair', '#ff9fc4'], ['마카롱 타워', 2800, 'ore:o24', 2, 'macaronTower', '#ffd6e8'],
   ['주크박스', 3200, 'ore:o20', 3, 'jukebox', '#ff7a90'], ['폭신 빈백', 3600, 'ore:o26', 2, 'beanbag', '#9fe0c9'], ['컵케이크 조명', 4400, 'ore:o29', 2, 'cupcakeLamp', '#fff3a8'],
-  ['동그란 TV', 5000, 'ore:o27', 2, 'tv', '#ffb3d9'], ['초승달 침대', 8000, 'ore:o37', 2, 'moonBed', '#fff0a0'],
+  ['동그란 TV', 1500, 'ore:o01', 5, 'tv', '#ffb3d9'], ['초승달 침대', 8000, 'ore:o37', 2, 'moonBed', '#fff0a0'],
   ['오투모 인형', 3500, 'ore:o25', 3, 'otumoDoll', '#fbfbfd'], ['토끼 인형', 700, 'ore:o16', 1, 'bunnyDoll', '#ffe6ee'], ['펭귄 인형', 700, 'ore:o10', 2, 'pengDoll', '#5b6a8a'],
 ];
 

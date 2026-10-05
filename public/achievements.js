@@ -51,8 +51,8 @@ export const ACHIEVEMENTS = [
   { id:'sold_1000',  name:'거래의 달인',       desc:'아이템 1000 개 판매하기',        stat:'sold',        n:1000,    reward:{gold:5000,  title:'거래의 달인'},       icon:'🤝' },
   { id:'mkt_sold_10', name:'플리마켓 사장님',  desc:'장터에서 10 번 판매하기',        stat:'marketSold',  n:10,      reward:{gold:1000,  title:'플리마켓 사장님'},   icon:'🏪' },
   { id:'mkt_bought_10', name:'눈 밝은 쇼핑러', desc:'장터에서 10 번 구매하기',        stat:'marketBought', n:10,     reward:{gold:1000,  title:'눈 밝은 쇼핑러'},    icon:'🛍️' },
-  { id:'stock_10k',  name:'행운의 투자자',     desc:'주식으로 10,000 골드 수익 내기', stat:'stockProfit', n:10000,  reward:{gold:3000,  title:'행운의 투자자'},     icon:'📈' },
-  { id:'stock_100k', name:'월가의 핑키',       desc:'주식으로 100,000 골드 수익 내기', stat:'stockProfit', n:100000, reward:{gold:15000, title:'월가의 핑키'},      icon:'🐂' },
+  { id:'stock_10k',  name:'행운의 투자자',     desc:'홈쇼핑 별사탕으로 10,000 골드 수익 내기', stat:'stockProfit', n:10000,  reward:{gold:3000,  title:'행운의 투자자'},     icon:'📈' },
+  { id:'stock_100k', name:'월가의 핑키',       desc:'홈쇼핑 별사탕으로 100,000 골드 수익 내기', stat:'stockProfit', n:100000, reward:{gold:15000, title:'월가의 핑키'},      icon:'🐂' },
 
   // ── 패션 & 집 ──
   { id:'bought_10',  name:'옷장 꾸미기',       desc:'옷 10 벌 구매하기',              stat:'bought',      n:10,      reward:{gold:800,   title:'옷장 꾸미기'},       icon:'👗' },
