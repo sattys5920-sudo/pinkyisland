@@ -218,6 +218,9 @@ body.typing #chatin{background:#fff}
 .adm-r i{width:9px;height:9px;border-radius:50%;background:#6e6470;display:inline-block}.adm-r i.on{background:#7dff9a}
 .adm-chat-list{overflow:auto;display:flex;flex-direction:column;gap:2px;min-height:120px}.adm-day{align-self:center;font-size:16px;opacity:.7;background:rgba(255,255,255,.1);border-radius:10px;padding:0 10px;margin:6px 0 2px}
 .adm-msg{display:flex;gap:8px;align-items:baseline;line-height:1.15}.adm-msg small{opacity:.6;font-variant-numeric:tabular-nums;font-size:16px}.adm-msg b{color:#ff9fc4;font-weight:400;white-space:nowrap}.adm-msg i{font-style:normal;font-size:15px;opacity:.55;white-space:nowrap}.adm-msg span{word-break:break-all}
+.adm-wipe{width:min(560px,calc(100% - 20px));gap:8px}.adm-wipe p{margin:0;line-height:1.2}.adm-wipe p small{font-size:17px;opacity:.75}
+.adm-chk{display:flex;gap:8px;align-items:center}.adm-chk input{width:20px;height:20px}
+.adm-wrow{display:flex;gap:8px}#admWipeTxt{flex:1;min-width:0;font:inherit;border:0;border-radius:10px;padding:2px 10px}.adm-btn:disabled{opacity:.4;cursor:default}
 #admChatWho{font:inherit;font-size:18px;border-radius:10px;border:0;padding:1px 8px;pointer-events:auto}
 body.admin #toast{z-index:40;background:rgba(28,22,30,.92);color:#f4eef2;border-radius:14px}
 button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 4px;border-radius:10px}button.adm-r:hover{background:rgba(255,255,255,.08)}
@@ -842,6 +845,7 @@ let firstPlayers = true, firstOnline = true;
 function onPlayers(raw){
   const next = {};
   for (const [k,v] of Object.entries(raw||{})) if (v) next[k] = fromDB(v);
+  if (!admin && !solo && me && players[uid] && !next[uid]){ me = null; alert('관리자가 섬을 초기화했어요. 새로 캐릭터를 만들어 주세요.'); location.reload(); return; } // 관리자가 모든 데이터를 지웠어요
   players = next;
   rebuildObstacles();
   if (firstPlayers){ firstPlayers = false; if (admin) enterAdmin(); else if (players[uid]) enterGame(structuredClone(players[uid])); else showMaker(); }
@@ -890,6 +894,7 @@ function soloNet(){
     presence: async () => {},
     sendChat: async t => { const m = {uid, nick:me.nick, t, z:zoneId, at:Date.now()}; st.chat = {...(st.chat||{}), ['c'+Date.now()+Math.random()]: m}; onChat(m); st.chatCb && st.chatCb(st.chat); },
     chatLog: cb => { st.chatCb = cb; cb(st.chat||{}); },
+    wipeAll: async withChat => { st.players = {}; st.roofs = {}; st.market = {}; if (withChat){ st.chat = {}; st.chatCb && st.chatCb({}); } onPlayers({}); onRoofs({}); onMarket({}); },
     contestSubmit: async (w, size) => { contestBoard = [{nick:me.nick, size}]; },
     mailSend: async () => { throw new Error('solo'); },
     marketList: async l => { st.market = st.market || {}; st.market['m'+Date.now()] = {...l, at:Date.now()}; onMarket(st.market); },
@@ -919,6 +924,7 @@ function firebaseNet(){
     presence: p => F.set(meRef, p),
     sendChat: t => F.push(F.ref(db, 'chat'), {uid, nick:me.nick, t, z:zoneId, at:F.serverTimestamp()}),
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -3097,6 +3103,7 @@ function frame(t){
   requestAnimationFrame(frame);
 }
 // ===== 관리자 CCTV: 캐릭터 없이 구역을 골라 보거나 접속한 사람을 따라가며 지켜봐요 =====
+let admWipe = false, admWipeTxt = '', admWipeChat = false, wiping = false; // 모든 가입 데이터 지우기 창
 let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
 let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
 function onWorld(w){ world = w || {}; if (admin) renderAdmin(); }
@@ -3106,7 +3113,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } }); net.chatLog && net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -3117,6 +3124,7 @@ function renderAdmin(){
   for (const o of online) count[o.z] = (count[o.z]||0) + 1;
   const regs = Object.entries(players).sort(([,a],[,b])=>String(a.nick).localeCompare(String(b.nick), 'ko'));
   const watching = cam.follow ? `따라가는 중 · ${esc(others.get(cam.follow)?.nick || '')}` : `보는 곳 · ${esc(zoneName(zoneId))}`;
+  const wasTyping = document.activeElement && document.activeElement.id==='admWipeTxt'; // 다시 그려도 입력하던 칸은 그대로
   box.innerHTML = `
     <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span><button data-a="logout" class="adm-btn">로그아웃</button></div>
     <div class="adm-zones">${Object.keys(ZONES).map(z=>`<button data-z="${z}" class="adm-zone ${zoneId===z && !cam.follow ? 'on' : ''}">${esc(ZONES[z].name)}<i>${count[z]||0}</i></button>`).join('')}</div>
@@ -3125,10 +3133,31 @@ function renderAdmin(){
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>바꾸면 접속한 모든 사람에게 바로 전달돼요. 게임 화면 연출은 다음 업데이트에서 붙어요.</small></div>
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
+      <div class="adm-sec"><b>데이터 관리</b><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="table" class="adm-btn">자금 · 주식 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
-    </div>${admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
+    </div>${admWipe ? adminWipe(regs) : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
+  const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
   const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
   const cl = box.querySelector('.adm-chat-list'); if (cl){ cl.scrollTop = admChatScroll ?? cl.scrollHeight; cl.onscroll = ()=>{ admChatScroll = cl.scrollTop + cl.clientHeight >= cl.scrollHeight - 4 ? null : cl.scrollTop; }; }
+}
+// 모든 가입 데이터 지우기: 캐릭터·집·땅·우편·거래소·낚시 대회 (채팅은 고르면). 지우기 직전에 백업 파일을 내려받아요
+function adminWipe(regs){
+  return `<div class="adm-tbl adm-wipe"><div class="adm-tbl-head"><b>모든 가입 데이터 지우기</b><small>되돌릴 수 없어요</small><button data-a="wclose" class="adm-btn">닫기</button></div>
+    <p>지워지는 것: 주민 <b>${regs.length}</b> 명의 캐릭터와 가방·돈·주식·호감도·퀘스트·펫, 집과 집터, 거래소 물건, 우편, 낚시 대회 기록, 먼지 여왕 상태</p>
+    <label class="adm-chk"><input type="checkbox" id="admWipeChat" ${admWipeChat ? 'checked' : ''}> 채팅 기록 ${chatLog.length.toLocaleString()} 개도 지우기</label>
+    <p><small>로그인 아이디는 남아요. 같은 아이디로 들어오면 새 캐릭터를 만들게 돼요. 지우기 직전에 지금 데이터를 백업 파일로 내려받아요. 접속 중인 사람에게는 초기화 안내가 뜨고 처음 화면으로 돌아가요.</small></p>
+    <p>확인을 위해 <b>전부 삭제</b> 라고 입력해 주세요</p>
+    <div class="adm-wrow"><input id="admWipeTxt" autocomplete="off" placeholder="전부 삭제" value="${esc(admWipeTxt)}"><button data-a="wipego" class="adm-btn warn" ${admWipeTxt.trim() === '전부 삭제' && !wiping ? '' : 'disabled'}>${wiping ? '지우는 중....' : '지우기'}</button></div></div>`;
+}
+async function wipeAll(){
+  if (wiping || admWipeTxt.trim() !== '전부 삭제') return;
+  if (!confirm(`정말 모든 가입 데이터를 지울까요?${admWipeChat ? ' 채팅 기록도 지워져요.' : ''} 되돌릴 수 없어요.`)) return;
+  wiping = true; renderAdmin();
+  const backup = JSON.stringify({at:kstTime(Date.now()), players, chat:chatLog}, null, 1);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([backup], {type:'application/json'})); a.download = `pinky-backup-${kstTime(Date.now()).replace(/[: ]/g, '-')}.json`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  try { await net.wipeAll(admWipeChat); admWipe = false; admWipeTxt = ''; toast('모든 가입 데이터를 지웠어요. 백업 파일을 내려받았어요.'); }
+  catch(e){ toast('지우지 못했어요. 관리자 권한이나 인터넷 연결을 확인해 주세요.'); }
+  wiping = false; renderAdmin();
 }
 // 채팅 기록: 지금까지 보낸 채팅 (최근 3,000 개). 맨 아래가 최신, 사람별로 골라 보거나 글 파일로 내려받아요
 const kstTime = at => new Date((at||0) + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
@@ -3165,12 +3194,15 @@ function adminTable(regs){
 function adminClick(e){
   const td = e.target.closest('.adm-tbl td[title]'); if (td) return toast(td.title);
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.a==='table'){ admTbl = admTbl===null ? '' : null; admChat = null; admScroll = [0, 0]; return renderAdmin(); }
-  if (b.dataset.a==='chat'){ admChat = admChat===null ? '' : null; admTbl = null; admChatScroll = null; return renderAdmin(); }
+  if (b.dataset.a==='table'){ admTbl = admTbl===null ? '' : null; admChat = null; admWipe = false; admScroll = [0, 0]; return renderAdmin(); }
+  if (b.dataset.a==='chat'){ admChat = admChat===null ? '' : null; admTbl = null; admWipe = false; admChatScroll = null; return renderAdmin(); }
   if (b.dataset.a==='cclose'){ admChat = null; return renderAdmin(); }
   if (b.dataset.a==='chatdl') return chatDownload();
+  if (b.dataset.a==='wipe'){ admWipe = !admWipe; admTbl = null; admChat = null; admWipeTxt = ''; return renderAdmin(); }
+  if (b.dataset.a==='wclose'){ admWipe = false; admWipeTxt = ''; return renderAdmin(); }
+  if (b.dataset.a==='wipego') return wipeAll();
   if (b.dataset.a==='tclose'){ admTbl = null; return renderAdmin(); }
-  if (b.dataset.p){ admTbl = admTbl===b.dataset.p ? null : b.dataset.p; admChat = null; return renderAdmin(); }
+  if (b.dataset.p){ admTbl = admTbl===b.dataset.p ? null : b.dataset.p; admChat = null; admWipe = false; return renderAdmin(); }
   if (b.dataset.z){ cam.follow = null; cam.zone = b.dataset.z; const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2); renderAdmin(); }
   else if (b.dataset.f){ cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) net.setWorld({dark:v, darkAt:Date.now()}).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }

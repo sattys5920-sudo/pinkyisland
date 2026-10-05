@@ -2,6 +2,7 @@
   "rules": {
     "players": {
       ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$uid": {
         ".write": "auth != null && auth.uid === $uid",
         ".validate": "newData.hasChildren(['nick', 'roof', 'lot']) && newData.child('nick').isString() && newData.child('nick').val().length >= 1 && newData.child('nick').val().length <= 8 && root.child('roofs/' + newData.child('roof').val() + '/uid').val() === auth.uid && root.child('lots/' + newData.child('lot').val() + '/uid').val() === auth.uid"
@@ -9,6 +10,7 @@
     },
     "roofs": {
       ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$i": {
         ".write": "auth != null && $i.matches(/^([0-9]|1[0-3])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
         ".validate": "newData.child('uid').val() === auth.uid && newData.child('at').isNumber()"
@@ -16,6 +18,7 @@
     },
     "lots": {
       ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$i": {
         ".write": "auth != null && $i.matches(/^([0-9]|1[0-3])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
         ".validate": "newData.child('uid').val() === auth.uid && newData.child('at').isNumber()"
@@ -23,6 +26,7 @@
     },
     "online": {
       ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$uid": {
         ".write": "auth != null && auth.uid === $uid",
         ".validate": "newData.hasChildren(['x', 'y'])"
@@ -30,6 +34,7 @@
     },
     "chat": {
       ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$msg": {
         ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
         ".validate": "newData.child('t').isString() && newData.child('t').val().length >= 1 && newData.child('t').val().length <= 80"
@@ -37,6 +42,7 @@
     },
     "contest": {
       ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$week": {
         "$uid": {
           ".write": "auth != null && auth.uid === $uid",
@@ -45,6 +51,7 @@
       }
     },
     "mail": {
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$to": {
         ".read": "auth != null && auth.uid === $to",
         "$msg": {
@@ -63,6 +70,7 @@
     },
     "market": {
       ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$id": {
         ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && !newData.child('buyer').exists()) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid) || (data.exists() && !data.child('buyer').exists() && data.child('uid').val() !== auth.uid && newData.child('buyer').val() === auth.uid && newData.child('uid').val() === data.child('uid').val() && newData.child('item').val() === data.child('item').val() && newData.child('n').val() === data.child('n').val() && newData.child('price').val() === data.child('price').val()))",
         ".validate": "newData.child('item').isString() && newData.child('item').val().length <= 16 && newData.child('n').isNumber() && newData.child('n').val() >= 1 && newData.child('n').val() <= 99 && newData.child('price').isNumber() && newData.child('price').val() >= 1 && newData.child('price').val() <= 1000000 && newData.child('nick').isString() && newData.child('nick').val().length <= 8"
