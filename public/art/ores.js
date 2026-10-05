@@ -1,354 +1,72 @@
 // 광석/보석 40 종 그림 (o01..o40). (0,0) 중심, 약 -22..+22.
-const poly = (d, pts, col, box) => d.shape(() => { const c = d.ctx; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); }, col, box || [0, 0, 16]);
-const blob = (d, pts, col, box) => d.shape(() => { const c = d.ctx, n = pts.length; c.beginPath(); const m = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; let s = m(pts[n - 1], pts[0]); c.moveTo(s[0], s[1]); for (let i = 0; i < n; i++) { const p = pts[i], q = m(p, pts[(i + 1) % n]); c.quadraticCurveTo(p[0], p[1], q[0], q[1]); } c.closePath(); }, col, box || [0, 0, 16]);
-const facet = (d, segs, col, w = 0.7) => d.line(c => { for (const s of segs) { c.moveTo(s[0], s[1]); for (let i = 2; i < s.length; i += 2) c.lineTo(s[i], s[i + 1]); } }, col, w);
-const spark = (d, x, y, s, col = '#ffffff') => { d.line(c => { c.moveTo(x - s, y); c.lineTo(x + s, y); c.moveTo(x, y - s); c.lineTo(x, y + s); }, col, Math.max(0.6, s * 0.22)); d.dot(x, y, s * 0.3, col); };
-const glow = (d, x, y, r, col, a = 0.18) => { for (let i = 4; i >= 1; i--) d.dot(x, y, r * (0.55 + i * 0.18), col, a * (1 - i * 0.15)); };
-const hl = (d, x, y, r, a = 0.8) => d.dot(x, y, r, '#ffffff', a);
-const hexPts = (cx, cy, rx, ry, rot = 0) => Array.from({ length: 6 }, (_, i) => [cx + rx * Math.cos(rot + i * Math.PI / 3), cy + ry * Math.sin(rot + i * Math.PI / 3)]);
-// 육각 결정 기둥 (뾰족 끝) — 회전 각 a, 바닥(bx,by), 길이 L, 폭 w
-const crystal = (d, bx, by, a, L, w, col, light, dark) => {
-  const c = d.ctx; c.save(); c.translate(bx, by); c.rotate(a);
-  poly(d, [[-w, 0], [-w, -L], [0, -L - w * 1.4], [w, -L], [w, 0]], col, [0, -L / 2, Math.max(L / 2, 7)]);
-  poly(d, [[-w, 0], [-w, -L], [0, -L - w * 1.4], [-w * 0.15, -L], [-w * 0.15, 0]], light, [-w / 2, -L / 2, 3]);
-  facet(d, [[w * 0.45, 0, w * 0.45, -L, 0, -L - w * 1.4], [-w, -L, w, -L]], dark, 0.5);
-  c.restore();
+// 유아용 점토 느낌: 몽글몽글한 덩어리, 말랑한 보석 방울. 각진 면·가는 결·뾰족한 끝은 쓰지 않아요.
+const PI = Math.PI;
+const oval = (d, x, y, rx, ry, rot, col, o) => d.shape(c => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, PI * 2); }, col, [x, y, Math.max(rx, ry)], o);
+const shine = (d, x, y, r = 3) => d.dot(x, y, r, '#ffffff', .5);
+const flat = {flat: true, noShadow: true};
+// 몽글한 돌덩이: 둥근 혹 몇 개를 겹친 바위
+const lump = (d, col, s = 1, y = 3) => { d.circle(-7 * s, y + 2, 9 * s, col); d.circle(7 * s, y + 2, 9 * s, col); d.circle(0, y - 3, 11 * s, col); oval(d, 0, y + 4, 15 * s, 8 * s, 0, col); };
+// 돌에 박힌 말랑한 알갱이
+const bits = (d, pts, col, r = 2.6) => { for (const [x, y] of pts) { d.circle(x, y, r, col); d.dot(x - r * .3, y - r * .35, r * .32, '#ffffff', .6); } };
+// 말랑한 보석 방울: 둥근 모양 + 큰 반짝임 + 안쪽 밝은 동그라미
+const gem = (d, col, kind = 'round', s = 1) => {
+  if (kind === 'drop') d.shape(c => { c.beginPath(); c.moveTo(0, -16 * s); c.bezierCurveTo(9 * s, -6 * s, 14 * s, 4 * s, 0, 15 * s); c.bezierCurveTo(-14 * s, 4 * s, -9 * s, -6 * s, 0, -16 * s); c.closePath(); }, col, [0, 1, 14 * s]);
+  else if (kind === 'heart') d.shape(c => { c.beginPath(); c.moveTo(0, 15 * s); c.bezierCurveTo(-18 * s, 3 * s, -14 * s, -14 * s, 0, -6 * s); c.bezierCurveTo(14 * s, -14 * s, 18 * s, 3 * s, 0, 15 * s); c.closePath(); }, col, [0, 1, 15 * s]);
+  else if (kind === 'pill') oval(d, 0, 1, 9 * s, 15 * s, .35, col);
+  else if (kind === 'cushion') d.rr(-13 * s, -11 * s, 26 * s, 24 * s, 10 * s, col);
+  else d.circle(0, 1, 14 * s, col);
+  d.dot(-2 * s, 2 * s, 7 * s, '#ffffff', .18);
+  d.dot(-5 * s, -5 * s, 3.4 * s, '#ffffff', .75); d.dot(5 * s, 7 * s, 1.6 * s, '#ffffff', .45);
 };
+// 동글한 반짝이 방울
+const twinkle = (d, pts, col = '#fff6c8') => { for (const [x, y, r] of pts) d.circle(x, y, r, col); };
+// 몽글한 수정 기둥 (끝이 둥근 캡슐)
+const crystal = (d, x, y, h, w, rot, col) => d.shape(c => { c.save(); c.translate(x, y); c.rotate(rot); c.beginPath(); c.roundRect(-w / 2, -h, w, h, w / 2); c.restore(); }, col, [x, y - h / 2, h / 2]);
 
 export const ART_PART = {
-  // 1 돌멩이: 둥근 돌덩이 두 개 + 금
-  o01: (d) => {
-    blob(d, [[-17, 6], [-15, -4], [-6, -8], [3, -5], [5, 4], [-3, 10], [-13, 11]], '#a39aa8', [-6, 1, 12]);
-    blob(d, [[2, 9], [4, 0], [12, -2], [18, 3], [17, 11], [8, 13]], '#8f8696', [10, 6, 8]);
-    facet(d, [[-8, -4, -6, 0, -8, 3], [12, 2, 10, 5]], '#6f6676', 0.8);
-    d.dot(-12, 4, 1, '#7a7282'); d.dot(-2, 6, 0.8, '#7a7282'); d.dot(14, 8, 0.8, '#6f6676');
-    hl(d, -9, -3, 1.6, 0.45);
-  },
-  // 2 석탄: 각진 검은 덩어리 + 반짝 광택 면
-  o02: (d) => {
-    poly(d, [[-15, 8], [-17, -2], [-9, -12], [3, -13], [14, -6], [16, 6], [6, 13], [-6, 13]], '#3b3b46', [0, 0, 16]);
-    poly(d, [[-9, -12], [3, -13], [1, -3], [-10, -2]], '#565663', [-4, -7, 6]);
-    poly(d, [[3, -13], [14, -6], [10, 1], [1, -3]], '#4a4a56', [8, -5, 6]);
-    facet(d, [[-10, -2, 1, -3, 10, 1, 16, 6], [1, -3, -2, 12], [-10, -2, -15, 8]], '#24242c', 0.7);
-    d.line(c => { c.moveTo(-8, -9); c.lineTo(-2, -10); }, '#ffffff', 1.1);
-    d.line(c => { c.moveTo(6, -9); c.lineTo(10, -6); }, '#c9d0ff', 0.9);
-    hl(d, -5, 5, 1.2, 0.5); hl(d, 9, 6, 0.8, 0.4);
-  },
-  // 3 구리 광석: 회색 바위에 주황 구리 알갱이
-  o03: (d) => {
-    blob(d, [[-16, 8], [-14, -6], [-4, -12], [8, -11], [16, -2], [15, 9], [4, 13], [-8, 13]], '#8a8590', [0, 0, 16]);
-    [[-8, -5, 3], [4, -6, 2.4], [9, 3, 3.2], [-3, 5, 2.6], [-11, 5, 1.8], [2, 1, 1.4]].forEach(([x, y, r]) => { d.circle(x, y, r, '#e08a4f'); hl(d, x - r * 0.35, y - r * 0.4, r * 0.3, 0.7); });
-    d.dot(13, -3, 1, '#4fbf9f'); d.dot(-6, 10, 1.1, '#4fbf9f'); // 녹청
-  },
-  // 4 주석 광석: 높은 바위에 은백색 줄무늬 맥
-  o04: (d) => {
-    poly(d, [[-11, 14], [-14, 2], [-9, -12], [0, -17], [9, -11], [13, 2], [10, 14]], '#6e6878', [0, 0, 16]);
-    d.line(c => { c.moveTo(-12, 4); c.quadraticCurveTo(-2, -2, 11, -6); }, '#c9ccd6', 2.4);
-    d.line(c => { c.moveTo(-9, 10); c.quadraticCurveTo(2, 6, 12, 7); }, '#c9ccd6', 1.6);
-    d.line(c => { c.moveTo(-6, -10); c.lineTo(3, -13); }, '#dfe2ea', 1.2);
-    hl(d, -3, 0, 1, 0.9); hl(d, 6, 6.5, 0.8, 0.9);
-    facet(d, [[0, -17, 1, -9], [-14, 2, -7, 3]], '#4f4a58', 0.6);
-  },
-  // 5 점토: 말랑하고 매끈한 덩어리 + 손가락 자국
-  o05: (d) => {
-    blob(d, [[-17, 9], [-16, -1], [-9, -9], [2, -11], [13, -7], [17, 3], [14, 11], [0, 13]], '#c98e5b', [0, 0, 17]);
-    d.ell(-4, -4, 5, 3, '#d9a274');
-    d.line(c => { c.moveTo(4, 2); c.quadraticCurveTo(8, -1, 12, 2); c.moveTo(5, 5); c.quadraticCurveTo(9, 2, 13, 5); c.moveTo(6, 8); c.quadraticCurveTo(9, 6, 12, 8); }, '#a8703f', 0.8);
-    hl(d, -8, -6, 2.2, 0.35);
-  },
-  // 6 석회석: 흰 사각 블록 + 층 + 조개 화석
-  o06: (d) => {
-    d.rr(-16, -11, 32, 23, 4, '#efe8d8');
-    d.line(c => { c.moveTo(-15, -3); c.lineTo(15, -4); c.moveTo(-15, 5); c.lineTo(15, 4); }, '#d6ccb4', 1);
-    d.line(c => { c.moveTo(5, 1); for (let a = 0; a < 12; a += 0.4) { const r = 0.4 + a * 0.45; c.lineTo(5 + Math.cos(a) * r, 1 + Math.sin(a) * r); } }, '#b3a68a', 0.8);
-    d.dot(-9, -7, 1, '#d6ccb4'); d.dot(-6, 8, 1, '#d6ccb4'); d.dot(11, 8, 0.8, '#d6ccb4');
-  },
-  // 7 사암: 물결 띠가 있는 퇴적층 덩어리
-  o07: (d) => {
-    blob(d, [[-17, 11], [-16, -6], [-8, -12], [8, -12], [17, -5], [17, 11]], '#e8c99a', [0, 0, 17]);
-    const bands = [['#d4a46c', -6], ['#f2dcb6', -1], ['#c98f5c', 4], ['#e0b47e', 8]];
-    for (const [col, y] of bands) d.line(c => { c.moveTo(-16, y); c.quadraticCurveTo(-8, y - 2.5, 0, y); c.quadraticCurveTo(8, y + 2.5, 16, y - 1); }, col, 2.2);
-    d.dot(-10, 9, 0.6, '#b07a48'); d.dot(6, -9, 0.6, '#b07a48'); d.dot(11, 10, 0.6, '#b07a48');
-  },
-  // 8 부싯돌: 날카로운 파편 + 패각상 물결
-  o08: (d) => {
-    poly(d, [[-15, 12], [-3, -17], [4, -6], [0, 12]], '#5b5266', [-4, 0, 14]);
-    poly(d, [[2, 13], [7, -9], [16, 2], [12, 13]], '#4a4254', [9, 4, 10]);
-    poly(d, [[-3, -17], [4, -6], [-1, -4]], '#7a7086', [0, -9, 5]);
-    d.line(c => { c.moveTo(-10, 6); c.quadraticCurveTo(-6, 2, -2, 6); c.moveTo(-9, 1); c.quadraticCurveTo(-5, -3, -1, 1); c.moveTo(8, 4); c.quadraticCurveTo(11, 1, 14, 5); }, '#3a3344', 0.7);
-    d.line(c => { c.moveTo(-3, -15); c.lineTo(-12, 10); }, '#e6e0f0', 0.8);
-  },
-  // 9 흑연: 겹친 육각 판
-  o09: (d) => {
-    for (let i = 0; i < 4; i++) { const y = 8 - i * 4.5, x = (i % 2) * 2 - 1; poly(d, hexPts(x, y, 14 - i * 1.5, 5 - i * 0.3), i === 3 ? '#5c5c66' : '#4a4a52', [x, y, 12]); }
-    poly(d, hexPts(1, -5.5, 9.5, 3.4), '#6a6a76', [1, -6, 8]);
-    d.line(c => { c.moveTo(-5, -7); c.lineTo(3, -7.5); }, '#d6d8e8', 0.9);
-    facet(d, [[-14, 8, -14, 10], [14, 8, 14, 10]], '#2c2c34', 0.6);
-  },
-  // 10 소금 결정: 쌓인 정육면체
-  o10: (d) => {
-    const cube = (x, y, s) => {
-      poly(d, [[x - s, y - s * 0.5], [x, y - s], [x + s, y - s * 0.5], [x, y]], '#ffffff', [x, y - s / 2, s]);
-      poly(d, [[x - s, y - s * 0.5], [x, y], [x, y + s], [x - s, y + s * 0.5]], '#e2ecfa', [x - s / 2, y + s / 4, s]);
-      poly(d, [[x + s, y - s * 0.5], [x, y], [x, y + s], [x + s, y + s * 0.5]], '#c9d8f0', [x + s / 2, y + s / 4, s]);
-    };
-    cube(-7, 4, 8); cube(8, 6, 7); cube(1, -6, 7.5);
-    d.dot(-12, 12, 1, '#f4f8ff'); d.dot(15, -4, 0.9, '#f4f8ff');
-  },
-  // 11 철 광석: 붉은 녹 얼룩 바위 + 금속 띠
-  o11: (d) => {
-    poly(d, [[-16, 10], [-17, -3], [-10, -12], [6, -13], [16, -4], [15, 10], [4, 14], [-8, 14]], '#6a5a58', [0, 0, 16]);
-    blob(d, [[-12, -6], [-4, -10], [0, -4], [-8, 0]], '#a8533a', [-6, -5, 5]);
-    blob(d, [[4, 6], [12, 4], [13, 10], [6, 12]], '#9a4a34', [9, 8, 4]);
-    d.line(c => { c.moveTo(-15, 4); c.lineTo(-2, 2); c.lineTo(14, -2); }, '#b9c2cc', 3);
-    d.line(c => { c.moveTo(-10, 3); c.lineTo(4, 0.5); }, '#ffffff', 0.8);
-    spark(d, 9, -6, 1.8);
-  },
-  // 12 은 광석: 바위에 은빛 나뭇가지 결정
-  o12: (d) => {
-    blob(d, [[-16, 10], [-14, -5], [-5, -11], [8, -10], [16, -2], [14, 11], [0, 14]], '#6c6676', [0, 0, 16]);
-    d.line(c => { c.moveTo(-8, 9); c.lineTo(-2, 0); c.lineTo(3, -7); c.moveTo(-2, 0); c.lineTo(6, 2); c.lineTo(10, -2); c.moveTo(3, -7); c.lineTo(8, -8); c.moveTo(0, -4); c.lineTo(-6, -6); c.moveTo(6, 2); c.lineTo(9, 7); }, '#e3e8ef', 1.8);
-    d.line(c => { c.moveTo(-6, 6); c.lineTo(-2, 0); }, '#ffffff', 0.8);
-    spark(d, 8, -8, 2); spark(d, -6, -6, 1.4);
-  },
-  // 13 납 광석: 무거운 각진 블록 + 정육면체 방연석
-  o13: (d) => {
-    d.rr(-16, -8, 32, 21, 3, '#5a5c68');
-    poly(d, [[-8, -8], [-4, -14], [10, -14], [16, -8]], '#6c6e7c', [3, -11, 10]);
-    d.rr(-10, -4, 9, 9, 1, '#7d8090'); d.rr(3, -2, 7, 7, 1, '#8a8d9c'); d.rr(-2, 6, 6, 5, 1, '#7d8090');
-    facet(d, [[-10, -4, -1, -4], [3, -2, 10, -2]], '#b8bccb', 0.8);
-  },
-  // 14 아연 광석: 바위 위 작은 청회색 결정 무리
-  o14: (d) => {
-    blob(d, [[-17, 12], [-15, 2], [-6, -2], [6, -3], [16, 2], [17, 12]], '#7a7068', [0, 6, 16]);
-    for (const [x, a, L] of [[-8, -0.3, 9], [-3, 0, 12], [3, 0.25, 10], [8, 0.5, 7], [-12, -0.6, 6]]) crystal(d, x, 2, a, L, 2.2, '#a8b3bf', '#d4dce6', '#6f7a88');
-    d.dot(10, 8, 1, '#a8b3bf'); d.dot(-6, 9, 1, '#a8b3bf');
-  },
-  // 15 석영: 투명 육각 결정 무리
-  o15: (d) => {
-    blob(d, [[-15, 15], [-12, 9], [12, 9], [15, 15]], '#b5aec0', [0, 12, 12]);
-    crystal(d, -6, 12, -0.45, 14, 3.4, '#e6e2f6', '#ffffff', '#b8b0d6');
-    crystal(d, 7, 12, 0.4, 12, 3, '#e6e2f6', '#ffffff', '#b8b0d6');
-    crystal(d, 0, 12, 0.02, 18, 4, '#f3f0ff', '#ffffff', '#b8b0d6');
-    spark(d, 1, -9, 2.2);
-  },
-  // 16 장석: 직각 계단형 분홍 블록
-  o16: (d) => {
-    poly(d, [[-14, 13], [-14, -2], [-6, -2], [-6, -11], [6, -11], [6, -6], [14, -6], [14, 13]], '#f3d9c9', [0, 1, 16]);
-    poly(d, [[-14, -2], [-11, -5], [-3, -5], [-6, -2]], '#fbeae0', [-8, -3, 4]);
-    poly(d, [[-6, -11], [-3, -14], [9, -14], [6, -11]], '#fbeae0', [1, -12, 6]);
-    poly(d, [[6, -6], [9, -9], [17, -9], [14, -6]], '#fbeae0', [11, -7, 4]);
-    facet(d, [[-6, -2, -6, 13], [6, -6, 6, 13], [-14, 5, 14, 5]], '#d9b4a0', 0.6);
-  },
-  // 17 운모: 얇은 판이 비스듬히 겹친 조각
-  o17: (d) => {
-    for (let i = 0; i < 5; i++) { const o = i * 2.6; poly(d, [[-15 + o, 8 - o * 1.2], [-6 + o, -6 - o], [14 - o * 0.4, -4 - o * 0.8], [6 - o * 0.2, 10 - o * 0.7]], i % 2 ? '#e8dcbf' : '#d9c9a6', [o - 1, 2 - o, 12]); }
-    d.line(c => { c.moveTo(-2, -10); c.lineTo(8, -9); }, '#ffffff', 0.9);
-    d.line(c => { c.moveTo(-12, 6); c.lineTo(-5, -4); }, '#fff6e0', 0.7);
-    hl(d, 4, -11, 0.9, 0.8);
-  },
-  // 18 황: 노란 뾰족 쌍뿔 결정 덩어리
-  o18: (d) => {
-    blob(d, [[-15, 13], [-14, 4], [0, 1], [14, 4], [15, 13]], '#d9b83a', [0, 8, 14]);
-    const bip = (x, y, w, h, a) => { const c = d.ctx; c.save(); c.translate(x, y); c.rotate(a); poly(d, [[0, -h], [w, 0], [0, h * 0.6], [-w, 0]], '#ffe066', [0, -2, w + 2]); poly(d, [[0, -h], [-w, 0], [0, 0]], '#fff1a8', [-2, -h / 2, 3]); c.restore(); };
-    bip(-7, 2, 5, 11, -0.35); bip(7, 3, 4.5, 9, 0.4); bip(0, -1, 6, 14, 0);
-    d.dot(-12, 10, 1, '#fff1a8'); hl(d, -1, -10, 0.9);
-  },
-  // 19 형석: 초록-보라 띠가 있는 팔면체
-  o19: (d) => {
-    poly(d, [[0, -18], [14, 0], [0, 18], [-14, 0]], '#9fe0c9', [0, 0, 16]);
-    poly(d, [[0, -18], [-14, 0], [0, 3]], '#c4f0e0', [-5, -5, 7]);
-    d.line(c => { c.moveTo(-9, -6); c.lineTo(9, -6); }, '#b98be0', 2.2);
-    d.line(c => { c.moveTo(-11, 3); c.lineTo(11, 3); }, '#9a6fd0', 2);
-    d.line(c => { c.moveTo(-6, 11); c.lineTo(6, 11); }, '#b98be0', 1.6);
-    facet(d, [[0, -18, 0, 3, 14, 0], [0, 3, 0, 18]], '#5fa891', 0.6);
-    spark(d, -5, -10, 1.6);
-  },
-  // 20 마노: 띠 무늬 단면 슬라이스
-  o20: (d) => {
-    blob(d, [[-17, 0], [-13, -12], [0, -15], [14, -11], [17, 1], [12, 13], [0, 15], [-13, 12]], '#a8624a', [0, 0, 17]);
-    const rings = ['#e8a07a', '#fbe0cc', '#d27a56', '#f5c4a4', '#c46a4a', '#fff2e8'];
-    rings.forEach((col, i) => { const k = 1 - (i + 1) * 0.14; blob(d, [[-17 * k, 0], [-13 * k, -12 * k], [0, -15 * k], [14 * k, -11 * k], [17 * k, 1], [12 * k, 13 * k], [0, 15 * k], [-13 * k, 12 * k]], col, [0, 0, 16 * k]); });
-    d.dot(0.5, 0.5, 1.6, '#cfe8ff'); hl(d, -8, -8, 1.4, 0.6); spark(d, 10, -9, 1.6);
-  },
-  // 21 금 광석: 반짝이는 금 덩어리 너겟
-  o21: (d) => {
-    blob(d, [[-15, 8], [-14, -3], [-7, -10], [1, -7], [7, -12], [15, -5], [14, 7], [6, 12], [-6, 12]], '#ffd23f', [0, 0, 16]);
-    d.circle(-8, 1, 3, '#ffe27a'); d.circle(6, -3, 3.5, '#ffe27a'); d.circle(2, 7, 2.5, '#f2bf2a');
-    d.dot(-3, -3, 1, '#c99a1a'); d.dot(9, 5, 1.1, '#c99a1a'); d.dot(-10, 7, 0.9, '#c99a1a');
-    hl(d, -9, -5, 1.8, 0.9); spark(d, 8, -8, 2.4); spark(d, -12, 5, 1.6);
-  },
-  // 22 백금 광석: 작은 은백 알갱이가 뭉친 무리
-  o22: (d) => {
-    const g = [[-9, 4, 5], [0, 7, 5.5], [8, 3, 5], [-4, -3, 5], [5, -5, 4.5], [-11, -5, 3], [12, -3, 3], [0, -11, 3.5]];
-    g.forEach(([x, y, r]) => { d.circle(x, y, r, '#e8eef4'); d.dot(x + r * 0.3, y + r * 0.3, r * 0.35, '#b9c3cf'); hl(d, x - r * 0.35, y - r * 0.4, r * 0.3, 0.95); });
-    spark(d, -4, -9, 2.4); spark(d, 11, 8, 1.8);
-  },
-  // 23 자수정: 반쪽 정동 속 보라 결정
-  o23: (d) => {
-    blob(d, [[-18, 12], [-17, -4], [-8, -14], [8, -14], [17, -4], [18, 12]], '#8f8696', [0, 0, 18]);
-    blob(d, [[-14, 10], [-13, -3], [-6, -10], [6, -10], [13, -3], [14, 10]], '#4a2a6e', [0, 0, 14]);
-    for (const [x, y, a, L] of [[-9, 10, -0.6, 8], [-4, 10, -0.25, 12], [2, 10, 0.1, 13], [8, 10, 0.5, 9], [0, 10, -0.05, 7]]) crystal(d, x, y, a, L, 2.4, '#b57bff', '#dcbcff', '#7a3fd0');
-    spark(d, 3, -6, 2.4); spark(d, -10, 0, 1.6);
-  },
-  // 24 황수정: 커다란 단독 결정 한 개
-  o24: (d) => {
-    const c = d.ctx; c.save(); c.rotate(0.3);
-    poly(d, [[-7, 17], [-7, -6], [0, -19], [7, -6], [7, 17]], '#ffc94f', [0, 0, 16]);
-    poly(d, [[-7, 17], [-7, -6], [0, -19], [-2, -6], [-2, 17]], '#ffe39a', [-4, 0, 6]);
-    poly(d, [[3, 17], [3, -6], [0, -19], [7, -6], [7, 17]], '#e8a72a', [5, 0, 6]);
-    facet(d, [[-7, -6, -2, -6, 3, -6, 7, -6]], '#c98a1a', 0.6);
-    d.line(cc => { cc.moveTo(-5, 12); cc.lineTo(-5, -4); }, '#ffffff', 1);
-    c.restore();
-    spark(d, -6, -12, 2.4); spark(d, 9, 6, 1.6);
-  },
-  // 25 가넷: 둥근 십이면체 알
-  o25: (d) => {
-    const P = Array.from({ length: 8 }, (_, i) => [Math.cos(i * Math.PI / 4 + Math.PI / 8) * 16, Math.sin(i * Math.PI / 4 + Math.PI / 8) * 16]);
-    blob(d, P.map(([x, y]) => [x * 1.08, y * 1.08]), '#c9304f', [0, 0, 17]);
-    poly(d, [[-6, -6], [6, -6], [8, 2], [0, 8], [-8, 2]], '#e0506e', [0, 0, 8]);
-    facet(d, [[-6, -6, -13, -10], [6, -6, 13, -10], [8, 2, 15, 4], [0, 8, 0, 16], [-8, 2, -15, 4]], '#8a1a32', 0.7);
-    hl(d, -5, -10, 2, 0.7); spark(d, 3, -3, 2.2); spark(d, -11, 6, 1.4);
-  },
-  // 26 터키석: 검은 그물 맥이 있는 둥근 원석
-  o26: (d) => {
-    blob(d, [[-16, 4], [-12, -10], [0, -14], [13, -9], [17, 3], [10, 13], [-4, 14], [-14, 11]], '#4fd6c9', [0, 0, 17]);
-    d.line(c => { c.moveTo(-14, 0); c.lineTo(-6, -2); c.lineTo(-2, -9); c.moveTo(-6, -2); c.lineTo(-3, 6); c.lineTo(5, 4); c.lineTo(9, -6); c.moveTo(5, 4); c.lineTo(9, 10); c.moveTo(-3, 6); c.lineTo(-9, 11); c.moveTo(9, -6); c.lineTo(15, -2); }, '#5a4a3a', 0.9);
-    d.dot(-9, -6, 2, '#7fe8de', 0.7); d.dot(1, 0, 1.8, '#3bb8ab', 0.6);
-    hl(d, -8, -9, 1.8, 0.7); spark(d, 11, -9, 1.8);
-  },
-  // 27 오팔: 무지갯빛 반점의 타원 카보숑
-  o27: (d) => {
-    d.ell(0, 0, 16, 12, '#ffe3f3');
-    const fl = [['#7fd8ff', -7, -3, 3], ['#9fffb0', 3, -5, 2.6], ['#ffd27f', 8, 3, 2.8], ['#c79fff', -2, 5, 3], ['#ff9fcf', -10, 4, 2], ['#7fffe8', 5, 7, 1.8], ['#ffa07f', 10, -4, 1.8]];
-    fl.forEach(([col, x, y, r]) => { d.ell(x, y, r * 1.3, r * 0.8, col); });
-    d.ell(-5, -6, 6, 2.5, '#ffffff'); hl(d, -7, -6.5, 1.5, 0.9);
-    spark(d, 11, -8, 2); spark(d, -12, 7, 1.5);
-  },
-  // 28 옥: 구멍 뚫린 조각 원반(벽) + 매듭
-  o28: (d) => {
-    d.line(c => { c.moveTo(0, -20); c.quadraticCurveTo(-4, -16, 0, -13); }, '#e04a5a', 1.6);
-    d.dot(0, -20, 1.6, '#e04a5a');
-    d.shape(() => { const c = d.ctx; c.beginPath(); c.arc(0, 2, 15, 0, Math.PI * 2); c.moveTo(5, 2); c.arc(0, 2, 5, 0, Math.PI * 2, true); c.closePath(); }, '#5cc48a', [0, 2, 15]);
-    d.stitch(c => { c.arc(0, 2, 10, 0, Math.PI * 2); }, '#3a9a64', 0.9);
-    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; d.dot(Math.cos(a) * 12.5, 2 + Math.sin(a) * 12.5, 1, '#8ee0b0'); }
-    hl(d, -8, -6, 1.8, 0.6); spark(d, 10, -8, 1.6);
-  },
-  // 29 산호석: 분홍 나뭇가지 산호
-  o29: (d) => {
-    d.ell(0, 15, 9, 3, '#e8d8c0');
-    const br = [[0, 14, 0, 2], [0, 2, -7, -6], [-7, -6, -10, -15], [-7, -6, -2, -12], [0, 2, 8, -4], [8, -4, 13, -11], [8, -4, 6, -15], [0, 6, -12, 0], [-12, 0, -16, -6]];
-    d.line(c => { for (const [a, b, e, f] of br) { c.moveTo(a, b); c.lineTo(e, f); } }, '#e0707f', 4.6);
-    d.line(c => { for (const [a, b, e, f] of br) { c.moveTo(a, b); c.lineTo(e, f); } }, '#ff8f9f', 3.2);
-    for (const [, , x, y] of br) d.circle(x, y, 2.2, '#ff8f9f');
-    for (const [x, y] of [[-3, 8], [-5, -2], [5, -1], [10, -8], [-9, -10]]) d.dot(x, y, 0.6, '#ffd0d8');
-    d.dot(4, 12, 0.8, '#ffffff', 0.7);
-  },
-  // 30 루비: 오벌 컷
-  o30: (d) => {
-    d.ell(0, 0, 12, 16, '#d01a38');
-    d.ell(0, 0, 7, 10, '#ff2f4f');
-    facet(d, [[0, -16, -7, -6, -12, 0, -7, 6, 0, 16, 7, 6, 12, 0, 7, -6, 0, -16], [-7, -6, 7, 6], [7, -6, -7, 6], [0, -10, 0, 10], [-7, 0, 7, 0]], '#8a0a1f', 0.7);
-    poly(d, [[0, -16], [-7, -6], [0, -10]], '#ff7f90', [-2, -11, 4]);
-    hl(d, -4, -9, 1.6, 0.85); spark(d, 6, -11, 2.6); spark(d, -8, 9, 1.8);
-  },
-  // 31 사파이어: 쿠션 컷
-  o31: (d) => {
-    d.rr(-15, -15, 30, 30, 9, '#2a4fd0');
-    d.rr(-8, -8, 16, 16, 3, '#3f6fff');
-    poly(d, [[-8, -8], [8, -8], [0, 0]], '#7f9fff', [0, -4, 5]);
-    facet(d, [[-8, -8, 8, -8, 8, 8, -8, 8, -8, -8], [-8, -8, -13, -13], [8, -8, 13, -13], [8, 8, 13, 13], [-8, 8, -13, 13], [-8, -8, 8, 8], [8, -8, -8, 8], [0, -8, 0, -15], [0, 8, 0, 15], [-8, 0, -15, 0], [8, 0, 15, 0]], '#14287a', 0.6);
-    hl(d, -10, -10, 1.6, 0.8); spark(d, 8, -10, 2.6); spark(d, -9, 9, 1.8);
-  },
-  // 32 에메랄드: 모서리 깎은 직사각 계단 컷
-  o32: (d) => {
-    const oct = (w, h, k) => [[-w + k, -h], [w - k, -h], [w, -h + k], [w, h - k], [w - k, h], [-w + k, h], [-w, h - k], [-w, -h + k]];
-    poly(d, oct(12, 16, 4), '#1f9a56', [0, 0, 16]);
-    poly(d, oct(9, 13, 3), '#2fbf6f', [0, 0, 13]);
-    poly(d, oct(5.5, 9, 2), '#55d88c', [0, 0, 9]);
-    facet(d, [[-12, -12, -5.5, -7], [12, -12, 5.5, -7], [12, 12, 5.5, 7], [-12, 12, -5.5, 7]], '#0f6a38', 0.6);
-    d.line(c => { c.moveTo(-3, -6); c.lineTo(-3, 4); }, '#ffffff', 0.9);
-    spark(d, 8, -13, 2.6); spark(d, -10, 11, 1.8);
-  },
-  // 33 토파즈: 물방울(페어) 컷
-  o33: (d) => {
-    d.shape(() => { const c = d.ctx; c.beginPath(); c.moveTo(0, -18); c.quadraticCurveTo(13, -2, 12, 6); c.arc(0, 6, 12, 0, Math.PI); c.quadraticCurveTo(-13, -2, 0, -18); c.closePath(); }, '#ffb347', [0, 2, 16]);
-    d.shape(() => { const c = d.ctx; c.beginPath(); c.moveTo(0, -8); c.lineTo(6, 4); c.lineTo(0, 11); c.lineTo(-6, 4); c.closePath(); }, '#ffcf80', [0, 2, 8]);
-    facet(d, [[0, -18, 0, -8], [6, 4, 12, 6], [-6, 4, -12, 6], [0, 11, 0, 18], [6, 4, 8, 15], [-6, 4, -8, 15], [-6, 4, 6, 4]], '#c9781a', 0.6);
-    hl(d, -4, -4, 1.4, 0.85); spark(d, 7, -10, 2.6); spark(d, -9, 12, 1.6);
-  },
-  // 34 아쿠아마린: 바닷빛 육각 기둥 (양 끝 평평)
-  o34: (d) => {
-    const c = d.ctx; c.save(); c.rotate(-0.35);
-    d.rr(-8, -13, 16, 27, 2, '#7fe0ff');
-    d.rr(-8, -13, 5, 27, 1.5, '#b8f0ff');
-    d.rr(3, -13, 5, 27, 1.5, '#4fbfe8');
-    poly(d, hexPts(0, -13, 8, 3), '#d4f7ff', [0, -13, 8]);
-    facet(d, [[-3, -11, -3, 14], [3, -11, 3, 14]], '#3a9ac0', 0.5);
-    d.line(cc => { cc.moveTo(-5.5, -8); cc.lineTo(-5.5, 10); }, '#ffffff', 0.9);
-    c.restore();
-    d.line(cc => { cc.moveTo(-14, 16); cc.quadraticCurveTo(-11, 13, -8, 16); cc.quadraticCurveTo(-5, 19, -2, 16); }, '#4fbfe8', 1);
-    spark(d, 9, -14, 2.6); spark(d, -11, -6, 1.6);
-  },
-  // 35 진주: 조개 위 둥근 진주
-  o35: (d) => {
-    d.shape(() => { const c = d.ctx; c.beginPath(); c.moveTo(-17, 8); c.quadraticCurveTo(0, 22, 17, 8); c.quadraticCurveTo(0, 12, -17, 8); c.closePath(); }, '#f2c9d6', [0, 12, 12]);
-    d.line(c => { for (let i = -2; i <= 2; i++) { c.moveTo(i * 3, 15); c.lineTo(i * 6, 9.5); } }, '#d99aac', 0.6);
-    d.circle(0, -1, 11, '#fff7f0');
-    d.ell(2, 3, 7, 5, '#f3e4f8');
-    d.dot(4, 4, 3, '#ffe0ea', 0.5);
-    hl(d, -4, -5, 3, 0.95); hl(d, -1, -8, 1, 0.9);
-    spark(d, 9, -9, 2.4); spark(d, -12, -6, 1.6);
-  },
-  // 36 미스릴: 빛나는 푸른 은 주괴
-  o36: (d) => {
-    glow(d, 0, 0, 20, '#bfe3ff', 0.22);
-    poly(d, [[-17, 9], [-11, -5], [11, -5], [17, 9]], '#9fc8ec', [0, 2, 17]);
-    poly(d, [[-11, -5], [-7, -10], [7, -10], [11, -5]], '#e6f4ff', [0, -7, 11]);
-    d.line(c => { c.moveTo(-7, -7.5); c.lineTo(5, -7.5); }, '#ffffff', 1);
-    d.line(c => { c.moveTo(-6, 2); c.lineTo(-2, 0); c.lineTo(2, 2); c.lineTo(6, 0); }, '#ffffff', 0.9); // 룬
-    d.dot(0, 5, 1, '#ffffff');
-    spark(d, 12, -10, 2.8); spark(d, -14, -6, 2); spark(d, 4, 13, 1.6);
-  },
-  // 37 다이아몬드: 브릴리언트 컷 (위 크라운 + 아래 파빌리온)
-  o37: (d) => {
-    glow(d, 0, -2, 18, '#e8fbff', 0.2);
-    poly(d, [[-17, -4], [-10, -13], [10, -13], [17, -4]], '#f4fdff', [0, -8, 14]);
-    poly(d, [[-17, -4], [17, -4], [0, 18]], '#c8eef8', [0, 4, 16]);
-    poly(d, [[-17, -4], [0, -4], [0, 18]], '#e8fbff', [-6, 4, 8]);
-    facet(d, [[-10, -13, -6, -4, -2, -13, 2, -4, 2, -13, 6, -4, 10, -13], [-6, -4, 0, 18, 6, -4], [-12, -4, 0, 18, 12, -4]], '#8ac8dc', 0.6);
-    poly(d, [[-6, -13], [2, -13], [-2, -6]], '#ffffff', [-2, -10, 4]);
-    spark(d, 12, -15, 3.4); spark(d, -14, -12, 2.4); spark(d, 7, 8, 2); spark(d, -6, 4, 1.4, '#cfe0ff');
-  },
-  // 38 별빛 수정: 빛나는 별 모양 결정
-  o38: (d) => {
-    glow(d, 0, 0, 20, '#d9c9ff', 0.25);
-    const star = (R, r) => Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 5, k = i % 2 ? r : R; return [Math.cos(a) * k, Math.sin(a) * k]; });
-    poly(d, star(17, 7.5), '#d9c9ff', [0, 0, 16]);
-    poly(d, star(10, 4.4), '#efe6ff', [0, 0, 10]);
-    facet(d, star(17, 7.5).filter((_, i) => i % 2 === 0).map(([x, y]) => [0, 0, x, y]), '#a68ae0', 0.5);
-    d.dot(0, 0, 2.4, '#ffffff');
-    spark(d, -13, -13, 2.2); spark(d, 14, -9, 1.8); spark(d, 12, 13, 2.4); spark(d, -12, 12, 1.4); spark(d, 0, -3, 1.6);
-  },
-  // 39 무지개 원석: 반으로 갈린 정동, 무지개 결정 고리
-  o39: (d) => {
-    glow(d, 0, 0, 20, '#ff9fe0', 0.16);
-    d.ell(0, 0, 18, 16, '#9a8f86');
-    const rb = ['#ff6f8f', '#ffb04f', '#ffe066', '#7fe08f', '#6fc8ff', '#a87fff'];
-    rb.forEach((col, i) => d.ell(0, 0, 15.5 - i * 2, 13.5 - i * 1.8, col));
-    d.ell(0, 0, 3, 2.5, '#fff0fa');
-    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; d.dot(Math.cos(a) * 9, Math.sin(a) * 8, 0.9, '#ffffff', 0.8); }
-    spark(d, -8, -9, 2.6); spark(d, 12, -10, 2.2); spark(d, 9, 9, 1.8); spark(d, -13, 8, 1.6);
-  },
-  // 40 용의 심장석: 이글거리는 심장 모양 원석
-  o40: (d) => {
-    glow(d, 0, 1, 21, '#ff4f2f', 0.26);
-    d.shape(() => { const c = d.ctx; c.beginPath(); c.moveTo(0, 17); c.bezierCurveTo(-22, 2, -14, -18, 0, -8); c.bezierCurveTo(14, -18, 22, 2, 0, 17); c.closePath(); }, '#d02a1a', [0, 0, 17]);
-    d.shape(() => { const c = d.ctx; c.beginPath(); c.moveTo(0, 11); c.bezierCurveTo(-13, 2, -9, -11, 0, -4); c.bezierCurveTo(9, -11, 13, 2, 0, 11); c.closePath(); }, '#ff4f2f', [0, 1, 11]);
-    d.ell(0, 1, 3.5, 5, '#ffd04f');
-    d.ell(0, 1.5, 1.2, 3.6, '#3a0a0a'); // 용의 눈동자
-    d.line(c => { c.moveTo(-10, -9); c.lineTo(-13, -15); c.moveTo(10, -9); c.lineTo(13, -15); }, '#ff8f4f', 1.4); // 불꽃 뿔
-    d.dot(-7, -5, 1.6, '#ffb08f', 0.8);
-    spark(d, -12, -2, 2.4, '#ffe0a0'); spark(d, 13, -4, 2.6, '#ffe0a0'); spark(d, 6, 13, 1.8, '#ffffff'); spark(d, -5, -14, 1.6, '#ffffff');
-  },
+  // ◆ 흔함
+  o01: d => { d.circle(-6, 5, 9, '#a39aa8'); d.circle(7, 7, 7, '#b4acb8'); shine(d, -9, 1, 2.4); },                          // 돌멩이
+  o02: d => { lump(d, '#3b3b46'); shine(d, -6, -4, 2.6); d.dot(5, 3, 1.6, '#6a6a78'); },                                     // 석탄
+  o03: d => { lump(d, '#8a7f8c'); bits(d, [[-6, 0], [5, -3], [2, 7], [-9, 8]], '#ff9a5a'); },                                // 구리 광석
+  o04: d => { lump(d, '#7d7888'); bits(d, [[-5, -1], [6, 1], [-1, 7]], '#dfe3ec', 3); },                                     // 주석 광석
+  o05: d => { oval(d, 0, 4, 16, 11, 0, '#c98e5b'); d.circle(-4, -3, 7, '#d6a070'); shine(d, -6, -3, 2.8); },                 // 점토
+  o06: d => { lump(d, '#efe8d8'); d.circle(3, 1, 3.6, '#e2d6bf', flat); d.circle(-6, 6, 2.4, '#e2d6bf', flat); },             // 석회석
+  o07: d => { lump(d, '#e8c99a'); for (const y of [-2, 5]) d.rr(-12, y, 24, 3, 1.5, '#d9b07a', flat); },                     // 사암
+  o08: d => { d.circle(-5, 4, 10, '#5b5266'); d.circle(6, 5, 8, '#6b6278'); shine(d, -8, 0, 2.6); },                         // 부싯돌
+  o09: d => { for (const [y, w] of [[8, 14], [2, 12], [-4, 10]]) d.rr(-w, y - 3, w * 2, 7, 3.5, '#4a4a52'); shine(d, -7, -5, 2.2); }, // 흑연
+  o10: d => { for (const [x, y, r] of [[-7, 6, 7], [6, 6, 7], [0, -3, 7.5]]) { d.rr(x - r, y - r, r * 2, r * 2, r * .6, '#f4f8ff'); d.dot(x - 2, y - 2, 1.8, '#ffffff', .9); } }, // 소금 결정
+  // ◆◆ 보통
+  o11: d => { lump(d, '#7d7888'); bits(d, [[-6, 0], [6, -2], [0, 7]], '#c9d2dc', 3.2); },                                   // 철 광석
+  o12: d => { lump(d, '#6e6a78'); bits(d, [[-5, -2], [5, 1], [-1, 8], [8, 7]], '#f4f7fb', 3); },                            // 은 광석
+  o13: d => { lump(d, '#7d8090'); d.circle(4, 0, 5, '#9497a6', flat); shine(d, -6, -3, 2.4); },                              // 납 광석
+  o14: d => { lump(d, '#8a8494'); bits(d, [[-5, 0], [5, 3], [0, -6]], '#c3ccd8', 2.8); },                                   // 아연 광석
+  o15: d => { lump(d, '#9a92a2', .8, 8); crystal(d, -5, 6, 15, 7, -.3, '#f3f0ff'); crystal(d, 4, 6, 18, 8, .2, '#ebe6ff'); }, // 석영
+  o16: d => { lump(d, '#f3d9c9'); d.circle(-4, 0, 4, '#f8e6da', flat); d.circle(6, 6, 3, '#e8c6b2', flat); },                 // 장석
+  o17: d => { for (const [y, w, c] of [[8, 13, '#d9c9a6'], [3, 11, '#e6d8b8'], [-2, 9, '#d9c9a6']]) oval(d, 0, y, w, 4, 0, c); shine(d, -5, -3, 2); }, // 운모
+  o18: d => { for (const [x, y, r] of [[-7, 6, 7], [6, 6, 7.5], [0, -3, 8]]) d.circle(x, y, r, '#ffe066'); shine(d, -3, -6, 2.6); }, // 황
+  o19: d => { gem(d, '#9fe0c9', 'cushion', .9); d.rr(-11, -1, 22, 4, 2, '#c8b6ff', flat); },                                // 형석
+  o20: d => { d.circle(0, 2, 15, '#e8a07a'); d.circle(0, 2, 10, '#f3c2a0', flat); d.circle(0, 2, 5.5, '#e08a62', flat); shine(d, -7, -5, 2.6); }, // 마노
+  // ◆◆◆ 귀함
+  o21: d => { for (const [x, y, r] of [[-6, 6, 8], [7, 5, 7], [0, -3, 8.5]]) d.circle(x, y, r, '#ffd23f'); shine(d, -3, -6, 3); twinkle(d, [[13, -10, 1.8]]); }, // 금 광석
+  o22: d => { for (const [x, y, r] of [[-6, 6, 7], [7, 6, 7], [0, -2, 8]]) d.circle(x, y, r, '#e8eef4'); shine(d, -3, -5, 3); }, // 백금 광석
+  o23: d => { lump(d, '#8a7f9c', .85, 9); for (const [x, r] of [[-6, -.35], [0, 0], [6, .35]]) crystal(d, x, 8, 16, 7, r, '#b57bff'); }, // 자수정
+  o24: d => { crystal(d, -4, 15, 26, 11, -.2, '#ffc94f'); crystal(d, 6, 15, 18, 8, .3, '#ffd977'); },                         // 황수정
+  o25: d => gem(d, '#c9304f'),                                                                                               // 가넷
+  o26: d => { gem(d, '#4fd6c9'); d.circle(5, -3, 2.4, '#3ab0a6', flat); d.circle(-4, 7, 2, '#3ab0a6', flat); },              // 터키석
+  o27: d => { gem(d, '#ffe3f3'); for (const [x, y, c] of [[-4, -1, '#a6e0ff'], [4, 4, '#ffd27a'], [-2, 7, '#b8f0c0']]) d.circle(x, y, 2.6, c, flat); }, // 오팔
+  o28: d => { d.circle(0, 2, 14, '#5cc48a'); d.circle(0, 2, 5, '#fff7f0', flat); shine(d, -6, -4, 3); },                     // 옥
+  o29: d => { for (const [x, y, r] of [[0, 8, 4], [-6, 0, 3.4], [6, -1, 3.4], [0, -6, 3.4], [-9, -8, 3], [9, -9, 3]]) d.circle(x, y, r, '#ff8f9f'); d.rr(-2.4, -4, 4.8, 18, 2.4, '#ff8f9f'); }, // 산호석
+  // ◆◆◆◆ 아주 귀함
+  o30: d => { gem(d, '#ff2f4f', 'heart'); twinkle(d, [[13, -11, 2]]); },                                                    // 루비
+  o31: d => { gem(d, '#3f6fff', 'cushion'); twinkle(d, [[14, -11, 2]]); },                                                  // 사파이어
+  o32: d => { gem(d, '#2fbf6f', 'cushion', .95); d.rr(-6, -5, 12, 12, 5, '#5ad690', flat); twinkle(d, [[13, -12, 2]]); },    // 에메랄드
+  o33: d => { gem(d, '#ffb347', 'drop'); twinkle(d, [[12, -12, 1.8]]); },                                                   // 토파즈
+  o34: d => { gem(d, '#7fe0ff', 'pill'); twinkle(d, [[13, -11, 1.8]]); },                                                   // 아쿠아마린
+  o35: d => { oval(d, 0, 9, 16, 6, 0, '#ffb3c6'); d.circle(0, 1, 10, '#fff7f0'); d.dot(-3, -3, 3, '#ffffff', .9); d.circle(6, -7, 1.8, '#fff6c8'); }, // 진주
+  o36: d => { gem(d, '#bfe3ff', 'cushion'); d.circle(0, 1, 6, '#e6f4ff', flat); twinkle(d, [[-13, -11, 1.8], [13, 10, 1.6]], '#ffffff'); }, // 미스릴
+  // ◆◆◆◆◆ 전설
+  o37: d => { d.circle(0, 2, 18, '#dff6ff', {flat: true, noShadow: true}); gem(d, '#e8fbff', 'drop', 1.05); twinkle(d, [[-14, -12, 2.4], [14, -8, 2], [12, 13, 1.8]], '#ffffff'); }, // 다이아몬드
+  o38: d => { d.circle(0, 2, 18, '#ece4ff', {flat: true, noShadow: true}); for (let i = 0; i < 5; i++) { const a = -PI / 2 + i * PI * 2 / 5; d.circle(Math.cos(a) * 8, 2 + Math.sin(a) * 8, 6, '#c9b4ff'); } d.circle(0, 2, 8, '#d9c9ff'); shine(d, -3, -2, 2.6); twinkle(d, [[14, -12, 2]]); }, // 별빛 수정
+  o39: d => { d.circle(0, 2, 15, '#ff9fe0'); d.circle(0, 2, 11.5, '#ffd27a', flat); d.circle(0, 2, 8, '#a6f0b0', flat); d.circle(0, 2, 4.5, '#a6d6ff', flat); shine(d, -7, -5, 3); twinkle(d, [[15, -11, 2]]); }, // 무지개 원석
+  o40: d => { d.circle(0, 2, 19, '#ffd6c8', {flat: true, noShadow: true}); gem(d, '#ff4f2f', 'heart', 1.05); d.circle(0, 2, 3, '#ffb347', flat); twinkle(d, [[-14, -10, 2], [14, -12, 2]]); }, // 용의 심장석
 };

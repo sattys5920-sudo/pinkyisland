@@ -2722,7 +2722,7 @@ function promiseTree(){
 // ===== 아이템 그림 (물고기·작물·광석·몬스터는 public/art/ 의 종류별 그림) =====
 const ART = {...ART_FISH_A, ...ART_FISH_B, ...ART_CROPS, ...ART_ORES, ...ART_MON, ...ART_DISH};
 // 작물: 캐릭터와 같은 부드러운 매트 점토로 그려요 (얼굴은 없어요)
-for (const id of Object.keys(ART_CROPS)){ const base = ART[id];
+for (const id of [...Object.keys(ART_CROPS), ...Object.keys(ART_ORES)]){ const base = ART[id];
   ART[id] = (d, t) => { const m = CH.mattePainter(d.ctx); m.tri = d.tri; m.stitch = d.stitch; base(m, t); }; }
 globalThis.shade = shade;
 const iconCache = new Map();
