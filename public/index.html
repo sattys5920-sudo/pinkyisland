@@ -221,7 +221,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 .adm-tbl-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.adm-tbl-head b{font-size:24px}.adm-tbl-head small{opacity:.75;font-size:17px;margin-right:auto}
 .adm-tbl-scroll{overflow:auto}.adm-tbl table{border-collapse:separate;border-spacing:3px;font-size:18px;white-space:nowrap}
 .adm-tbl th{position:sticky;top:0;background:#1c161e;font-weight:400;opacity:.85;padding:2px 6px}.adm-tbl th:first-child,.adm-tbl td:first-child{position:sticky;left:0;background:#1c161e;text-align:left;z-index:1}
-.adm-tbl td{text-align:center;padding:2px 6px;border-radius:8px;position:relative}.adm-tbl td.g{text-align:right;font-variant-numeric:tabular-nums}
+.adm-tbl td{text-align:center;padding:2px 6px;border-radius:8px;position:relative}.adm-tbl td.g{text-align:right;font-variant-numeric:tabular-nums}.adm-tbl td.g small{display:block;font-size:14px;opacity:.85;line-height:1}.adm-tbl td.up small{color:#7dff9a;opacity:1}.adm-tbl td.dn small{color:#ff8a98;opacity:1}
 .adm-tbl td.t1{background:rgba(255,255,255,.06)}.adm-tbl td.t2{background:#5d4558}.adm-tbl td.t3{background:#9a4f78}.adm-tbl td.t4{background:#ff9fc4;color:#2a2429}
 .adm-tbl td em{position:absolute;right:2px;top:2px;width:6px;height:6px;border-radius:50%;background:#7dff9a}.adm-tbl tr.sel td{outline:2px solid #ff9fc4}
 @media (max-width:640px){
@@ -3111,18 +3111,24 @@ function renderAdmin(){
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>바꾸면 접속한 모든 사람에게 바로 전달돼요. 게임 화면 연출은 다음 업데이트에서 붙어요.</small></div>
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
-      <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="table" class="adm-btn">자금 · 호감도 표</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
+      <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="table" class="adm-btn">자금 · 주식 · 호감도 표</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
     </div>${admTbl !== null ? adminTable(regs) : ''}`;
   const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
 }
 // 모두의 현재 자금과 주민 14 명과의 호감도 (칸 = 하트 수, 색 = 관계 단계, 초록 점 = 오늘 대화함)
 let admScroll = [0, 0];
 function adminTable(regs){
-  const d = today(), rows = [...regs].sort(([,a],[,b])=>(b.inv?.gold||0) - (a.inv?.gold||0));
+  const d = today(), stk = p => Object.entries(p.stocks||{}).filter(([id,h])=>STOCKS[id] && h && h.n > 0).map(([id,h])=>({id, n:h.n, cost:h.cost||0, val:stockPrice(id)*h.n}));
+  const sv = p => stk(p).reduce((a,x)=>a + x.val, 0), total = p => (p.inv?.gold||0) + sv(p);
+  const rows = [...regs].sort(([,a],[,b])=>total(b) - total(a));
+  const stCell = p => { const l = stk(p); if (!l.length) return `<td class="g" title="${esc(p.nick)} · 주식 없음">-</td>`;
+    const v = sv(p), c = l.reduce((a,x)=>a + x.cost, 0), pl = v - c;
+    const t = `${esc(p.nick)} 주식 · ` + l.map(x=>`${STOCKS[x.id].name} ${x.n}주 (평균 ${Math.round(x.cost/x.n).toLocaleString()} → 지금 ${stockPrice(x.id).toLocaleString()} G)`).join(' · ') + ` · 손익 ${pl>=0?'+':''}${pl.toLocaleString()} G`;
+    return `<td class="g ${pl>0 ? 'up' : pl<0 ? 'dn' : ''}" title="${t}">${v.toLocaleString()} G<small>${pl>=0?'+':''}${pl.toLocaleString()}</small></td>`; };
   const cell = (p, n) => { const r = (p.rel||{})[n.id] || {}, h = heartsOf(r.pts), ev = [4,7,10].filter(k=>r['ev'+k]).map(k=>'♥'+k).join(' ');
     return `<td class="t${tierOf(h)}" title="${esc(p.nick)} → ${esc(n.name)} · ${TIERS[tierOf(h)]} · 호감도 ${r.pts||0}/500 · 본 이야기 ${ev || '없음'}${r.talkDay===d ? ' · 오늘 대화함' : ''}">${h}${r.talkDay===d ? '<em></em>' : ''}</td>`; };
-  return `<div class="adm-tbl"><div class="adm-tbl-head"><b>자금 · 호감도</b><small>숫자 = 하트 (0~10) · 색 = 관계 단계 (아는 사이 → 괜찮은 사람 → 친한 친구 → 소중한 짝) · 초록 점 = 오늘 대화함 · 칸을 누르면 자세히</small><button data-a="tclose" class="adm-btn">닫기</button></div>
-    <div class="adm-tbl-scroll"><table><thead><tr><th>닉네임</th><th>자금</th>${NPCS.map(n=>`<th>${esc(n.name)}</th>`).join('')}<th>♥ 합계</th></tr></thead><tbody>${rows.map(([id,p])=>`<tr class="${admTbl===id ? 'sel' : ''}"><td>${esc(p.nick)}</td><td class="g">${Number(p.inv?.gold||0).toLocaleString()} G</td>${NPCS.map(n=>cell(p, n)).join('')}<td>${NPCS.reduce((a,n)=>a + heartsOf(((p.rel||{})[n.id]||{}).pts), 0)}</td></tr>`).join('') || `<tr><td colspan="${NPCS.length+3}">아직 주민이 없어요</td></tr>`}</tbody></table></div></div>`;
+  return `<div class="adm-tbl"><div class="adm-tbl-head"><b>자금 · 주식 · 호감도</b><small>총자산 = 자금 + 주식 지금 가격 · 주식 아래 작은 숫자 = 손익 · 숫자 = 하트 (0~10) · 색 = 관계 단계 (아는 사이 → 괜찮은 사람 → 친한 친구 → 소중한 짝) · 초록 점 = 오늘 대화함 · 칸을 누르면 자세히</small><button data-a="tclose" class="adm-btn">닫기</button></div>
+    <div class="adm-tbl-scroll"><table><thead><tr><th>닉네임</th><th>총자산</th><th>자금</th><th>주식</th>${NPCS.map(n=>`<th>${esc(n.name)}</th>`).join('')}<th>♥ 합계</th></tr></thead><tbody>${rows.map(([id,p])=>`<tr class="${admTbl===id ? 'sel' : ''}"><td>${esc(p.nick)}</td><td class="g"><b>${total(p).toLocaleString()} G</b></td><td class="g">${Number(p.inv?.gold||0).toLocaleString()} G</td>${stCell(p)}${NPCS.map(n=>cell(p, n)).join('')}<td>${NPCS.reduce((a,n)=>a + heartsOf(((p.rel||{})[n.id]||{}).pts), 0)}</td></tr>`).join('') || `<tr><td colspan="${NPCS.length+5}">아직 주민이 없어요</td></tr>`}</tbody></table></div></div>`;
 }
 function adminClick(e){
   const td = e.target.closest('.adm-tbl td[title]'); if (td) return toast(td.title);
