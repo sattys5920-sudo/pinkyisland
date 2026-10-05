@@ -51,7 +51,7 @@ img.bi{width:34px;height:34px;display:block;pointer-events:none}
 #log p{background:rgba(255,255,255,.72);border-radius:10px;padding:2px 10px;align-self:flex-start;max-width:100%;text-shadow:none}
 #chatin{flex:1;min-width:0;font:700 20px "Dongle",sans-serif;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fffffff0;color:var(--ink)}
 .emo{border:0;border-radius:12px;background:#fff;width:44px;min-height:44px;font-size:25px;box-shadow:inset 0 -2px 0 #f6e6ec}
-#talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:min(520px,calc(100vw - 20px));padding:14px 16px;z-index:12}
+#talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:min(520px,calc(100vw - 20px));padding:14px 16px;z-index:13}
 #talk h3{margin:0 0 4px;font-size:25px;color:var(--ink)}
 #talk p{margin:0 0 10px;font-size:21px;white-space:pre-line}
 #talk #talkNote{font-size:18px;color:var(--soft);margin-top:-6px}
@@ -192,7 +192,8 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 }
 /* 키패드가 올라온 동안: 채팅창만 남기고 아래 버튼은 숨겨요 */
 body.typing #bar, body.typing #sideBtns, body.typing #talk, body.typing #toast{visibility:hidden}
-body.typing #chatbox{z-index:30;transition:bottom .12s}
+body.typing #chatbox{z-index:30;left:0;right:0;width:auto;padding:8px calc(env(safe-area-inset-right,0px) + 10px) 8px calc(env(safe-area-inset-left,0px) + 10px);background:rgba(255,247,250,.96);box-shadow:0 -3px 12px rgba(80,40,60,.12);border-radius:16px 16px 0 0}
+body.typing #emorow{display:none}
 body.typing #log{max-height:4.5em;overflow:hidden;justify-content:flex-end}
 body.typing #chatin{background:#fff}
 
@@ -1159,7 +1160,7 @@ function enterGame(doc){
   const L = LOTS[me.lot]; pos.dir = 'down';
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
   else enterZone('home', null, L.x, L.y + 18);
-  renderHud();
+  tutorialFix(); renderHud();
   addLog(`${me.nick} 님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
   if (solo) addLog('혼자 보기 모드예요.', true);
   syncStats(); checkAchievements();
@@ -1375,7 +1376,7 @@ function talkTo(n){
   let text = '';
   if (n.id==='hana' && me.quest < 6){
     if (me.quest<=1) text = '안녕! 나는 하나야! 먼저 웰컴 팩을 열고, 집 앞 빈자리에 텃밭 2 칸을 놓아 봐!';
-    else if (me.quest===2){ me.inv.can = true; me.quest = 3; text = '텃밭 다 놓았구나! 자, 내 물뿌리개 줄게! 토마토 씨앗 심고 물 줘 봐! 헤헤.'; }
+    else if (me.quest===2){ me.inv.can = true; me.quest = 3; tutorialFix(); text = '텃밭 다 놓았구나! 자, 내 물뿌리개 줄게! 토마토 씨앗 심고 물 줘 봐! 헤헤.'; }
     else if (me.quest<5) text = '씨앗 심고 물 주면 30 초마다 한 단계씩 자라! 단계마다 물 또 줘야 해!';
     else text = '토마토가 빨개지면 텃밭을 눌러서 수확해!';
   }
@@ -1882,29 +1883,36 @@ function plantMenu(i){
   });
 }
 function plant(i, type, quiet=false){
+  if (me.quest < 3) return notYet();
   if (!invCount('seed:'+type) || !me.gardens[i] || me.gardens[i].crop) return;
   invAdd('seed:'+type, -1); me.gardens[i].crop = {type, stage:0, wateredAt:null};
   if (me.quest===3) me.quest = 4;
   saveMe(); renderHud(); if (!quiet) toast(`${CROPS[type].name} 씨앗을 심었어요 · 다 크는 데 ${fmtMin(CROPS[type].min)}`);
 }
+// 튜토리얼은 순서대로: 아직 차례가 아닌 행동은 막고 지금 할 일을 알려 줘요. 예전에 순서가 꼬여 멈춘 경우도 이어지게 고쳐요
+const notYet = () => toast(`아직 그 차례가 아니에요 · 지금 할 일: ${QUESTS[me.quest]}`);
+function tutorialFix(){
+  if (me.quest >= 3 && me.quest < 6 && me.gardens.some(g=>g && g.crop)){ const w = me.gardens.some(g=>g && g.crop && (g.crop.wateredAt || g.crop.stage > 0)); me.quest = Math.max(me.quest, w ? 5 : 4); }
+}
 function useSlot(i){
+  tutorialFix();
   const g = me.gardens[i], now = Date.now();
   if (!g){
     if (!me.inv.garden) return toast('놓을 텃밭이 없어요.');
     me.gardens[i] = {crop:null}; me.inv.garden--;
     if (me.quest===1 && me.gardens.every(Boolean)) { me.quest = 2; toast('텃밭 완성! 서쪽 들판의 하나에게 가 봐요'); } else toast('텃밭을 놓았어요');
-  } else if (!g.crop) return plantMenu(i);
+  } else if (!g.crop){ if (me.quest < 3) return notYet(); return plantMenu(i); }
   else {
     const c = cropNow(g.crop, now); g.crop = c; const cd = CROPS[c.type] || CROPS.c01;
     if (c.stage>=4){
       const n = cd.y1 + Math.floor(Math.random()*(cd.y2-cd.y1+1));
       g.crop = null; invAdd('crop:'+c.type, n); setExpr('happy', 2000); stat('cropsHarvested', n);
-      if (me.quest<=5 && me.quest>=4){ me.quest = 6; invAdd('seed:c01', 2); say('하나 · 꼬마 농부', '첫 수확 축하해! 기념으로 토마토 씨앗 2 개 더 줄게! 다른 씨앗은 마을 광장 모모 가게에서 살 수 있어!'); }
+      if (me.quest<=5 && me.quest>=3){ me.quest = 6; invAdd('seed:c01', 2); say('하나 · 꼬마 농부', '첫 수확 축하해! 기념으로 토마토 씨앗 2 개 더 줄게! 다른 씨앗은 마을 광장 모모 가게에서 살 수 있어!'); }
       else toast(`${cd.name} ${n} 개를 수확했어요!`, 'crop:'+c.type);
     } else if (!c.wateredAt){
       if (!me.inv.can) return toast('물뿌리개가 필요해요. 하나를 찾아가요.');
       g.crop = {type:c.type, stage:c.stage, wateredAt:now};
-      if (me.quest===4) me.quest = 5;
+      if (me.quest===3 || me.quest===4) me.quest = 5;
       toast(`물을 줬어요. ${fmtLeft(stageMs(c.type))} 뒤에 자라요`);
     } else return toast(`${cd.name} · ${STAGE_NAMES[c.stage]} 단계 · ${fmtLeft(c.wateredAt+stageMs(c.type)-now)} 뒤에 자라요`);
   }
@@ -2818,6 +2826,7 @@ function monDex(){
 const cv = $('game'), ctx = cv.getContext('2d');
 let view = {zoom:1, dpr:1, w:0, h:0, cx:0, cy:0};
 function resize(){
+  const ae = document.activeElement; if (view.w && ae && ae.id==='chatin') return; // 키패드가 올라와도 게임 화면 크기는 그대로 (늘어나 흐려지지 않게)
   view.dpr = Math.min(2, devicePixelRatio||1); view.w = innerWidth; view.h = innerHeight;
   view.zoom = view.base = Math.max(1.3, Math.min(1.8, Math.min(view.w, view.h*1.4)/480));
   cv.width = view.w*view.dpr; cv.height = view.h*view.dpr; staticSig = ''; spriteCache.clear(); sizePrev();
@@ -2828,14 +2837,13 @@ function keyboardLayout(){
   const vv = window.visualViewport, box = $('chatbox'), on = typing() && vv;
   document.body.classList.toggle('typing', !!on);
   if (on){
-    const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop);
-    box.style.bottom = (kb + 8) + 'px';
     if (vv.offsetTop) scrollTo(0, 0);
-  } else box.style.bottom = '';
+    box.style.bottom = 'auto'; box.style.top = Math.max(0, vv.offsetTop + vv.height - box.offsetHeight) + 'px'; // 보이는 화면 맨 아래 = 키패드 바로 위
+  } else { box.style.bottom = ''; box.style.top = ''; }
 }
 if (window.visualViewport){ visualViewport.addEventListener('resize', keyboardLayout); visualViewport.addEventListener('scroll', keyboardLayout); }
 $('chatin').addEventListener('focus', ()=>{ setTimeout(keyboardLayout, 50); setTimeout(keyboardLayout, 350); });
-$('chatin').addEventListener('blur', ()=>setTimeout(keyboardLayout, 50)); addEventListener('orientationchange', ()=>setTimeout(resize, 200)); resize();
+$('chatin').addEventListener('blur', ()=>{ setTimeout(keyboardLayout, 50); setTimeout(resize, 350); }); addEventListener('orientationchange', ()=>setTimeout(resize, 200)); resize();
 const typing = () => document.activeElement && document.activeElement.tagName==='INPUT';
 addEventListener('keydown', e=>{
   if (!me || obStep) return;
