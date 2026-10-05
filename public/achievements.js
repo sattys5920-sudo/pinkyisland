@@ -67,7 +67,7 @@ export const ACHIEVEMENTS = [
   // ── 우정 ──
   { id:'hearts_7',   name:'마음을 여는 열쇠',  desc:'누군가와 하트 7 달성하기',      stat:'maxHearts',   n:7,       reward:{gold:1500,  title:'마음을 여는 열쇠'},  icon:'🔑' },
   { id:'soulmate_1', name:'소중한 짝',         desc:'누군가와 하트 10 달성하기',     stat:'soulmates',   n:1,       reward:{gold:5000,  title:'소중한 짝'},         icon:'💞' },
-  { id:'soulmates_14', name:'모두의 사랑',     desc:'주민 14 명 모두와 하트 10 달성하기', stat:'soulmates', n:14,     reward:{gold:20000, title:'모두의 사랑'},       icon:'💖' },
+  { id:'soulmates_14', name:'모두의 사랑',     desc:'주민 12 명 모두와 하트 10 달성하기', stat:'soulmates', n:12,     reward:{gold:20000, title:'모두의 사랑'},       icon:'💖' },
   { id:'friends_7',  name:'마을의 인기쟁이',   desc:'하트 7 이상 주민 7 명 만들기',   stat:'friends7',    n:7,       reward:{gold:5000,  title:'마을의 인기쟁이'},   icon:'🎉' },
   { id:'gift_50',    name:'선물 요정',         desc:'선물 50 번 주기',                stat:'giftsGiven',  n:50,      reward:{gold:1500,  title:'선물 요정'},         icon:'🎁' },
   { id:'gift_300',   name:'마음을 전하는 사람', desc:'선물 300 번 주기',              stat:'giftsGiven',  n:300,     reward:{gold:8000,  title:'마음을 전하는 사람'}, icon:'💌' },
