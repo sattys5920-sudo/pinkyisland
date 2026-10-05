@@ -1,12 +1,12 @@
-// 반려동물 14 종 (유아용 점토). (x,y)는 발이 닿는 점, 키 약 24px (캐릭터의 절반쯤). 오른쪽을 보는 기준.
+// 반려동물 12 종 (유아용 점토). (x,y)는 발이 닿는 점, 키 약 24px (캐릭터의 절반쯤). 오른쪽을 보는 기준.
 export const PET_SPECIES = [
   ['dog', '강아지', ['#f2d2a0', '#fffaf2', '#8a6a4a']], ['cat', '고양이', ['#ffc98f', '#c9c6cf', '#4a4550']],
   ['hamster', '햄스터', ['#f3c98f', '#fffaf2', '#c9b8a6']], ['lizard', '도마뱀', ['#f3d27a', '#a8dc8f', '#ffb3a0']],
   ['rabbit', '토끼', ['#fffaf2', '#d9b38c', '#b9b6c0']], ['guinea', '기니피그', ['#e8a06a', '#fffaf2', '#8a6a4a']],
   ['turtle', '거북이', ['#a8dc8f', '#c9b58f', '#9fd6c8']], ['hedgehog', '고슴도치', ['#e8c9a6', '#fff1e3', '#b98a64']],
   ['parrot', '앵무새', ['#8fdc7a', '#8fc3ea', '#ffe066']], ['ferret', '페럿', ['#f3e6d0', '#c9a07a', '#6f6470']],
-  ['chinchilla', '친칠라', ['#c9c6cf', '#f3f0ec', '#8a8494']], ['goldfish', '금붕어', ['#ff9a3d', '#ffd23f', '#fffaf2']],
-  ['chick', '병아리', ['#ffe066', '#fff3a8', '#ffd0a0']], ['glider', '슈가글라이더', ['#b9b6c0', '#d9c2a6', '#fffaf2']],
+  ['goldfish', '금붕어', ['#ff9a3d', '#ffd23f', '#fffaf2']],
+  ['chick', '병아리', ['#ffe066', '#fff3a8', '#ffd0a0']],
 ];
 const PI = Math.PI, INK = '#3b2433', flat = {flat: true, noShadow: true};
 const tone = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = v => Math.max(0, Math.min(255, Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k)))); return '#' + [f(n >> 16), f((n >> 8) & 255), f(n & 255)].map(v => v.toString(16).padStart(2, '0')).join(''); };

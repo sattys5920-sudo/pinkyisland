@@ -12,7 +12,7 @@
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$i": {
-        ".write": "auth != null && $i.matches(/^([0-9]|1[0-3])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
+        ".write": "auth != null && $i.matches(/^([0-9]|1[01])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
         ".validate": "newData.child('uid').val() === auth.uid && newData.child('at').isNumber()"
       }
     },
@@ -20,7 +20,7 @@
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$i": {
-        ".write": "auth != null && $i.matches(/^([0-9]|1[0-3])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
+        ".write": "auth != null && $i.matches(/^([0-9]|1[01])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
         ".validate": "newData.child('uid').val() === auth.uid && newData.child('at').isNumber()"
       }
     },

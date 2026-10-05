@@ -32,6 +32,19 @@ body{margin:0;background:var(--sea);color:var(--ink);font:700 21px/1.15 "Dongle"
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--pinkd);outline-offset:2px}
 #hud{left:calc(env(safe-area-inset-left,0px) + 10px)!important;font-size:18px!important;gap:6px 10px!important;flex-wrap:wrap;max-width:calc(100vw - 20px - min(260px,46vw) - 10px);position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:10px;display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:20px;z-index:5}
+#stats{position:fixed;z-index:5;left:calc(env(safe-area-inset-left,0px) + 10px);top:calc(env(safe-area-inset-top,0px) + 56px);width:min(330px,calc(100vw - 20px - min(260px,46vw) - 10px));display:grid;grid-template-columns:auto 1fr 1fr;grid-template-rows:auto 4px;gap:3px 6px;align-items:center;padding:5px 8px 4px;background:rgba(255,250,252,.9);border-radius:12px;box-shadow:inset 0 -2px 0 #f7e3ea,0 3px 10px #d4a3b51f}
+#stats #lvTag{grid-row:1/3;background:#b58cff;color:#fff;border-radius:9px;padding:1px 7px;font-size:17px;font-weight:normal;line-height:1.3}
+#stats .sb{position:relative;height:16px;border-radius:8px;background:#f6e3ea;overflow:hidden;box-shadow:inset 0 1px 2px #0001}
+#stats .sb s{position:absolute;left:0;top:0;bottom:0;border-radius:8px;text-decoration:none;transition:width .25s}
+#stats .sb.hp s{background:linear-gradient(#ff9bb5,#ff6b8f)}
+#stats .sb.st s{background:linear-gradient(#ffe27a,#ffc23f)}
+#stats .sb.low{animation:lowPulse .8s ease-in-out infinite}
+@keyframes lowPulse{50%{box-shadow:0 0 0 2px #ff6b8f}}
+#stats .sb em{position:absolute;inset:0;font-style:normal;font-size:14px;line-height:16px;text-align:center;color:#5a3a4a;white-space:nowrap}
+#stats .xb{grid-column:2/4;height:4px;border-radius:2px;background:#efe6fb;overflow:hidden;position:relative}
+#stats .xb s{position:absolute;left:0;top:0;bottom:0;background:#b58cff;text-decoration:none;transition:width .25s}
+#stats .xb em{display:none}
+body.dlg-on #stats{visibility:hidden}
 #hud u{text-decoration:none;font-size:.62em;margin-right:3px;vertical-align:1px}
 img.ui{width:1.05em;height:1.05em;vertical-align:-.2em;margin:0 .12em}
 #hud img.ui{width:20px;height:20px;vertical-align:-4px;margin:0 3px 0 0}
@@ -53,6 +66,7 @@ img.bi{width:34px;height:34px;display:block;pointer-events:none}
 #log p{margin:0;transition:opacity 1s}
 #log p.sys{color:var(--ink);opacity:.85}
 #chatrow{display:flex;gap:6px;pointer-events:auto}
+body:not(.chat-open) #chatrow,body:not(.chat-open) #emorow{display:none} /* 채팅은 [채팅] 버튼을 누를 때만 열려요 (평소엔 화면을 가리지 않게) */
 #emorow{display:flex;gap:6px;pointer-events:auto}
 #log p{background:rgba(255,255,255,.72);border-radius:10px;padding:2px 10px;align-self:flex-start;max-width:100%;text-shadow:none}
 #chatin{flex:1;min-width:0;font:700 20px "Dongle",sans-serif;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fffffff0;color:var(--ink)}
@@ -126,12 +140,9 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .round.swing{width:64px;height:64px;font-size:16px;letter-spacing:-.5px;background:linear-gradient(#fff,#fde4ec);box-shadow:inset 0 -3px 0 #f2c3d3,0 4px 14px #d4a3b52e}
 .round{width:50px;height:50px;border-radius:50%;border:0;padding:0;line-height:1.05;white-space:nowrap;background:linear-gradient(#fff,#fff8fa);color:var(--ink);font-size:18px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
 #mapPanel{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:10;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 40px));max-height:min(76vh,calc(100% - 120px));overflow:auto;padding:14px 16px;touch-action:pan-y;border-radius:20px}
-.mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(7,auto);gap:4px;margin-top:6px}
-.mz{background:#fff;border-radius:10px;padding:5px 3px;text-align:center;font-size:15px;line-height:1.25;display:flex;flex-direction:column;gap:2px;box-shadow:inset 0 -2px 0 #f6e6ec;min-height:52px;justify-content:center}
-.mz b{font-size:16px;font-weight:normal}
-.mz small{color:var(--soft);font-size:13px}
-.mz i{font-style:normal;color:var(--ink);background:var(--pink);border-radius:8px;padding:0 4px;align-self:center;font-size:13px}
-.mz.here{outline:3px solid var(--pinkd)}
+#mapCv{display:block;width:100%;margin-top:6px;border-radius:14px;touch-action:manipulation;cursor:pointer}
+.mlegend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:15px;color:var(--soft);margin:6px 2px}.mlegend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:0;border:1.5px solid #fff;box-shadow:0 0 0 1px #0002}.mlegend .dim{margin-left:auto}
+#mapInfo{margin-top:4px}
 .mnote{font-size:16px;color:var(--soft);margin:8px 2px 0}
 #fishGame{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 90px);width:min(440px,calc(100vw - 20px));padding:12px 14px;z-index:11;display:flex;flex-direction:column;gap:8px;touch-action:none}
 #fishGame b{font-size:24px;color:var(--ink)}
@@ -193,12 +204,12 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 .roofs button small{font-size:16px;color:var(--soft)}
 .roofs button[aria-pressed="true"]{border-color:var(--pinkd)}
 .roofs button:disabled{opacity:.45;cursor:default}
-.lots{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.lots{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
 .lots button{border:2px dashed #f0d3dd;background:#fff;border-radius:12px;padding:6px 2px;font-size:18px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:64px;justify-content:center}
 .lots button i{width:30px;height:16px;border-radius:9px 9px 3px 3px;display:block}
 .lots button:disabled{border-style:solid;border-color:transparent;cursor:default}
 .lots button[aria-pressed="true"]{border:2px solid var(--pinkd);background:#fff6f9}
-.lots .gap{grid-column:span 7;text-align:center;font-size:18px;color:var(--soft);padding:2px}
+.lots .gap{grid-column:span 6;text-align:center;font-size:18px;color:var(--soft);padding:2px}
 .act{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .note{background:#fff;border-radius:14px;padding:10px 14px;font-size:19px;color:var(--soft)}
 
@@ -207,6 +218,7 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
   #hud{left:10px!important;right:10px;max-width:none!important;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;white-space:nowrap;gap:0 10px!important;padding:5px 12px;border-radius:14px}
   #hud::-webkit-scrollbar{display:none}
   #hud span{flex:none}
+  #stats{left:10px;right:10px;width:auto}
   #quest{top:calc(env(safe-area-inset-top,0px) + 54px);left:10px;right:10px!important;max-width:none;padding:4px 12px;font-size:16px;display:flex;gap:6px;align-items:baseline;border-radius:12px}
   #quest b{display:inline;font-size:13px;flex:none}
   #npcPanel,#mapPanel{top:auto;left:0;right:0;width:auto;transform:none;bottom:0;max-height:min(72dvh,calc(100% - 120px));border-radius:22px 22px 0 0;padding:8px 12px calc(env(safe-area-inset-bottom,0px) + 14px);box-shadow:0 -6px 24px #c08aa02e;z-index:12}
@@ -223,7 +235,6 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
   #bar div{width:44px;height:44px}
   #fishGame{bottom:calc(env(safe-area-inset-bottom,0px) + 80px)}
   .mini{min-height:34px}
-  .mgrid{gap:3px}
   .obc h1{font-size:34px}
 }
 /* 가로로 눕힌 폰: 높이가 낮아요 */
@@ -312,7 +323,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 <div id="dim"></div>
 <div id="npcPanel" class="pill" hidden></div>
 <div id="mapPanel" class="pill" hidden></div>
-<div id="sideBtns" hidden><button id="menuBtn" class="round" aria-label="메뉴">메뉴</button><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="decoBtn" class="round" hidden>꾸미기</button><button id="swingBtn" class="round swing" hidden>휘두르기</button></div>
+<div id="sideBtns" hidden><button id="menuBtn" class="round" aria-label="메뉴">메뉴</button><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="chatBtn" class="round">채팅</button><button id="decoBtn" class="round" hidden>꾸미기</button><button id="swingBtn" class="round swing" hidden>휘두르기</button></div>
 <div id="fade"></div>
 <div id="fishGame" class="pill" hidden><b id="fgTitle">무언가 걸렸어요!</b><div id="fgTrack"><div id="fgZone"></div><div id="fgBob"></div></div><div id="fgMeter"><div id="fgBar"></div></div><p id="fgText"></p><small>누른 채 좌우로 움직여 찌를 따라가요 (키보드: ← →)</small></div>
 <div id="toast" class="pill" style="opacity:0"></div>
@@ -465,65 +476,71 @@ function blob(d, x, y, fabric, acc, t){
 
 
 // ===== 월드: 가운데 집터에서 동서남북으로 이어지는 구역들 =====
-const SPEED = 160, STAGE_MS = 30000, MAX = 14, M = 90, GAP = 54;
-const ROOFS = [['빨강','#ff6b6b'],['주황','#ffa14f'],['노랑','#ffd84f'],['연두','#b5e35a'],['초록','#5cc46a'],['민트','#6fe0c4'],['하늘','#7cc8ff'],['파랑','#5b8cff'],['남색','#5361b3'],['보라','#a77bff'],['분홍','#ff8fc4'],['코랄','#ff8f7a'],['갈색','#a8744f'],['회색','#9a96a6']];
-const LOT_X = [200,360,520,680,960,1120,1280];
-const LOTS = [...LOT_X.map(x=>({x,y:500})), ...LOT_X.map(x=>({x,y:930}))];
+const SPEED = 160, STAGE_MS = 30000, MAX = 12, M = 90, GAP = 54;
+const ROOFS = [['빨강','#ff6b6b'],['주황','#ffa14f'],['노랑','#ffd84f'],['연두','#b5e35a'],['초록','#5cc46a'],['민트','#6fe0c4'],['하늘','#7cc8ff'],['파랑','#5b8cff'],['남색','#5361b3'],['보라','#a77bff'],['분홍','#ff8fc4'],['코랄','#ff8f7a'],['갈색','#a8744f'],['회색','#9a96a6']]; // 고를 수 있는 건 앞 12 색 (뒤 2 색은 예전에 고른 사람용)
+const LOT_X = [230,420,610,1030,1220,1410]; // 12 명: 한 줄에 6 집, 가운데 길을 비워 두고 넉넉하게
+const LOTS = [...LOT_X.map(x=>({x,y:500})), ...LOT_X.map(x=>({x,y:930})), {x:820,y:1180}, {x:1000,y:1180}]; // 앞 12 칸만 고를 수 있어요 (뒤 2 칸은 예전 집터용)
 
 // theme: grass | flower | forest | deep | sand | cave | night
 // places: house(건물) / pond / field / mine / lighthouse / fountain / tree(약속 나무) / sign(준비 중 안내)
+// 구역은 격자로 놓여 있고, 옆 칸끼리는 모두 길로 이어져요 (exits 는 아래에서 자동으로)
 const ZONES = {
-  home:      {name:'집터', theme:'grass', W:1640, H:1300, grid:[3,3], exits:{n:'village', e:'pond', w:'meadow', s:'workshop'}, places:[], trees:[[1500,240],[1520,1100],[120,1150]]},
-  village:   {name:'마을 광장', theme:'grass', W:1600, H:1100, grid:[3,2], exits:{s:'home', n:'museum'}, places:[
+  home:      {name:'집터', theme:'grass', W:1640, H:1300, grid:[2,2], places:[], trees:[[1500,240],[1520,1100],[120,1150]]},
+  village:   {name:'마을 광장', theme:'grass', W:1600, H:1100, grid:[2,1], places:[
     {kind:'fountain', x:800, y:550},
     {kind:'house', x:420, y:380, roof:'#ff9fc4', label:'모모 케이크', icon:'🍰'},
     {kind:'house', x:1180, y:380, roof:'#9fd6ff', label:'몽실 옷가게', icon:'👕'},
     {kind:'house', x:420, y:880, roof:'#b5e35a', label:'단단 카페', icon:'☕'},
     {kind:'house', x:1180, y:880, roof:'#ffa14f', label:'토리 우체국', icon:'✉️'},
-  ], trees:[[200,600],[1400,600],[620,180],[980,180]]},
-  museum:    {name:'박물관 언덕', theme:'grass', W:1600, H:1100, grid:[3,1], exits:{s:'village', n:'starhill'}, places:[
+  ], trees:[[200,740],[1400,740],[620,180],[980,180]]},
+  museum:    {name:'박물관 언덕', theme:'grass', W:1600, H:1100, grid:[3,1], places:[
     {kind:'house', x:560, y:440, roof:'#b9a6ff', label:'올리 박물관', icon:'🏛️', wide:true},
   ], trees:[[1100,300],[1250,420],[1180,760],[300,800],[1350,880]]},
-  starhill:  {name:'별빛 언덕', theme:'night', W:1600, H:1100, grid:[3,0], exits:{s:'museum'}, places:[
+  starhill:  {name:'별빛 언덕', theme:'night', W:1600, H:1100, grid:[2,0], places:[
     {kind:'tree', x:800, y:420},
     {kind:'sign', x:980, y:640, text:'별빛 언덕 · 밤 이벤트 준비 중'},
   ], trees:[[300,300],[1300,300],[260,820],[1340,820]]},
-  pond:      {name:'사탕 연못', theme:'grass', W:1600, H:1100, grid:[4,3], exits:{w:'home', e:'beach'}, places:[
-    {kind:'pond', x:800, y:300, rx:280, ry:140},
-    {kind:'sign', x:1080, y:700, text:'물을 눌러 낚시해요'},
-  ], trees:[[260,260],[1340,260],[300,880],[1300,880]]},
-  beach:     {name:'등대 해변', theme:'sand', W:1600, H:1100, grid:[5,3], exits:{w:'pond', e:'seacave'}, places:[
+  pond:      {name:'사탕 연못', theme:'grass', W:1600, H:1100, grid:[3,2], places:[
+    {kind:'pond', x:1120, y:310, rx:260, ry:140},
+    {kind:'sign', x:1080, y:720, text:'물을 눌러 낚시해요'},
+  ], trees:[[300,260],[1440,780],[300,880],[560,300]]},
+  beach:     {name:'등대 해변', theme:'sand', W:1600, H:1100, grid:[4,2], places:[
     {kind:'sea'},
-    {kind:'lighthouse', x:1220, y:420},
+    {kind:'lighthouse', x:1220, y:513},
   ], trees:[]},
-  seacave:   {name:'비밀 해식 동굴', theme:'cave', W:1600, H:1100, grid:[6,3], exits:{w:'beach'}, places:[
+  seacave:   {name:'비밀 해식 동굴', theme:'cave', W:1600, H:1100, grid:[5,2], places:[
     {kind:'pond', x:1000, y:420, rx:200, ry:110},
     {kind:'sign', x:700, y:700, text:'비밀 해식 동굴 · 낚시·채굴·몬스터'},
   ], trees:[]},
-  meadow:    {name:'들판·꽃 언덕', theme:'flower', W:1600, H:1100, grid:[2,3], exits:{e:'home', w:'forest'}, places:[
+  meadow:    {name:'들판·꽃 언덕', theme:'flower', W:1600, H:1100, grid:[1,2], places:[
     {kind:'field', x:1040, y:400},
     {kind:'house', x:460, y:420, roof:'#ffb3d9', label:'밤이 꽃집', icon:'💐'},
-  ], trees:[[260,860],[1340,860],[800,180]]},
-  forest:    {name:'먼지 숲', theme:'forest', W:1600, H:1100, grid:[1,3], exits:{e:'meadow', w:'deepforest'}, places:[
+  ], trees:[[260,860],[1340,860],[620,190]]},
+  forest:    {name:'먼지 숲', theme:'forest', W:1600, H:1100, grid:[1,1], places:[
     {kind:'sign', x:980, y:740, text:'몬스터 가까이 가면 검으로 싸워요'},
   ], trees:[[300,250],[460,330],[640,220],[980,240],[1150,330],[1320,220],[260,820],[480,900],[700,820],[1060,880],[1260,820],[1400,940],[380,560],[1220,620]]},
-  deepforest:{name:'깊은 먼지 숲', theme:'deep', W:1600, H:1100, grid:[0,3], exits:{e:'forest'}, places:[
+  deepforest:{name:'깊은 먼지 숲', theme:'deep', W:1600, H:1100, grid:[0,1], places:[
     {kind:'sign', x:800, y:740, text:'먼지 여왕의 둥지? · 준비 중'},
   ], trees:[[240,240],[420,300],[600,220],[960,250],[1160,320],[1360,240],[220,860],[420,820],[640,900],[980,860],[1200,900],[1380,820],[300,560],[1300,560],[800,330]]},
-  workshop:  {name:'공방 거리', theme:'grass', W:1600, H:1100, grid:[3,4], exits:{n:'home', s:'minegate'}, places:[
+  workshop:  {name:'공방 거리', theme:'grass', W:1600, H:1100, grid:[2,3], places:[
     {kind:'house', x:520, y:520, roof:'#c98e5b', label:'보리 공방', icon:'🔨'},
     {kind:'house', x:1100, y:520, roof:'#ffb3c6', label:'반려동물 보호소', icon:'💞', shelter:true},
     {kind:'logs', x:820, y:860},
   ], trees:[[260,220],[1340,220],[1300,880],[300,900]]},
-  minegate:  {name:'광산 입구', theme:'grass', W:1600, H:1100, grid:[3,5], exits:{n:'workshop', s:'cave'}, places:[
+  minegate:  {name:'광산 입구', theme:'grass', W:1600, H:1100, grid:[1,3], places:[
     {kind:'mine'},
-    {kind:'sign', x:1060, y:560, text:'바위를 눌러 캐요'},
+    {kind:'sign', x:1060, y:420, text:'바위를 눌러 캐요'},
   ], trees:[[260,220],[1340,220]]},
-  cave:      {name:'의문의 동굴', theme:'cave', W:1600, H:1100, grid:[3,6], exits:{n:'minegate'}, places:[
+  cave:      {name:'의문의 동굴', theme:'cave', W:1600, H:1100, grid:[1,4], places:[
     {kind:'crystals'},
     {kind:'sign', x:800, y:640, text:'의문의 동굴 · 희귀 광석과 강한 몬스터'},
   ], trees:[]},
 };
+{ const at = {}; for (const [id,z] of Object.entries(ZONES)) at[z.grid] = id;
+  for (const z of Object.values(ZONES)){ const [x,y] = z.grid; z.exits = {}; for (const [k,dx,dy] of [['n',0,-1],['s',0,1],['w',-1,0],['e',1,0]]){ const n = at[[x+dx,y+dy]]; if (n) z.exits[k] = n; } } }
+// 넓기만 하고 빈 곳이 많던 구역을 3/4 크기로 줄여요 (집터는 12 집이 들어가야 해서 그대로). 위 숫자는 줄이기 전 기준
+const ZK = 0.75, zk = v => Math.round(v*ZK);
+for (const [id,z] of Object.entries(ZONES)){ if (id==='home') continue; z.k = ZK; z.W = zk(z.W); z.H = zk(z.H); z.trees = z.trees.map(([x,y])=>[zk(x), zk(y)]); for (const p of z.places){ if (p.x!=null){ p.x = zk(p.x); p.y = zk(p.y); } if (p.rx){ p.rx = zk(p.rx); p.ry = zk(p.ry); } } }
 const DIRS = {n:'북', s:'남', e:'동', w:'서'};
 const THEME = {
   grass:{ground:'#b5e6a3', ground2:'#9fdb8c', path:'#ffe0bf', edge:'#7cc46a'},
@@ -545,12 +562,12 @@ const NPCS = [
   {id:'mongsil', name:'몽실', animal:'양', role:'옷가게 재봉사', zone:'village', x:1180, y:412, sp:{kind:'sheep', fur:'#fffaf0', acc:'bow'}, tastes:{loved:['crop:c26'], liked:['crop:c09','crop:c13','crop:c18'], disliked:['fish','loot']}},
   {id:'tori', name:'토리', animal:'다람쥐', role:'우체부', zone:'village', x:1180, y:912, roam:true, sp:{kind:'squirrel', fur:'#d9894f', acc:'bag'}, tastes:{loved:['crop:c11'], liked:['crop'], disliked:['ore']}},
   {id:'olly', name:'올리', animal:'부엉이', role:'박물관 관장', zone:'museum', x:560, y:472, sp:{kind:'owl', fur:'#a98366', acc:'none'}, tastes:{liked:['ore','fish','loot']}},
-  {id:'pengpeng', name:'펭펭', animal:'펭귄', role:'등대지기', zone:'beach', x:1130, y:560, sp:{kind:'penguin', fur:'#454a63', acc:'none'}, tastes:{loved:['fish']}},
+  {id:'pengpeng', name:'펭펭', animal:'펭귄', role:'등대지기', zone:'beach', x:1130, y:660, sp:{kind:'penguin', fur:'#454a63', acc:'none'}, tastes:{loved:['fish']}},
   {id:'dandan', name:'단단', animal:'판다', role:'카페 사장', zone:'village', x:420, y:912, sp:{kind:'panda', fur:'#ffffff', acc:'chef'}, tastes:{loved:['crop','fish','dish'], disliked:['ore']}},
-  {id:'kongi', name:'콩이', animal:'강아지', role:'마을 경비대', zone:'village', x:880, y:980, sp:{kind:'dog', fur:'#f2d2a0', acc:'collar'}, tastes:{liked:['loot','fish'], disliked:['crop:c08']}},
+  {id:'kongi', name:'콩이', animal:'강아지', role:'마을 경비대', zone:'village', x:880, y:900, sp:{kind:'dog', fur:'#f2d2a0', acc:'collar'}, tastes:{liked:['loot','fish'], disliked:['crop:c08']}},
   {id:'bami', name:'밤이', animal:'고슴도치', role:'꽃집 주인', zone:'meadow', x:460, y:452, sp:{kind:'hedgehog', fur:'#e8c9a6', acc:'flower'}, tastes:{loved:['crop:c09','crop:c13','crop:c18','crop:c20','crop:c26'], liked:['seed'], disliked:['fish','loot']}},
 ];
-for (const n of NPCS){ n.homeX = n.x; n.homeY = n.y; Object.assign(n, NPC_TEXT[n.id] || {}); }
+for (const n of NPCS){ if (n.zone!=='home'){ n.x = zk(n.x); n.y = zk(n.y); } n.homeX = n.x; n.homeY = n.y; Object.assign(n, NPC_TEXT[n.id] || {}); }
 queueMicrotask(()=>{ for (const n of NPCS) n.look = NPC_LOOKS.find(v=>v.name===n.name) || {kind:n.sp.kind, fur:n.sp.fur, acc:n.sp.acc}; });
 const NPC = Object.fromEntries(NPCS.map(n=>[n.id,n]));
 // 호감도 속도: 매일 대화 + 좋아하는 선물 + 이틀에 한 번 퀘스트면 일주일쯤에 ♥10 (하트 1 개 = 50)
@@ -581,7 +598,7 @@ const TUT_DONE = QUESTS.length - 1;
 function tutCheck(){
   if (!me || me.quest < TUT_START || me.quest >= TUT_DONE) return;
   let moved = false;
-  while (me.quest < TUT_DONE){ const t = TUT[me.quest - TUT_START]; if (!t[1]()) break; me.inv.gold += t[2]; me.quest++; moved = true; toast(`할 일 완료! +${t[2]} G${me.quest < TUT_DONE ? ' · 다음: ' + QUESTS[me.quest] : ' · 섬 생활 첫걸음을 모두 마쳤어요'}`); }
+  while (me.quest < TUT_DONE){ const t = TUT[me.quest - TUT_START]; if (!t[1]()) break; me.inv.gold += t[2]; me.quest++; moved = true; gainExp(20); toast(`할 일 완료! +${t[2]} G${me.quest < TUT_DONE ? ' · 다음: ' + QUESTS[me.quest] : ' · 섬 생활 첫걸음을 모두 마쳤어요'}`); }
   if (moved){ saveMe(); renderHud(); }
 }
 const STAGE_NAMES = ['씨앗','새싹','잎','꽃','빨간 토마토'];
@@ -600,7 +617,7 @@ function tasteOf(npc, item){
 }
 
 // 우체부 토리는 시계를 기준으로 마을을 돌아서 모두의 화면에 같은 자리에 보여요
-const TORI_PATH = [[1180,912],[880,912],[880,620],[560,560],[880,620],[1240,560],[880,620],[880,912]];
+const TORI_PATH = [[1180,912],[880,912],[880,620],[560,560],[880,620],[1240,560],[880,620],[880,912]].map(([x,y])=>[zk(x), zk(y)]);
 const TORI_SEGS = TORI_PATH.map((a,i)=>{ const b = TORI_PATH[(i+1)%TORI_PATH.length]; return {a, b, walk:Math.hypot(b[0]-a[0], b[1]-a[1])/60*1000}; });
 const TORI_TOTAL = TORI_SEGS.reduce((s,g)=>s+g.walk+3000, 0);
 function toriPos(now){
@@ -653,7 +670,7 @@ function rebuildObstacles(){
     if (p.kind==='pond') o.ells.push({x:p.x, y:p.y, rx:p.rx, ry:p.ry});
     if (p.kind==='lighthouse') o.rects.push({x:p.x-28, y:p.y-150, w:56, h:155});
     if (p.kind==='sea') o.rects.push({x:0, y:0, w:z.W, h:250});
-    if (p.kind==='mine'){ o.ells.push({x:520,y:900,rx:220,ry:150}, {x:1080,y:900,rx:220,ry:150}); }
+    if (p.kind==='mine'){ o.ells.push({x:zk(520),y:zk(900),rx:zk(220),ry:zk(150)}, {x:zk(1080),y:zk(900),rx:zk(220),ry:zk(150)}); }
     if (p.kind==='logs') o.rects.push({x:p.x-60, y:p.y-30, w:120, h:40});
   }
   if (zoneId==='home') for (const p of Object.values(players)) if (p.lot!=null){ const L=LOTS[p.lot]; o.rects.push({x:L.x-54,y:L.y-106,w:108,h:108}); }
@@ -686,6 +703,11 @@ function checkExit(){
   if (side && z.house){ const p = z.house===uid ? me : players[z.house], L = LOTS[(p && p.lot!=null) ? p.lot : me.lot]; return enterZone('home', null, L.x, L.y + 24); }
   if (side) enterZone(ex[side], {n:'s', s:'n', w:'e', e:'w'}[side]);
 }
+function freeSpot(x, y){
+  const z = Z(); x = Math.max(M+30, Math.min(z.W-M-30, x)); y = Math.max(M+30, Math.min(z.H-M-30, y));
+  for (let r=0; r<900; r+=24) for (let a=0; a<6.28; a+=r ? 24/r : 7){ const nx = x + Math.cos(a)*r, ny = y + Math.sin(a)*r; if (!blocked(nx, ny)) return [nx, ny]; }
+  return [z.W/2, z.H/2];
+}
 let fadeT = 0;
 function enterZone(id, from, x, y){
   if (!zoneOk(id)) id = 'home';
@@ -698,6 +720,7 @@ function enterZone(id, from, x, y){
   else if (from==='w'){ pos.x = M+40; pos.y = z.H/2; }
   else if (from==='e'){ pos.x = z.W-M-40; pos.y = z.H/2; }
   rebuildObstacles(); fadeT = performance.now();
+  if (blocked(pos.x, pos.y)){ const [fx_, fy_] = freeSpot(pos.x, pos.y); pos.x = fx_; pos.y = fy_; } // 예전 자리가 막혀 있거나 구역 밖이면 가까운 빈자리로
   if (me){ renderDecor(); me.zone = id.startsWith('house:') ? 'home' : id; me.zx = Math.round(pos.x); me.zy = Math.round(pos.y); saveMe(); renderHud(); if (!$('mapPanel').hidden) renderMap(); }
   toast(`${z.name}`);
 }
@@ -910,6 +933,7 @@ async function saveMe(){
   if (admin || !me) return;
   if (saving){ saveAgain=true; return; }
   saving=true;
+  me.hp = Math.max(1, Math.round(playerHp)); me.sta = Math.round(playerSta);
   try { await net.savePlayer(toDB(me)); }
   catch(e){ toast('저장하지 못했어요. 인터넷 연결을 확인해 주세요.'); }
   saving=false;
@@ -1046,7 +1070,7 @@ function showLogin(auth, mode='login'){
   let savedId = ''; try { savedId = localStorage.getItem('pinky-id') || ''; } catch(e){}
   const signup = mode==='signup';
   obc.innerHTML = `<h1>핑키 디저트 아일랜드</h1>
-    <p class="sub">14 명이 함께 사는 디저트 섬이에요. ${signup ? '아이디와 비밀번호를 정하면 가입 완료!' : '아이디와 비밀번호로 들어가요.'}</p>
+    <p class="sub">12 명이 함께 사는 디저트 섬이에요. ${signup ? '아이디와 비밀번호를 정하면 가입 완료!' : '아이디와 비밀번호로 들어가요.'}</p>
     <div class="tabs"><button class="tab ${signup?'':'on'}" data-m="login">로그인</button><button class="tab ${signup?'on':''}" data-m="signup">가입하기</button></div>
     <form id="lf" class="lform" autocomplete="on">
       <label class="field"><b>아이디</b><input id="lid" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="16" placeholder="영어 3~16 자" value="${esc(savedId)}"></label>
@@ -1157,7 +1181,7 @@ function renderOb(){
       <p class="sub">섬에 살 내 캐릭터를 만들어요. 지금 섬 주민 ${registeredCount()}/${MAX} 명${solo?' · 혼자 보기 모드(Firebase 설정 전이라 다른 사람과 연결되지 않아요)':''}</p>
       <div class="maker"><div class="prev"><canvas id="obprev"></canvas></div><div class="ctrls" id="ctrls"></div></div>
       <div class="nick"><b>닉네임</b><input id="nick" maxlength="8" placeholder="최대 8 글자" value="${esc(nickVal)}"></div>
-      <p class="err" id="err">${full?'섬이 가득 찼어요. 14 명이 모두 입주했어요.':''}</p>
+      <p class="err" id="err">${full?'섬이 가득 찼어요. 12 명이 모두 입주했어요.':''}</p>
       <div class="act"><button class="btn" id="next1" ${full?'disabled':''}>다음: 지붕 색 고르기</button></div>`;
     renderCtrls();
     $('nick').addEventListener('input', e=>{ nickVal = e.target.value; });
@@ -1172,7 +1196,7 @@ function renderOb(){
     obc.dataset.step='roof';
     obc.innerHTML = `<h1>지붕 색 고르기</h1>${stepsHtml(1)}
       <p class="sub">지붕 색은 나를 나타내는 색이에요. 선착순이라 먼저 고른 사람의 색은 잠겨요.</p>
-      <div class="roofs">${ROOFS.map(([n,c],i)=>{ const t = takenBy('roof',i);
+      <div class="roofs">${ROOFS.slice(0, MAX).map(([n,c],i)=>{ const t = takenBy('roof',i);
         return `<button data-i="${i}" ${t?'disabled':''} aria-pressed="${pick.roof===i}"><i style="background:${c}"></i>${n}<small>${t?esc(t.nick)+' 님':'고를 수 있어요'}</small></button>`; }).join('')}</div>
       <p class="err" id="err"></p>
       <div class="act"><button class="btn ghost" id="back">이전</button><button class="btn" id="next2" ${pick.roof==null?'disabled':''}>다음: 집터 고르기</button></div>`;
@@ -1195,8 +1219,8 @@ function renderOb(){
       return `<button data-i="${i}" aria-pressed="${pick.lot===i}">${i+1} 번<br>빈 집터</button>`; };
     obc.innerHTML = `<h1>집터 고르기</h1>${stepsHtml(2)}
       <p class="sub">빈 집터 중 마음에 드는 곳을 골라요. 집 앞에는 내 텃밭이 생겨요.</p>
-      <div class="lots"><div class="gap">북쪽 마을</div>${[0,1,2,3,4,5,6].map(cell).join('')}<div class="gap">· 광장 ·</div>${[7,8,9,10,11,12,13].map(cell).join('')}<div class="gap">남쪽 마을</div></div>
-      <div class="note">광장 오른쪽에는 모모의 케이크 가게, 광장 위쪽에는 꼬마 농부 하나가 있어요.</div>
+      <div class="lots"><div class="gap">북쪽 마을</div>${[0,1,2,3,4,5].map(cell).join('')}<div class="gap">· 가운데 길 ·</div>${[6,7,8,9,10,11].map(cell).join('')}<div class="gap">남쪽 마을</div></div>
+      <div class="note">집터 위쪽은 마을 광장, 왼쪽은 꼬마 농부 하나의 들판이에요.</div>
       <p class="err" id="err"></p>
       <div class="act"><button class="btn ghost" id="back">이전</button><button class="btn" id="go" ${pick.lot==null?'disabled':''}>입주하기</button></div>`;
     obc.querySelectorAll('.lots button[data-i]').forEach(b=>b.onclick = ()=>{ pick.lot = +b.dataset.i; renderOb(); });
@@ -1234,15 +1258,16 @@ function enterGame(doc){
   $('npcBtn').onclick = ()=>togglePanel('npcPanel', renderNpcPanel);
   $('mapBtn').onclick = ()=>togglePanel('mapPanel', renderMap);
   document.querySelectorAll('.emo').forEach(b=>{ const k = b.id==='emoBtn' ? 'smile' : EMOJI_UI[b.dataset.e]; if (k) b.innerHTML = ui(k,'bi'); });
-  $('emoBtn').onclick = ()=>{ $('emorow').hidden = !$('emorow').hidden; };
+  $('emoBtn').onclick = ()=>{ $('emorow').hidden = !$('emorow').hidden; }; $('emoBtn').addEventListener('pointerdown', e=>e.preventDefault());
   $('dim').onclick = ()=>{ $('npcPanel').hidden = true; $('mapPanel').hidden = true; };
   $('decoBtn').onclick = decorMenu;
+  $('chatBtn').onclick = openChat;
   $('menuBtn').onclick = menuPanel;
   $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); swing(); });
   const L = LOTS[me.lot]; pos.dir = 'down';
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
   else enterZone('home', null, L.x, L.y + 18);
-  tutorialFix(); refundStocks(); renderHud();
+  loadStats(); tutorialFix(); refundStocks(); renderHud();
   addLog(`${me.nick} 님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
   if (solo) addLog('혼자 보기 모드예요.', true);
   syncStats(); checkAchievements();
@@ -1251,7 +1276,9 @@ function enterGame(doc){
 function renderHud(){
   if (admin) return renderAdmin();
   const online = 1 + others.size;
-  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold} G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span><span>${ui('hp')}<b id="hpv">${Math.ceil(playerHp)}</b></span>`;
+  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold} G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span>`;
+  if (!$('stats')){ const st = document.createElement('div'); st.id = 'stats'; st.innerHTML = `<b id="lvTag"></b><div class="sb hp" id="hpBar"><s></s><em></em></div><div class="sb st" id="staBar"><s></s><em></em></div><div class="xb" id="expBar"><s></s><em></em></div>`; $('hud').after(st); }
+  $('stats').hidden = false; barSig = ''; updateBars(); placeTop();
   $('quest').hidden = me.quest >= TUT_DONE; $('quest').innerHTML = `<b>할 일${me.quest >= TUT_START ? ` · 섬 생활 첫걸음 ${me.quest - TUT_START + 1}/${TUT.length}` : ''}</b>${QUESTS[Math.min(me.quest, TUT_DONE)]}`; setTimeout(tutCheck);
   const it = [['can','물뿌리개',me.inv.can],['rod','낚싯대',me.inv.rod],['pick','곡괭이',me.inv.pick],['sword',me.inv.sword ? `${weapon().name} (공격력 ${weapon().atk})` : '검',me.inv.sword]];
   $('swingBtn').hidden = !me.inv.sword;
@@ -1435,7 +1462,7 @@ function playEvents(n, list){
   const ev = (n.events && n.events[h]) || {title:'조금 더 가까워졌어요', pages:['(조금 더 가까워진 것 같다)'], keepsake:''};
   const evCh = chaptersOf(n).find(c=>c.kind==='event' && c.key===h), r = relOf(n.id), rc = evCh && !r['ev'+h] ? recallLine(n, evCh) : '';
   const first = !r['ev'+h];
-  if (first){ r['ev'+h] = true; me.inv.gold += STORY_GOLD[h]; if (ev.keepsake){ me.keep = me.keep || {}; me.keep[n.id] = [...(me.keep[n.id]||[]), fillName(ev.keepsake)]; } r.storyDay = today(); saveMe(); renderHud(); }
+  if (first){ r['ev'+h] = true; me.inv.gold += STORY_GOLD[h]; if (ev.keepsake){ me.keep = me.keep || {}; me.keep[n.id] = [...(me.keep[n.id]||[]), fillName(ev.keepsake)]; } r.storyDay = today(); gainExp({4:80, 7:150, 10:250}[h] || 50); }
   const rest = list.slice(1);
   const reward = first ? [{who:'narr', text:`관계가 '${TIERS[tierOf(h)]}'(으)로 깊어졌어요 · ${STORY_GOLD[h]} G${ev.keepsake ? ` · 기념품 '${fillName(ev.keepsake)}'` : ''}`}] : [];
   story({n, title:{sub:`${n.name} 이야기 · ${evCh ? evCh.i+1 : ''}화`, main:ev.title, star:true}, beats:[...toBeats([rc, ...ev.pages]), ...reward], acts: rest.length ? [['다음 이야기', ()=>playEvents(n, rest)]] : npcActions(n), hint: rest.length ? '' : storyHint(n)});
@@ -1640,16 +1667,85 @@ function renderNpcPanel(){
     else toast(`${n.name}은(는) ${ZONES[n.zone].name}에 있어요. 지도를 보고 찾아가요`);
   });
 }
+// ===== 섬 지도 (미니맵) =====
+// 구역 칸을 실제 배치 그대로 그리고, 집·연못·나무·주민·친구·나를 점으로 보여 줘요. 가 본 구역은 눌러서 바로 갈 수 있어요 (기력 10)
+const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', minegate:'광산 입구', cave:'의문의 동굴'};
+let mapSel = null, mapGeo = null, mapDrawT = 0;
+const visitedZones = () => (me.visited||'home').split(',');
 function renderMap(){
-  const counts = {}; counts[zoneId] = 1;
-  for (const o of others.values()) counts[o.z] = (counts[o.z]||0) + 1;
-  const cells = Object.entries(ZONES).map(([id,z])=>{
-    const npcs = NPCS.filter(n=>n.zone===id).map(n=>n.name).join(' ');
-    return `<div class="mz ${id===zoneId?'here':''}" style="grid-column:${z.grid[0]+1};grid-row:${z.grid[1]+1}"><b>${z.name}</b>${npcs?`<small>${npcs}</small>`:''}${counts[id]?`<i>${id===zoneId?'나 · ':''}${counts[id]} 명</i>`:''}</div>`;
-  }).join('');
-  $('mapPanel').innerHTML = `<div class="np-head"><b>섬 지도</b><button class="mini" id="mpClose">닫기</button></div><div class="mgrid">${cells}</div><p class="mnote">구역 끝의 표지판 쪽 길로 걸어가면 다음 구역으로 넘어가요. <button class="mini" id="logoutBtn" style="float:right">로그아웃</button></p>`;
+  if (!mapSel || !ZONES[mapSel]) mapSel = zoneId.startsWith('house:') ? 'home' : zoneId;
+  $('mapPanel').innerHTML = `<div class="np-head"><b>섬 지도</b><button class="mini" id="mpClose">닫기</button></div><canvas id="mapCv" aria-label="섬 지도"></canvas><div class="mlegend"><span><i style="background:#ff4f8b"></i>나</span><span><i style="background:#5b8cff"></i>친구</span><span><i style="background:#ffb43f"></i>주민</span><span class="dim">흐린 곳: 아직 안 가 본 곳</span></div><div id="mapInfo"></div><p class="mnote">구역 끝의 표지판 쪽 길로 걸어가면 옆 구역으로 넘어가요. 옆 칸끼리는 모두 이어져 있어요. <button class="mini" id="logoutBtn" style="float:right">로그아웃</button></p>`;
   $('logoutBtn').onclick = ()=>{ if (confirm('로그아웃할까요? 캐릭터와 집은 아이디에 저장돼 있어요.')) logout(); };
   $('mpClose').onclick = ()=>{ $('mapPanel').hidden = true; };
+  const cvm = $('mapCv');
+  cvm.onclick = e=>{ if (!mapGeo) return; const r = cvm.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    for (const [id,g] of Object.entries(mapGeo)) if (x >= g.x-4 && x <= g.x+g.w+4 && y >= g.y-4 && y <= g.y+g.h+4){ mapSel = id; drawMap(); mapInfo(); return; } };
+  drawMap(); mapInfo();
+}
+function mapInfo(){
+  const id = mapSel, z = ZONES[id], here = id === (zoneId.startsWith('house:') ? 'home' : zoneId), seen = visitedZones().includes(id);
+  const npcs = NPCS.filter(n=>n.zone===id).map(n=>n.name), people = [...others.values()].filter(o=>o.z===id).length + (here ? 1 : 0);
+  const near = Object.entries(z.exits).map(([d,n])=>`${{n:'↑',s:'↓',w:'←',e:'→'}[d]} ${MAP_SHORT[n]}`).join(' · ');
+  $('mapInfo').innerHTML = `<div class="np"><span class="np-name">${z.name}${here ? ' <small>· 지금 여기</small>' : ''}</span><span class="np-place">${people ? people+' 명' : ''}</span><span class="np-day" style="grid-column:1/-1;text-align:left">${npcs.length ? '주민: '+npcs.join(', ')+' · ' : ''}${near}</span></div>${here ? '' : seen ? `<button class="btn" id="mapGo" style="width:100%;margin-top:6px">여기로 가기 · 기력 ${STA_COST.travel}</button>` : `<p class="mnote" style="margin-top:6px">아직 가 보지 않은 곳이에요. 길을 따라 걸어가 봐요.</p>`}`;
+  const go = $('mapGo'); if (go) go.onclick = ()=>travelTo(id);
+}
+function travelTo(id){
+  if (fishing) return toast('낚시 중에는 갈 수 없어요');
+  if (nearFoe(260)) return toast('몬스터가 가까이 있어서 지금은 못 가요');
+  if (!useSta('travel')) return;
+  $('mapPanel').hidden = true;
+  if (id==='home'){ const L = LOTS[me.lot]; enterZone('home', null, L.x, L.y + 24); }
+  else { const z = ZONES[id]; enterZone(id, null, z.W/2, z.H/2 + 40); }
+  saveMe();
+}
+function drawMap(){
+  const cvm = $('mapCv'); if (!cvm) return;
+  const gx = Math.max(...Object.values(ZONES).map(z=>z.grid[0])) + 1, gy = Math.max(...Object.values(ZONES).map(z=>z.grid[1])) + 1;
+  const cw = cvm.clientWidth || 340, pad = 8, gap = 9, tw = (cw - pad*2 - gap*(gx-1)) / gx, th = tw / 1.25, ch = pad*2 + th*gy + gap*(gy-1);
+  const dpr = Math.min(2, devicePixelRatio||1); cvm.style.height = ch + 'px'; cvm.width = cw*dpr; cvm.height = ch*dpr;
+  const c = cvm.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+  // 바다
+  c.fillStyle = '#bfe6f7'; c.beginPath(); c.roundRect(0,0,cw,ch,14); c.fill();
+  c.strokeStyle = '#e3f5fc'; c.lineWidth = 1.5; for (let i=0;i<26;i++){ const x = (i*97)%cw, y = 10+(i*53)%(ch-20); c.beginPath(); c.moveTo(x,y); c.quadraticCurveTo(x+5,y-3,x+10,y); c.stroke(); }
+  mapGeo = {}; for (const [id,z] of Object.entries(ZONES)) mapGeo[id] = {x:pad + z.grid[0]*(tw+gap), y:pad + z.grid[1]*(th+gap), w:tw, h:th};
+  const seen = visitedZones(), cur = zoneId.startsWith('house:') ? 'home' : zoneId;
+  // 구역 사이 길
+  c.fillStyle = '#ffe0bf';
+  for (const [id,z] of Object.entries(ZONES)){ const g = mapGeo[id]; if (z.exits.e){ c.fillRect(g.x+g.w-4, g.y+g.h/2-3, gap+8, 6); } if (z.exits.s){ c.fillRect(g.x+g.w/2-3, g.y+g.h-4, 6, gap+8); } }
+  for (const [id,z] of Object.entries(ZONES)){
+    const g = mapGeo[id], T = THEME[z.theme] || THEME.grass, sx = g.w/z.W, sy = g.h/z.H, X = x => g.x + x*sx, Y = y => g.y + y*sy;
+    c.save(); c.beginPath(); c.roundRect(g.x, g.y, g.w, g.h, 7); c.fillStyle = T.ground; c.fill(); c.clip();
+    // 구역 안 길
+    c.fillStyle = T.path; const cx = X(z.W/2), cy = Y(z.H/2);
+    if (z.exits.n) c.fillRect(cx-2, g.y, 4, cy-g.y); if (z.exits.s) c.fillRect(cx-2, cy, 4, g.y+g.h-cy); if (z.exits.w) c.fillRect(g.x, cy-2, cx-g.x, 4); if (z.exits.e) c.fillRect(cx, cy-2, g.x+g.w-cx, 4);
+    for (const p of z.places){
+      if (p.kind==='sea'){ c.fillStyle = '#8fd3f5'; c.fillRect(g.x, g.y, g.w, 240*sy); }
+      else if (p.kind==='pond'){ c.fillStyle = '#8fd3f5'; c.beginPath(); c.ellipse(X(p.x), Y(p.y), p.rx*sx, p.ry*sy, 0, 0, 7); c.fill(); }
+      else if (p.kind==='house'){ c.fillStyle = '#fff6ee'; c.fillRect(X(p.x)-4, Y(p.y)-5, 8, 5); c.fillStyle = p.roof; c.beginPath(); c.moveTo(X(p.x)-5.5, Y(p.y)-5); c.lineTo(X(p.x), Y(p.y)-10); c.lineTo(X(p.x)+5.5, Y(p.y)-5); c.fill(); }
+      else if (p.kind==='field'){ c.fillStyle = '#c79a74'; c.fillRect(X(p.x)-95*sx, Y(p.y)-95*sy, 190*sx, 110*sy); }
+      else if (p.kind==='fountain'){ c.fillStyle = '#7cc8ff'; c.beginPath(); c.arc(X(p.x), Y(p.y), 3, 0, 7); c.fill(); }
+      else if (p.kind==='tree'){ c.fillStyle = '#c9a6ff'; c.beginPath(); c.arc(X(p.x), Y(p.y)-3, 5, 0, 7); c.fill(); }
+      else if (p.kind==='lighthouse'){ c.fillStyle = '#fff'; c.fillRect(X(p.x)-2, Y(p.y)-11, 4, 11); c.fillStyle = '#ff6b6b'; c.fillRect(X(p.x)-2, Y(p.y)-8, 4, 2); }
+      else if (p.kind==='mine'){ c.fillStyle = '#b3a8b8'; const k = z.k||1; for (const mx of [520,1080]){ c.beginPath(); c.ellipse(X(mx*k), Y(900*k), 220*k*sx, 150*k*sy, 0, 0, 7); c.fill(); } }
+      else if (p.kind==='crystals'){ c.fillStyle = '#bf8cff'; const k = z.k||1; for (const [qx,qy] of [[300,300],[1300,320],[260,800],[1320,820],[700,260],[1000,880]]){ c.beginPath(); c.moveTo(X(qx*k)-2, Y(qy*k)+2); c.lineTo(X(qx*k), Y(qy*k)-4); c.lineTo(X(qx*k)+2, Y(qy*k)+2); c.fill(); } }
+    }
+    c.fillStyle = T.edge; for (const [x,y] of z.trees){ c.beginPath(); c.arc(X(x), Y(y), 2.6, 0, 7); c.fill(); }
+    if (id==='home') LOTS.forEach((L,i)=>{ const owner = Object.values(players).find(p=>p.lot===i); if (!owner && i >= MAX) return; c.fillStyle = owner ? ROOFS[owner.roof][1] : 'rgba(255,255,255,.6)'; c.fillRect(X(L.x)-2.5, Y(L.y)-5, 5, 5); });
+    for (const n of NPCS) if (n.zone===id){ c.fillStyle = '#ffb43f'; c.strokeStyle = '#fff'; c.lineWidth = 1; c.beginPath(); c.arc(X(n.homeX), Y(n.homeY), 2.6, 0, 7); c.fill(); c.stroke(); }
+    for (const o of others.values()) if (o.z===id){ c.fillStyle = '#5b8cff'; c.strokeStyle = '#fff'; c.lineWidth = 1.2; c.beginPath(); c.arc(X(o.x), Y(o.y), 3, 0, 7); c.fill(); c.stroke(); }
+    if (!seen.includes(id)){ c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(g.x, g.y, g.w, g.h); }
+    c.restore();
+    c.lineWidth = id===mapSel ? 2.5 : 1.2; c.strokeStyle = id===mapSel ? '#ff4f8b' : 'rgba(120,80,100,.25)'; c.beginPath(); c.roundRect(g.x, g.y, g.w, g.h, 7); c.stroke();
+    // 이름표
+    c.font = `${Math.max(10, Math.min(13, tw/5))}px "Dongle",sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    const name = MAP_SHORT[id] || z.name, w = Math.min(g.w - 2, c.measureText(name).width + 8);
+    c.fillStyle = 'rgba(255,255,255,.88)'; c.beginPath(); c.roundRect(g.x + g.w/2 - w/2, g.y + g.h - 13, w, 12, 6); c.fill();
+    c.fillStyle = '#5a3a4a'; c.fillText(name, g.x + g.w/2, g.y + g.h - 6.5, g.w - 4);
+  }
+  // 나
+  const g = mapGeo[cur], z = ZONES[cur];
+  if (g){ let px = pos.x, py = pos.y; if (zoneId.startsWith('house:')){ const p = players[zoneId.slice(6)], L = LOTS[(p && p.lot!=null) ? p.lot : me.lot]; px = L.x; py = L.y; }
+    const x = g.x + px*g.w/z.W, y = g.y + py*g.h/z.H; c.fillStyle = 'rgba(255,79,139,.25)'; c.beginPath(); c.arc(x, y, 7, 0, 7); c.fill(); c.fillStyle = '#ff4f8b'; c.strokeStyle = '#fff'; c.lineWidth = 1.6; c.beginPath(); c.arc(x, y, 3.8, 0, 7); c.fill(); c.stroke(); }
 }
 
 // ===== 낚시 =====
@@ -1708,6 +1804,7 @@ function fishTarget(w){
 }
 function castAt(bx, by){
   if (fishing) return;
+  if (!useSta('fish')) return;
   pos.dir = Math.abs(bx-pos.x) > Math.abs(by-pos.y) ? (bx>pos.x?'right':'left') : (by>pos.y?'down':'up');
   fishing = {phase:'wait', bx, by, biteAt: performance.now() + 5000 + Math.random()*7000, id: rollFish(), castAt: performance.now()};
   toast('찌를 던졌어요.... 느낌표가 뜨면 탭!');
@@ -1758,7 +1855,7 @@ function catchFish(){
   stopFishing();
   const ratio = Math.pow(Math.random(), 1.5), size = Math.round((f.min + (f.max-f.min)*ratio)*10)/10;
   const st = ratio >= .85 ? 3 : ratio >= .5 ? 2 : 1, k = fishKey(id, st);
-  setExpr(st===3 || f.weight < 10 ? 'sparkle' : 'happy', 2500); stat('fishCaught'); if (st===3) stat('fish3Star'); questEvent('catch', 'fish:'+k);
+  setExpr(st===3 || f.weight < 10 ? 'sparkle' : 'happy', 2500); stat('fishCaught'); if (st===3) stat('fish3Star'); gainExp(3 + st*2); questEvent('catch', 'fish:'+k);
   invAdd('fish:'+k, 1);
   me.dex = me.dex || {}; const dx = me.dex[id] || {n:0, best:0, st:0};
   const record = size > dx.best; me.dex[id] = {n:dx.n+1, best:Math.max(dx.best,size), st:Math.max(dx.st,st)};
@@ -1859,10 +1956,11 @@ const ORES = Object.fromEntries(ORE_LIST.map((o,i)=>['o'+String(i+1).padStart(2,
 const TIER_W = {1:100, 2:35, 3:10, 4:2.5, 5:0.5};
 const TIER_STAR = t => '◆'.repeat(t);
 const MINE_ZONES = { // 구역마다 나오는 희귀도와 바위 자리
-  minegate: {tiers:[1,2], sea:false, spots:[[300,420],[420,600],[260,700],[1180,420],[1300,560],[1240,700],[700,300],[960,300]]},
+  minegate: {tiers:[1,2], sea:false, spots:[[300,420],[420,600],[260,700],[1180,400],[1330,660],[1180,760],[700,300],[960,300]]},
   cave:     {tiers:[1,2,3,4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800],[700,860],[940,860],[640,420],[980,420]]},
   seacave:  {tiers:[1,2,3,4], sea:true, spots:[[300,300],[420,760],[700,860],[1300,760],[1350,300],[600,300]]},
 };
+for (const mz of Object.values(MINE_ZONES)) mz.spots = mz.spots.map(([x,y])=>[zk(x), zk(y)]);
 function rollOre(zid){
   const mz = MINE_ZONES[zid];
   const list = Object.entries(ORES).filter(([,o])=>mz.tiers.includes(o.tier) && (mz.sea || !o.sea));
@@ -1881,12 +1979,13 @@ function rocksHere(){
 const rockHits = {};
 function mineRock(r){
   if (!me.inv.pick) return toast('곡괭이가 없어요. 광산 입구의 도도에게 가 봐요');
+  if (!useSta('mine')) return;
   const key = zoneId+':'+r.i; rockHits[key] = (rockHits[key]||0) + 1;
   fx.push({x:r.x, y:r.y-14, text:'탕!', t:performance.now(), color:'#7a6a72'});
   if (rockHits[key] < 3){ toast(`바위를 캐는 중.... (${rockHits[key]}/3)`); return; }
   delete rockHits[key];
   const id = rollOre(zoneId), o = ORES[id], n = o.tier===1 ? 1 + Math.floor(Math.random()*3) : 1;
-  invAdd('ore:'+id, n); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200); stat('oreMined', n); questEvent('mine', 'ore:'+id, n);
+  invAdd('ore:'+id, n); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200); stat('oreMined', n); questEvent('mine', 'ore:'+id, n); gainExp(o.tier*2*n);
   me.mined = me.mined || {}; const m = me.mined[zoneId];
   me.mined[zoneId] = {h:hourKey(), done: (m && m.h===hourKey() ? m.done+',' : '') + r.i};
   me.odex = me.odex || {}; const first = !me.odex[id]; me.odex[id] = (me.odex[id]||0) + n;
@@ -1925,8 +2024,67 @@ const MONSTER_LIST = [
 ];
 const MONSTERS = Object.fromEntries(MONSTER_LIST.map((m,i)=>['m'+String(i+1).padStart(2,'0'), {name:m[0], zone:m[1], hp:m[2], atk:m[3], speed:m[4], color:m[5], shape:m[6], drop:m[7], dropPrice:m[8], weight:m[9]}]));
 const COMBAT_ZONES = {forest:5, deepforest:6, seacave:4, cave:6, starhill:4};
-const PLAYER_MAX_HP = 100;
-let mobs = [], mobZone = null, playerHp = PLAYER_MAX_HP, lastHurt = 0, lastSwing = 0;
+// ===== 체력·기력·레벨 =====
+// 레벨이 오를 때마다 최대 체력·최대 기력이 10 씩 늘어요. 경험치는 퀘스트·몬스터·이야기·채집·낚시·채굴에서 받아요
+const LV_MAX = 50;
+const lvOf = () => Math.max(1, Math.min(LV_MAX, (me && me.lv) || 1));
+const maxHp = () => 100 + (lvOf()-1)*10, maxSta = () => 100 + (lvOf()-1)*10;
+const expNeed = lv => 40 + lv*30;
+// 기력: 일할 때마다 조금씩 써요. 천천히 차오르고, 날이 바뀌면 가득, 먹으면 바로 차요
+const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10};
+let playerSta = 100, tiredToastT = 0, dayChkT = 0;
+function useSta(kind){
+  const c = STA_COST[kind] || 1;
+  if (playerSta < c){ const t = performance.now(); if (t - tiredToastT > 2500){ tiredToastT = t; toast('기력이 없어요 · 작물이나 요리를 먹으면 다시 힘이 나요'); } return false; }
+  playerSta -= c; return true;
+}
+function loadStats(){
+  playerHp = Math.min(maxHp(), typeof me.hp==='number' && me.hp > 0 ? me.hp : maxHp());
+  playerSta = Math.min(maxSta(), typeof me.sta==='number' ? me.sta : maxSta());
+  if (me.staDay !== today()){ me.staDay = today(); playerSta = maxSta(); }
+}
+function updateStats(dt, t){
+  if (t - lastHurt > 8000 && playerHp < maxHp()) playerHp = Math.min(maxHp(), playerHp + 1.5*dt);
+  if (playerSta < maxSta()) playerSta = Math.min(maxSta(), playerSta + dt/12); // 1 분에 5 씩
+  if (t > dayChkT){ dayChkT = t + 5000; if (me.staDay !== today()){ me.staDay = today(); playerSta = maxSta(); toast('새 날이 밝았어요 · 기력이 가득 찼어요'); } }
+}
+// 먹으면 차는 양: 비싼 것일수록 많이. 요리는 체력·기력 모두, 작물은 기력 위주
+const foodVal = k => Math.max(8, Math.round(6 + 4*Math.sqrt(itemPrice(k))));
+function foodOf(k){
+  const cat = k.split(':')[0];
+  if (cat==='dish'){ const v = Math.min(300, Math.round(foodVal(k)*1.5)); return {hp:v, sta:v}; }
+  if (cat==='crop'){ const v = Math.min(200, foodVal(k)); return {hp:Math.round(v/2), sta:v}; }
+  return null;
+}
+function eat(k){
+  const f = foodOf(k); if (!f || invCount(k) < 1) return;
+  invAdd(k, -1); const h0 = playerHp, s0 = playerSta;
+  playerHp = Math.min(maxHp(), playerHp + f.hp); playerSta = Math.min(maxSta(), playerSta + f.sta);
+  setExpr('happy', 1500); saveMe(); renderHud();
+  toast(`${itemName(k)}을(를) 먹었어요 · 체력 +${Math.round(playerHp-h0)} · 기력 +${Math.round(playerSta-s0)}`, k);
+}
+function gainExp(n){
+  if (!me || !(n > 0)) return;
+  n = Math.round(n); me.lv = lvOf(); me.exp = (me.exp||0) + n;
+  const t = performance.now(); fx.push({x:pos.x+18, y:pos.y-78, text:`+${n} EXP`, t, color:'#c9a6ff'});
+  let up = 0; while (me.lv < LV_MAX && me.exp >= expNeed(me.lv)){ me.exp -= expNeed(me.lv); me.lv++; up++; }
+  if (me.lv >= LV_MAX) me.exp = 0;
+  if (up){ playerHp = maxHp(); playerSta = maxSta(); setExpr('sparkle', 2500); fx.push({x:pos.x, y:pos.y-96, text:`레벨 업! Lv ${me.lv}`, t:t+150, color:'#ffd84f'}); setTimeout(()=>toast(`레벨 업! Lv ${me.lv} · 최대 체력 ${maxHp()} · 최대 기력 ${maxSta()} · 모두 가득 찼어요`), 400); }
+  saveMe(); renderHud();
+}
+// 위쪽 상태 막대 (매 프레임 바뀐 것만 고쳐요)
+let barSig = '';
+function updateBars(){
+  if (!me) return;
+  const sig = `${Math.ceil(playerHp)}|${Math.floor(playerSta)}|${me.exp||0}|${lvOf()}`; if (sig === barSig) return; barSig = sig;
+  const set = (id, v, max, txt) => { const el = $(id); if (!el) return; el.firstChild.style.width = Math.max(0, Math.min(100, v/max*100)) + '%'; if (txt != null) el.lastChild.textContent = txt; };
+  set('hpBar', playerHp, maxHp(), `체력 ${Math.max(0, Math.ceil(playerHp))}/${maxHp()}`);
+  set('staBar', playerSta, maxSta(), `기력 ${Math.floor(playerSta)}/${maxSta()}`);
+  set('expBar', lvOf() >= LV_MAX ? 1 : me.exp||0, lvOf() >= LV_MAX ? 1 : expNeed(lvOf()));
+  const lv = $('lvTag'); if (lv) lv.textContent = 'Lv ' + lvOf();
+  const low = playerHp < maxHp()*.3; $('hpBar')?.classList.toggle('low', low); $('staBar')?.classList.toggle('low', playerSta < 10);
+}
+let mobs = [], mobZone = null, playerHp = 100, lastHurt = 0, lastSwing = 0;
 const fx = []; // 떠오르는 숫자
 function rollMonster(){
   const list = Object.entries(MONSTERS).filter(([,m])=>m.zone===zoneId);
@@ -1968,7 +2126,6 @@ function updateMobs(dt, t){
       if (playerHp <= 0) return faint();
     }
   }
-  if (t - lastHurt > 6000 && playerHp < PLAYER_MAX_HP) playerHp = Math.min(PLAYER_MAX_HP, playerHp + 5*dt);
 }
 // 무기: 콩이의 경비대 무기고에서 광석과 골드로 만들어요. 좋은 무기일수록 공격력이 세요
 const WEAPON_LIST = [
@@ -1983,7 +2140,8 @@ const WEAPON_LIST = [
 ];
 const WEAPONS = Object.fromEntries(WEAPON_LIST.map(w=>[w[0], {name:w[1], atk:w[2], gold:w[3], need:w[4], color:w[5]}]));
 const weapon = () => WEAPONS[me.inv.weapon] || WEAPONS.w1;
-function swordAtk(){ const a = weapon().atk; return a + Math.floor(Math.random()*(a*.25+1)); }
+let swingTired = false; // 기력이 없으면 힘이 반만 들어가요
+function swordAtk(){ const a = weapon().atk, v = a + Math.floor(Math.random()*(a*.25+1)); return swingTired ? Math.ceil(v/2) : v; }
 function weaponPanel(){
   const own = me.inv.weapons || ['w1'];
   openPanel(`경비대 무기고 · 💰 ${me.inv.gold} G`, `<p class="mnote" style="margin-top:0">무기를 바꾸면 공격력이 세져요. 광석은 광산과 동굴에서 캘 수 있어요.</p>` +
@@ -2011,7 +2169,7 @@ function swing(){
   if (!me.inv.sword){ toast('검이 없어요. 마을 광장의 콩이에게 가 봐요'); return; }
   const t = performance.now(); if (t - swingAt < 380) return;
   if (fishing) return;
-  swingAt = t; swingDir = pos.dir; lunge = .12; target = null;
+  swingAt = t; swingDir = pos.dir; lunge = .12; target = null; swingTired = !useSta('swing');
   const [vx,vy] = DIRV[pos.dir] || DIRV.down;
   const cx = pos.x + vx*26, cy = pos.y + vy*26;
   for (const mob of [...mobs]){
@@ -2050,13 +2208,14 @@ function hitMob(mob, t, vx, vy){
     const m = MONSTERS[mob.id], gold = Math.round(m.atk * (0.8 + Math.random()*.4));
     invAdd('loot:'+mob.id, 1); me.inv.gold += gold;
     me.mdex = me.mdex || {}; const first = !me.mdex[mob.id]; me.mdex[mob.id] = (me.mdex[mob.id]||0) + 1;
+    gainExp(Math.max(3, Math.round(m.hp/6 + m.atk)));
     saveMe(); renderHud();
     toast(`${m.name}을(를) 물리쳤어요! ${m.drop} · ${gold} G${first ? ' · 처음 물리친 몬스터!' : ''}`, 'loot:'+mob.id);
     if (mob.id==='m28' && net && net.sendChat) net.sendChat('(동굴의 주인을 물리쳤다!)').catch(()=>{});
   }
 }
 function faint(){
-  playerHp = PLAYER_MAX_HP; mobs = []; mobZone = null;
+  playerHp = maxHp(); mobs = []; mobZone = null;
   const L = LOTS[me.lot]; enterZone('home', null, L.x, L.y + 18);
   say('기절', '눈앞이 깜깜해졌어요.... 정신을 차려 보니 집 앞이에요.', [], '체력이 다시 가득 찼어요');
 }
@@ -2137,12 +2296,14 @@ function useSlot(i){
   else {
     const c = cropNow(g.crop, now); g.crop = c; const cd = CROPS[c.type] || CROPS.c01;
     if (c.stage>=4){
+      if (!useSta('harvest')) return;
       const n = cd.y1 + Math.floor(Math.random()*(cd.y2-cd.y1+1));
-      g.crop = null; invAdd('crop:'+c.type, n); setExpr('happy', 2000); stat('cropsHarvested', n);
+      g.crop = null; invAdd('crop:'+c.type, n); setExpr('happy', 2000); stat('cropsHarvested', n); gainExp(2 + Math.floor(cd.min/30));
       if (me.quest<=5 && me.quest>=3){ me.quest = 6; invAdd('seed:c01', 2); say('하나 · 꼬마 농부', '첫 수확 축하해! 기념으로 토마토 씨앗 2 개 더 줄게! 다른 씨앗은 마을 광장 모모 가게에서 살 수 있어! 이제 섬 구경 가 봐! 등대 해변 펭펭이 낚시 알려 줄 거야!'); }
       else toast(`${cd.name} ${n} 개를 수확했어요!`, 'crop:'+c.type);
     } else if (!c.wateredAt){
       if (!me.inv.can) return toast('물뿌리개가 필요해요. 하나를 찾아가요.');
+      if (!useSta('water')) return;
       g.crop = {type:c.type, stage:c.stage, wateredAt:now};
       if (me.quest===3 || me.quest===4) me.quest = 5;
       toast(`물을 줬어요. 이제 저절로 자라서 ${fmtLeft(stageMs(c.type) * (4 - c.stage))} 뒤에 수확할 수 있어요`);
@@ -2205,16 +2366,16 @@ function cook(id){
     if (k==='fish:*'){ let left = n; for (const [fk,c] of anyFishKeys()){ const t = Math.min(left, c); invAdd(fk, -t); left -= t; if (!left) break; } }
     else invAdd(k, -n);
   }
-  invAdd('dish:'+id, 1); me.cooked = (me.cooked||0) + 1; setExpr('happy', 2000); stat('dishesCooked'); questEvent('cook', 'dish:'+id); saveMe(); renderHud();
+  invAdd('dish:'+id, 1); me.cooked = (me.cooked||0) + 1; setExpr('happy', 2000); gainExp(3); stat('dishesCooked'); questEvent('cook', 'dish:'+id); saveMe(); renderHud();
   toast(`${DISHES[id].name}을(를) 만들었어요!`); cookPanel();
 }
 function cookPanel(){
   openPanel(`단단의 요리 · 만든 요리 ${me.cooked||0} 개`, Object.entries(DISHES).map(([id,d])=>{
     const need = d.need.map(([k,n])=>`${k==='fish:*' ? '물고기' : itemName(k)} ${n}`).join(' + ');
-    return `<button class="np" data-id="${id}" ${canCook(id)?'':'style="opacity:.55"'}><span class="np-name">${iconImg('dish:'+id)}${d.name} <small>${need}</small></span><span class="np-place">${canCook(id)?'만들기':'재료 부족'}</span><span class="np-day">체력 +${d.heal} · ${dishPrice(id)} G</span></button>`;
+    return `<button class="np" data-id="${id}" ${canCook(id)?'':'style="opacity:.55"'}><span class="np-name">${iconImg('dish:'+id)}${d.name} <small>${need}</small></span><span class="np-place">${canCook(id)?'만들기':'재료 부족'}</span><span class="np-day">체력·기력 +${foodOf('dish:'+id).hp} · ${dishPrice(id)} G</span></button>`;
   }).join(''), b=>cook(b.dataset.id));
 }
-function eatDish(id){ invAdd('dish:'+id, -1); playerHp = Math.min(PLAYER_MAX_HP, playerHp + DISHES[id].heal); saveMe(); renderHud(); toast(`${DISHES[id].name}을(를) 먹었어요. 체력 +${DISHES[id].heal}`); }
+function eatDish(id){ eat('dish:'+id); }
 
 // ===== 공통 패널 =====
 function openPanel(title, body, onClick){
@@ -2257,7 +2418,7 @@ function errandPanel(){
     if (!errandHave(e)) return toast('아직 물건이 없어요');
     if (e.key.startsWith('fish:')){ let left = e.n; for (const [k,c] of itemsOf('fish')){ const p = parseFish(k.slice(5)); if (p.id!==e.key.slice(5) || p.st<e.st) continue; const t = Math.min(left,c); invAdd(k,-t); left -= t; if (!left) break; } }
     else invAdd(e.key, -e.n);
-    me.inv.gold += e.reward; addPts(NPC.tori, 5);
+    me.inv.gold += e.reward; addPts(NPC.tori, 5); gainExp(25);
     me.errand = {day:today(), done:[...done, String(e.i)].filter(Boolean).join(',')}; stat('errandsDone');
     saveMe(); renderHud(); toast(`심부름 완료! ${e.reward} G를 받았어요`); errandPanel();
   });
@@ -2846,7 +3007,7 @@ function questActions(n){
     q.done.push(qq.id); delete q.active[n.id]; delete q.prog[qq.id];
     me.inv.gold += qq.reward.gold||0; for (const [k,c] of (qq.reward.items||[])){ if (k.startsWith('hat:')){ CLOSET().push(k.slice(4)); } else invAdd(k, c); }
     if (qq.reward.pts) addPts(n, qq.reward.pts);
-    stat('questsDone'); saveMe(); renderHud(); setExpr('happy', 3000);
+    stat('questsDone'); gainExp(60); setExpr('happy', 3000);
     const rw = [qq.reward.gold ? qq.reward.gold+' G' : '', ...(qq.reward.items||[]).map(([k,c])=>k.startsWith('hat:') ? `${CH.HATS[k.slice(4)]?.name||'모자'}` : `${itemName(k)} ${c}`), qq.reward.pts ? `호감도 +${qq.reward.pts}` : ''].filter(Boolean).join(' · ');
     const more = storyButton(n); questPages(n, qq.done, more.length ? more[0][1] : null, '보상: '+rw + (more.length ? ' · 무언가 이야기하고 싶은 눈치예요' : '')); }]];
   return [[`📜 진행 중: ${qq.title} (${questCount(qq)}/${qq.n})`, ()=>say(title(n), fillName(qq.progress), npcActions(n), `${qTypeLabel[qq.type]}: ${qTarget(qq)} ${questCount(qq)}/${qq.n}`)]];
@@ -2861,7 +3022,7 @@ function questLog(){
 function loreOf(id){ return LORE[id] || null; }
 
 // ===== 협동 보스: 먼지 여왕 (깊은 먼지 숲) =====
-const BOSS = {x:800, y:440, max:3000, atk:30};
+const BOSS = {x:zk(800), y:zk(440), max:3000, atk:30};
 let boss = null, bossPending = 0, bossFlushT = 0, bossCd = 0, bossHurt = 0;
 function onBoss(b){
   boss = b;
@@ -2871,7 +3032,7 @@ function bossAlive(){ return zoneId==='deepforest' && boss && boss.gen===today()
 function updateBoss(dt, t){
   if (zoneId!=='deepforest' || !boss) return;
   if (boss.gen===today() && boss.hp <= 0){
-    if (me.bossClaim !== today() && (me.bossHit||0) === today()){ me.bossClaim = today(); me.inv.gold += 3000; stat('bossKills'); invAdd('loot:m16', 1); addPts(NPC.kongi, 30); saveMe(); renderHud(); say('먼지 여왕을 물리쳤어요!', '섬 주민들과 힘을 합쳐 먼지 여왕을 물리쳤어요!\n먼지 숲이 조금 맑아진 것 같아요.', [], '보상 3000 G · 여왕의 리본 · 콩이 호감도 +30'); }
+    if (me.bossClaim !== today() && (me.bossHit||0) === today()){ me.bossClaim = today(); me.inv.gold += 3000; gainExp(300); stat('bossKills'); invAdd('loot:m16', 1); addPts(NPC.kongi, 30); saveMe(); renderHud(); say('먼지 여왕을 물리쳤어요!', '섬 주민들과 힘을 합쳐 먼지 여왕을 물리쳤어요!\n먼지 숲이 조금 맑아진 것 같아요.', [], '보상 3000 G · 여왕의 리본 · 콩이 호감도 +30'); }
     return;
   }
   const d = Math.hypot(pos.x-BOSS.x, pos.y-BOSS.y);
@@ -2902,7 +3063,7 @@ const stars = [];
 function wishKey(){ const d = new Date(Date.now() + 9*3600000), h = d.getUTCHours(); return today() - (h < 5 ? 1 : 0); }
 function updateStars(t){
   if (zoneId!=='starhill' || !isNight()) { stars.length = 0; return; }
-  if (stars.length < 3 && Math.random() < .01) stars.push({x:200+Math.random()*1200, y:150+Math.random()*300, t});
+  if (stars.length < 3 && Math.random() < .01) stars.push({x:150+Math.random()*(Z().W-300), y:120+Math.random()*220, t});
   for (let i=stars.length-1;i>=0;i--) if (t - stars[i].t > 4000) stars.splice(i,1);
 }
 function drawStars(c, t){
@@ -2993,7 +3154,7 @@ function showBag(){
   const grid = cats.map(([cat,label])=>{ const it = itemsOf(cat); if (!it.length) return '';
     return `<div class="bag-sec"><b>${label}</b><div class="bag-grid">${it.map(([k,n])=>`<button class="tile${n>=STACK_MAX?' full':''}" data-k="${k}" title="${esc(itemName(k))}${n>=STACK_MAX?' · 가득 참':''}">${iconImg(k)}<i>${n}</i>${cat==='fish' ? `<s>${'★'.repeat(parseFish(k.slice(5)).st)}</s>` : cat==='seed' ? '<s>씨앗</s>' : ''}</button>`).join('')}</div></div>`; }).join('');
   const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
-  openPanel(`가방 · 💰 ${me.inv.gold} G · ❤️ ${Math.ceil(playerHp)}`,
+  openPanel(`가방 · 💰 ${me.inv.gold} G · ❤️ ${Math.ceil(playerHp)}/${maxHp()} · ⚡ ${Math.floor(playerSta)}/${maxSta()}`,
     `<div class="np"><span class="np-name">도구 <small>${tools}</small></span></div>${grid || '<p class="mnote">가방이 비어 있어요.</p>'}
      <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">친구에게 선물 보내기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷장</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`);
   $('bgCloset').onclick = clothesPanel; $('bgQuest').onclick = questLog; $('bgAch').onclick = achPanel;
@@ -3006,7 +3167,7 @@ function itemInfo(k){
   const [cat, id] = k.split(':'), acts = [];
   let desc = `${invCount(k)}/${STACK_MAX} 개 · 팔면 1 개 ${itemPrice(k)} G`;
   const lore = loreOf(cat==='fish' ? parseFish(id).id : id); if (lore) desc = lore.desc + '\n' + desc;
-  if (cat==='dish'){ desc += ` · 먹으면 체력 +${DISHES[id].heal}`; acts.push(['먹기', ()=>{ eatDish(id); closeTalk(); showBag(); }]); }
+  const food = foodOf(k); if (food){ desc += ` · 먹으면 체력 +${food.hp} · 기력 +${food.sta}`; acts.push(['먹기', ()=>{ eat(k); if (invCount(k) > 0) itemInfo(k); else { closeTalk(); showBag(); } }]); }
   if (cat==='fish'){ const p = parseFish(id), d = (me.dex||{})[p.id]; desc = `${'★'.repeat(p.st)}${'☆'.repeat(3-p.st)} · ` + desc + (d ? ` · 최고 기록 ${d.best} cm` : ''); }
   if (cat==='ore') desc = `희귀도 ${TIER_STAR(ORES[id].tier)} · ` + desc;
   if (cat==='loot') desc = `${MONSTERS[id].name}의 전리품 · ` + desc;
@@ -3055,10 +3216,12 @@ if (window.visualViewport){ visualViewport.addEventListener('resize', keyboardLa
 $('chatin').addEventListener('focus', ()=>{ setTimeout(keyboardLayout, 50); setTimeout(keyboardLayout, 350); });
 $('chatin').addEventListener('blur', ()=>{ setTimeout(keyboardLayout, 50); setTimeout(resize, 350); }); addEventListener('orientationchange', ()=>setTimeout(resize, 200)); resize();
 const typing = () => document.activeElement && document.activeElement.tagName==='INPUT';
+function openChat(){ document.body.classList.add('chat-open'); insetT = 0; $('chatin').focus(); }
+$('chatin').addEventListener('blur', ()=>setTimeout(()=>{ if (!typing() && !$('chatin').value.trim()) { document.body.classList.remove('chat-open'); $('emorow').hidden = true; insetT = 0; } }, 150));
 addEventListener('keydown', e=>{
   if (!me || obStep) return;
   if (dlg && !typing()){ if (e.key==='Enter' || e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); dlgTap(); } else if (e.key==='Escape' && dlg.waiting) dlgClose(); return; }
-  if (e.key==='Enter'){ if (typing()){ sendChat(); } else { $('chatin').focus(); } e.preventDefault(); return; }
+  if (e.key==='Enter'){ if (typing()){ sendChat(); } else { openChat(); } e.preventDefault(); return; }
   if (e.key==='Escape'){ closeTalk(); $('chatin').blur(); return; }
   if (typing()) return;
   keys[e.key.toLowerCase()] = true;
@@ -3085,7 +3248,7 @@ function hitTarget(w){
   for (const pl of (Z().places||[])) if (pl.shelter){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:shelterPanel}; }
   const ht = houseTap(w); if (ht) return ht;
   if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const L = LOTS[p.lot]; if (w.x>L.x-56 && w.x<L.x+56 && w.y>L.y-150 && w.y<L.y){ const HL = HOUSE_LV[houseOf(p).lv-1]; return {x:L.x, y:L.y+16, act:()=>enterZone('house:'+id, null, HL.W/2, HL.H-100)}; } }
-  if (zoneId==='starhill'){ for (const st of stars){ const a = (performance.now()-st.t)/4000, sx = st.x + a*160, sy = st.y + a*90; if (Math.hypot(w.x-sx, w.y-sy) < 40){ makeWish(); return {x:pos.x, y:pos.y, act:null, mark:performance.now()}; } } if (Math.hypot(w.x-800, w.y-400) < 70) return {x:800, y:520, act:promiseTree}; }
+  if (zoneId==='starhill'){ for (const st of stars){ const a = (performance.now()-st.t)/4000, sx = st.x + a*160, sy = st.y + a*90; if (Math.hypot(w.x-sx, w.y-sy) < 40){ makeWish(); return {x:pos.x, y:pos.y, act:null, mark:performance.now()}; } } { const tr = Z().places.find(p=>p.kind==='tree'); if (tr && Math.hypot(w.x-tr.x, w.y-(tr.y-20)) < 70) return {x:tr.x, y:tr.y+100, act:promiseTree}; } }
   if (bossAlive() && Math.hypot(w.x-BOSS.x, w.y-(BOSS.y-30)) < 60){ if (!me.inv.sword){ toast('검이 없어요. 마을 광장의 콩이에게 가 봐요'); return {x:pos.x,y:pos.y,act:null,mark:performance.now()}; } return {x:BOSS.x, y:BOSS.y+70, act:()=>{ faceTo(BOSS.x, BOSS.y); swing(); }}; }
   for (const n of NPCS) if (n.zone===zoneId && Math.abs(w.x-n.x)<22 && w.y>n.y-48 && w.y<n.y+8) return {x:n.x, y:n.y+30, act:()=>talkTo(n)};
   if (zoneId==='home' && me.lot!=null) for (const [i,s] of slotsOf(me.lot, me.plots).entries()) if (Math.abs(w.x-s.x)<18 && Math.abs(w.y-s.y)<18) return {x:s.x, y:s.y+26, act:()=>useSlot(i)};
@@ -3188,7 +3351,7 @@ function signPost(d, text, x, y){
 function drawZonePlace(d, z, p){
   const c = d.ctx;
   if (p.kind==='house'){ drawBuilding(d, p.x, p.y, p.roof, p.label, p.wide ? 140 : 92); const ik = EMOJI_UI[p.icon]; if (ik) c.drawImage(uiCanvas(ik, 96), p.x-15, p.y-128, 30, 30); }
-  else if (p.kind==='fountain'){ d.ell(p.x,p.y,200,110,'path'); d.circle(p.x,p.y,40,'#ffd1e1'); d.circle(p.x,p.y,28,'water'); d.circle(p.x-6,p.y-8,9,'waterHi'); }
+  else if (p.kind==='fountain'){ d.ell(p.x,p.y,160,88,'path'); d.circle(p.x,p.y,40,'#ffd1e1'); d.circle(p.x,p.y,28,'water'); d.circle(p.x-6,p.y-8,9,'waterHi'); }
   else if (p.kind==='pond'){ d.ell(p.x,p.y,p.rx,p.ry,'water'); d.ell(p.x-p.rx*.3,p.y-p.ry*.35,p.rx*.25,10,'waterHi'); d.circle(p.x+p.rx*.5,p.y+p.ry*.3,9,'leaf'); d.circle(p.x-p.rx*.55,p.y+p.ry*.4,7,'leaf'); d.dot(p.x+p.rx*.5,p.y+p.ry*.3-2,2.5,'#ff8fc4'); }
   else if (p.kind==='field'){
     d.rr(p.x-95,p.y-95,190,110,14,'soil');
@@ -3196,10 +3359,10 @@ function drawZonePlace(d, z, p){
     d.rr(p.x+108,p.y-90,5,60,2,'#c79a74'); d.rr(p.x+96,p.y-74,30,5,2,'#c79a74'); d.circle(p.x+110,p.y-94,9,'#f3d27a'); d.ell(p.x+110,p.y-101,13,3,'#e8b84f');
     signPost(d, '하나의 텃밭', p.x-130, p.y+20);
   }
-  else if (p.kind==='mine'){
+  else if (p.kind==='mine'){ c.save(); c.scale(z.k||1, z.k||1);
     d.ell(520,900,220,150,'#b3a8b8'); d.ell(1080,900,220,150,'#b3a8b8'); d.ell(420,840,90,60,'#c6bccd'); d.ell(1180,850,80,55,'#a99fb0');
     d.rr(744,980,112,120,50,'#4a3f52'); d.rr(736,972,128,16,8,'#c79a74');
-    d.dot(600,820,4,'#bf8cff'); d.dot(1000,840,3.5,'#ffd84f'); d.dot(460,960,3,'#7cc8ff');
+    d.dot(600,820,4,'#bf8cff'); d.dot(1000,840,3.5,'#ffd84f'); d.dot(460,960,3,'#7cc8ff'); c.restore();
   }
   else if (p.kind==='lighthouse'){
     const x = p.x, y = p.y;
@@ -3210,7 +3373,7 @@ function drawZonePlace(d, z, p){
   else if (p.kind==='sea'){ c.fillStyle='#8fd3f5'; c.fillRect(0,0,z.W,240); c.fillStyle='#b4e3fa'; for (let i=0;i<30;i++) c.fillRect((i*197)%z.W, 30+(i*61)%180, 22, 3); d.rr(-20,226,z.W+40,30,15,'#fff7e6'); }
   else if (p.kind==='tree'){ d.rr(p.x-8,p.y-10,16,60,6,'#a8744f'); d.circle(p.x,p.y-30,60,'#c9a6ff'); d.circle(p.x-40,p.y-10,36,'#d9c2ff'); d.circle(p.x+42,p.y-14,34,'#b58cff'); for (let i=0;i<10;i++) d.dot(p.x-50+((i*37)%100),p.y-70+((i*53)%80),3,'#fff6b0'); }
   else if (p.kind==='logs'){ d.rr(p.x-60,p.y-30,120,40,10,'#c98e5b'); for (const [lx,ly] of [[-36,-10],[0,-10],[36,-10],[-18,-30],[18,-30]]) { d.circle(p.x+lx,p.y+ly,16,'#d9a46f'); d.circle(p.x+lx,p.y+ly,7,'#e8c39e'); } }
-  else if (p.kind==='crystals'){ for (const [x,y,col] of [[300,300,'#bf8cff'],[1300,320,'#7cc8ff'],[260,800,'#ff8fc4'],[1320,820,'#bf8cff'],[700,260,'#6fe0c4'],[1000,880,'#ffd84f']]){ d.tri([[x-10,y+10],[x,y-24],[x+10,y+10]],col); d.tri([[x+6,y+12],[x+16,y-8],[x+22,y+12]],col); } }
+  else if (p.kind==='crystals'){ c.save(); c.scale(z.k||1, z.k||1); for (const [x,y,col] of [[300,300,'#bf8cff'],[1300,320,'#7cc8ff'],[260,800,'#ff8fc4'],[1320,820,'#bf8cff'],[700,260,'#6fe0c4'],[1000,880,'#ffd84f']]){ d.tri([[x-10,y+10],[x,y-24],[x+10,y+10]],col); d.tri([[x+6,y+12],[x+16,y-8],[x+22,y+12]],col); } c.restore(); }
   else if (p.kind==='sign') signPost(d, p.text, p.x, p.y);
 }
 function buildStatic(){
@@ -3242,7 +3405,7 @@ function buildStatic(){
   for (let x=20; x<z.W; x+=64) for (const y of [26, z.H-26]) if (!open(x,y)) d.circle(x+(y%7), y, 44, edgeCol);
   for (let y=20; y<z.H; y+=64) for (const x of [26, z.W-26]) if (!open(x,y)) d.circle(x, y+(x%5), 44, edgeCol);
   for (const [x,y] of z.trees) drawTree(d,x,y,x+y);
-  if (zoneId==='home') LOTS.forEach((L,i)=>{
+  if (zoneId==='home') LOTS.forEach((L,i)=>{ if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return;
     const owner = Object.values(players).find(p=>p.lot===i);
     if (owner) drawHouse(d, L.x, L.y, ROOFS[owner.roof][1], owner.nick, houseOf(owner===players[uid] ? me : owner).lv);
     else {
@@ -3275,6 +3438,25 @@ function bubble(c, text, x, y){
   c.fillStyle='#2a2429'; c.fillText(text.length>16 ? text.slice(0,15)+'…' : text, x, y-7);
 }
 
+// 위(정보바·상태 막대·할 일)와 아래(도구 막대·채팅 입력)가 차지하는 높이
+let insetTop = 0, insetBot = 0, insetT = 0;
+const shown = el => el && !el.hidden && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden';
+function measureInsets(){
+  let top = 0, bot = innerHeight;
+  for (const id of ['hud','stats','quest']){ const el = $(id); if (shown(el)) top = Math.max(top, el.getBoundingClientRect().bottom); }
+  for (const id of ['bar','chatrow']){ const el = $(id); if (shown(el) && !document.body.classList.contains('typing')) bot = Math.min(bot, el.getBoundingClientRect().top); }
+  insetTop = top ? top + 6 : 0; insetBot = Math.max(0, innerHeight - bot + 6);
+}
+// 정보바 → 상태 막대 → (폰) 할 일 줄을 겹치지 않게 차례로 쌓아요
+function placeTop(){
+  const hud = $('hud'), st = $('stats'), q = $('quest'); if (!hud || hud.hidden || !st) return;
+  st.style.top = (hud.getBoundingClientRect().bottom + 4) + 'px';
+  const phone = matchMedia('(max-width:640px)').matches, sb = st.getBoundingClientRect().bottom;
+  q.style.top = phone ? (sb + 4) + 'px' : '';
+  $('toast').style.top = (Math.max(sb, phone && shown(q) ? q.getBoundingClientRect().bottom : 0) + 8) + 'px';
+  insetT = 0;
+}
+addEventListener('resize', ()=>setTimeout(placeTop, 60));
 let lastT = performance.now(), lastFade = -1;
 function frame(t){
   const dt = Math.min(.05, (t-lastT)/1000); lastT = t;
@@ -3282,14 +3464,18 @@ function frame(t){
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
     if (admin){ moveOthers(dt); adminCam(); }
-    else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
-    const hpEl = $('hpv'); if (hpEl && hpEl.textContent !== String(Math.ceil(playerHp))) hpEl.textContent = Math.ceil(playerHp);
+    else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
+    updateBars();
     buildStatic();
     const z = view.zoom, vw = view.w/z, vh = view.h/z;
     const W = Z().W, H = Z().H;
-    view.cx = Math.max(0, Math.min(W-vw, pos.x - vw/2)); view.cy = Math.max(0, Math.min(H-vh, pos.y - 20 - vh/2));
-    if (vw > W) view.cx = (W-vw)/2; if (vh > H) view.cy = (H-vh)/2;
-    ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#8fd3f5'; ctx.fillRect(0,0,cv.width,cv.height);
+    // 위 정보바와 아래 버튼에 가려지지 않게: 캐릭터는 그 사이 보이는 칸의 가운데에, 구역 끝에서는 바깥까지 조금 더 보여 줘요
+    if (t > insetT){ insetT = t + 500; measureInsets(); }
+    if (t > mapDrawT && !$('mapPanel').hidden){ mapDrawT = t + 1000; drawMap(); }
+    const it = admin ? 0 : insetTop/z, ib = admin ? 0 : insetBot/z, band = vh - it - ib;
+    view.cx = Math.max(0, Math.min(W-vw, pos.x - vw/2)); view.cy = Math.max(-it, Math.min(H-vh+ib, pos.y - 20 - it - band/2));
+    if (vw > W) view.cx = (W-vw)/2; if (band > H) view.cy = H/2 - it - band/2;
+    ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = Z().theme==='room' ? '#4a3a44' : shade((THEME[Z().theme]||THEME.grass).edge, -.12); ctx.fillRect(0,0,cv.width,cv.height);
     const s = view.dpr*z; ctx.setTransform(s,0,0,s,-view.cx*s,-view.cy*s);
     ctx.drawImage(staticLayer, 0, 0, W, H);
     const d = painter(ctx), now = Date.now();
