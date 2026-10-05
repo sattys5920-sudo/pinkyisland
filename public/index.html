@@ -195,6 +195,30 @@ body.typing #bar, body.typing #sideBtns, body.typing #talk, body.typing #toast{v
 body.typing #chatbox{z-index:30;transition:bottom .12s}
 body.typing #log{max-height:4.5em;overflow:hidden;justify-content:flex-end}
 body.typing #chatin{background:#fff}
+
+/* 로그인 화면 아래 관리자 입구 */
+.adminlink{display:block;margin:14px auto 0;background:none;border:0;color:#9a8a96;font:inherit;font-size:20px;text-decoration:underline;cursor:pointer}
+/* 관리자 CCTV */
+#adminUi{position:fixed;inset:0;pointer-events:none;z-index:30;font-size:20px;color:#f4eef2}
+#adminUi button{pointer-events:auto;font:inherit;cursor:pointer}
+.adm-top{position:absolute;left:10px;right:10px;top:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:rgba(28,22,30,.78);border-radius:16px;padding:6px 12px;pointer-events:auto}
+.adm-top b{font-size:24px}.adm-clock{font-variant-numeric:tabular-nums;opacity:.85}.adm-view{opacity:.85;margin-right:auto}
+.rec{color:#ff5a6e;font-weight:700;animation:recb 1.2s steps(2) infinite}@keyframes recb{50%{opacity:.25}}
+.adm-zones{position:absolute;left:10px;top:66px;display:flex;flex-direction:column;gap:5px;pointer-events:auto;max-height:calc(100% - 80px);overflow:auto}
+.adm-zone{display:flex;justify-content:space-between;gap:12px;min-width:150px;background:rgba(28,22,30,.72);color:#f4eef2;border:0;border-radius:12px;padding:3px 12px;text-align:left}
+.adm-zone i{font-style:normal;background:rgba(255,255,255,.14);border-radius:10px;padding:0 8px}.adm-zone.on{background:#ff9fc4;color:#2a2429}
+.adm-side{position:absolute;right:10px;top:66px;width:270px;max-height:calc(100% - 80px);overflow:auto;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
+.adm-sec{background:rgba(28,22,30,.78);border-radius:16px;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
+.adm-sec b{font-size:22px}.adm-sec small{opacity:.75;font-size:17px;line-height:1.1}
+.adm-btn{background:#f4eef2;color:#2a2429;border:0;border-radius:12px;padding:3px 12px}.adm-btn.warn{background:#ff5a6e;color:#fff}
+.adm-state{font-size:17px;background:rgba(255,255,255,.14);border-radius:10px;padding:0 8px;margin-left:6px}.adm-state.on{background:#ff5a6e}
+.adm-p{display:flex;justify-content:space-between;gap:8px;background:rgba(255,255,255,.08);color:#f4eef2;border:0;border-radius:10px;padding:2px 10px;text-align:left}.adm-p.on{background:#ff9fc4;color:#2a2429}
+.adm-r{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}.adm-r small{grid-column:2}
+.adm-r i{width:9px;height:9px;border-radius:50%;background:#6e6470;display:inline-block}.adm-r i.on{background:#7dff9a}
+@media (max-width:640px){
+  .adm-zones{top:auto;bottom:10px;left:10px;right:10px;flex-direction:row;overflow-x:auto;max-height:none}.adm-zone{min-width:auto;white-space:nowrap}
+  .adm-side{top:auto;bottom:58px;left:10px;right:10px;width:auto;max-height:38%}
+}
 </style>
 </head>
 <body>
@@ -735,6 +759,8 @@ const NPC_LOOKS = [
 
 // ===== 상태 =====
 let uid = null, solo = false, net = null;
+let admin = false; // 관리자 코드로 들어온 CCTV 모드: 캐릭터 없이 섬 전체를 지켜봐요
+const ADMIN_EMAIL = 'pinky-admin@pinkyisland.app'; // 아이디 규칙(영어·숫자·_)으로는 만들 수 없는 주소라 일반 가입과 겹치지 않아요
 let players = {};        // uid -> 플레이어 문서
 let claims = {};         // 'roof-3' -> {uid,nick,at}
 let me = null;           // 내 문서 (편집용 사본)
@@ -763,6 +789,7 @@ function abandoned(c){ return !players[c.uid] && Date.now() - (c.at||0) > 600000
 
 let saving=false, saveAgain=false;
 async function saveMe(){
+  if (admin || !me) return;
   if (saving){ saveAgain=true; return; }
   saving=true;
   try { await net.savePlayer(toDB(me)); }
@@ -778,7 +805,8 @@ function onPlayers(raw){
   for (const [k,v] of Object.entries(raw||{})) if (v) next[k] = fromDB(v);
   players = next;
   rebuildObstacles();
-  if (firstPlayers){ firstPlayers = false; if (players[uid]) enterGame(structuredClone(players[uid])); else showMaker(); }
+  if (firstPlayers){ firstPlayers = false; if (admin) enterAdmin(); else if (players[uid]) enterGame(structuredClone(players[uid])); else showMaker(); }
+  else if (admin) renderAdmin();
   else if (obStep) renderOb();
 }
 function onRoofs(raw){
@@ -830,6 +858,7 @@ function soloNet(){
     marketCollect: async id => { const l = st.market?.[id]; if (!l || !l.buyer) return false; delete st.market[id]; setTimeout(()=>onMarket(st.market)); return true; },
     bossReset: (gen, max) => { onBoss({hp:max, max, gen}); },
     bossHit: dmg => { onBoss({...boss, hp: boss.hp - dmg}); },
+    setWorld: async v => { st.world = {...(st.world||{}), ...v}; onWorld(st.world); },
     listen(){ setTimeout(()=>{ onRoofs({}); onPlayers({}); onBoss(null); }); },
   };
 }
@@ -858,7 +887,9 @@ function firebaseNet(){
       F.onChildAdded(F.ref(db, 'mail/'+uid), s=>onMail(s.val(), ()=>F.remove(s.ref).catch(()=>{})));
       F.onValue(F.ref(db, 'boss'), s=>onBoss(s.val()));
       F.onValue(F.ref(db, 'market'), s=>onMarket(s.val()));
+      F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
     },
+    setWorld: v => F.update(F.ref(db, 'world'), v),
     contestSubmit: (w, size) => F.set(F.ref(db, 'contest/'+w+'/'+uid), {nick:me.nick, size}),
     marketList: l => F.push(F.ref(db, 'market'), {...l, at:F.serverTimestamp()}),
     marketBuy: async id => { try { const r = await F.runTransaction(F.ref(db, 'market/'+id), cur => (cur && !cur.buyer && cur.uid!==uid) ? {...cur, buyer:uid, bnick:me.nick} : undefined, {applyLocally:false}); return r.committed && r.snapshot.val()?.buyer===uid; } catch(e){ return false; } },
@@ -902,6 +933,8 @@ function showLogin(auth, mode='login'){
       <div class="act"><button class="btn" id="lgo" type="submit">${signup ? '가입하고 시작하기' : '들어가기'}</button></div>
     </form>
     <div class="note">${signup ? '아이디는 영어로 시작하고 영어·숫자·_만 쓸 수 있어요. 비밀번호는 5 자 이상이면 돼요. 가입하면 바로 닉네임과 캐릭터를 고를 수 있어요.' : '처음이면 <b>가입하기</b>를 눌러 아이디를 만들어 주세요. 다른 기기에서도 같은 아이디로 이어서 할 수 있어요.'}</div>`;
+  obc.insertAdjacentHTML('beforeend', '<button class="adminlink" id="adminGo" type="button">관리자 코드로 들어가기</button>');
+  $('adminGo').onclick = ()=>showAdminLogin(auth, mode);
   obc.querySelectorAll('.tab').forEach(b=>b.onclick = ()=>showLogin(auth, b.dataset.m));
   $('lf').onsubmit = async e => {
     e.preventDefault();
@@ -921,6 +954,31 @@ function showLogin(auth, mode='login'){
     }
   };
   setTimeout(()=>{ (savedId ? $('lpw') : $('lid')).focus(); }, 50);
+}
+// 관리자 입구: 로그인·가입 어느 화면에서 들어와도 같은 코드, 같은 관리자 페이지예요.
+// 코드는 화면 코드에 적어 두지 않고 Firebase가 관리자 계정의 비밀번호로 확인해요.
+function showAdminLogin(auth, back='login'){
+  obc.dataset.step = 'login';
+  obc.innerHTML = `<h1>관리자</h1>
+    <p class="sub">관리자 코드를 넣으면 섬 전체를 지켜보는 관리자 페이지로 들어가요.</p>
+    <form id="af" class="lform" autocomplete="off">
+      <label class="field"><b>관리자 코드</b><input id="acode" type="password" inputmode="numeric" autocomplete="off" maxlength="40" placeholder="코드"></label>
+      <p class="err" id="err"></p>
+      <div class="act"><button class="btn ghost" id="aback" type="button">돌아가기</button><button class="btn" id="ago" type="submit">관리자로 들어가기</button></div>
+    </form>`;
+  $('aback').onclick = ()=>showLogin(auth, back);
+  $('af').onsubmit = async e => {
+    e.preventDefault();
+    const code = $('acode').value.trim(), err = $('err');
+    if (code.length < 6) return err.textContent = '관리자 코드가 맞지 않아요.';
+    $('ago').disabled = true; err.textContent = '확인하는 중.......';
+    try { await F.signInWithEmailAndPassword(auth, ADMIN_EMAIL, code); }
+    catch(ex){
+      $('ago').disabled = false;
+      err.textContent = (ex.code==='auth/too-many-requests' || ex.code==='auth/network-request-failed') ? AUTH_MSG[ex.code] : '관리자 코드가 맞지 않아요.';
+    }
+  };
+  setTimeout(()=>$('acode').focus(), 50);
 }
 function menuPanel(){
   let id = ''; try { id = localStorage.getItem('pinky-id') || ''; } catch(e){}
@@ -954,7 +1012,7 @@ if (!configured) solo = true; // 모듈 끝의 디버그 API(__pinky)가 바로 
   F.onAuthStateChanged(auth, user => {
     if (!user){ showLogin(auth); return; }
     if (net) return;
-    uid = user.uid; net = firebaseNet(); start();
+    uid = user.uid; admin = user.email === ADMIN_EMAIL; net = firebaseNet(); start();
   });
 })();
 
@@ -1067,6 +1125,7 @@ function enterGame(doc){
   if (me.quest===0) setTimeout(()=>say('편지', '웰컴 팩이 도착했어요! 텃밭 2 칸과 토마토 씨앗 2 개가 들어 있어요.', [['열어 보기', ()=>{ me.inv.garden += 2; invAdd('seed:c01', 2); me.quest = 1; saveMe(); renderHud(); closeTalk(); toast('집 앞 빈자리를 눌러 텃밭을 놓아요'); }]]), 400);
 }
 function renderHud(){
+  if (admin) return renderAdmin();
   const online = 1 + others.size;
   $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold} G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span><span>${ui('hp')}<b id="hpv">${Math.ceil(playerHp)}</b></span>`;
   $('quest').hidden = me.quest >= 6; $('quest').innerHTML = `<b>할 일</b>${QUESTS[Math.min(me.quest,6)]}`;
@@ -1539,7 +1598,7 @@ const hourKey = () => Math.floor(Date.now()/1200000); // 바위는 20 분마다 
 // 바위는 한 시간마다 다시 생겨요 (각자 화면 기준)
 function rocksHere(){
   const mz = MINE_ZONES[zoneId]; if (!mz) return [];
-  me.mined = me.mined || {}; const m = me.mined[zoneId];
+  const m = me ? (me.mined = me.mined || {})[zoneId] : null;
   const done = m && m.h === hourKey() ? m.done.split(',') : [];
   return mz.spots.map(([x,y],i)=>({i, x, y})).filter(r=>!done.includes(String(r.i)));
 }
@@ -2725,7 +2784,7 @@ const cv = $('game'), ctx = cv.getContext('2d');
 let view = {zoom:1, dpr:1, w:0, h:0, cx:0, cy:0};
 function resize(){
   view.dpr = Math.min(2, devicePixelRatio||1); view.w = innerWidth; view.h = innerHeight;
-  view.zoom = Math.max(1.3, Math.min(1.8, Math.min(view.w, view.h*1.4)/480));
+  view.zoom = view.base = Math.max(1.3, Math.min(1.8, Math.min(view.w, view.h*1.4)/480));
   cv.width = view.w*view.dpr; cv.height = view.h*view.dpr; staticSig = ''; spriteCache.clear(); sizePrev();
 }
 addEventListener('resize', resize); if (window.visualViewport) visualViewport.addEventListener('resize', resize);
@@ -2816,7 +2875,7 @@ function step(dt){
 
 let lastPres = 0, presSig = '', lastTarget = null;
 function sendPresence(t){
-  if (!net || !me) return;
+  if (!net || !me || admin) return;
   const tgt = target && !keyMoving ? target : null;
   const p = {z:zoneId, nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : ''};
   if (tgt){ p.tx = Math.round(tgt.x); p.ty = Math.round(tgt.y); }
@@ -2957,9 +3016,10 @@ let lastT = performance.now(), lastFade = -1;
 function frame(t){
   const dt = Math.min(.05, (t-lastT)/1000); lastT = t;
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,108); c.scale(1.7,1.7); CH.figure(d, L, dir, t/1000, true, 'dot'); c.restore(); } } }
-  if (me && !obStep){
+  if ((me || admin) && !obStep){
     updateNpcs(Date.now());
-    step(dt); moveOthers(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateSwing(dt); updateStars(t); rainWater(t);
+    if (admin){ moveOthers(dt); adminCam(); }
+    else { step(dt); moveOthers(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     const hpEl = $('hpv'); if (hpEl && hpEl.textContent !== String(Math.ceil(playerHp))) hpEl.textContent = Math.ceil(playerHp);
     buildStatic();
     const z = view.zoom, vw = view.w/z, vh = view.h/z;
@@ -2979,7 +3039,7 @@ function frame(t){
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
-      {y:pos.y, draw:()=>drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-80); talkBubble('me',pos.x,pos.y,t); }},
+      ...(admin ? [] : [{y:pos.y, draw:()=>drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-80); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
@@ -2989,13 +3049,58 @@ function frame(t){
   }
   requestAnimationFrame(frame);
 }
+// ===== 관리자 CCTV: 캐릭터 없이 구역을 골라 보거나 접속한 사람을 따라가며 지켜봐요 =====
+let world = {}, cam = {follow:null, zone:'village'};
+function onWorld(w){ world = w || {}; if (admin) renderAdmin(); }
+const kstClock = () => new Date(Date.now() + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
+const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : (ZONES[z]?.name || '집터');
+function enterAdmin(){
+  obStep = null; $('ob').hidden = true;
+  for (const id of ['hud','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
+  document.body.classList.add('admin');
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); }
+  const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
+  renderAdmin();
+  setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
+}
+function renderAdmin(){
+  const box = $('adminUi'); if (!box || !admin) return;
+  const online = [...others.values()], onIds = new Set(online.map(o=>o.uid)), count = {};
+  for (const o of online) count[o.z] = (count[o.z]||0) + 1;
+  const regs = Object.entries(players).sort(([,a],[,b])=>String(a.nick).localeCompare(String(b.nick), 'ko'));
+  const watching = cam.follow ? `따라가는 중 · ${esc(others.get(cam.follow)?.nick || '')}` : `보는 곳 · ${esc(zoneName(zoneId))}`;
+  box.innerHTML = `
+    <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span><button data-a="logout" class="adm-btn">로그아웃</button></div>
+    <div class="adm-zones">${Object.keys(ZONES).map(z=>`<button data-z="${z}" class="adm-zone ${zoneId===z && !cam.follow ? 'on' : ''}">${esc(ZONES[z].name)}<i>${count[z]||0}</i></button>`).join('')}</div>
+    <div class="adm-side">
+      <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
+        <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
+        <small>바꾸면 접속한 모든 사람에게 바로 전달돼요. 게임 화면 연출은 다음 업데이트에서 붙어요.</small></div>
+      <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
+      <div class="adm-sec"><b>주민 ${regs.length} 명</b>${regs.map(([id,p])=>`<div class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></div>`).join('')}</div>
+    </div>`;
+}
+function adminClick(e){
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.z){ cam.follow = null; cam.zone = b.dataset.z; const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2); renderAdmin(); }
+  else if (b.dataset.f){ cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
+  else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) net.setWorld({dark:v, darkAt:Date.now()}).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
+  else if (b.dataset.a==='logout'){ if (confirm('관리자 페이지에서 나갈까요?')) logout(); }
+}
+// 카메라: 따라가는 사람이 있으면 그 사람을, 없으면 고른 구역 전체를 한눈에
+function adminCam(){
+  let o = cam.follow && others.get(cam.follow);
+  if (cam.follow && !o){ cam.follow = null; renderAdmin(); }
+  if (o){ if (o.z !== zoneId) enterZone(o.z, null, o.x, o.y); pos.x = o.x; pos.y = o.y; view.zoom = view.base; }
+  else { const Zz = Z(); pos.x = Zz.W/2; pos.y = Zz.H/2 + 20; view.zoom = Math.min(view.w/Zz.W, view.h/Zz.H); }
+}
 function talkBubble(key, x, y, t){
   const e = bubbles.get(key+'-emo'), b = bubbles.get(key);
   if (b && t-b.at < 5000) bubble(ctx, b.text, x, y-80);
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-80);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { housePanel, myHouse, HOUSE_LV, WALLS, FLOORS, iconURL, uiURL, menuPanel, situationsNow, situationLine, showLogin, logout, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { adminTest: ()=>{ admin = true; others.set('t1', {x:820, y:640, sx:820, sy:640, z:'village', dir:'down', look:CH.defaultLook(), nick:'테스트', uid:'t1'}); enterAdmin(); }, showAdminLogin, housePanel, myHouse, HOUSE_LV, WALLS, FLOORS, iconURL, uiURL, menuPanel, situationsNow, situationLine, showLogin, logout, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, stockPanel, stockDetail, stockTrade, stockPrice, stockPriceAt, stockTick, STOCKS, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
 </body>
 </html>
