@@ -700,10 +700,9 @@ export const ANIMALS = {
   whale:{ tail:P=>{ const {d, side, up, A} = P; const tx = up ? 0 : side ? -BW*.62 : BW*.6, ty = BY+BH*.3, s = side ? -1 : 1;
       d.ell(tx, ty+3, 2.6, 5, A.fur); for (const r of [-1, 1]) d.shape(k=>{ k.beginPath(); k.ellipse(tx + (up ? r*R*.28 : s*R*.06 + r*R*.22), ty - 4 - (r===s ? 1.5 : 0), R*.34, R*.13, r*-.5, 0, Math.PI*2); }, A.fur, [tx, ty-4, R*.3]); },
     ears:()=>{},
-    head:P=>{ if (P.up) return; const {d, side, A} = P; d.shape(k=>{ k.beginPath(); k.ellipse(side ? R*.25 : 0, HY + R*.5, side ? R*.8 : R*.92, R*.46, 0, 0, Math.PI); k.closePath(); }, A.fur2, [0, HY + R*.6, R*.6], {flat:true, noShadow:true});
-      d.line(k=>{ for (const dy of [.66, .8]){ k.moveTo((side ? R*.0 : -R*.42), HY + R*dy); k.lineTo((side ? R*.55 : R*.42), HY + R*dy); } }, SH(A.fur, -.1), .6, .5); },
+    head:P=>{ if (P.up) return; const {d, side, A} = P; d.shape(k=>{ k.beginPath(); k.ellipse(side ? R*.3 : 0, HY + R*.8, side ? R*.55 : R*.62, R*.2, 0, 0, Math.PI*2); }, A.fur2, [0, HY + R*.8, R*.4], {flat:true, noShadow:true}); },
     top:P=>{ const {d, side} = P; const x = side ? -R*.1 : 0, y = HY - R*1.02; d.line(k=>{ k.moveTo(x, y); k.lineTo(x, y - 4); }, '#9fd6ff', 1.6, .9); for (const [dx,dy,r] of [[-3.4,-5.4,1.6],[0,-7,1.8],[3.4,-5.4,1.6]]) d.circle(x+dx, y+dy, r, '#bfe6ff', {flat:true}); },
-    snout:()=>{} },
+    snout:P=>{ const {d, side, fx, fy} = P; d.line(k=>{ if (side){ k.moveTo(R*.42, fy+4.6); k.quadraticCurveTo(R*.66, fy+6.8, R*.9, fy+4.6); } else { k.moveTo(fx-4.2, fy+4.4); k.quadraticCurveTo(fx, fy+7.6, fx+4.2, fy+4.4); } }, '#3f5a86', 1, .9); } },
 
   rabbit:{ tail:P=>tailBall(P, '#ffffff', 3.8), ears:()=>{}, snout:P=>muzzle(P, '#ffffff', 4.2, 3, '#e8899c', 1),
     top:P=>{ const {d, side, up, A} = P; for (const sx of (side ? [-.12] : [-1, 1])){ const ex = side ? R*sx - 1 : sx*R*.42, tilt = side ? -.18 : sx*.12; d.shape(k=>{ k.beginPath(); k.ellipse(ex, HY - R*1.62, R*.27, R*.66, tilt, 0, Math.PI*2); }, A.fur, [ex, HY - R*1.6, R*.4]); if (!up) d.shape(k=>{ k.beginPath(); k.ellipse(ex, HY - R*1.6, R*.13, R*.48, tilt, 0, Math.PI*2); }, '#ffc3d6', [ex, HY - R*1.6, 2], {flat:true, noShadow:true}); } } },
