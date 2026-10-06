@@ -1148,6 +1148,10 @@ function soloNet(){
     cleanupClaims: async () => {},
     petClaim: async sp => { petClaims[sp] = {uid}; return true; },
     snowman: async s => { snowmen[uid] = s; },
+    mobsZone: (z, cb) => { const M_ = soloNet.mobs || (soloNet.mobs = {}); soloNet.mobCb = [z, cb]; setTimeout(()=>cb(structuredClone(M_[z]||{}))); return ()=>{ soloNet.mobCb = null; }; },
+    mobSpawn: async (z, sl, oldGen, d) => { const M_ = soloNet.mobs, c = (M_[z] = M_[z] || {}), cur = c[sl]; if (oldGen == null ? cur : (!cur || cur.gen !== oldGen || cur.hp > 0)) return; c[sl] = d; soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); },
+    mobHit: async (z, sl, gen, dmg) => { const c = (soloNet.mobs||{})[z] || {}, cur = c[sl]; if (!cur || cur.gen !== gen || !(cur.hp > 0)) return {committed:false}; cur.hp = Math.max(0, cur.hp - dmg); cur.hits = {...(cur.hits||{}), [uid]:true}; if (cur.hp <= 0) cur.deadAt = Date.now(); soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); return {committed:true, killed:cur.hp <= 0}; },
+    mobPos: async (z, up) => { const c = (soloNet.mobs||{})[z] || {}; for (const [k,v] of Object.entries(up)){ const [sl, f] = k.split('/'); if (c[sl]) c[sl][f] = v; } },
     museumGive: async (cat, id) => { const c = museum[cat] || (museum[cat] = {}); if (c[id]) return false; c[id] = {uid, nick:me.nick, at:Date.now()}; onMuseum(museum); return true; },
     darkTx: async (npc, fn) => { const st_ = soloNet.dark || (soloNet.dark = {}); const r = fn(st_[npc] ? structuredClone(st_[npc]) : null); if (r !== undefined){ if (r === null) delete st_[npc]; else st_[npc] = r; } onDarkRooms(structuredClone(st_)); return r !== undefined; },
     reviveSend: async (id, by) => { if (id === uid) onRevive({by, at:darkNow()}); },
@@ -1197,6 +1201,10 @@ function firebaseNet(){
     claimLot: i => tx('lots/'+i, {uid, at:Date.now()}, 'lot', i),
     petClaim: sp => tx('petClaims/'+sp, {uid, at:Date.now()}),
     snowman: s => F.set(F.ref(db, 'snowmen/'+uid), s),
+    mobsZone: (z, cb) => F.onValue(F.ref(db, 'mobs/'+z), s=>cb(s.val()), ()=>{}),
+    mobSpawn: async (z, sl, oldGen, d) => { try { await F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => (oldGen == null ? cur : (!cur || cur.gen !== oldGen || cur.hp > 0)) ? undefined : d); } catch(e){} },
+    mobHit: async (z, sl, gen, dmg) => { let killed = false; try { const r = await F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => { if (!cur || cur.gen !== gen || !(cur.hp > 0)) return; const hp = Math.max(0, cur.hp - dmg); killed = hp <= 0; return {...cur, hp, hits:{...(cur.hits||{}), [uid]:true}, ...(killed ? {deadAt: Date.now() + serverOffset} : {})}; }); return {committed:r.committed, killed:r.committed && killed}; } catch(e){ return {committed:false}; } },
+    mobPos: (z, up) => F.update(F.ref(db, 'mobs/'+z), up).catch(()=>{}),
     museumGive: async (cat, id) => { try { const r = await F.runTransaction(F.ref(db, 'museum/'+cat+'/'+id), cur => cur ? undefined : {uid, nick:String(me.nick||'').slice(0,16), at:Date.now() + serverOffset}); return r.committed; } catch(e){ return false; } },
     darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
@@ -1215,7 +1223,7 @@ function firebaseNet(){
     // 장소마다 100 줄만 남기고 오래된 줄은 지워요
     chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, darkRooms:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, mobs:null, darkRooms:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -2414,48 +2422,94 @@ function updateBars(){
   const lv = $('lvTag'); if (lv) lv.textContent = 'Lv ' + lvOf();
   const low = playerHp < maxHp()*.3; $('hpBar')?.classList.toggle('low', low); $('staBar')?.classList.toggle('low', playerSta < 10);
 }
-let mobs = [], mobZone = null, playerHp = 100, lastHurt = 0, lastSwing = 0;
+let mobs = [], playerHp = 100, lastHurt = 0, lastSwing = 0;
 const fx = []; // 떠오르는 숫자
 function rollMonster(){
   const list = Object.entries(MONSTERS).filter(([,m])=>m.zone===zoneId);
   const total = list.reduce((a,[,m])=>a+m.weight,0);
   let r = Math.random()*total; for (const [id,m] of list){ if ((r-=m.weight) < 0) return id; } return list[0][0];
 }
-function spawnMob(){
+// ===== 몬스터: 같은 구역에 있는 사람 모두가 같은 몬스터를 봐요 (mobs/<구역>/<칸>) =====
+// 구역에 있는 사람 중 한 명(아이디가 가장 앞선 사람)이 몬스터를 움직이고 자리를 알려 줘요. 체력은 다 같이 깎고,
+// 쓰러뜨리면 한 대라도 친 사람 모두가 보상을 받아요. 쓰러진 자리는 MOB_RESPAWN 뒤에 새 몬스터가 나와요.
+const MOB_RESPAWN = 10000;
+let mobMap = {}, mobSub = null, mobSubZone = null, mobLoaded = false, mobPosAt = 0, mobTry = {};
+const mobNow = () => Date.now() + serverOffset;
+function newMobData(gen){
   const z = Z();
-  for (let k=0;k<30;k++){
+  for (let k=0;k<40;k++){
     const x = M + 60 + Math.random()*(z.W - 2*M - 120), y = M + 60 + Math.random()*(z.H - 2*M - 120);
-    if (blocked(x,y) || Math.hypot(x-pos.x, y-pos.y) < 320) continue;
-    const id = rollMonster(), m = MONSTERS[id];
-    mobs.push({id, x, y, hp:m.hp, max:m.hp, cd:0, wander:0, wx:x, wy:y, hurt:0});
-    return;
+    if (blocked(x,y) || Math.hypot(x-pos.x, y-pos.y) < 320 || [...others.values()].some(o=>o.z===zoneId && Math.hypot(x-o.x, y-o.y) < 240)) continue;
+    const id = rollMonster(), m = MONSTERS[id]; return {id, x:Math.round(x), y:Math.round(y), hp:m.hp, max:m.hp, gen};
   }
+  return null;
+}
+function mobOwner(){ let best = uid; for (const [id,o] of others) if (o.z===zoneId && id < best) best = id; return best === uid; }
+function onMobs(zone, v){
+  if (zone !== zoneId || zone !== mobSubZone) return; mobLoaded = true; v = v || {};
+  const next = {};
+  for (const [slot, d] of Object.entries(v)){
+    if (!d || !MONSTERS[d.id]) continue;
+    let mob = mobMap[slot];
+    if (!mob || mob.gen !== d.gen) mob = {slot, x:d.x, y:d.y, cd:0, wander:0, wx:d.x, wy:d.y, hurt:0};
+    Object.assign(mob, {id:d.id, gen:d.gen, hp:d.hp, max:d.max, tx:d.x, ty:d.y, deadAt:d.deadAt||0, hits:d.hits||{}});
+    next[slot] = mob;
+    if (!(d.hp > 0) && mob.hits[uid]) mobReward(zone, slot, d);
+  }
+  mobMap = next; mobs = Object.values(mobMap).filter(m=>m.hp > 0);
+}
+// 쓰러진 몬스터에 한 대라도 쳤으면 보상 (칸마다 마지막으로 받은 차례를 저장해서 새로고침해도 두 번 안 받아요)
+function mobReward(zone, slot, d){
+  me.mobGot = me.mobGot || {}; const key = zone + ':' + slot; if ((me.mobGot[key]|0) >= d.gen) return; me.mobGot[key] = d.gen;
+  const m = MONSTERS[d.id], gold = Math.round(m.atk * (0.8 + Math.random()*.4)), crew = Object.keys(d.hits||{}).length;
+  stat('monsterKills'); if (d.id==='m28') stat('caveBossKills'); questEvent('kill', d.id);
+  invAdd('loot:'+d.id, 1); me.inv.gold += gold;
+  me.mdex = me.mdex || {}; const first = !me.mdex[d.id]; me.mdex[d.id] = (me.mdex[d.id]||0) + 1;
+  gainExp(Math.max(3, Math.round(m.hp/6 + m.atk)));
+  saveMe(); renderHud();
+  toast(`${m.name}을(를) ${crew > 1 ? `${crew} 명이 함께 ` : ''}물리쳤어요! ${m.drop} · ${gold} G${first ? ' · 처음 물리친 몬스터!' : ''}`, 'loot:'+d.id);
 }
 function syncMobs(){
   const want = (COMBAT_ZONES[zoneId] && (zoneId!=='starhill' || isNight())) ? COMBAT_ZONES[zoneId] : 0;
-  if (mobZone !== zoneId){ mobZone = zoneId; mobs = []; for (let i=0;i<want;i++) spawnMob(); }
+  if (mobSubZone !== zoneId){
+    if (mobSub) mobSub(); mobSub = null; mobSubZone = zoneId; mobMap = {}; mobs = []; mobLoaded = false; mobTry = {};
+    if (COMBAT_ZONES[zoneId] && net && net.mobsZone){ const z = zoneId; mobSub = net.mobsZone(z, v=>onMobs(z, v)); }
+  }
   return want;
 }
-let respawnT = 0;
 function updateMobs(dt, t){
-  const want = syncMobs(); if (!want) return;
-  if (mobs.length < want && t > respawnT){ spawnMob(); respawnT = t + 8000; } // 몬스터도 사람마다 따로, 8 초마다 한 마리씩 다시 나와요
-  const talking = !$('talk').hidden;
+  const want = syncMobs(); if (!want){ mobs = []; return; }
+  const owner = mobOwner(), now = mobNow(), talking = !$('talk').hidden;
+  if (owner && mobLoaded){ // 빈 자리·쓰러진 지 오래된 자리에 새 몬스터
+    for (let i=0;i<want;i++){
+      const sl = String(i), mob = mobMap[sl]; if (mobTry[sl] && t - mobTry[sl] < 3000) continue;
+      if (!mob){ mobTry[sl] = t; const d = newMobData(1); if (d) net.mobSpawn(zoneId, sl, null, d); }
+      else if (!(mob.hp > 0) && now - (mob.deadAt||0) > MOB_RESPAWN){ mobTry[sl] = t; const d = newMobData(mob.gen + 1); if (d) net.mobSpawn(zoneId, sl, mob.gen, d); }
+    }
+  }
+  const chase = owner ? [{x:pos.x, y:pos.y, ok:!talking && !darkDown && t > wakeGuardUntil}, ...[...others.values()].filter(o=>o.z===zoneId && !o.down).map(o=>({x:o.x, y:o.y, ok:true}))] : [];
   for (const mob of mobs){
     const m = MONSTERS[mob.id], d = Math.hypot(pos.x-mob.x, pos.y-mob.y);
     mob.cd -= dt; mob.hurt -= dt;
-    let tx, ty, sp = m.speed;
-    if (d < 240 && !talking && !darkDown && t > wakeGuardUntil){ tx = pos.x; ty = pos.y; } // 기절했거나 막 깨어났으면 쫓아오지 않아요
-    else { if ((mob.wander -= dt) <= 0){ mob.wander = 1.5 + Math.random()*2.5; mob.wx = mob.x + (Math.random()-.5)*200; mob.wy = mob.y + (Math.random()-.5)*200; } tx = mob.wx; ty = mob.wy; sp *= .4; }
-    const dx = tx-mob.x, dy = ty-mob.y, l = Math.hypot(dx,dy);
     if (mob.kb > 0){ mob.kb -= dt; const nx = mob.x + mob.kvx*dt, ny = mob.y + mob.kvy*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; mob.kvx *= .86; mob.kvy *= .86; continue; }
-    if (l > 22 && mob.hurt <= 0){ const nx = mob.x + dx/l*sp*dt, ny = mob.y + dy/l*sp*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; }
+    if (owner){ // 가장 가까운 사람을 쫓아가요 (기절했거나 막 깨어난 사람은 빼고)
+      let tg = null, best = 240; for (const p of chase) if (p.ok){ const dd = Math.hypot(p.x-mob.x, p.y-mob.y); if (dd < best){ best = dd; tg = p; } }
+      let tx, ty, sp = m.speed;
+      if (tg){ tx = tg.x; ty = tg.y; }
+      else { if ((mob.wander -= dt) <= 0){ mob.wander = 1.5 + Math.random()*2.5; mob.wx = mob.x + (Math.random()-.5)*200; mob.wy = mob.y + (Math.random()-.5)*200; } tx = mob.wx; ty = mob.wy; sp *= .4; }
+      const dx = tx-mob.x, dy = ty-mob.y, l = Math.hypot(dx,dy);
+      if (l > 22 && mob.hurt <= 0){ const nx = mob.x + dx/l*sp*dt, ny = mob.y + dy/l*sp*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; }
+    } else if (mob.tx != null){ // 움직이는 사람 화면의 자리로 부드럽게 따라가요
+      const dx = mob.tx-mob.x, dy = mob.ty-mob.y, l = Math.hypot(dx,dy);
+      if (l > 220){ mob.x = mob.tx; mob.y = mob.ty; } else if (l > 1){ const k = Math.min(1, dt*6); mob.x += dx*k; mob.y += dy*k; }
+    }
     if (d < 30 && mob.cd <= 0 && !talking && !darkDown && t > wakeGuardUntil){
       mob.cd = 1.2; playerHp -= m.atk; lastHurt = t; pushPlayer(pos.x-mob.x, pos.y-mob.y, 18); setExpr('surprised', 1200);
       fx.push({x:pos.x, y:pos.y-50, text:'-'+m.atk, t, color:'#ff3b6b'});
       if (playerHp <= 0) return faint();
     }
   }
+  if (owner && mobs.length && t - mobPosAt > 450){ mobPosAt = t; const up = {}; for (const mob of mobs){ const x = Math.round(mob.x), y = Math.round(mob.y); if (x !== mob.sx || y !== mob.sy){ mob.sx = x; mob.sy = y; up[mob.slot+'/x'] = x; up[mob.slot+'/y'] = y; } } if (Object.keys(up).length) net.mobPos(zoneId, up); }
 }
 // 무기: 콩이의 경비대 무기고에서 광석과 골드로 만들어요. 좋은 무기일수록 공격력이 세요
 const WEAPON_LIST = [
@@ -2530,26 +2584,19 @@ function drawSwing(c, t){
   c.restore();
 }
 function hitMob(mob, t, vx, vy){
-  const dmg = swordAtk(); mob.hp -= dmg; mob.hurt = .3;
+  const dmg = swordAtk(); mob.hp = Math.max(0, mob.hp - dmg); mob.hurt = .3;
   const dx = mob.x-pos.x, dy = mob.y-pos.y, l = Math.hypot(dx,dy)||1;
   const kx = dx/l + (vx||0), ky = dy/l + (vy||0), kl = Math.hypot(kx,ky)||1, power = 300 / (1 + MONSTERS[mob.id].hp/400);
   mob.kvx = kx/kl*power; mob.kvy = ky/kl*power; mob.kb = .18;
   fx.push({x:mob.x, y:mob.y-40, text:String(dmg), t, color:'#ffffff'});
-  if (mob.hp <= 0){
-    mobs = mobs.filter(m=>m!==mob); stat('monsterKills'); if (mob.id==='m28') stat('caveBossKills'); questEvent('kill', mob.id);
-    const m = MONSTERS[mob.id], gold = Math.round(m.atk * (0.8 + Math.random()*.4));
-    invAdd('loot:'+mob.id, 1); me.inv.gold += gold;
-    me.mdex = me.mdex || {}; const first = !me.mdex[mob.id]; me.mdex[mob.id] = (me.mdex[mob.id]||0) + 1;
-    gainExp(Math.max(3, Math.round(m.hp/6 + m.atk)));
-    saveMe(); renderHud();
-    toast(`${m.name}을(를) 물리쳤어요! ${m.drop} · ${gold} G${first ? ' · 처음 물리친 몬스터!' : ''}`, 'loot:'+mob.id);
-    if (mob.id==='m28' && net && net.sendChat) net.sendChat('(동굴의 주인을 물리쳤다!)').catch(()=>{});
-  }
+  if (mob.hp <= 0) mobs = mobs.filter(m=>m!==mob);
+  const id = mob.id; // 체력은 다 같이: 서버에서 깎고, 쓰러지면 친 사람 모두에게 보상 (onMobs)
+  net.mobHit(zoneId, mob.slot, mob.gen, dmg).then(r=>{ if (r && r.killed && id==='m28' && net.sendChat) net.sendChat('(동굴의 주인을 물리쳤다!)').catch(()=>{}); }).catch(()=>{});
 }
 function faint(){ return darkRespawn(); }
 // 아무도 깨워 주지 않을 때: 집 앞에서 깨어나요 (일반 모드)
 function wakeAtHome(){
-  darkDown = null; playerHp = maxHp(); mobs = []; mobZone = null; renderHud();
+  darkDown = null; playerHp = maxHp(); mobs = []; renderHud();
   const L = LOTS[me.lot]; enterZone('home', null, L.x, L.y + 18);
   say('기절', '집에서 푹 쉬고 일어났어요. 몸이 가뿐해요!', [], '체력이 다시 가득 찼어요');
 }
