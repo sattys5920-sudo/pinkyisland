@@ -977,17 +977,31 @@ function toDB(p){
 // 입주하지 않은 채 10 분이 지난 선점은 다른 사람이 가져갈 수 있어요
 function abandoned(c){ return !players[c.uid] && Date.now() - (c.at||0) > 600000; }
 
-let saving=false, saveAgain=false;
-async function saveMe(){
+// 저장 묶기: 자잘한 변화(아이템 얻기·기력 등)는 3 초 동안 모았다가 한 번에 저장해요 (서버 전송량 1/5 이하).
+// 골드를 쓰거나, 레벨이 오르거나, 퀘스트를 끝내거나, 구역을 옮기거나, 화면을 벗어날 때는 바로 저장해요.
+const SAVE_DELAY = 3000;
+let saving=false, saveAgain=false, saveTimer=0, lastSaved=null;
+const saveSig = () => ({gold:me.inv.gold|0, lv:me.lv||1, qd:qState().done.length, zone:me.zone});
+function saveMe(now){
+  if (admin || !me) return;
+  const g = saveSig(), L = lastSaved;
+  if (now===true || !L || g.gold < L.gold || g.lv !== L.lv || g.qd !== L.qd || g.zone !== L.zone) return flushSave();
+  if (!saveTimer) saveTimer = setTimeout(flushSave, SAVE_DELAY);
+}
+async function flushSave(){
+  clearTimeout(saveTimer); saveTimer = 0;
   if (admin || !me) return;
   if (saving){ saveAgain=true; return; }
-  saving=true;
+  saving=true; lastSaved = saveSig();
   me.hp = Math.max(1, Math.round(playerHp)); me.sta = Math.round(playerSta);
   try { await net.savePlayer(toDB(me)); }
   catch(e){ toast('저장하지 못했어요. 인터넷 연결을 확인해 주세요.'); }
   saving=false;
-  if (saveAgain){ saveAgain=false; saveMe(); }
+  if (saveAgain){ saveAgain=false; return flushSave(); }
 }
+// 다른 앱으로 넘어가거나 창을 닫을 때는 기다리지 않고 바로 저장
+document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='hidden' && saveTimer) flushSave(); });
+addEventListener('pagehide', ()=>{ if (saveTimer) flushSave(); });
 
 // ===== 데이터 수신 =====
 let firstPlayers = true, firstOnline = true;
@@ -1195,7 +1209,7 @@ function menuPanel(){
     b=>({bag:showBag, closet:clothesPanel, quest:questLog, ach:achPanel, dlgsize:()=>{ setDlgSize({s:'m', m:'l', l:'s'}[dlgSize]); menuPanel(); }, dlglog:()=>{ $('npcPanel').hidden = true; dlgLogOpen(); }, map:()=>{ $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }})[b.dataset.id]?.());
   $('logoutBig').onclick = ()=>{ if (confirm('로그아웃할까요? 캐릭터와 집은 아이디에 저장돼 있어요.')) logout(); };
 }
-async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); }
+async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); if (saveTimer) await flushSave(); try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); }
 // 글꼴이 다 내려받히기 전에 그린 캔버스(지형·스프라이트)는 기본 글꼴로 굳어 버려요. 먼저 기다리고, 늦게 오면 캐시를 지워 다시 그려요.
 const fontReady = (async()=>{ try { await Promise.race([document.fonts.load('700 20px "Dongle"', '핑키 디저트 아일랜드 가나다 ABC 123'), new Promise(r=>setTimeout(r, 3000))]); } catch(e){} })();
 if (document.fonts) document.fonts.addEventListener('loadingdone', ()=>{ staticSig = ''; spriteCache.clear(); });
@@ -2860,7 +2874,7 @@ function postPanel(v){
 function onMail(m, remove){
   if (!m || typeof m.item!=='string' || !/^(dish|crop|fish|ore|loot|seed|furn):[a-z0-9_]{2,8}$/.test(m.item)) return remove();
   if (invRoom(m.item) < 1){ addLog(`${String(m.nick||'누군가').slice(0,8)} 님이 보낸 ${itemName(m.item)}이(가) 우편함에 있어요 (가방이 가득 차서 못 받았어요)`, true); return; }
-  invAdd(m.item, 1); saveMe(); renderHud(); remove();
+  invAdd(m.item, 1); saveMe(true); renderHud(); remove();
   addLog(`${String(m.nick||'누군가').slice(0,8)} 님이 ${itemName(m.item)}을(를) 보냈어요!`, true);
 }
 
@@ -2934,7 +2948,7 @@ function onMarket(v){
   for (const [id,l] of Object.entries(v||{})) if (validListing(l)) market[id] = l;
   // 내 물건이 팔렸으면 골드를 받아요
   for (const [id,l] of Object.entries(market)) if (l.uid===uid && l.buyer){
-    net.marketCollect(id).then(ok=>{ if (!ok) return; const g = Math.floor(l.price*(1-MARKET_FEE)); me.inv.gold += g; me.earned = (me.earned||0) + g; saveMe(); renderHud();
+    net.marketCollect(id).then(ok=>{ if (!ok) return; const g = Math.floor(l.price*(1-MARKET_FEE)); me.inv.gold += g; me.earned = (me.earned||0) + g; saveMe(true); renderHud();
       stat('marketSold'); addLog(`거래소: ${String(l.bnick||'누군가').slice(0,8)} 님이 ${itemName(l.item)} ${l.n} 개를 샀어요! +${g} G`, true); }).catch(()=>{});
   }
   if (!$('npcPanel').hidden && $('npcPanel').dataset.market) marketPanel();
@@ -2950,7 +2964,7 @@ function marketPanel(){
      <div class="bag-sec"><b>사고 싶은 물건 ${others.length}</b>${others.map(row).join('') || '<p class="mnote">아직 올라온 물건이 없어요.</p>'}</div>
      ${mine.length ? `<div class="bag-sec"><b>내가 올린 물건 ${mine.length}/${MARKET_MAX}</b>${mine.map(row).join('')}</div>` : ''}`,
     b=>{ const id = b.dataset.id, l = market[id]; if (!l) return;
-      if (l.uid===uid) return say('거래소', `${itemName(l.item)} ${l.n} 개를 내릴까요?`, [['내리기', async ()=>{ if (await net.marketCancel(id)){ invAdd(l.item, l.n); saveMe(); renderHud(); toast('물건을 돌려받았어요'); } else toast('이미 팔렸거나 내릴 수 없어요'); closeTalk(); marketPanel(); }], ['그만두기', marketPanel]], '', true);
+      if (l.uid===uid) return say('거래소', `${itemName(l.item)} ${l.n} 개를 내릴까요?`, [['내리기', async ()=>{ if (await net.marketCancel(id)){ invAdd(l.item, l.n); saveMe(true); renderHud(); toast('물건을 돌려받았어요'); } else toast('이미 팔렸거나 내릴 수 없어요'); closeTalk(); marketPanel(); }], ['그만두기', marketPanel]], '', true);
       if (me.inv.gold < l.price) return toast('골드가 모자라요');
       if (invRoom(l.item) < l.n) return toast(`${itemName(l.item)}은(는) 가방에 ${invRoom(l.item)} 개까지만 더 넣을 수 있어요`);
       withIcon(l.item);
@@ -2982,7 +2996,7 @@ function marketList(k){
     withIcon(k);
     say('거래소에 올리기', `${itemName(k)} ${q} 개, 얼마에 팔까요?\n(상점 시세로는 ${base} G)`, ps.map(p=>[`${p} G`, async ()=>{
       if (invCount(k) < q) return closeTalk();
-      invAdd(k, -q); saveMe(); renderHud();
+      invAdd(k, -q); saveMe(true); renderHud();
       try { await net.marketList({uid, nick:me.nick, item:k, n:q, price:p}); toast(`${itemName(k)} ${q} 개를 ${p} G에 올렸어요`); }
       catch(e){ invAdd(k, q); saveMe(); renderHud(); toast('올리지 못했어요. 잠시 뒤 다시 해 봐요'); }
       closeTalk(); marketPanel();
