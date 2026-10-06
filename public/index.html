@@ -772,7 +772,7 @@ function rebuildObstacles(){
     if (p.kind==='mine'){ o.ells.push({x:zk(520),y:zk(900),rx:zk(220),ry:zk(150)}, {x:zk(1080),y:zk(900),rx:zk(220),ry:zk(150)}); }
     if (p.kind==='logs') o.rects.push({x:p.x-60, y:p.y-30, w:120, h:40});
   }
-  if (zoneId==='home') for (const p of Object.values(players)) if (p.lot!=null){ const L=LOTS[p.lot]; o.rects.push({x:L.x-54,y:L.y-106,w:108,h:108}); }
+  if (zoneId==='home') for (const p of Object.values(players)) if (p.lot!=null){ const L=LOTS[p.lot]; o.rects.push({x:L.x-54,y:L.y-106,w:108,h:108}); const [mx, my] = mailboxPos(p.lot); o.circles.push({x:mx, y:my-2, r:9}); }
   // 남의 울타리(빈 집터 포함)는 못 들어가요. 내 울타리만 드나들 수 있어요
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (me && me.lot===i) return; if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return; o.rects.push({x:L.x-FENCE.w/2, y:L.y+FENCE.top-6, w:FENCE.w, h:FENCE.h+6}); });
   if (z.dark) for (const pz of darkPuzzles(z.dark)) o.circles.push({x:pz.x, y:pz.y-4, r:26});
@@ -3295,8 +3295,8 @@ function onLetters(v){
   const next = {}; for (const [id,l] of Object.entries(v||{})) if (l && typeof l.text==='string') next[id] = l;
   const fresh = Object.entries(next).filter(([id,l])=>!l.read && letterSeen && !letterSeen.has(id));
   letterSeen = new Set(Object.keys(next)); letters = next;
-  if (!fresh.length && !onLetters.told){ const n = Object.values(next).filter(l=>!l.read).length; if (n){ onLetters.told = true; setTimeout(()=>{ addLog(`✉️ 읽지 않은 편지가 ${n} 통 있어요. 토리 우체국에서 읽어요`, true); toast(`읽지 않은 편지 ${n} 통 · 토리 우체국`); }, 2500); } } // 접속해 보니 와 있던 답장도 알려 줘요
-  for (const [,l] of fresh){ addLog(`✉️ ${String(l.nick || letterWho(l.from) || '누군가').slice(0,10)} 님에게서 편지가 왔어요. 토리 우체국에서 읽어요`, true); toast('토리 우체국에 편지가 왔어요'); }
+  if (!fresh.length && !onLetters.told){ const n = Object.values(next).filter(l=>!l.read).length; if (n){ onLetters.told = true; setTimeout(()=>{ addLog(`✉️ 읽지 않은 편지가 ${n} 통 있어요. 집 앞 우편함에서 읽어요`, true); toast(`읽지 않은 편지 ${n} 통 · 집 앞 우편함`); }, 2500); } } // 접속해 보니 와 있던 답장도 알려 줘요
+  for (const [,l] of fresh){ addLog(`✉️ ${String(l.nick || letterWho(l.from) || '누군가').slice(0,10)} 님에게서 편지가 왔어요. 집 앞 우편함이나 토리 우체국에서 읽어요`, true); toast('우편함에 편지가 왔어요 · 집 앞 우편함'); }
   if (!$('npcPanel').hidden && $('npcPanel').dataset.post) postPanel(postView);
 }
 function onLettersOut(v){ lettersOut = {}; for (const [id,l] of Object.entries(v||{})) if (l && typeof l.text==='string') lettersOut[id] = l; if (!$('npcPanel').hidden && $('npcPanel').dataset.post && postView.tab==='out') postPanel(postView); }
@@ -3321,7 +3321,7 @@ function postPanel(v){
       <label class="lt-lab">받는 사람<select id="ltTo">${opts.map(([k,n])=>`<option value="${k}" ${postView.to===k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
       <textarea id="ltText" maxlength="${LETTER_MAX}" rows="6" placeholder="하고 싶은 말을 적어요 (${LETTER_MAX} 자까지)">${esc(postView.draft||'')}</textarea>
       <div class="inv-foot"><span id="ltCount">${(postView.draft||'').length} / ${LETTER_MAX}</span><button class="btn" data-pa="send">보내기</button></div>`; }
-  openPanel('토리 우체국', tabs + body);
+  openPanel(zoneId === 'home' ? `${esc(me.nick)} 님의 우편함` : '토리 우체국', tabs + body);
   const p = $('npcPanel'); p.dataset.post = '1';
   p.querySelectorAll('[data-pt]').forEach(b=>b.onclick = ()=>postPanel({tab:b.dataset.pt}));
   p.querySelectorAll('[data-lid]').forEach(b=>b.onclick = ()=>{ const id = b.dataset.lid;
@@ -3669,6 +3669,29 @@ function drawBoss(d, t){
   c.font='bold 18px "Dongle",sans-serif'; c.textAlign='center'; c.fillStyle='#fff'; c.fillText(`먼지 여왕 ${Math.max(0,Math.ceil(boss.hp))}/${boss.max} · 다 함께 물리쳐요!`, x, y-134);
 }
 
+// ===== 집마다 우편함: 집 오른쪽 앞. 내 우편함만 열 수 있고, 안 읽은 편지가 있으면 빨간 깃발이 올라가요 =====
+const mailboxPos = lot => { const L = LOTS[lot]; return [L.x + 74, L.y + 6]; };
+function drawMailbox(d, x, y, mine, flag, t){
+  const c = d.ctx;
+  d.ell(x, y+1, 12, 4, 'rgba(0,0,0,.14)');
+  d.rr(x-2.5, y-26, 5, 27, 2.5, '#a9806a');
+  d.rr(x-13, y-44, 26, 19, 9, mine ? '#ff8fb6' : '#e9b8c9');
+  d.rr(x-13, y-36, 26, 11, 4, mine ? '#ff7aa8' : '#ddaabd');
+  d.rr(x-6, y-38, 12, 3, 1.5, '#7a4a5e');
+  if (flag){ const w = Math.sin(t/220)*1.5; d.rr(x+11, y-52, 2.6, 18, 1.3, '#7a4a5e'); d.rr(x+13, y-52 + w*.2, 9, 6, 2, '#ff3b5c'); }
+  else d.rr(x+11, y-38, 2.6, 12, 1.3, '#7a4a5e');
+}
+function mailboxEntities(d, t){
+  if (zoneId !== 'home') return [];
+  return Object.entries(players).filter(([,p])=>p && p.lot!=null && LOTS[p.lot]).map(([id,p])=>{ const [x, y] = mailboxPos(p.lot), mine = id === uid;
+    return {y, draw:()=>drawMailbox(d, x, y, mine, mine && unreadLetters() > 0, t), label:()=>{ if (mine && unreadLetters()) tag(d.ctx, `편지 ${unreadLetters()}`, x, y-60, '#ff4f87'); }}; });
+}
+function mailboxTap(w){
+  if (zoneId !== 'home') return null;
+  for (const [id,p] of Object.entries(players)){ if (!p || p.lot==null || !LOTS[p.lot]) continue; const [x, y] = mailboxPos(p.lot);
+    if (Math.abs(w.x-x) < 18 && w.y > y-56 && w.y < y+6) return id === uid ? {x:x-24, y:y+18, act:()=>postPanel()} : {x:pos.x, y:pos.y, act:()=>toast(`${String(p.nick||'').slice(0,8)} 님의 우편함이에요 · 주인만 열 수 있어요`), mark:performance.now()}; }
+  return null;
+}
 // ===== 다크 모드: 주민 12 명의 집 = 방탈출 =====
 // 관리자가 다크 모드를 켜면 하루에 한 방씩 열려요 (DARK_ORDER). 여러 명이 같은 방에 들어가 문제 15 개를 같이 풀고,
 // 다 풀면 그 주민이 아주 강한 보스로 깨어나요. 첫 입장부터 2 시간 안에 못 끝내면 방이 처음으로 돌아가요.
@@ -4122,6 +4145,7 @@ document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow
 
 function toWorld(cx, cy){ return { x: view.cx + cx/view.zoom, y: view.cy + cy/view.zoom }; }
 function hitTarget(w){
+  { const mb = mailboxTap(w); if (mb) return mb; }
   for (const [id, o] of others) if (o.down && o.z === zoneId && Math.abs(w.x-o.x) < 40 && Math.abs(w.y-(o.y-10)) < 34) return {x:o.x + 30, y:o.y + 10, act:()=>{ darkRevive = {id, uid:o.uid, at:performance.now()}; toast(`${o.nick} 님을 ${downWords().helping}.... 곁에 있어 줘요`); }};
   const pt = petTap(w); if (pt) return pt;
   for (const pl of (Z().places||[])) if (pl.post){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:()=>postPanel()}; }
@@ -4375,6 +4399,7 @@ function frame(t){
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
       ...darkEntities(d, t),
+      ...mailboxEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-80); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
