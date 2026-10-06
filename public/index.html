@@ -228,7 +228,6 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 .btn{border:0;border-radius:12px;padding:7px 16px;background:var(--pink);color:var(--ink);font-size:21px;box-shadow:inset 0 -3px 0 #f2c3d3}
 .btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 -3px 0 #f6e6ec}
 .btn:disabled{opacity:.4;cursor:default}
-#juke{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);top:calc(env(safe-area-inset-top,0px) + 130px);width:min(280px,calc(100vw - 20px));z-index:8;background:#fffafc;border:2px solid #f3d6e2;border-radius:12px;padding:3px 3px 3px 6px;box-shadow:0 3px 10px rgba(90,40,64,.2);display:flex;align-items:center;gap:4px;box-sizing:border-box}#juke iframe{display:block;flex:1;min-width:0}#jukeX{border:0;background:#f7e3ea;border-radius:50%;width:22px;height:22px;font-size:12px;line-height:22px;padding:0;cursor:pointer;flex:none}
 #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 120px);transform:translateX(-50%);padding:8px 16px;z-index:9;font-size:20px;transition:opacity .4s;pointer-events:none;text-align:center;max-width:calc(100vw - 32px)}
 #ob{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;position:fixed;inset:0;z-index:20;background:#fffafb;overflow:auto;touch-action:auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 16px 40px}
 .obc{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
@@ -1382,68 +1381,10 @@ function bgmStop(){ if (bgmAudio) bgmAudio.pause(); if (bgmTimer){ clearInterval
 // 브라우저는 처음 화면을 누르기 전엔 소리를 못 내요. 첫 터치·키 입력 때 시작해요
 for (const ev of ['pointerdown','keydown']) addEventListener(ev, ()=>{ if (me && !admin && !bgmStarted) bgmStart(); }, {passive:true});
 document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='hidden') bgmStop(); else if (bgmStarted && bgmOn()) bgmStart(); });
-// ===== 주크박스: 집의 주크박스를 누르면 곡을 골라 사운드클라우드 작은 플레이어로 들어요. 듣는 동안 배경 음악은 쉬어요 =====
-const JUKE_SONGS = [
-  {name:'오전 12 시의 오투모', url:'https://soundcloud.com/chillestchunes/nighttime-getaway'},
-  {name:'새벽 1 시의 오투모', url:'https://soundcloud.com/st-francis-hotel/milkshake-feat-portugal-the-man'},
-  {name:'새벽 2 시의 오투모', url:'https://soundcloud.com/tetsujin/nujabes-aruarian-dance'},
-  {name:'새벽 3 시의 오투모', url:'https://soundcloud.com/feyde/3am-ep-out-november-17th'},
-  {name:'새벽 4 시의 오투모', url:'https://soundcloud.com/qazp/dejavu-waltz'},
-  {name:'새벽 5 시의 오투모', url:'https://soundcloud.com/bysunflower/ether-no-chie-tsubasa-wo'},
-  {name:'새벽 6 시의 오투모', url:'https://soundcloud.com/hanokaruru/spiral'},
-  {name:'오전 7 시의 오투모', url:'https://soundcloud.com/gogichaishvili-sali/freetempo-sky-high'},
-  {name:'오전 8 시의 오투모', url:'https://on.soundcloud.com/EJM11U2SxskHpbbiPx'},
-  {name:'오전 9 시의 오투모', url:'https://soundcloud.com/mwangala4precedent/know-how'},
-  {name:'오전 10 시의 오투모', url:'https://on.soundcloud.com/bLqkOAGpq60pJad1Ma'},
-  {name:'오전 11 시의 오투모', url:'https://on.soundcloud.com/e56GW5YdqLeZuBoCJE'},
-  {name:'오후 12 시의 오투모', url:'https://on.soundcloud.com/NlRHmEcW3JTr8p4YAQ'},
-  {name:'오후 1 시의 오투모', url:'https://on.soundcloud.com/CG16WBhGWpQYl4XRWA'},
-  {name:'오후 2 시의 오투모', url:'https://on.soundcloud.com/Xv4imeeUZJiTY6ChpX'},
-  {name:'오후 3 시의 오투모', url:'https://on.soundcloud.com/WeeGV16JYviIDPdLnc'},
-  {name:'오후 4 시의 오투모', url:'https://on.soundcloud.com/QEsxYvOAfTGhFQ47OW'},
-  {name:'오후 5 시의 오투모', url:'https://on.soundcloud.com/qvqzCe4hRbXFsP2QiB'},
-  {name:'오후 6 시의 오투모', url:'https://on.soundcloud.com/BbjZBXtK7fBJds7N13'},
-  {name:'오후 7 시의 오투모', url:'https://on.soundcloud.com/hum7xeYCO5CH3tyihI'},
-  {name:'오후 8 시의 오투모', url:'https://on.soundcloud.com/FIYaa0Y6vYO5mra0ZT'},
-  {name:'오후 9 시의 오투모', url:'https://soundcloud.com/user899085095/shocking-pink-rose'},
-  {name:'오후 10 시의 오투모', url:'https://on.soundcloud.com/iCpAjpFB0awZ3DPieM'},
-  {name:'오후 11 시의 오투모', url:'https://on.soundcloud.com/HpveFe76MIFBBC8YSm'},
-];
-var jukeOn = null, jukeH = 20; // 집 밖으로 나가면 꺼져요 (enterZone) · jukeH: 플레이어 높이 (관리자 시험용)
-function jukeSrc(url){ return 'https://w.soundcloud.com/player/?' + new URLSearchParams({url, color:'#ff8fb1', auto_play:'true', show_user:'false', show_artist:'false', hide_related:'true', show_comments:'false', show_reposts:'false', show_teaser:'false', visual:'false', sharing:'false', buying:'false', download:'false'}); }
-// 줄인 링크(on.soundcloud.com)는 플레이어가 못 알아들을 때가 있어요. 사운드클라우드 oEmbed로 진짜 주소를 알아내 써요 (안 되면 그대로)
-async function jukeResolve(s){
-  if (s.full) return s.full; if (!/on\.soundcloud\.com/.test(s.url)) return s.url;
-  try { const c = new AbortController(); const t = setTimeout(()=>c.abort(), 4000);
-    const r = await fetch('https://soundcloud.com/oembed?format=json&url=' + encodeURIComponent(s.url), {signal:c.signal}); clearTimeout(t);
-    const j = await r.json(), m = /src="([^"]+)"/.exec(j.html || ''), u = m && new URL(m[1].replace(/&amp;/g, '&')).searchParams.get('url');
-    if (u){ s.full = u; return u; } } catch(e){}
-  return s.url;
-}
-function jukePlay(i){
-  const s = JUKE_SONGS[i]; if (!s) return; jukeStop(true); jukeOn = s; bgmStop();
-  const d = document.createElement('div'); d.id = 'juke';
-  d.innerHTML = `<iframe title="${esc(s.name)}" width="100%" height="${jukeH}" scrolling="no" frameborder="no" allow="autoplay"></iframe><a href="${esc(s.url)}" target="_blank" rel="noopener" aria-label="사운드클라우드에서 열기" style="flex:none;font-size:13px;text-decoration:none;color:#e0457b;padding:0 2px">↗</a><button id="jukeX" aria-label="끄기">✕</button>`;
-  if (admin){ d.style.zIndex = 35; d.style.top = 'auto'; d.style.bottom = 'calc(env(safe-area-inset-bottom,0px) + 70px)'; /* 관리자: 메뉴 버튼을 가리지 않게 아래쪽에 */ } document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop();
-  const ifr = d.querySelector('iframe'); jukeResolve(s).then(u=>{ if (jukeOn !== s || !ifr.isConnected) return; ifr.src = jukeSrc(u); jukeLoop(ifr); });
-  $('npcPanel').hidden = true;
-}
-// 사운드클라우드 플레이어에는 반복 설정이 없어서, 위젯 API로 곡이 끝나면 처음부터 다시 틀어요 (무한 반복)
-let jukeApi = null;
-function jukeLoop(ifr){
-  const go = () => { try { if (!ifr.isConnected) return; const w = window.SC.Widget(ifr); w.bind(window.SC.Widget.Events.FINISH, ()=>{ if (!ifr.isConnected) return; w.seekTo(0); w.play(); }); } catch(e){} };
-  if (window.SC && window.SC.Widget) return go();
-  jukeApi = jukeApi || new Promise((res, rej)=>{ const sc = document.createElement('script'); sc.src = 'https://w.soundcloud.com/player/api.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
-  jukeApi.then(go, ()=>{ jukeApi = null; });
-}
-function jukeStop(quiet){ const d = $('juke'); if (d) d.remove(); const was = jukeOn; jukeOn = null; if (was && !quiet){ if (bgmStarted && bgmOn()) bgmStart(); toast('주크박스를 껐어요'); } }
-function jukePanel(){
-  openPanel('🎵 주크박스', JUKE_SONGS.map((s,i)=>`<div class="np"><span class="np-name">${esc(s.name)}${jukeOn===s ? ' <small>지금 나오는 중</small>' : ''}</span><button class="mini" data-jk="${i}">${jukeOn===s ? '처음부터' : '틀기'}</button></div>`).join('') +
-    (jukeOn ? '<button class="btn ghost" id="jkOff" style="width:100%;margin-top:6px">주크박스 끄기</button>' : '') +
-    '<p class="mnote">사운드클라우드 플레이어로 나와요. 저절로 안 나오면 플레이어의 ▶ 를 눌러요. 집 안에서만 나와요. 곡은 끝나면 처음부터 계속 반복돼요. 듣는 동안 섬 배경 음악은 쉬고, ✕ 로 끄거나 집 밖으로 나가면 꺼지고 배경 음악이 다시 나와요.</p>');
-  $('npcPanel').querySelectorAll('button[data-jk]').forEach(b=>b.onclick = ()=>jukePlay(+b.dataset.jk));
-  if ($('jkOff')) $('jkOff').onclick = ()=>{ jukeStop(); $('npcPanel').hidden = true; };
-}
+// ===== 주크박스: 섬에서 만든 노래를 고를 수 있게 준비 중이에요 =====
+var jukeOn = null;
+function jukeStop(){ jukeOn = null; }
+function jukePanel(){ toast('주크박스에 넣을 섬 노래를 준비하고 있어요'); }
 async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); if (saveTimer) await flushSave(); try { if (net && net.presenceLeave) await net.presenceLeave(); } catch(e){} try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); } // 로그아웃 전에 접속 표시를 지워요 (나간 뒤엔 권한이 없어서 못 지워요)
 // 글꼴이 다 내려받히기 전에 그린 캔버스(지형·스프라이트)는 기본 글꼴로 굳어 버려요. 먼저 기다리고, 늦게 오면 캐시를 지워 다시 그려요.
 const fontReady = (async()=>{ try { await Promise.race([document.fonts.load('700 20px "Dongle"', '핑키 디저트 아일랜드 가나다 ABC 123'), new Promise(r=>setTimeout(r, 3000))]); } catch(e){} })();
@@ -4661,7 +4602,6 @@ function renderAdmin(){
     <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span><button data-a="side" class="adm-btn adm-menu ${admSide ? 'on' : ''}">메뉴${adminInbox().some(x=>!x.l.replied) ? ' ●' : ''}</button><button data-a="logout" class="adm-btn">로그아웃</button></div>
     <div class="adm-zones">${Object.keys(ZONES).map(z=>`<button data-z="${z}" class="adm-zone ${zoneId===z && !cam.follow ? 'on' : ''}">${esc(ZONES[z].name)}<i>${count[z]||0}</i></button>`).join('')}</div>
     <div class="adm-side">
-      <div class="adm-sec"><b>🎵 주크박스 시험 듣기</b><div style="display:flex;gap:4px;align-items:center;font-size:14px;margin-bottom:4px">플레이어 높이 ${[20,60,120,166].map(h=>`<button data-jh="${h}" class="adm-btn ${jukeH===h ? 'on' : ''}" style="font-size:14px;padding:4px 6px;flex:1">${h}</button>`).join('')}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">${JUKE_SONGS.map((s,i)=>`<button data-jt="${i}" class="adm-btn" style="font-size:15px;padding:6px 4px">▶ ${esc(s.name.replace('의 오투모', ''))}</button>`).join('')}</div></div>
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
@@ -4827,8 +4767,6 @@ function adminClick(e){
   if (b.dataset.z){ admSide = false; cam.follow = null; cam.zone = b.dataset.z; const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2); renderAdmin(); }
   else if (b.dataset.f){ admSide = false; cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
   else if (b.dataset.a==='dkprev' || b.dataset.a==='dknext'){ Promise.resolve(net.setWorld({darkShift:(world.darkShift|0) + (b.dataset.a==='dknext' ? 1 : -1)})).catch(()=>toast('방을 옮기지 못했어요. 관리자 권한을 확인해 주세요')); }
-  else if (b.dataset.jt){ jukePlay(+b.dataset.jt); }
-  else if (b.dataset.jh){ jukeH = +b.dataset.jh; const cur = JUKE_SONGS.indexOf(jukeOn); renderAdmin(); if (cur >= 0) jukePlay(cur); }
   else if (b.dataset.rv){ net.reviveSend(b.dataset.rv, '관리자').then(()=>toast('깨웠어요')); }
   else if (b.dataset.a==='reloadall'){ if (confirm('지금 접속한 사람 모두의 게임을 새로고침할까요? 진행 상황은 저장한 뒤 새로고침돼요.')) Promise.resolve(net.setWorld({reloadAt:Date.now() + serverOffset})).then(()=>toast('전원 새로고침을 보냈어요')).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.a==='dkreset'){ const npc = darkToday(); if (npc && confirm(`${NPC[npc].name}의 방을 처음 상태로 되돌릴까요? 푼 문제·시간·보스 체력이 모두 지워져요.`)) net.darkWipe(npc); }
