@@ -2827,7 +2827,7 @@ function swatchURL(kind, id){
   const k = kind+id; if (swatchCache.has(k)) return swatchCache.get(k);
   const cv = document.createElement('canvas'); cv.width = cv.height = 88; const c = cv.getContext('2d');
   c.save(); c.beginPath(); c.roundRect(0,0,88,88,16); c.clip();
-  (kind==='wall' ? WALLS : FLOORS)[id].draw(c, painter(c), 0, 0, 88, 88, ROOFS[me.roof||0][1]); c.restore();
+  (kind==='wall' ? WALLS : FLOORS)[id].draw(c, painter(c), 0, 0, 88, 88, ROOFS[(me && me.roof) || 0][1]); // 관리자는 me 가 없어요 c.restore();
   const url = cv.toDataURL(); swatchCache.set(k, url); return url;
 }
 // 방 그리기: 벽 높이·창문 수가 집 단계에 따라 달라져요
