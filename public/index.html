@@ -1555,7 +1555,7 @@ function sizePrev(){ const c = $('obprev'); if (!c) return; const r = c.getBound
 
 // ===== 게임 =====
 function enterGame(doc){
-  me = doc; obStep = null; $('ob').hidden = true; migrateItems();
+  me = doc; obStep = null; $('ob').hidden = true; migrateItems(); capHearts();
   for (const id of ['hud','quest','bar','chatbox','sideBtns']) $(id).hidden = false;
   $('npcBtn').onclick = ()=>togglePanel('npcPanel', renderNpcPanel);
   $('mapBtn').onclick = ()=>togglePanel('mapPanel', renderMap);
@@ -1763,6 +1763,8 @@ const DAY_PTS = 50;
 // 하루 제한을 시작한 날(2026-10-06, 한국 시간)부터 센 날 수만큼만 하트가 올라가요: 첫날 ♥1, 둘째 날 ♥2 … (이미 오른 건 그대로 두고, 더 오르지만 않게)
 const HEART_DAY0 = 20732;
 const heartCapPts = () => (Math.max(0, today() - HEART_DAY0) + 1) * 50 + 49;
+// 들어올 때도 확인: 제한이 생기기 전이나 예전 앱에서 날수보다 많이 오른 호감도는 오늘 최대치로 맞춰요 (첫날 ♥1, 둘째 날 ♥2 …)
+function capHearts(){ const cap = heartCapPts(); let cut = false; for (const r of Object.values(me.rel||{})) if (r && r.pts > cap){ r.pts = cap; cut = true; } if (cut){ syncStats(); saveMe(); } }
 function addPts(n, v){
   const r = relOf(n.id), before = heartsOf(r.pts);
   if (r.ptsDay !== today()){ r.ptsDay = today(); r.dayPts = 0; } delete r.bank;
