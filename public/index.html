@@ -3797,7 +3797,7 @@ function updateDown(dt, t){
     if (o && !o.down) darkRevive = null;
     else if (!o || o.z !== zoneId || darkDown || far){ darkRevive = null; toast(`${downWords().help}가 끊겼어요`); }
     else if (t - darkRevive.at > 2000){ net.reviveSend(darkRevive.uid, me.nick); darkRevive = null; gainExp(10); toast(`${o.nick} 님을 ${downWords().helped.replace('줬어요', '줬어요!')}`); } }
-  if (darkDown && !zoneId.startsWith('dark:') && !downOffer && darkNow() - darkDown > 60000){ downOffer = true;
+  if (darkDown && !zoneId.startsWith('dark:') && !downOffer && darkNow() - darkDown > 30*60000){ downOffer = true;
     say('기절', '한참 기다렸는데 아무도 오지 않았어요.... 집에서 푹 쉬고 일어날까요?', [['집에서 깨어나기', ()=>{ closeTalk(); wakeAtHome(); }], ['조금 더 기다리기', ()=>{ closeTalk(); downOffer = false; darkDown = darkNow(); }]], '', true); }
 }
 // ----- 문제 -----
