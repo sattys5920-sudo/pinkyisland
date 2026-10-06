@@ -1739,10 +1739,13 @@ function pickLine(arr, key){
 }
 // 하루에 하트 1 개(호감도 50)까지만 올라요 → ♥10까지 최소 10 일. 넘친 건 사라져요 (내일은 내일 또)
 const DAY_PTS = 50;
+// 하루 제한을 시작한 날(2026-10-06, 한국 시간)부터 센 날 수만큼만 하트가 올라가요: 첫날 ♥1, 둘째 날 ♥2 … (이미 오른 건 그대로 두고, 더 오르지만 않게)
+const HEART_DAY0 = 20732;
+const heartCapPts = () => (Math.max(0, today() - HEART_DAY0) + 1) * 50 + 49;
 function addPts(n, v){
   const r = relOf(n.id), before = heartsOf(r.pts);
   if (r.ptsDay !== today()){ r.ptsDay = today(); r.dayPts = 0; } delete r.bank;
-  if (v > 0){ const room = Math.max(0, DAY_PTS - (r.dayPts||0)), add = Math.min(v, room); r.dayPts = (r.dayPts||0) + add; v = add;
+  if (v > 0){ const room = Math.max(0, Math.min(DAY_PTS - (r.dayPts||0), heartCapPts() - r.pts)), add = Math.min(v, room); r.dayPts = (r.dayPts||0) + add; v = add;
     if (add < (arguments[1]||0) && r.capToast !== today()){ r.capToast = today(); setTimeout(()=>toast(`오늘은 ${n.name}와(과) 충분히 친해졌어요 · 내일 또 만나요`), 1200); } }
   r.pts = Math.max(0, Math.min(500, r.pts + v));
   const after = heartsOf(r.pts); if (after !== before) syncStats();
