@@ -3,16 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
-<title>핑키 디저트 아일랜드</title>
+<title>pinkyisland</title>
 <meta name="theme-color" content="#fffafb">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="핑키 섬">
+<meta name="apple-mobile-web-app-title" content="pinkyisland">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="preload" href="fonts/Maplestory_Bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/Maplestory_Light.woff2" as="font" type="font/woff2" crossorigin>
 <style>
@@ -67,6 +68,16 @@ img.bi{width:34px;height:34px;display:block;pointer-events:none}
 #log p{margin:0;transition:opacity 1s}
 #log p.sys{color:var(--ink);opacity:.85}
 #chatrow{display:flex;gap:6px;pointer-events:auto}
+#friendBtn{position:relative}#dmBadge{position:absolute;right:-2px;top:-2px;min-width:20px;height:20px;border-radius:10px;background:#ff5a8a;color:#fff;font-size:14px;line-height:20px;font-weight:normal;padding:0 5px}
+.np.dm-row{grid-template-columns:auto 1fr auto;align-items:center;gap:0 8px}.np.dm-row .np-name{text-align:left;min-width:0}.dm-dot{width:10px;height:10px;border-radius:50%;background:#cfc3c9;align-self:center;margin-right:2px}.dm-dot.on{background:#5fd07a;box-shadow:0 0 0 3px #5fd07a33}
+.dm-unread{background:#ff5a8a;color:#fff;border-radius:10px;padding:0 7px;font-size:14px;margin-left:4px}
+.dm-head{flex:none;display:flex;align-items:center;gap:8px}.dm-head b{font-size:20px;font-weight:normal}.dm-head small{color:var(--soft);font-size:15px;margin-right:auto}
+.dm-list{flex:1 1 auto;min-height:180px;max-height:46dvh;overflow:auto;display:flex;flex-direction:column;gap:6px;background:#fff6f9;border-radius:14px;padding:10px}
+.dm-msg{max-width:78%;align-self:flex-start;background:#fff;border-radius:14px 14px 14px 4px;padding:6px 10px;font-size:18px;line-height:1.35;box-shadow:inset 0 -2px 0 #f3dbe5;white-space:pre-wrap;overflow-wrap:anywhere}
+.dm-msg.me{align-self:flex-end;background:var(--pink);border-radius:14px 14px 4px 14px;box-shadow:inset 0 -2px 0 #f2c3d3}
+.dm-msg small{display:block;font-size:12px;color:var(--soft);margin-top:2px}
+.dm-day{align-self:center;font-size:13px;color:var(--soft);background:#fff;border-radius:10px;padding:0 10px}
+.dm-in{flex:none;display:flex;gap:6px}.dm-in input{flex:1;min-width:0;font:inherit;font-size:18px;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fff;color:var(--ink)}
 body:not(.chat-open) #chatrow,body:not(.chat-open) #emorow{display:none} /* 채팅은 [채팅] 버튼을 누를 때만 열려요 (평소엔 화면을 가리지 않게) */
 #emorow{display:flex;gap:6px;pointer-events:auto}
 #log p{background:rgba(255,255,255,.72);border-radius:10px;padding:2px 10px;align-self:flex-start;max-width:100%;text-shadow:none}
@@ -373,7 +384,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 <div id="dim"></div>
 <div id="npcPanel" class="pill" hidden></div>
 <div id="mapPanel" class="pill" hidden></div>
-<div id="sideBtns" hidden><button id="menuBtn" class="round" aria-label="메뉴">메뉴</button><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="chatBtn" class="round">채팅</button><button id="decoBtn" class="round" hidden>꾸미기</button><button id="swingBtn" class="round swing" hidden>휘두르기</button></div>
+<div id="sideBtns" hidden><button id="menuBtn" class="round" aria-label="메뉴">메뉴</button><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="chatBtn" class="round">채팅</button><button id="friendBtn" class="round">친구<b id="dmBadge" hidden></b></button><button id="decoBtn" class="round" hidden>꾸미기</button><button id="swingBtn" class="round swing" hidden>휘두르기</button></div>
 <div id="fade"></div>
 <div id="fishGame" class="pill" hidden><b id="fgTitle">무언가 걸렸어요!</b><div id="fgTrack"><div id="fgZone"></div><div id="fgBob"></div></div><div id="fgMeter"><div id="fgBar"></div></div><p id="fgText"></p><small>누른 채 좌우로 움직여 찌를 따라가요 (키보드: ← →)</small></div>
 <div id="toast" class="pill" style="opacity:0"></div>
@@ -1083,6 +1094,7 @@ function soloNet(){
     releaseRoof: async i => { delete st.roofs[i]; onRoofs(st.roofs); },
     claimLot: async () => true,
     cleanupClaims: async () => {},
+    petClaim: async sp => { petClaims[sp] = {uid}; return true; },
     adminRemove: async id => { delete st.players[id]; onPlayers(structuredClone(st.players)); },
     sessionClaim: () => {},
     presence: async () => {},
@@ -1095,6 +1107,9 @@ function soloNet(){
     letterMark: async (to, id, v) => { const l = st.letters?.[to]?.[id]; if (l){ Object.assign(l, v); if (to===uid) onLetters(st.letters[uid]); st.adminCb && st.adminCb(st.letters); } },
     letterDel: async (to, id) => { if (st.letters?.[to]) delete st.letters[to][id]; if (to===uid) onLetters(st.letters[uid]); },
     adminLetters: cb => { st.adminCb = cb; cb(st.letters||{}); },
+    dmSend: async (cid, other, m) => { st.dms = st.dms || {}; st.dmIdx = st.dmIdx || {}; const id = 'd'+Date.now()+Math.random().toString(36).slice(2,5), v = {...m, at:Date.now()}; (st.dms[cid] = st.dms[cid] || {})[id] = v; for (const u of [uid, other]) (st.dmIdx[u] = st.dmIdx[u] || {})[cid] = v; onDmIndex(st.dmIdx[uid]); st.dmCb && st.dmCid===cid && st.dmCb(st.dms[cid]); st.admDmCb && st.admDmCb(st.dms); },
+    dmWatch: (cid, cb) => { st.dmCid = cid; st.dmCb = cb; cb((st.dms||{})[cid]||{}); return ()=>{ st.dmCb = null; }; },
+    adminDms: cb => { st.admDmCb = cb; cb(st.dms||{}); },
     marketList: async l => { st.market = st.market || {}; st.market['m'+Date.now()] = {...l, at:Date.now()}; onMarket(st.market); },
     marketBuy: async id => { const l = st.market?.[id]; if (!l || l.buyer) return false; l.buyer = uid; l.bnick = me.nick; onMarket(st.market); return true; },
     marketCancel: async id => { const l = st.market?.[id]; if (!l || l.buyer || l.uid!==uid) return false; delete st.market[id]; onMarket(st.market); return true; },
@@ -1119,14 +1134,15 @@ function firebaseNet(){
     claimRoof: i => tx('roofs/'+i, {uid, nick:nickVal, at:Date.now()}, 'roof', i),
     releaseRoof: i => F.remove(F.ref(db, 'roofs/'+i)).catch(()=>{}),
     claimLot: i => tx('lots/'+i, {uid, at:Date.now()}, 'lot', i),
+    petClaim: sp => tx('petClaims/'+sp, {uid, at:Date.now()}),
     // 입주한 뒤 남아 있는 내 옛 선점(다른 지붕·집터)을 풀어 줘요
     cleanupClaims: async (roof, lot) => { for (const [kind, mine] of [['roofs', roof], ['lots', lot]]){ try { const v = (await F.get(F.ref(db, kind))).val() || {}; for (const [k,c] of Object.entries(v)) if (c && c.uid===uid && +k !== mine) await F.remove(F.ref(db, kind+'/'+k)).catch(()=>{}); } catch(e){} } },
-    adminRemove: (id, roof, lot) => F.update(F.ref(db), {['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
+    adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
     sessionClaim: sid => { const r = F.ref(db, 'sessions/'+uid); F.set(r, sid).catch(()=>{}); F.onValue(r, s=>{ const v = s.val(); if (v && v !== sid) onKicked(); }); },
     presence: p => F.set(meRef, p),
     sendChat: t => F.push(F.ref(db, 'chat'), {uid, nick:me.nick, t, z:zoneId, at:F.serverTimestamp()}),
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -1137,6 +1153,8 @@ function firebaseNet(){
       F.onValue(F.ref(db, '.info/serverTimeOffset'), s=>{ serverOffset = s.val() || 0; });
       F.onValue(F.ref(db, 'boss'), s=>onBoss(s.val()));
       F.onValue(F.ref(db, 'letters/'+uid), s=>onLetters(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'dmIndex/'+uid), s=>onDmIndex(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'petClaims'), s=>{ petClaims = s.val() || {}; }, ()=>{});
       F.onValue(F.ref(db, 'lettersOut/'+uid), s=>onLettersOut(s.val()), ()=>{});
       F.onValue(F.ref(db, 'market'), s=>onMarket(s.val()));
       F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
@@ -1151,6 +1169,9 @@ function firebaseNet(){
     letterMark: (to, id, v) => F.update(F.ref(db, 'letters/'+to+'/'+id), v),
     letterDel: (to, id) => F.remove(F.ref(db, 'letters/'+to+'/'+id)),
     adminLetters: cb => F.onValue(F.ref(db, 'letters'), s=>cb(s.val()||{}), ()=>{}),
+    dmSend: async (cid, other, m) => { const v = {...m, at:F.serverTimestamp()}; await F.push(F.ref(db, 'dms/'+cid), v); await F.update(F.ref(db), {['dmIndex/'+uid+'/'+cid]:v, ['dmIndex/'+other+'/'+cid]:v}).catch(()=>{}); },
+    dmWatch: (cid, cb) => F.onValue(F.query(F.ref(db, 'dms/'+cid), F.limitToLast(150)), s=>cb(s.val()||{}), ()=>{}),
+    adminDms: cb => F.onValue(F.ref(db, 'dms'), s=>cb(s.val()||{}), ()=>{}),
     bossReset: (gen, max) => F.runTransaction(F.ref(db, 'boss'), cur => (!cur || cur.gen !== gen) ? {hp:max, max, gen} : undefined).catch(()=>{}),
     bossHit: dmg => F.runTransaction(F.ref(db, 'boss/hp'), cur => typeof cur==='number' ? Math.max(0, cur - dmg) : cur).catch(()=>{}),
   };
@@ -1374,6 +1395,7 @@ function enterGame(doc){
   $('dim').onclick = ()=>{ $('npcPanel').hidden = true; $('mapPanel').hidden = true; };
   $('decoBtn').onclick = decorMenu;
   $('chatBtn').onclick = openChat;
+  $('friendBtn').onclick = ()=>friendPanel();
   $('menuBtn').onclick = menuPanel;
   $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); swing(); });
   const L = LOTS[me.lot]; pos.dir = 'down';
@@ -2496,7 +2518,7 @@ function eatDish(id){ eat('dish:'+id); }
 
 // ===== 공통 패널 =====
 function openPanel(title, body, onClick){
-  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.post; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv;
+  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv;
   p.innerHTML = deEmoji(`<div class="np-head"><b>${title}</b><button class="mini" id="pnClose">닫기</button></div>${body}`);
   $('pnClose').onclick = ()=>{ p.hidden = true; };
   if (onClick) p.querySelectorAll('.np[data-id]').forEach(b=>b.onclick = ()=>onClick(b));
@@ -2855,6 +2877,73 @@ function contestPanel(){
 
 // ===== 친구에게 선물 보내기 =====
 // 친구에게 바로 보내기는 없어요. 물건은 거래소에 올려서 사고팔아요 (예전에 받은 우편은 그대로 받아요)
+// ===== 메신저: 친구 목록 · 1:1 대화 =====
+// 친구는 me.friends 에 저장. 대화는 dms/<두 uid 를 정렬해 _ 로 이은 id>, 마지막 말은 dmIndex/<나>/<대화 id> (안 읽음 알림용). 관리자는 모든 대화를 볼 수 있어요.
+const DM_MAX = 200;
+let dmIndex = {}, dmSeen = null, dmOpen = null, dmUnsub = null, dmMsgs = {};
+const cidOf = other => [uid, other].sort().join('_');
+const otherOf = cid => cid.split('_').find(x=>x!==uid);
+const isOnline = id => others.has(id);
+const myFriends = () => { me.friends = (me.friends||[]).filter(id=>players[id] && id!==uid); return me.friends; };
+const dmVisible = cid => dmOpen===cid && !$('npcPanel').hidden && $('npcPanel').dataset.dm==='chat';
+const dmUnread = cid => { const l = dmIndex[cid]; return l && l.from!==uid && (l.at||0) > ((me.dmRead||{})[cid]||0); };
+function dmBadge(){ const n = Object.keys(dmIndex).filter(dmUnread).length, b = $('dmBadge'); if (b){ b.hidden = !n; b.textContent = n; } }
+function onDmIndex(v){
+  const next = {}; for (const [cid,l] of Object.entries(v||{})) if (l && typeof l.t==='string') next[cid] = l;
+  const fresh = Object.entries(next).filter(([cid,l])=>dmSeen && l.from!==uid && (dmSeen[cid]?.at||0) !== (l.at||0) && !dmVisible(cid));
+  dmSeen = next; dmIndex = next; dmBadge();
+  for (const [,l] of fresh){ addLog(`💬 ${String(l.nick||'친구').slice(0,10)}: ${l.t.slice(0,40)}`, true); toast(`${String(l.nick||'친구').slice(0,10)} 님에게서 메시지가 왔어요`); }
+  if (!$('npcPanel').hidden && $('npcPanel').dataset.dm==='list') friendPanel();
+}
+function friendPanel(){
+  if (dmUnsub){ dmUnsub(); dmUnsub = null; } dmOpen = null;
+  const fr = myFriends(), rest = Object.keys(players).filter(id=>id!==uid && !fr.includes(id));
+  const last = id => dmIndex[cidOf(id)];
+  const sortF = [...fr].sort((a,b)=>(isOnline(b) - isOnline(a)) || ((last(b)?.at||0) - (last(a)?.at||0)));
+  const row = (id, friend) => { const p = players[id], l = last(id), on = isOnline(id), un = dmUnread(cidOf(id));
+    return `<div class="np dm-row"><i class="dm-dot ${on ? 'on' : ''}"></i><span class="np-name">${esc(p.nick)}${un ? '<span class="dm-unread">새 메시지</span>' : ''} <small>${on ? '접속 중 · ' + esc(zoneName(others.get(id)?.z)) : '오프라인'}</small><small style="display:block">${l ? esc((l.from===uid ? '나: ' : '') + l.t.slice(0,28)) : ''}</small></span><span style="display:flex;gap:4px;align-items:center">${friend ? `<button class="mini" data-dm="${id}">대화</button>` : `<button class="mini" data-dm="${id}">대화</button><button class="mini" data-add="${id}">친구 추가</button>`}</span></div>`; };
+  openPanel('친구 · 메신저', `<p class="mnote" style="margin:0 2px">친구로 추가하면 접속했을 때 초록 불이 켜져요. 대화는 섬 운영을 위해 관리자가 볼 수 있어요.</p>
+    <div class="bag-sec"><b>친구 ${fr.length}${fr.length ? ` · 접속 ${fr.filter(isOnline).length}` : ''}</b>${sortF.map(id=>row(id, true)).join('') || '<p class="mnote">아직 친구가 없어요. 아래 섬 주민에서 추가해요.</p>'}</div>
+    <div class="bag-sec"><b>섬 주민</b>${rest.map(id=>row(id, false)).join('') || '<p class="mnote">다른 주민이 아직 없어요.</p>'}</div>`);
+  const p = $('npcPanel'); p.dataset.dm = 'list';
+  p.querySelectorAll('[data-add]').forEach(b=>b.onclick = ()=>{ me.friends = [...myFriends(), b.dataset.add]; saveMe(); toast(`${players[b.dataset.add].nick} 님을 친구로 추가했어요`); friendPanel(); });
+  p.querySelectorAll('[data-dm]').forEach(b=>b.onclick = ()=>dmPanel(b.dataset.dm));
+}
+function dmPanel(other){
+  const p0 = players[other]; if (!p0) return friendPanel();
+  const cid = cidOf(other); dmOpen = cid; dmMsgs = {};
+  const friend = myFriends().includes(other);
+  openPanel(`${esc(p0.nick)} 님과 대화`, `<div class="dm-head"><button class="mini" id="dmBack">← 친구 목록</button><small id="dmState">${isOnline(other) ? '접속 중' : '오프라인 · 다음에 들어오면 볼 수 있어요'}</small>${friend ? `<button class="mini" id="dmDel">친구 끊기</button>` : `<button class="mini" id="dmAdd">친구 추가</button>`}</div>
+    <div class="dm-list" id="dmList"><p class="mnote" style="margin:auto">아직 나눈 이야기가 없어요. 먼저 인사해 봐요!</p></div>
+    <div class="dm-in"><input id="dmIn" maxlength="${DM_MAX}" placeholder="메시지 (${DM_MAX} 자까지)" autocomplete="off"><button class="btn" id="dmSend">보내기</button></div>`);
+  const p = $('npcPanel'); p.dataset.dm = 'chat';
+  $('dmBack').onclick = friendPanel;
+  if ($('dmDel')) $('dmDel').onclick = ()=>{ me.friends = myFriends().filter(x=>x!==other); saveMe(); toast('친구 목록에서 뺐어요'); dmPanel(other); };
+  if ($('dmAdd')) $('dmAdd').onclick = ()=>{ me.friends = [...myFriends(), other]; saveMe(); toast(`${p0.nick} 님을 친구로 추가했어요`); dmPanel(other); };
+  const send = async ()=>{ const inp = $('dmIn'), t = inp.value.trim().slice(0, DM_MAX); if (!t) return; inp.value = '';
+    try { await net.dmSend(cid, other, {from:uid, nick:me.nick, t}); stat('dmSent'); } catch(e){ toast('보내지 못했어요. 잠시 뒤 다시 해 봐요'); inp.value = t; } inp.focus(); };
+  $('dmSend').addEventListener('pointerdown', e=>e.preventDefault()); $('dmSend').onclick = send;
+  $('dmIn').addEventListener('keydown', e=>{ if (e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); send(); } });
+  $('dmIn').addEventListener('focus', ()=>setTimeout(dmKeyboard, 300)); $('dmIn').addEventListener('blur', ()=>setTimeout(dmKeyboard, 100));
+  if (dmUnsub) dmUnsub();
+  dmUnsub = net.dmWatch(cid, v=>{ dmMsgs = v; if (!dmVisible(cid)) return; renderDm(); me.dmRead = {...(me.dmRead||{}), [cid]: Math.max(Date.now(), ...Object.values(v).map(m=>m.at||0))}; saveMe(); dmBadge(); });
+}
+function renderDm(){
+  const el = $('dmList'); if (!el) return;
+  const list = Object.values(dmMsgs).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (!list.length) return;
+  let day = '', html = '';
+  for (const m of list){ const d = new Date((m.at||0) + 9*3600000), ds = `${d.getUTCMonth()+1}월 ${d.getUTCDate()}일`; if (ds!==day){ day = ds; html += `<span class="dm-day">${ds}</span>`; }
+    html += `<div class="dm-msg ${m.from===uid ? 'me' : ''}">${esc(m.t)}<small>${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}</small></div>`; }
+  el.innerHTML = html; el.scrollTop = el.scrollHeight;
+}
+// 폰 키패드가 올라오면 대화창을 보이는 화면 안으로 옮겨요
+function dmKeyboard(){
+  const p = $('npcPanel'), vv = window.visualViewport, on = document.activeElement?.id==='dmIn' && vv && vv.height < innerHeight - 80;
+  if (on){ p.style.top = vv.offsetTop + 'px'; p.style.bottom = 'auto'; p.style.maxHeight = vv.height + 'px'; } else { p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; }
+  const el = $('dmList'); if (el) el.scrollTop = el.scrollHeight;
+}
+if (window.visualViewport) visualViewport.addEventListener('resize', ()=>{ if (document.activeElement?.id==='dmIn') dmKeyboard(); });
+
 // ===== 토리 우체국 · 편지 =====
 // 플레이어끼리 · 주민(NPC)에게 · 오투모에게 편지를 써요 (300 자). 플레이어끼리는 서로 답장하고, 주민과 오투모의 답장은 관리자가 써요.
 // 받은 편지: letters/<받는 사람>. 주민은 'npc_<id>', 오투모는 'otumo'. 내가 보낸 편지 사본: lettersOut/<나>
@@ -3434,6 +3523,7 @@ $('chatin').addEventListener('blur', ()=>setTimeout(()=>{ if (!typing() && !$('c
 addEventListener('keydown', e=>{
   if (!me || obStep) return;
   if (dlg && !typing()){ if (e.key==='Enter' || e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); dlgTap(); } else if (e.key==='Escape' && dlg.waiting) dlgClose(); return; }
+  if (typing() && document.activeElement.id !== 'chatin') return; // 편지·메신저 입력칸은 그 칸이 알아서
   if (e.key==='Enter'){ if (typing()){ sendChat(); } else { openChat(); } e.preventDefault(); return; }
   if (e.key==='Escape'){ closeTalk(); $('chatin').blur(); return; }
   if (typing()) return;
@@ -3717,6 +3807,7 @@ function frame(t){
 }
 // ===== 관리자 CCTV: 캐릭터 없이 구역을 골라 보거나 접속한 사람을 따라가며 지켜봐요 =====
 let admWipe = false, admWipeTxt = '', admWipeChat = false, wiping = false; // 모든 가입 데이터 지우기 창
+let admDm = null, adminDmData = {}; // 메신저 기록 (null 닫힘 / '' 대화 목록 / 대화 id)
 let admSide = false; // 폰에서 [메뉴]로 여닫는 관리 목록
 let adminLetterData = {}, admPost = false, admDrafts = {}; // 주민·오투모에게 온 편지 (관리자가 답장)
 let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
@@ -3728,14 +3819,14 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
 }
 function renderAdmin(){
   const box = $('adminUi'); if (!box || !admin) return;
-  box.classList.toggle('panel-open', !!(admWipe || admPost || admTbl !== null || admChat !== null)); box.classList.toggle('side-open', admSide);
+  box.classList.toggle('panel-open', !!(admWipe || admPost || admDm !== null || admTbl !== null || admChat !== null)); box.classList.toggle('side-open', admSide);
   const online = [...others.values()], onIds = new Set(online.map(o=>o.uid)), count = {};
   for (const o of online) count[o.z] = (count[o.z]||0) + 1;
   const regs = Object.entries(players).sort(([,a],[,b])=>String(a.nick).localeCompare(String(b.nick), 'ko'));
@@ -3751,8 +3842,8 @@ function renderAdmin(){
         <small>바꾸면 접속한 모든 사람에게 바로 전달돼요. 게임 화면 연출은 다음 업데이트에서 붙어요.</small></div>
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
       <div class="adm-sec"><b>데이터 관리</b><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
-      <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
-    </div>${admWipe ? adminWipe(regs) : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
+      <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
+    </div>${admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
   const npl = box.querySelector('.adm-post-list'); if (npl) npl.scrollTop = postScroll;
   if (typingRk){ const ta = box.querySelector(`[data-rk="${typingRk}"]`); if (ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }
   const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
@@ -3838,19 +3929,33 @@ async function adminReply(to, id){
   catch(e){ toast('답장을 보내지 못했어요. 관리자 권한이나 인터넷 연결을 확인해 주세요.'); }
   renderAdmin();
 }
+// 메신저 기록: 대화방 목록 → 고르면 그 대화 전부 (시간순)
+const nickOfUid = (id, msgs) => players[id]?.nick || Object.values(msgs||{}).find(m=>m && m.from===id)?.nick || '(나간 주민)';
+function adminDm(){
+  const convs = Object.entries(adminDmData||{}).map(([cid,msgs])=>{ const list = Object.values(msgs||{}).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); return {cid, list, names:cid.split('_').map(id=>nickOfUid(id, msgs)), last:list.length ? list[list.length-1].at||0 : 0}; }).sort((a,b)=>b.last-a.last);
+  if (admDm){ const c = convs.find(x=>x.cid===admDm); const list = c ? c.list : [];
+    let day = '', rows = ''; for (const m of list){ const t = kstTime(m.at), d = t.slice(0,10); if (d!==day){ day = d; rows += `<div class="adm-day">${d}</div>`; } rows += `<div class="adm-msg"><small>${t.slice(11,16)}</small><b>${esc(String(m.nick||'누군가').slice(0,10))}</b><span>${esc(m.t)}</span></div>`; }
+    return `<div class="adm-tbl adm-chat"><div class="adm-tbl-head"><b>${c ? esc(c.names.join(' ↔ ')) : '대화'}</b><small>${list.length} 개 · 맨 아래가 최신</small><button data-a="dmback" class="adm-btn">대화 목록</button><button data-a="dmclose" class="adm-btn">닫기</button></div><div class="adm-chat-list">${rows || '<small>메시지가 없어요</small>'}</div></div>`; }
+  return `<div class="adm-tbl adm-chat"><div class="adm-tbl-head"><b>메신저 기록</b><small>대화방 ${convs.length} 개 · 최근 순</small><button data-a="dmclose" class="adm-btn">닫기</button></div>
+    <div class="adm-chat-list">${convs.map(c=>`<button data-dmc="${c.cid}" class="adm-p"><span>${esc(c.names.join(' ↔ '))}</span><small>${c.list.length} 개 · ${c.last ? kstTime(c.last).slice(5,16) : ''}</small></button>`).join('') || '<small>아직 메신저 대화가 없어요</small>'}</div></div>`;
+}
 function adminClick(e){
   const td = e.target.closest('.adm-tbl td[title]'); if (td) return toast(td.title);
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.a==='table'){ admPost = false; admTbl = admTbl===null ? '' : null; admChat = null; admWipe = false; admScroll = [0, 0]; return renderAdmin(); }
-  if (b.dataset.a==='chat'){ admPost = false; admChat = admChat===null ? '' : null; admTbl = null; admWipe = false; admChatScroll = null; return renderAdmin(); }
+  if (b.dataset.a==='table'){ admDm = null; admPost = false; admTbl = admTbl===null ? '' : null; admChat = null; admWipe = false; admScroll = [0, 0]; return renderAdmin(); }
+  if (b.dataset.a==='chat'){ admDm = null; admPost = false; admChat = admChat===null ? '' : null; admTbl = null; admWipe = false; admChatScroll = null; return renderAdmin(); }
   if (b.dataset.a==='cclose'){ admChat = null; return renderAdmin(); }
-  if (b.dataset.a==='side'){ admSide = !admSide; admPost = false; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
-  if (b.dataset.a==='post'){ admPost = !admPost; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
+  if (b.dataset.a==='dm'){ admDm = admDm===null ? '' : null; admPost = false; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
+  if (b.dataset.a==='dmclose'){ admDm = null; return renderAdmin(); }
+  if (b.dataset.a==='dmback'){ admDm = ''; return renderAdmin(); }
+  if (b.dataset.dmc){ admDm = b.dataset.dmc; return renderAdmin(); }
+  if (b.dataset.a==='side'){ admDm = null; admSide = !admSide; admPost = false; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
+  if (b.dataset.a==='post'){ admDm = null; admPost = !admPost; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
   if (b.dataset.a==='pclose'){ admPost = false; return renderAdmin(); }
   if (b.dataset.a==='lreply') return adminReply(b.dataset.to, b.dataset.id);
   if (b.dataset.a==='kick') return adminKick(b.dataset.u);
   if (b.dataset.a==='chatdl') return chatDownload();
-  if (b.dataset.a==='wipe'){ admPost = false; admWipe = !admWipe; admTbl = null; admChat = null; admWipeTxt = ''; return renderAdmin(); }
+  if (b.dataset.a==='wipe'){ admDm = null; admPost = false; admWipe = !admWipe; admTbl = null; admChat = null; admWipeTxt = ''; return renderAdmin(); }
   if (b.dataset.a==='wclose'){ admWipe = false; admWipeTxt = ''; return renderAdmin(); }
   if (b.dataset.a==='wipego') return wipeAll();
   if (b.dataset.a==='tclose'){ admTbl = null; return renderAdmin(); }
@@ -3870,7 +3975,7 @@ function adminCam(){
 // ===== 반려동물 보호소 · 펫 =====
 // 보호소(공방 거리)에서 입양해요. 펫은 집에서 돌아다니고, 밥을 주고 쓰다듬으면 친해져요. '산책'을 켜면 밖에서도 따라다녀요.
 const PET = Object.fromEntries(PET_SPECIES.map(([id, name, cols])=>[id, {name, cols}]));
-const PET_MAX = 3;
+const PET_MAX = 1; // 펫 12 종 · 12 명: 한 사람이 한 마리, 같은 종은 먼저 데려간 사람만 (선착순)
 // 펫 밥 3 가지: 보호소에서 사요. 비쌀수록 배가 많이 차고 더 친해져요
 const PET_FOODS = {p1:{name:'기본 사료', price:300, full:35, love:1, icon:'🥣'}, p2:{name:'말랑 간식', price:1200, full:60, love:3, icon:'🍪'}, p3:{name:'특별 케이크', price:4000, full:100, love:8, icon:'🎂'}};
 const petFoodCount = k => { me.inv.pfood = me.inv.pfood || {}; if (me.inv.petFood){ me.inv.pfood.p1 = (me.inv.pfood.p1||0) + me.inv.petFood; me.inv.petFood = 0; } return me.inv.pfood[k]||0; };
@@ -3883,6 +3988,8 @@ const fullness = pt => { petFull(pt); return Math.max(0, Math.min(100, Math.roun
 function petSpend(pt, n){ const f = fullness(pt); pt.full = Math.max(0, f - n); pt.fullAt = Date.now(); }
 const loveLv = pt => Math.min(10, Math.floor((pt.love||0) / 10));
 const petMood = pt => { const f = fullness(pt); return f < 15 ? '너무 배고파서 기운이 없어요' : f < 35 ? '배고파요' : f < 60 ? '밥이 먹고 싶어요' : (pt.love||0) >= 60 ? '아주 행복해요' : '기분 좋아요'; };
+// 이 종을 이미 데려간 다른 주민 (없으면 null)
+const petTakenBy = sp => { for (const [id,p] of Object.entries(players)) if (id!==uid && petsOf(id).some(x=>x.sp===sp)) return p; const c = petClaims[sp]; if (c && c.uid!==uid && players[c.uid]) return players[c.uid]; return null; };
 const walkingPet = () => me && myPets().find(p=>p.walk);
 const petCol = pt => PET[pt.sp].cols[Math.max(0, Math.min(2, pt.col|0))];
 const petIconCache = new Map();
@@ -3894,6 +4001,7 @@ function petHomePos(owner, i){
   const a = pick(r0), b = pick(r), k = Math.min(1, (Date.now() % 9000) / 3000);
   return {x: a.x + (b.x-a.x)*k, y: a.y + (b.y-a.y)*k, walk: k < 1, flip: b.x < a.x};
 }
+let petClaims = {}; // petClaims/<종> = {uid}: 같은 종을 동시에 데려가지 않게 서버에서 먼저 잡아요
 let petFollow = null, petWalked = 0, petHungryT = 0; // 산책 중인 내 펫의 위치, 걸은 거리
 // 배고픈 펫이 있으면 가끔 알려 줘요
 function petHungerCheck(t){ if (!me || t < petHungryT) return; petHungryT = t + 300000; const h = myPets().filter(p=>fullness(p) < 35); if (h.length) addLog(`🐾 ${h.map(p=>p.name).join(', ')}이(가) 배고파해요. 집에 가서 밥을 주세요 (밥은 공방 거리 보호소)`, true); }
@@ -3928,9 +4036,10 @@ function petTap(w){
 }
 function shelterPanel(){
   const pets = myPets();
-  const cards = PET_SPECIES.map(([id, name])=>`<button class="tile" data-sp="${id}"><img class="ic" src="${petIcon(id, 0)}" alt=""><em>${name}</em><s style="color:var(--soft);text-decoration:none">입양하기</s></button>`).join('');
+  const cards = PET_SPECIES.map(([id, name])=>{ const t = petTakenBy(id), mine = pets.some(p=>p.sp===id);
+    return `<button class="tile" data-sp="${id}" ${t ? 'style="opacity:.5"' : ''}><img class="ic" src="${petIcon(id, 0)}" alt=""><em>${name}</em><s style="color:var(--soft);text-decoration:none">${mine ? '우리 집' : t ? esc(String(t.nick).slice(0,6)) + ' 님 집' : '입양하기'}</s></button>`; }).join('');
   openPanel(`반려동물 보호소 · ${me.inv.gold} G`,
-    `<p class="mnote" style="margin-top:0">주인을 기다리는 친구들이에요. 입양은 무료이고, 한 사람이 ${PET_MAX} 마리까지 키울 수 있어요. 데려간 친구는 집에서 지내요.</p>` +
+    `<p class="mnote" style="margin-top:0">주인을 기다리는 친구들이에요. 입양은 무료이고 한 사람이 한 마리를 키워요. <b>종마다 한 마리뿐이라 먼저 데려간 사람의 가족이 돼요.</b> 데려간 친구는 집에서 지내요.</p>` +
     `<div class="bag-sec"><b>펫 밥 가게</b>${Object.entries(PET_FOODS).map(([k,f])=>`<button class="np" data-food="${k}"><span class="np-name">${f.icon} ${f.name} <small>배부름 +${f.full} · 친밀도 +${f.love} · 가진 것 ${petFoodCount(k)} 개</small></span><span class="np-place">${f.price.toLocaleString()} G</span></button>`).join('')}</div>` +
     (pets.length ? `<p class="mnote">우리 집 친구 ${pets.length}/${PET_MAX}: ${pets.map(p=>`${esc(p.name)}(${PET[p.sp].name} · 배부름 ${fullness(p)})`).join(', ')}</p>` : '') +
     `<div class="bag-grid">${cards}</div>`);
@@ -3938,7 +4047,8 @@ function shelterPanel(){
   $('npcPanel').querySelectorAll('.tile[data-sp]').forEach(b=>b.onclick = ()=>adoptPanel(b.dataset.sp));
 }
 function adoptPanel(sp, col=0){
-  if (myPets().length >= PET_MAX) return toast(`펫은 ${PET_MAX} 마리까지 키울 수 있어요`);
+  if (myPets().length >= PET_MAX) return toast('펫은 한 사람이 한 마리만 키울 수 있어요');
+  const tk = petTakenBy(sp); if (tk) return toast(`${PET[sp].name}은(는) 이미 ${tk.nick} 님 가족이 됐어요. 다른 친구를 골라 주세요`);
   const P = PET[sp];
   openPanel(`${P.name} 입양하기`, `<button class="mini" id="adBack" style="background:#fff">← 보호소로</button>
     <div class="bag-grid">${P.cols.map((c,i)=>`<button class="tile ${i===col?'on':''}" data-c="${i}"><img class="ic" src="${petIcon(sp, i)}" alt=""><em>${i+1} 번 아이</em></button>`).join('')}</div>
@@ -3946,9 +4056,11 @@ function adoptPanel(sp, col=0){
     <div class="act"><button class="btn" id="adGo">우리 집으로 데려가기</button></div>`);
   $('adBack').onclick = shelterPanel;
   $('npcPanel').querySelectorAll('.tile[data-c]').forEach(b=>b.onclick = ()=>{ const nm = $('petName').value; adoptPanel(sp, +b.dataset.c); $('petName').value = nm; });
-  $('adGo').onclick = ()=>{ const name = $('petName').value.trim(); if (!name) return toast('이름을 지어 주세요');
+  $('adGo').onclick = async ()=>{ const name = $('petName').value.trim(); if (!name) return toast('이름을 지어 주세요');
+    if (petTakenBy(sp)) return toast('방금 다른 분이 데려갔어요. 다른 친구를 골라 주세요');
+    $('adGo').disabled = true; if (!(await net.petClaim(sp))){ toast('방금 다른 분이 데려갔어요. 다른 친구를 골라 주세요'); return shelterPanel(); }
     const pets = myPets(); pets.push({sp, col, name:name.slice(0,8), fedAt:Date.now(), full:80, fullAt:Date.now(), love:0, petAt:0, born:Date.now(), walk:false}); me.pets = pets; stat('petsAdopted');
-    saveMe(); renderHud(); $('npcPanel').hidden = true; say('반려동물 보호소', `${name}(${P.name})이(가) 우리 집 식구가 됐어요! 집에 가면 만날 수 있어요. 배고파하면 보호소에서 산 밥을 주세요.`); setTimeout(tutCheck); };
+    saveMe(true); renderHud(); $('npcPanel').hidden = true; say('반려동물 보호소', `${name}(${P.name})이(가) 우리 집 식구가 됐어요! 집에 가면 만날 수 있어요. 배고파하면 보호소에서 산 밥을 주세요.`); setTimeout(tutCheck); };
 }
 function petPanel(pt){
   const f = fullness(pt), lv = loveLv(pt);

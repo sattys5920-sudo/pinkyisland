@@ -90,6 +90,36 @@
         ".validate": "newData.isString() && newData.val().length <= 40"
       }
     },
+    "dms": {
+      ".read": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$cid": {
+        ".read": "auth != null && ($cid.beginsWith(auth.uid + '_') || $cid.endsWith('_' + auth.uid))",
+        "$mid": {
+          ".write": "auth != null && !data.exists() && newData.child('from').val() === auth.uid && ($cid.beginsWith(auth.uid + '_') || $cid.endsWith('_' + auth.uid))",
+          ".validate": "newData.hasChildren(['from', 'nick', 't', 'at']) && newData.child('t').isString() && newData.child('t').val().length >= 1 && newData.child('t').val().length <= 200 && newData.child('nick').isString() && newData.child('nick').val().length <= 10"
+        }
+      }
+    },
+    "dmIndex": {
+      ".read": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$cid": {
+          ".write": "auth != null && ($cid.beginsWith(auth.uid + '_') || $cid.endsWith('_' + auth.uid)) && ($cid.beginsWith($uid + '_') || $cid.endsWith('_' + $uid))",
+          ".validate": "newData.hasChildren(['from', 'nick', 't', 'at']) && newData.child('t').isString() && newData.child('t').val().length >= 1 && newData.child('t').val().length <= 200 && newData.child('nick').isString() && newData.child('nick').val().length <= 10"
+        }
+      }
+    },
+    "petClaims": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$sp": {
+        ".write": "auth != null && $sp.matches(/^[a-z]{2,12}$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
+        ".validate": "newData.child('uid').val() === auth.uid && newData.child('at').isNumber()"
+      }
+    },
     "boss": {
       ".read": "auth != null",
       ".write": "auth != null",
