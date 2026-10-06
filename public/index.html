@@ -638,7 +638,7 @@ const TUT = [
   ['주민의 부탁(📜)을 하나 받아요', ()=>Object.keys(qState().active).length > 0 || qState().done.length > 0, 100],
   ['박물관 언덕 올리에게 물고기나 광석을 기증해요', ()=>museumTotal() > 0, 150],
   ['마을 광장 몽실 옷가게에서 옷을 갈아입어요', ()=>stats().outfitChanged > 0, 100],
-  ['공방 거리 보리 공방에서 동그란 TV를 만들어요 (1,500 G + 돌멩이 5)', ()=>TV_ID && (invCount('furn:'+TV_ID) > 0 || hasTV()), 300],
+  ['공방 거리 보리 공방에서 동그란 TV를 만들어요 (5,000 G + 돌멩이 5)', ()=>TV_ID && (invCount('furn:'+TV_ID) > 0 || hasTV()), 300],
   ['집에서 [꾸미기]로 TV를 놓아요', ()=>hasTV(), 100],
   ['집 TV를 눌러 핑키 홈쇼핑을 구경해요 (별사탕은 오후 1 시 · 밤 10 시 방송 때 사고팔아요)', ()=>stats().candyBought > 0 || !!me.tvSeen, 200],
 ];
@@ -2525,16 +2525,16 @@ function errandPanel(){
 }
 
 // ===== 보리 공방: 텃밭 늘리기 · 가구 =====
-const PLOT_COST = {3:[1000,'ore:o11',3], 4:[2500,'ore:o12',3], 5:[6000,'ore:o21',2], 6:[12000,'ore:o30',1]};
+const PLOT_COST = {3:[3000,'ore:o11',3], 4:[7500,'ore:o12',3], 5:[18000,'ore:o21',2], 6:[36000,'ore:o30',1]};
 // [이름, 골드, 재료, 개수, 모양, 색]
 const FURN_LIST = FURN_ALL; // 가구 43 종 (art/furniture.js)
 const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5]}]));
 function workshopPanel(){
   const plots = me.plots || 2, next = plots + 1, pc = PLOT_COST[next];
-  const plotRow = pc ? `<button class="np" data-id="plot"><span class="np-name">텃밭 늘리기 (${plots} → ${next} 칸) <small>${pc[0]} G + ${itemName(pc[1])} ${pc[2]}</small></span><span class="np-place">${me.inv.gold>=pc[0]&&invCount(pc[1])>=pc[2]?'늘리기':'재료 부족'}</span></button>` : `<div class="np"><span class="np-name">텃밭이 최대 6 칸이에요</span></div>`;
+  const plotRow = pc ? `<button class="np" data-id="plot"><span class="np-name">텃밭 늘리기 (${plots} → ${next} 칸) <small>${pc[0].toLocaleString()} G + ${itemName(pc[1])} ${pc[2]}</small></span><span class="np-place">${me.inv.gold>=pc[0]&&invCount(pc[1])>=pc[2]?'늘리기':'재료 부족'}</span></button>` : `<div class="np"><span class="np-name">텃밭이 최대 6 칸이에요</span></div>`;
   openPanel('보리 공방 · 💰 '+me.inv.gold+' G', plotRow + Object.entries(FURN).map(([id,f])=>{
     const ok = me.inv.gold >= f.gold && invCount(f.need) >= f.n;
-    return `<button class="np" data-id="${id}" ${ok?'':'style="opacity:.55"'}><span class="np-name">${f.name} <small>${f.gold} G + ${itemName(f.need)} ${f.n}</small></span><span class="np-place">${ok?'만들기':'재료 부족'}</span>${invCount('furn:'+id)?`<span class="np-day">가진 것 ${invCount('furn:'+id)}</span>`:''}</button>`;
+    return `<button class="np" data-id="${id}" ${ok?'':'style="opacity:.55"'}><span class="np-name">${f.name} <small>${f.gold.toLocaleString()} G + ${itemName(f.need)} ${f.n}</small></span><span class="np-place">${ok?'만들기':'재료 부족'}</span>${invCount('furn:'+id)?`<span class="np-day">가진 것 ${invCount('furn:'+id)}</span>`:''}</button>`;
   }).join('') + '<p class="mnote">만든 가구는 내 집 안에서 [꾸미기]로 놓아요.</p>', b=>{
     if (b.dataset.id==='plot'){
       if (!pc) return; if (me.inv.gold < pc[0] || invCount(pc[1]) < pc[2]) return toast('재료가 모자라요');
@@ -2609,10 +2609,10 @@ function decorMenu(){
 // 단계마다 방이 넓어지고 놓을 수 있는 가구 수가 늘어요. 바깥 모습도 달라져요.
 const HOUSE_LV = [
   {name:'아담한 방',  W:900,  H:700,  max:15},
-  {name:'넓은 방',    W:1150, H:760,  max:25, gold:15000,  need:'ore:o11', n:10},
-  {name:'큰 거실',    W:1400, H:840,  max:40, gold:40000,  need:'ore:o21', n:8},
-  {name:'2층 집',     W:1650, H:920,  max:60, gold:90000,  need:'ore:o30', n:4},
-  {name:'꿈의 저택',  W:1900, H:1000, max:80, gold:200000, need:'ore:o37', n:2},
+  {name:'넓은 방',    W:1150, H:760,  max:25, gold:45000,  need:'ore:o11', n:10},
+  {name:'큰 거실',    W:1400, H:840,  max:40, gold:120000,  need:'ore:o21', n:8},
+  {name:'2층 집',     W:1650, H:920,  max:60, gold:270000,  need:'ore:o30', n:4},
+  {name:'꿈의 저택',  W:1900, H:1000, max:80, gold:600000, need:'ore:o37', n:2},
 ];
 const houseOf = p => { const h = (p && p.house) || {}; return {lv: Math.min(5, Math.max(1, h.lv||1)), wall: h.wall||'w00', floor: h.floor||'f00', walls: h.walls||['w00'], floors: h.floors||['f00']}; };
 const myHouse = () => { me.house = houseOf(me); return me.house; };
@@ -2622,31 +2622,31 @@ const dots = (c, x, y, w, h, bg, col, gap, r) => { c.fillStyle = bg; c.fillRect(
 const heartAt = (c, x, y, s) => { c.beginPath(); c.moveTo(x, y+s*.9); c.bezierCurveTo(x-s*1.5, y-s*.1, x-s*.9, y-s*1.25, x, y-s*.45); c.bezierCurveTo(x+s*.9, y-s*1.25, x+s*1.5, y-s*.1, x, y+s*.9); c.fill(); };
 const WALLS = {
   w00:{name:'지붕 색 기본', price:0,     draw:(c,d,x,y,w,h,roof)=>{ c.fillStyle = shade(roof,.55); c.fillRect(x,y,w,h); c.fillStyle = shade(roof,.4); for (let i=x+20; i<x+w-10; i+=40) c.fillRect(i, y+6, 3, h-12); }},
-  w01:{name:'크림 단색',    price:1500,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#fff3e3'; c.fillRect(x,y,w,h); c.fillStyle='#f3e2cc'; c.fillRect(x, y+h-16, w, 16); }},
-  w02:{name:'딸기 줄무늬',  price:2500,  draw:(c,d,x,y,w,h)=>stripes(c,x,y,w,h,'#ffe9ef','#ffd0dc',18)},
-  w03:{name:'민트 물방울',  price:2500,  draw:(c,d,x,y,w,h)=>dots(c,x,y,w,h,'#e3f7ee','#bfe9d6',34,6)},
-  w04:{name:'라벤더 체크',  price:3000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#f1eaff'; c.fillRect(x,y,w,h); c.fillStyle='rgba(185,160,240,.28)'; for (let i=x; i<x+w; i+=44) c.fillRect(i,y,18,h); for (let j=y; j<y+h; j+=44) c.fillRect(x,j,w,18); }},
-  w05:{name:'하늘 구름',    price:4000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#d6efff'; c.fillRect(x,y,w,h); c.fillStyle='#ffffff'; for (let i=0; i<w/120; i++){ const cx = x+40+i*120+(i%2)*30, cy = y+40+(i%3)*45; for (const [dx,dy,r] of [[-16,4,13],[0,-4,17],[17,4,13]]){ c.beginPath(); c.arc(cx+dx, cy+dy, r, 0, 7); c.fill(); } } }},
-  w06:{name:'하트 벽지',    price:4500,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#fff0f5'; c.fillRect(x,y,w,h); c.fillStyle='#ffb8cf'; for (let j=0, yy=y+26; yy<y+h; yy+=48, j++) for (let xx=x+24+(j%2)*26; xx<x+w; xx+=52) heartAt(c, xx, yy, 7); }},
-  w07:{name:'꽃무늬',       price:5000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#fffbe9'; c.fillRect(x,y,w,h); const cols = ['#ffb3c6','#ffd76a','#b9a6ff']; for (let j=0, yy=y+28; yy<y+h; yy+=56, j++) for (let k=0, xx=x+28+(j%2)*28; xx<x+w; xx+=56, k++){ c.fillStyle = cols[(j+k)%3]; for (let a=0; a<5; a++){ c.beginPath(); c.arc(xx+Math.cos(a*1.257)*6, yy+Math.sin(a*1.257)*6, 5, 0, 7); c.fill(); } c.fillStyle='#fff3a0'; c.beginPath(); c.arc(xx, yy, 3.5, 0, 7); c.fill(); } }},
-  w08:{name:'나무 판자',    price:6000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#e2b98a'; c.fillRect(x,y,w,h); for (let i=x, k=0; i<x+w; i+=34, k++){ c.fillStyle = k%2 ? '#d9ad7c' : '#e8c294'; c.fillRect(i, y, 32, h); c.fillStyle='rgba(120,70,40,.25)'; c.fillRect(i+32, y, 2, h); } }},
-  w09:{name:'벽돌',         price:6000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#e9a58c'; c.fillRect(x,y,w,h); c.fillStyle='rgba(255,240,230,.75)'; for (let j=0, yy=y; yy<y+h; yy+=22, j++){ c.fillRect(x, yy, w, 3); for (let xx=x+(j%2)*24; xx<x+w; xx+=48) c.fillRect(xx, yy, 3, 22); } }},
-  w10:{name:'사탕 줄무늬',  price:7000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#fff7fb'; c.fillRect(x,y,w,h); c.save(); c.beginPath(); c.rect(x,y,w,h); c.clip(); c.fillStyle='#ffc2d8'; for (let i=x-h; i<x+w; i+=40){ c.beginPath(); c.moveTo(i,y+h); c.lineTo(i+16,y+h); c.lineTo(i+16+h,y); c.lineTo(i+h,y); c.fill(); } c.restore(); }},
-  w11:{name:'밤하늘 별',    price:10000, draw:(c,d,x,y,w,h)=>{ const g = c.createLinearGradient(0,y,0,y+h); g.addColorStop(0,'#3e3a6e'); g.addColorStop(1,'#6a5a9e'); c.fillStyle=g; c.fillRect(x,y,w,h); for (let i=0; i<w/9; i++){ const sx = x+(i*97)%w, sy = y+(i*53)%h; c.fillStyle = i%5 ? 'rgba(255,246,190,.8)' : '#ffffff'; c.beginPath(); c.arc(sx, sy, i%7 ? 1.4 : 2.6, 0, 7); c.fill(); } c.fillStyle='#fff3c0'; c.beginPath(); c.arc(x+w-90, y+50, 22, 0, 7); c.fill(); c.fillStyle='#4a447e'; c.beginPath(); c.arc(x+w-80, y+44, 20, 0, 7); c.fill(); }},
-  w12:{name:'황금 다마스크', price:18000, draw:(c,d,x,y,w,h)=>{ c.fillStyle='#fff4dc'; c.fillRect(x,y,w,h); c.fillStyle='rgba(214,170,80,.55)'; for (let j=0, yy=y+34; yy<y+h; yy+=64, j++) for (let xx=x+34+(j%2)*32; xx<x+w; xx+=64){ c.beginPath(); c.ellipse(xx, yy, 9, 16, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(xx-12, yy, 6, 4, 0, 0, 7); c.ellipse(xx+12, yy, 6, 4, 0, 0, 7); c.fill(); } c.fillStyle='#d9a94a'; c.fillRect(x, y+h-10, w, 10); }},
+  w01:{name:'크림 단색',    price:7500,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#fff3e3'; c.fillRect(x,y,w,h); c.fillStyle='#f3e2cc'; c.fillRect(x, y+h-16, w, 16); }},
+  w02:{name:'딸기 줄무늬',  price:12500,  draw:(c,d,x,y,w,h)=>stripes(c,x,y,w,h,'#ffe9ef','#ffd0dc',18)},
+  w03:{name:'민트 물방울',  price:12500,  draw:(c,d,x,y,w,h)=>dots(c,x,y,w,h,'#e3f7ee','#bfe9d6',34,6)},
+  w04:{name:'라벤더 체크',  price:15000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#f1eaff'; c.fillRect(x,y,w,h); c.fillStyle='rgba(185,160,240,.28)'; for (let i=x; i<x+w; i+=44) c.fillRect(i,y,18,h); for (let j=y; j<y+h; j+=44) c.fillRect(x,j,w,18); }},
+  w05:{name:'하늘 구름',    price:20000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#d6efff'; c.fillRect(x,y,w,h); c.fillStyle='#ffffff'; for (let i=0; i<w/120; i++){ const cx = x+40+i*120+(i%2)*30, cy = y+40+(i%3)*45; for (const [dx,dy,r] of [[-16,4,13],[0,-4,17],[17,4,13]]){ c.beginPath(); c.arc(cx+dx, cy+dy, r, 0, 7); c.fill(); } } }},
+  w06:{name:'하트 벽지',    price:22500,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#fff0f5'; c.fillRect(x,y,w,h); c.fillStyle='#ffb8cf'; for (let j=0, yy=y+26; yy<y+h; yy+=48, j++) for (let xx=x+24+(j%2)*26; xx<x+w; xx+=52) heartAt(c, xx, yy, 7); }},
+  w07:{name:'꽃무늬',       price:25000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#fffbe9'; c.fillRect(x,y,w,h); const cols = ['#ffb3c6','#ffd76a','#b9a6ff']; for (let j=0, yy=y+28; yy<y+h; yy+=56, j++) for (let k=0, xx=x+28+(j%2)*28; xx<x+w; xx+=56, k++){ c.fillStyle = cols[(j+k)%3]; for (let a=0; a<5; a++){ c.beginPath(); c.arc(xx+Math.cos(a*1.257)*6, yy+Math.sin(a*1.257)*6, 5, 0, 7); c.fill(); } c.fillStyle='#fff3a0'; c.beginPath(); c.arc(xx, yy, 3.5, 0, 7); c.fill(); } }},
+  w08:{name:'나무 판자',    price:30000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#e2b98a'; c.fillRect(x,y,w,h); for (let i=x, k=0; i<x+w; i+=34, k++){ c.fillStyle = k%2 ? '#d9ad7c' : '#e8c294'; c.fillRect(i, y, 32, h); c.fillStyle='rgba(120,70,40,.25)'; c.fillRect(i+32, y, 2, h); } }},
+  w09:{name:'벽돌',         price:30000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#e9a58c'; c.fillRect(x,y,w,h); c.fillStyle='rgba(255,240,230,.75)'; for (let j=0, yy=y; yy<y+h; yy+=22, j++){ c.fillRect(x, yy, w, 3); for (let xx=x+(j%2)*24; xx<x+w; xx+=48) c.fillRect(xx, yy, 3, 22); } }},
+  w10:{name:'사탕 줄무늬',  price:35000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#fff7fb'; c.fillRect(x,y,w,h); c.save(); c.beginPath(); c.rect(x,y,w,h); c.clip(); c.fillStyle='#ffc2d8'; for (let i=x-h; i<x+w; i+=40){ c.beginPath(); c.moveTo(i,y+h); c.lineTo(i+16,y+h); c.lineTo(i+16+h,y); c.lineTo(i+h,y); c.fill(); } c.restore(); }},
+  w11:{name:'밤하늘 별',    price:50000, draw:(c,d,x,y,w,h)=>{ const g = c.createLinearGradient(0,y,0,y+h); g.addColorStop(0,'#3e3a6e'); g.addColorStop(1,'#6a5a9e'); c.fillStyle=g; c.fillRect(x,y,w,h); for (let i=0; i<w/9; i++){ const sx = x+(i*97)%w, sy = y+(i*53)%h; c.fillStyle = i%5 ? 'rgba(255,246,190,.8)' : '#ffffff'; c.beginPath(); c.arc(sx, sy, i%7 ? 1.4 : 2.6, 0, 7); c.fill(); } c.fillStyle='#fff3c0'; c.beginPath(); c.arc(x+w-90, y+50, 22, 0, 7); c.fill(); c.fillStyle='#4a447e'; c.beginPath(); c.arc(x+w-80, y+44, 20, 0, 7); c.fill(); }},
+  w12:{name:'황금 다마스크', price:90000, draw:(c,d,x,y,w,h)=>{ c.fillStyle='#fff4dc'; c.fillRect(x,y,w,h); c.fillStyle='rgba(214,170,80,.55)'; for (let j=0, yy=y+34; yy<y+h; yy+=64, j++) for (let xx=x+34+(j%2)*32; xx<x+w; xx+=64){ c.beginPath(); c.ellipse(xx, yy, 9, 16, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(xx-12, yy, 6, 4, 0, 0, 7); c.ellipse(xx+12, yy, 6, 4, 0, 0, 7); c.fill(); } c.fillStyle='#d9a94a'; c.fillRect(x, y+h-10, w, 10); }},
 };
 const FLOORS = {
   f00:{name:'나무 마루',   price:0,     draw:(c,d,x,y,w,h)=>{ c.fillStyle='#f0d5b0'; c.fillRect(x,y,w,h); c.fillStyle='rgba(160,110,70,.18)'; for (let j=y+20; j<y+h; j+=36) c.fillRect(x+4, j, w-8, 2); }},
-  f01:{name:'밝은 원목',   price:1500,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#f7e6c8'; c.fillRect(x,y,w,h); for (let j=y, k=0; j<y+h; j+=30, k++){ c.fillStyle='rgba(170,120,70,.16)'; c.fillRect(x, j, w, 2); for (let i=x+(k%2)*90; i<x+w; i+=180) c.fillRect(i, j, 2, 30); } }},
-  f02:{name:'체크 타일',   price:3000,  draw:(c,d,x,y,w,h)=>{ for (let j=y, a=0; j<y+h; j+=48, a++) for (let i=x, b=0; i<x+w; i+=48, b++){ c.fillStyle = (a+b)%2 ? '#ffffff' : '#ffd6e2'; c.fillRect(i, j, 48, 48); } }},
-  f03:{name:'분홍 카펫',   price:3500,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#ffc9d9'; c.fillRect(x,y,w,h); dots(c,x,y,w,h,'#ffc9d9','rgba(255,255,255,.35)',22,2); }},
-  f04:{name:'민트 카펫',   price:3500,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#c6eedd'; c.fillRect(x,y,w,h); dots(c,x,y,w,h,'#c6eedd','rgba(255,255,255,.35)',22,2); }},
-  f05:{name:'파스텔 타일', price:4000,  draw:(c,d,x,y,w,h)=>{ const cols = ['#ffe1ea','#e1f2ff','#fff4cc','#e6ffe9','#efe4ff']; for (let j=y, a=0; j<y+h; j+=56, a++) for (let i=x, b=0; i<x+w; i+=56, b++){ c.fillStyle = cols[(a*2+b)%5]; c.fillRect(i+1, j+1, 54, 54); } }},
-  f06:{name:'잔디',        price:5000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#b8e6a0'; c.fillRect(x,y,w,h); c.fillStyle='rgba(90,170,80,.35)'; for (let i=0; i<w*h/900; i++){ const gx = x+(i*131)%w, gy = y+(i*71)%h; c.fillRect(gx, gy, 2, 7); } }},
-  f07:{name:'체리 원목',   price:6000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#b9745a'; c.fillRect(x,y,w,h); for (let j=y, k=0; j<y+h; j+=26, k++){ c.fillStyle = k%2 ? 'rgba(255,220,200,.10)' : 'rgba(60,20,10,.10)'; c.fillRect(x, j, w, 26); c.fillStyle='rgba(60,20,10,.25)'; c.fillRect(x, j, w, 2); } }},
-  f08:{name:'구름',        price:8000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#eef7ff'; c.fillRect(x,y,w,h); c.fillStyle='#ffffff'; for (let i=0; i<w*h/9000; i++){ const cx = x+(i*157)%w, cy = y+(i*89)%h; c.beginPath(); c.ellipse(cx, cy, 34, 13, 0, 0, 7); c.fill(); } }},
-  f09:{name:'대리석',      price:9000,  draw:(c,d,x,y,w,h)=>{ for (let j=y, a=0; j<y+h; j+=80, a++) for (let i=x, b=0; i<x+w; i+=80, b++){ c.fillStyle = (a+b)%2 ? '#f6f3f7' : '#ece6ee'; c.fillRect(i, j, 80, 80); c.strokeStyle='rgba(170,150,180,.35)'; c.lineWidth=1.2; c.beginPath(); c.moveTo(i+10, j+20+(b%3)*12); c.quadraticCurveTo(i+40, j+40, i+72, j+30+(a%3)*14); c.stroke(); } }},
-  f10:{name:'별빛 바닥',   price:12000, draw:(c,d,x,y,w,h)=>{ c.fillStyle='#4b4580'; c.fillRect(x,y,w,h); for (let i=0; i<w*h/2600; i++){ const sx = x+(i*113)%w, sy = y+(i*61)%h; c.fillStyle = i%4 ? 'rgba(255,240,170,.75)' : '#ffffff'; c.beginPath(); c.arc(sx, sy, i%6 ? 1.3 : 2.4, 0, 7); c.fill(); } }},
+  f01:{name:'밝은 원목',   price:7500,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#f7e6c8'; c.fillRect(x,y,w,h); for (let j=y, k=0; j<y+h; j+=30, k++){ c.fillStyle='rgba(170,120,70,.16)'; c.fillRect(x, j, w, 2); for (let i=x+(k%2)*90; i<x+w; i+=180) c.fillRect(i, j, 2, 30); } }},
+  f02:{name:'체크 타일',   price:15000,  draw:(c,d,x,y,w,h)=>{ for (let j=y, a=0; j<y+h; j+=48, a++) for (let i=x, b=0; i<x+w; i+=48, b++){ c.fillStyle = (a+b)%2 ? '#ffffff' : '#ffd6e2'; c.fillRect(i, j, 48, 48); } }},
+  f03:{name:'분홍 카펫',   price:17500,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#ffc9d9'; c.fillRect(x,y,w,h); dots(c,x,y,w,h,'#ffc9d9','rgba(255,255,255,.35)',22,2); }},
+  f04:{name:'민트 카펫',   price:17500,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#c6eedd'; c.fillRect(x,y,w,h); dots(c,x,y,w,h,'#c6eedd','rgba(255,255,255,.35)',22,2); }},
+  f05:{name:'파스텔 타일', price:20000,  draw:(c,d,x,y,w,h)=>{ const cols = ['#ffe1ea','#e1f2ff','#fff4cc','#e6ffe9','#efe4ff']; for (let j=y, a=0; j<y+h; j+=56, a++) for (let i=x, b=0; i<x+w; i+=56, b++){ c.fillStyle = cols[(a*2+b)%5]; c.fillRect(i+1, j+1, 54, 54); } }},
+  f06:{name:'잔디',        price:25000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#b8e6a0'; c.fillRect(x,y,w,h); c.fillStyle='rgba(90,170,80,.35)'; for (let i=0; i<w*h/900; i++){ const gx = x+(i*131)%w, gy = y+(i*71)%h; c.fillRect(gx, gy, 2, 7); } }},
+  f07:{name:'체리 원목',   price:30000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#b9745a'; c.fillRect(x,y,w,h); for (let j=y, k=0; j<y+h; j+=26, k++){ c.fillStyle = k%2 ? 'rgba(255,220,200,.10)' : 'rgba(60,20,10,.10)'; c.fillRect(x, j, w, 26); c.fillStyle='rgba(60,20,10,.25)'; c.fillRect(x, j, w, 2); } }},
+  f08:{name:'구름',        price:40000,  draw:(c,d,x,y,w,h)=>{ c.fillStyle='#eef7ff'; c.fillRect(x,y,w,h); c.fillStyle='#ffffff'; for (let i=0; i<w*h/9000; i++){ const cx = x+(i*157)%w, cy = y+(i*89)%h; c.beginPath(); c.ellipse(cx, cy, 34, 13, 0, 0, 7); c.fill(); } }},
+  f09:{name:'대리석',      price:45000,  draw:(c,d,x,y,w,h)=>{ for (let j=y, a=0; j<y+h; j+=80, a++) for (let i=x, b=0; i<x+w; i+=80, b++){ c.fillStyle = (a+b)%2 ? '#f6f3f7' : '#ece6ee'; c.fillRect(i, j, 80, 80); c.strokeStyle='rgba(170,150,180,.35)'; c.lineWidth=1.2; c.beginPath(); c.moveTo(i+10, j+20+(b%3)*12); c.quadraticCurveTo(i+40, j+40, i+72, j+30+(a%3)*14); c.stroke(); } }},
+  f10:{name:'별빛 바닥',   price:60000, draw:(c,d,x,y,w,h)=>{ c.fillStyle='#4b4580'; c.fillRect(x,y,w,h); for (let i=0; i<w*h/2600; i++){ const sx = x+(i*113)%w, sy = y+(i*61)%h; c.fillStyle = i%4 ? 'rgba(255,240,170,.75)' : '#ffffff'; c.beginPath(); c.arc(sx, sy, i%6 ? 1.3 : 2.4, 0, 7); c.fill(); } }},
 };
 const swatchCache = new Map();
 function swatchURL(kind, id){
