@@ -740,6 +740,14 @@ let zoneId = 'home';
 const Z = () => zoneId.startsWith('house:') ? houseZone(zoneId.slice(6)) : ZONES[zoneId];
 function houseRect(p){ const w = p.wide ? 150 : 112; return {x:p.x-w/2,y:p.y-108,w,h:110}; }
 const obstacles = { circles: [], rects: [], ells: [] };
+// 가로등: 길 옆에 자동으로 놓여요 (가운데와 출구 쪽 길 중간). 다른 물건과 겹치는 자리는 빼요
+function placeLamps(z){
+  if (z.lamps || z.theme==='room' || z.theme==='cave') return;
+  const cx = z.W/2, cy = z.H/2, ex = z.exits || {}, cand = [[cx+44, cy-46], [cx-44, cy+60]];
+  if (ex.n) cand.push([cx+40, cy*.45]); if (ex.s) cand.push([cx-40, cy + (z.H-cy)*.6]); if (ex.w) cand.push([cx*.45, cy-40]); if (ex.e) cand.push([cx + (z.W-cx)*.6, cy+52]);
+  if (zoneId==='home') for (const x of [325, 515, 1125, 1315]) cand.push([x, cy+52]); // 집터: 두 줄 집 사이 큰길 옆
+  z.lamps = cand.filter(([x,y])=>!blocked(x, y) && !blocked(x, y-20)).map(([x,y])=>({x, y}));
+}
 function rebuildObstacles(){
   const z = Z(); const o = {circles:[], rects:[], ells:[]};
   for (const [x,y] of z.trees) o.circles.push({x, y:y+22, r:24});
@@ -757,6 +765,8 @@ function rebuildObstacles(){
   // 남의 울타리(빈 집터 포함)는 못 들어가요. 내 울타리만 드나들 수 있어요
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (me && me.lot===i) return; if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return; o.rects.push({x:L.x-FENCE.w/2, y:L.y+FENCE.top-6, w:FENCE.w, h:FENCE.h+6}); });
   Object.assign(obstacles, o);
+  if (!z.lamps && z.theme!=='room' && z.theme!=='cave'){ placeLamps(z); staticSig = ''; }
+  for (const l of (z.lamps||[])) obstacles.circles.push({x:l.x, y:l.y, r:8});
 }
 function inCorridor(x, y){
   const z = Z(), ex = z.exits;
@@ -1414,7 +1424,7 @@ function enterGame(doc){
 function renderHud(){
   if (admin) return renderAdmin();
   const online = 1 + others.size;
-  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold} G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span>`;
+  $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold} G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span><span id="wxClock">${wxClockText()}</span>`;
   if (!$('stats')){ const st = document.createElement('div'); st.id = 'stats'; st.innerHTML = `<b id="lvTag"></b><div class="sb hp" id="hpBar"><s></s><em></em></div><div class="sb st" id="staBar"><s></s><em></em></div><div class="xb" id="expBar"><s></s><em></em></div>`; $('hud').after(st); }
   $('stats').hidden = false; barSig = ''; updateBars(); placeTop();
   $('quest').hidden = me.quest >= TUT_DONE; $('quest').innerHTML = `<b>할 일${me.quest >= TUT_START ? ` · 섬 생활 첫걸음 ${me.quest - TUT_START + 1}/${TUT.length}` : ''}</b>${QUESTS[Math.min(me.quest, TUT_DONE)]}`; setTimeout(tutCheck);
@@ -1424,6 +1434,8 @@ function renderHud(){
   $('bagBtn').onclick = showBag;
   if (!$('npcPanel').hidden && $('npcPanel').dataset.kind==='npc') renderNpcPanel();
 }
+const wxClockText = () => { const d = new Date(Date.now() + serverOffset + 9*3600000), w = wxNow(); return `${w[1]} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; };
+setInterval(()=>{ const el = $('wxClock'); if (el) el.textContent = wxClockText(); }, 20000);
 let toastT = 0;
 function toast(t, key){ const el = $('toast'); el.innerHTML = (key ? iconImg(key, 'tic') : '') + deEmoji(esc(t)); el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(()=>el.style.opacity=0, 2600); }
 function addLog(t, sys){
@@ -2836,13 +2848,23 @@ function museumPanel(){
 }
 
 // ===== 날씨 (펭펭) =====
-const WEATHER = [['맑음','☀️',60],['흐림','☁️',20],['비','🌧️',15],['무지개','🌈',5]];
-function weatherOf(day){ let r = hash('w'+day) % 100; for (const w of WEATHER){ if ((r -= w[2]) < 0) return w; } return WEATHER[0]; }
-const isRain = () => weatherOf(today())[0]==='비';
-const isRainbow = () => weatherOf(today())[0]==='무지개';
+// 날씨는 4 시간마다 바뀌어요 (하루 6 번). 모두에게 같은 날씨예요. 겨울(12~2 월)엔 눈이 자주, 다른 계절엔 비가 와요
+const WX = {sun:['맑음','☀️'], cloud:['흐림','☁️'], rain:['비','🌧️'], snow:['눈','❄️'], rainbow:['무지개','🌈']};
+const WX_BLOCK = 4;
+const wxBlock = (t=Date.now()) => Math.floor((t + serverOffset + 9*3600000) / (WX_BLOCK*3600000));
+const monthOfBlock = b => new Date(b*WX_BLOCK*3600000).getUTCMonth() + 1;
+function weatherOf(dayOrBlock, isBlock){
+  const b = isBlock ? dayOrBlock : wxBlock(), m = monthOfBlock(b), winter = m===12 || m<=2;
+  const table = winter ? [['sun',40],['cloud',22],['snow',30],['rain',4],['rainbow',4]] : [['sun',52],['cloud',22],['rain',21],['rainbow',5]];
+  let r = hash('wx'+b) % 100; for (const [k,w] of table){ if ((r -= w) < 0) return [...WX[k], k]; } return [...WX.sun, 'sun'];
+}
+const wxNow = () => weatherOf(wxBlock(), true);
+const isRain = () => wxNow()[2]==='rain';
+const isSnow = () => wxNow()[2]==='snow';
+const isRainbow = () => wxNow()[2]==='rainbow';
 function forecast(){
-  const a = weatherOf(today()), b = weatherOf(today()+1);
-  return `오늘은 ${a[1]} ${a[0]}, 내일은 ${b[1]} ${b[0]}! ${a[0]==='비' ? '비 오는 날엔 텃밭에 물을 안 줘도 되고, 희귀한 물고기가 잘 나와.' : a[0]==='무지개' ? '무지개 뜬 날엔 바위에서 귀한 광석이 잘 나와!' : ''}`;
+  const a = wxNow(), b = weatherOf(wxBlock()+1, true), nextH = ((wxBlock()+1)*WX_BLOCK) % 24;
+  return `지금은 ${a[1]} ${a[0]}, ${nextH} 시부터는 ${b[1]} ${b[0]}! ${a[2]==='rain' ? '비가 오면 텃밭에 물을 안 줘도 되고, 희귀한 물고기가 잘 나와.' : a[2]==='snow' ? '눈 오는 날은 포근하게 입어. 밤엔 가로등 불빛이 눈에 반짝여.' : a[2]==='rainbow' ? '무지개 뜬 날엔 바위에서 귀한 광석이 잘 나와!' : ''}`;
 }
 let rainT = 0;
 function rainWater(t){
@@ -2852,12 +2874,46 @@ function rainWater(t){
   if (n){ saveMe(); toast(`비가 와서 텃밭 ${n} 칸에 물이 들었어요`); }
 }
 const drops = Array.from({length:70}, (_,i)=>({x:Math.random(), y:Math.random(), s:.6+Math.random()*.6}));
+const flakes = Array.from({length:90}, ()=>({x:Math.random(), y:Math.random(), s:.35+Math.random()*.5, r:1.2+Math.random()*2.2, p:Math.random()*6.28}));
+// ===== 하루의 빛: 한국 시간 그대로. 해 질 녘(17~19 시)에 어두워지고, 밤에는 가로등·창문·등대가 켜져요 =====
+function nightLevel(){ const d = new Date(Date.now() + serverOffset + 9*3600000), h = d.getUTCHours() + d.getUTCMinutes()/60;
+  if (h >= 7 && h < 17) return 0; if (h >= 17 && h < 19) return (h-17)/2; if (h >= 5 && h < 7) return 1 - (h-5)/2; return 1; }
+const dkLayer = document.createElement('canvas');
+function lightsHere(){
+  const z = Z(), L = [];
+  for (const l of (z.lamps||[])) L.push([l.x, l.y-62, 130, true]);
+  if (zoneId==='home') for (const p of Object.values(players)) if (p.lot!=null){ const H = LOTS[p.lot]; L.push([H.x, H.y-40, 80, false]); }
+  for (const p of z.places) if (p.kind==='lighthouse') L.push([p.x, p.y-170, 220, true]); else if (p.kind==='house') L.push([p.x, p.y-40, 80, false]);
+  if (!admin) L.push([pos.x, pos.y-24, 70, false]);
+  for (const o of others.values()) if (o.z===zoneId) L.push([o.x, o.y-24, 55, false]);
+  return L;
+}
+function drawNight(c, t){
+  const z = Z(); if (z.theme==='room' || z.theme==='cave') return;
+  const lv = nightLevel(); if (lv <= 0) return;
+  const w = cv.width, h = cv.height, k = view.dpr*view.zoom, X = x => (x - view.cx)*k, Y = y => (y - view.cy)*k;
+  if (dkLayer.width !== w || dkLayer.height !== h){ dkLayer.width = w; dkLayer.height = h; }
+  const g = dkLayer.getContext('2d'); g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation = 'source-over'; g.clearRect(0,0,w,h);
+  const dusk = Math.max(0, 1 - Math.abs(lv - .45)*2.6); // 해 질 녘엔 살짝 노을빛
+  g.fillStyle = `rgba(${Math.round(16 + 80*dusk)},${Math.round(18 + 14*dusk)},${Math.round(58 - 18*dusk)},${(.74*lv).toFixed(3)})`; g.fillRect(0,0,w,h);
+  g.globalCompositeOperation = 'destination-out';
+  const lights = lightsHere();
+  for (const [x,y,r] of lights){ const R = r*k, gr = g.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), R); gr.addColorStop(0,'rgba(0,0,0,.95)'); gr.addColorStop(.55,'rgba(0,0,0,.55)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(X(x), Y(y), R, 0, 7); g.fill(); }
+  c.save(); c.setTransform(1,0,0,1,0,0); c.drawImage(dkLayer, 0, 0);
+  // 불빛 자체의 따뜻한 빛
+  c.globalCompositeOperation = 'lighter';
+  for (const [x,y,r,lamp] of lights) if (lamp){ const R = r*.55*k, fl = .9 + Math.sin(t/300 + x)*.05, gr = c.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), R); gr.addColorStop(0, `rgba(255,206,110,${(.32*lv*fl).toFixed(3)})`); gr.addColorStop(1,'rgba(255,190,90,0)'); c.fillStyle = gr; c.beginPath(); c.arc(X(x), Y(y), R, 0, 7); c.fill(); }
+  c.restore();
+}
 function drawWeather(c, t){
   const z = Z(); if (z.theme==='cave' || z.theme==='room') return;
   const w = cv.width, h = cv.height;
+  if (isSnow()){ c.save(); c.setTransform(1,0,0,1,0,0); c.fillStyle='rgba(235,242,255,.10)'; c.fillRect(0,0,w,h); c.fillStyle='rgba(255,255,255,.92)';
+    for (const f of flakes){ const y = ((f.y + t/9000*f.s) % 1)*h, x = (f.x + Math.sin(t/1400 + f.p)*.015)*w; c.beginPath(); c.arc(x, y, f.r*view.dpr, 0, 7); c.fill(); } c.restore(); }
+  if (wxNow()[2]==='cloud'){ c.save(); c.setTransform(1,0,0,1,0,0); c.fillStyle='rgba(120,120,140,.08)'; c.fillRect(0,0,w,h); c.restore(); }
   if (isRain()){ c.save(); c.setTransform(1,0,0,1,0,0); c.fillStyle='rgba(90,110,150,.12)'; c.fillRect(0,0,w,h); c.strokeStyle='rgba(220,235,255,.7)'; c.lineWidth=1.5*view.dpr;
     for (const d of drops){ const y = ((d.y + t/1500*d.s) % 1)*h, x = d.x*w; c.beginPath(); c.moveTo(x,y); c.lineTo(x-3*view.dpr,y+12*view.dpr); c.stroke(); } c.restore(); }
-  if (isRainbow()){ c.save(); c.setTransform(1,0,0,1,0,0); c.globalAlpha=.18; ['#ff6b6b','#ffa14f','#ffd84f','#5cc46a','#5b8cff','#a77bff'].forEach((col,i)=>{ c.strokeStyle=col; c.lineWidth=8*view.dpr; c.beginPath(); c.arc(w*.5, h*1.1, h*.9-i*8*view.dpr, Math.PI, 0); c.stroke(); }); c.restore(); }
+  if (isRainbow() && nightLevel() < .5){ c.save(); c.setTransform(1,0,0,1,0,0); c.globalAlpha=.18; ['#ff6b6b','#ffa14f','#ffd84f','#5cc46a','#5b8cff','#a77bff'].forEach((col,i)=>{ c.strokeStyle=col; c.lineWidth=8*view.dpr; c.beginPath(); c.arc(w*.5, h*1.1, h*.9-i*8*view.dpr, Math.PI, 0); c.stroke(); }); c.restore(); }
 }
 
 // ===== 이번 주 낚시 대회 (펭펭) =====
@@ -3717,6 +3773,7 @@ function buildStatic(){
   for (let x=20; x<z.W; x+=64) for (const y of [26, z.H-26]) if (!open(x,y)) d.circle(x+(y%7), y, 44, edgeCol);
   for (let y=20; y<z.H; y+=64) for (const x of [26, z.W-26]) if (!open(x,y)) d.circle(x, y+(x%5), 44, edgeCol);
   for (const [x,y] of z.trees) drawTree(d,x,y,x+y);
+  for (const l of (z.lamps||[])) drawLamp(d, l.x, l.y);
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return;
     const owner = Object.values(players).find(p=>p.lot===i);
     drawFence(d, L);
@@ -3733,6 +3790,7 @@ function buildStatic(){
   if (ex.w) signPost(d, `← ${ZONES[ex.w].name}`, M+80, cy-50);
   if (ex.e) signPost(d, `→ ${ZONES[ex.e].name}`, z.W-M-80, cy-50);
 }
+function drawLamp(d, x, y){ d.ell(x, y+1, 9, 3, 'rgba(0,0,0,.12)'); d.rr(x-3, y-58, 6, 58, 3, '#6e6278'); d.rr(x-7, y-6, 14, 7, 3, '#5d5266'); d.circle(x, y-64, 9, '#fff2b8'); d.rr(x-10, y-76, 20, 6, 3, '#5d5266'); d.circle(x, y-80, 2.5, '#5d5266'); }
 function titleTag(c, text, x, y){ c.font='bold 13px "Dongle",sans-serif'; c.textAlign='center'; const w = c.measureText(text).width + 10; c.fillStyle='rgba(228,143,172,.9)'; c.beginPath(); c.roundRect(x-w/2, y-10, w, 13, 6); c.fill(); c.fillStyle='#fff'; c.fillText(text, x, y); }
 function tag(c, text, x, y, color){
   c.font='bold 18px "Dongle",sans-serif'; c.textAlign='center';
@@ -3807,7 +3865,7 @@ function frame(t){
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
     for (const e of ents) e.label();
-    drawWeather(ctx, t);
+    drawNight(ctx, t); drawWeather(ctx, t);
     const fo = Math.max(0, 1 - (t - fadeT)/450); if (fo !== lastFade){ lastFade = fo; $('fade').style.opacity = fo; }
   }
   requestAnimationFrame(frame);
