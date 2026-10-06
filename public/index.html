@@ -2283,7 +2283,7 @@ const COMBAT_ZONES = {forest:5, deepforest:6, seacave:4, cave:6, starhill:4};
 const LV_MAX = 50;
 const lvOf = () => Math.max(1, Math.min(LV_MAX, (me && me.lv) || 1));
 const maxHp = () => 100 + (lvOf()-1)*10, maxSta = () => 100 + (lvOf()-1)*10;
-const expNeed = lv => 40 + lv*30;
+const expNeed = lv => Math.round(40 + lv*30 + 3*lv*lv); // 뒤로 갈수록 점점 어려워져요 (Lv1→2: 73, Lv10→11: 640, Lv30→31: 3,640, Lv49→50: 8,713)
 // 기력: 일할 때마다 조금씩 써요. 천천히 차오르고, 날이 바뀌면 가득, 먹으면 바로 차요
 const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10, snow:2};
 let playerSta = 100, tiredToastT = 0, dayChkT = 0;
