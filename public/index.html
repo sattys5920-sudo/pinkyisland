@@ -2886,14 +2886,13 @@ function museumPanel(){
 }
 
 // ===== 날씨 (펭펭) =====
-// 날씨는 4 시간마다 바뀌어요 (하루 6 번). 모두에게 같은 날씨예요. 겨울(12~2 월)엔 눈이 자주, 다른 계절엔 비가 와요
+// 날씨는 4 시간마다 바뀌어요 (하루 6 번). 모두에게 같은 날씨예요. 계절 없이 맑음 45 · 흐림 20 · 비 17 · 눈 13 · 무지개 5 %
 const WX = {sun:['맑음','☀️'], cloud:['흐림','☁️'], rain:['비','🌧️'], snow:['눈','❄️'], rainbow:['무지개','🌈']};
 const WX_BLOCK = 4;
 const wxBlock = (t=Date.now()) => Math.floor((t + serverOffset + 9*3600000) / (WX_BLOCK*3600000));
-const monthOfBlock = b => new Date(b*WX_BLOCK*3600000).getUTCMonth() + 1;
 function weatherOf(dayOrBlock, isBlock){
-  const b = isBlock ? dayOrBlock : wxBlock(), m = monthOfBlock(b), winter = m===12 || m<=2;
-  const table = winter ? [['sun',40],['cloud',22],['snow',30],['rain',4],['rainbow',4]] : [['sun',52],['cloud',22],['rain',21],['rainbow',5]];
+  const b = isBlock ? dayOrBlock : wxBlock();
+  const table = [['sun',45],['cloud',20],['rain',17],['snow',13],['rainbow',5]]; // 계절 없이 언제나 같은 확률
   let r = hash('wx'+b) % 100; for (const [k,w] of table){ if ((r -= w) < 0) return [...WX[k], k]; } return [...WX.sun, 'sun'];
 }
 const wxNow = () => weatherOf(wxBlock(), true);
