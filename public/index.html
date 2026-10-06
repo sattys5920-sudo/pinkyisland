@@ -76,6 +76,9 @@ img.bi{width:34px;height:34px;display:block;pointer-events:none}
 .dm-msg{max-width:78%;align-self:flex-start;background:#fff;border-radius:14px 14px 14px 4px;padding:6px 10px;font-size:18px;line-height:1.35;box-shadow:inset 0 -2px 0 #f3dbe5;white-space:pre-wrap;overflow-wrap:anywhere}
 .dm-msg.me{align-self:flex-end;background:var(--pink);border-radius:14px 14px 4px 14px;box-shadow:inset 0 -2px 0 #f2c3d3}
 .dm-msg small{display:block;font-size:12px;color:var(--soft);margin-top:2px}
+.dm-line{display:flex;gap:6px;align-items:flex-start;align-self:flex-start;max-width:86%}.dm-line .dm-msg{max-width:100%;align-self:flex-start}.dm-col{display:flex;flex-direction:column;gap:2px;min-width:0}.dm-col b{font-weight:normal;font-size:14px;color:var(--soft);margin-left:2px}
+.dm-pic{width:38px;height:38px;border-radius:50%;flex:none;object-fit:cover;background:#ffeaf2;box-shadow:0 0 0 2px #fff}span.dm-pic{background:none;box-shadow:none}span.dm-pic.dm-init{background:#ffd6e6;box-shadow:0 0 0 2px #fff;display:grid;place-items:center;font-size:18px;color:var(--ink)}
+.dm-ava{position:relative;width:42px;height:42px;flex:none}.dm-ava img{width:42px;height:42px;border-radius:50%;object-fit:cover;background:#ffeaf2;box-shadow:0 0 0 2px #fff}.dm-ava .dm-dot{position:absolute;right:-1px;bottom:-1px;margin:0;border:2px solid #fff}
 .dm-day{align-self:center;font-size:13px;color:var(--soft);background:#fff;border-radius:10px;padding:0 10px}
 .dm-in{flex:none;display:flex;gap:6px}.dm-in input{flex:1;min-width:0;font:inherit;font-size:18px;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fff;color:var(--ink)}
 body:not(.chat-open) #chatrow,body:not(.chat-open) #emorow{display:none} /* 채팅은 [채팅] 버튼을 누를 때만 열려요 (평소엔 화면을 가리지 않게) */
@@ -2880,6 +2883,7 @@ function contestPanel(){
 // ===== 메신저: 친구 목록 · 1:1 대화 =====
 // 친구는 me.friends 에 저장. 대화는 dms/<두 uid 를 정렬해 _ 로 이은 id>, 마지막 말은 dmIndex/<나>/<대화 id> (안 읽음 알림용). 관리자는 모든 대화를 볼 수 있어요.
 const DM_MAX = 200;
+const avatarOf = id => { const p = id===uid ? me : players[id]; return p && p.look ? faceURL(p.look, 'dot') : ''; };
 let dmIndex = {}, dmSeen = null, dmOpen = null, dmUnsub = null, dmMsgs = {};
 const cidOf = other => [uid, other].sort().join('_');
 const otherOf = cid => cid.split('_').find(x=>x!==uid);
@@ -2901,8 +2905,8 @@ function friendPanel(){
   const last = id => dmIndex[cidOf(id)];
   const sortF = [...fr].sort((a,b)=>(isOnline(b) - isOnline(a)) || ((last(b)?.at||0) - (last(a)?.at||0)));
   const row = (id, friend) => { const p = players[id], l = last(id), on = isOnline(id), un = dmUnread(cidOf(id));
-    return `<div class="np dm-row"><i class="dm-dot ${on ? 'on' : ''}"></i><span class="np-name">${esc(p.nick)}${un ? '<span class="dm-unread">새 메시지</span>' : ''} <small>${on ? '접속 중 · ' + esc(zoneName(others.get(id)?.z)) : '오프라인'}</small><small style="display:block">${l ? esc((l.from===uid ? '나: ' : '') + l.t.slice(0,28)) : ''}</small></span><span style="display:flex;gap:4px;align-items:center">${friend ? `<button class="mini" data-dm="${id}">대화</button>` : `<button class="mini" data-dm="${id}">대화</button><button class="mini" data-add="${id}">친구 추가</button>`}</span></div>`; };
-  openPanel('친구 · 메신저', `<p class="mnote" style="margin:0 2px">친구로 추가하면 접속했을 때 초록 불이 켜져요. 대화는 섬 운영을 위해 관리자가 볼 수 있어요.</p>
+    return `<div class="np dm-row"><span class="dm-ava">${avatarOf(id) ? `<img src="${avatarOf(id)}" alt="">` : ''}<i class="dm-dot ${on ? 'on' : ''}"></i></span><span class="np-name">${esc(p.nick)}${un ? '<span class="dm-unread">새 메시지</span>' : ''} <small>${on ? '접속 중 · ' + esc(zoneName(others.get(id)?.z)) : '오프라인'}</small><small style="display:block">${l ? esc((l.from===uid ? '나: ' : '') + l.t.slice(0,28)) : ''}</small></span><span style="display:flex;gap:4px;align-items:center">${friend ? `<button class="mini" data-dm="${id}">대화</button>` : `<button class="mini" data-dm="${id}">대화</button><button class="mini" data-add="${id}">친구 추가</button>`}</span></div>`; };
+  openPanel('친구 · 메신저', `<p class="mnote" style="margin:0 2px">친구로 추가하면 접속했을 때 초록 불이 켜져요.</p>
     <div class="bag-sec"><b>친구 ${fr.length}${fr.length ? ` · 접속 ${fr.filter(isOnline).length}` : ''}</b>${sortF.map(id=>row(id, true)).join('') || '<p class="mnote">아직 친구가 없어요. 아래 섬 주민에서 추가해요.</p>'}</div>
     <div class="bag-sec"><b>섬 주민</b>${rest.map(id=>row(id, false)).join('') || '<p class="mnote">다른 주민이 아직 없어요.</p>'}</div>`);
   const p = $('npcPanel'); p.dataset.dm = 'list';
@@ -2932,8 +2936,11 @@ function renderDm(){
   const el = $('dmList'); if (!el) return;
   const list = Object.values(dmMsgs).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (!list.length) return;
   let day = '', html = '';
-  for (const m of list){ const d = new Date((m.at||0) + 9*3600000), ds = `${d.getUTCMonth()+1}월 ${d.getUTCDate()}일`; if (ds!==day){ day = ds; html += `<span class="dm-day">${ds}</span>`; }
-    html += `<div class="dm-msg ${m.from===uid ? 'me' : ''}">${esc(m.t)}<small>${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}</small></div>`; }
+  let prev = null;
+  for (const m of list){ const d = new Date((m.at||0) + 9*3600000), ds = `${d.getUTCMonth()+1}월 ${d.getUTCDate()}일`; if (ds!==day){ day = ds; prev = null; html += `<span class="dm-day">${ds}</span>`; }
+    const mine = m.from===uid, first = prev!==m.from; prev = m.from;
+    const bub = `<div class="dm-msg ${mine ? 'me' : ''}">${esc(m.t)}<small>${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}</small></div>`;
+    html += mine ? bub : `<div class="dm-line">${first ? (avatarOf(m.from) ? `<img class="dm-pic" src="${avatarOf(m.from)}" alt="">` : `<span class="dm-pic dm-init">${esc(String(m.nick||'?').slice(0,1))}</span>`) : '<span class="dm-pic"></span>'}<div class="dm-col">${first ? `<b>${esc(String(players[m.from]?.nick || m.nick || '').slice(0,10))}</b>` : ''}${bub}</div></div>`; }
   el.innerHTML = html; el.scrollTop = el.scrollHeight;
 }
 // 폰 키패드가 올라오면 대화창을 보이는 화면 안으로 옮겨요
