@@ -823,7 +823,7 @@ function enterZone(id, from, x, y){
   if (!zoneOk(id)) id = 'home';
   decorating = null;
   if (me){ const v = (me.visited||'home').split(',').filter(Boolean); const zid = id.includes(':') ? id.split(':')[0] : id; if (!v.includes(zid)){ v.push(zid); me.visited = v.join(','); syncStats(); } }
-  zoneId = id; const z = Z(); target = null; staticSig = '';
+  zoneId = id; const z = Z(); target = null; staticSig = ''; if (jukeOn && z.house !== uid) jukeStop();
   if (x!=null){ pos.x = x; pos.y = y; }
   else if (from==='n'){ pos.x = z.W/2; pos.y = M+40; }
   else if (from==='s'){ pos.x = z.W/2; pos.y = z.H-M-30; }
@@ -1383,7 +1383,7 @@ document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState
 const JUKE_SONGS = [
   {name:'오후 6 시의 오투모', url:'https://on.soundcloud.com/BbjZBXtK7fBJds7N13'},
 ];
-let jukeOn = null;
+var jukeOn = null; // 집 밖으로 나가면 꺼져요 (enterZone)
 function jukeSrc(url){ return 'https://w.soundcloud.com/player/?' + new URLSearchParams({url, color:'#ff8fb1', auto_play:'true', show_user:'false', show_artist:'false', hide_related:'true', show_comments:'false', show_reposts:'false', show_teaser:'false', visual:'false', sharing:'false', buying:'false', download:'false'}); }
 function jukePlay(i){
   const s = JUKE_SONGS[i]; if (!s) return; jukeStop(true); jukeOn = s; bgmStop();
@@ -1396,7 +1396,7 @@ function jukeStop(quiet){ const d = $('juke'); if (d) d.remove(); const was = ju
 function jukePanel(){
   openPanel('🎵 주크박스', JUKE_SONGS.map((s,i)=>`<div class="np"><span class="np-name">${esc(s.name)}${jukeOn===s ? ' <small>지금 나오는 중</small>' : ''}</span><button class="mini" data-jk="${i}">${jukeOn===s ? '처음부터' : '틀기'}</button></div>`).join('') +
     (jukeOn ? '<button class="btn ghost" id="jkOff" style="width:100%;margin-top:6px">주크박스 끄기</button>' : '') +
-    '<p class="mnote">사운드클라우드 플레이어로 나와요. 저절로 안 나오면 플레이어의 ▶ 를 눌러요. 듣는 동안 섬 배경 음악은 쉬고, ✕ 로 끄면 다시 나와요.</p>');
+    '<p class="mnote">사운드클라우드 플레이어로 나와요. 저절로 안 나오면 플레이어의 ▶ 를 눌러요. 집 안에서만 나와요. 듣는 동안 섬 배경 음악은 쉬고, ✕ 로 끄거나 집 밖으로 나가면 꺼지고 배경 음악이 다시 나와요.</p>');
   $('npcPanel').querySelectorAll('button[data-jk]').forEach(b=>b.onclick = ()=>jukePlay(+b.dataset.jk));
   if ($('jkOff')) $('jkOff').onclick = ()=>{ jukeStop(); $('npcPanel').hidden = true; };
 }
