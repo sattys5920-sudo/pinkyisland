@@ -2170,7 +2170,11 @@ function drawFishing(ctx, t){
   ctx.fillStyle='#ff5a5a'; ctx.beginPath(); ctx.arc(fishing.bx, fishing.by+bob-2, 4, Math.PI, 0); ctx.fill(); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(fishing.bx, fishing.by+bob-2, 4, 0, Math.PI); ctx.fill();
   if (fishing.phase!=='wait'){ ctx.strokeStyle='rgba(255,255,255,.7)'; ctx.beginPath(); ctx.ellipse(fishing.bx, fishing.by+2, 8+Math.sin(t/80)*3, 3, 0, 0, 7); ctx.stroke(); }
   ctx.restore();
-  if (fishing.phase==='bite'){ const s = 1 + Math.sin(t/60)*.12; ctx.save(); ctx.translate(pos.x, pos.y-74); ctx.scale(s,s); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,0,13,0,7); ctx.fill(); ctx.fillStyle='#ff3b6b'; ctx.font='bold 27px "Dongle",sans-serif'; ctx.textAlign='center'; ctx.fillText('!', 0, 7); ctx.restore(); }
+}
+// 입질 느낌표: 이름표·칭호·밤·날씨보다 위에, 머리 위 높이 그려서 가려지지 않게
+function drawBite(ctx, t){
+  if (!fishing) return;
+  if (fishing.phase==='bite'){ const s = 1 + Math.sin(t/60)*.12; ctx.save(); ctx.translate(pos.x, pos.y-108); ctx.scale(s,s); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,0,13,0,7); ctx.fill(); ctx.fillStyle='#ff3b6b'; ctx.font='bold 27px "Dongle",sans-serif'; ctx.textAlign='center'; ctx.fillText('!', 0, 7); ctx.restore(); }
 }
 function fishCount(){ return Object.values(me.inv.fish||{}).reduce((a,b)=>a+b,0); }
 function showFishBag(){
@@ -4601,7 +4605,7 @@ function frameBody(t){
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
     for (const e of ents) e.label();
-    drawNight(ctx, t); drawDarkFx(ctx, t); drawWeather(ctx, t);
+    drawNight(ctx, t); drawDarkFx(ctx, t); drawWeather(ctx, t); drawBite(ctx, t);
     const fo = Math.max(0, 1 - (t - fadeT)/450); if (fo !== lastFade){ lastFade = fo; $('fade').style.opacity = fo; }
   }
   requestAnimationFrame(frame);
