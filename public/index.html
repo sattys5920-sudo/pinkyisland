@@ -1024,8 +1024,8 @@ function fromDB(p){
   for (const k of ['seeds','crops','fish','ores','loot']) inv[k] = {...(inv[k]||{})};
   if (inv.seed){ inv.seeds.c01 = (inv.seeds.c01||0) + inv.seed; } delete inv.seed;
   if (inv.tomato){ inv.crops.c01 = (inv.crops.c01||0) + inv.tomato; } delete inv.tomato;
-  const lk = CH.migrateLook(p.look), worn = Object.entries(lk.cc||{}).filter(([,c])=>c).map(([slot,c])=>{ const id = slot==='set' ? lk.set : lk[slot]; return id ? id+'#'+c : null; }).filter(Boolean);
-  const closet = [...new Set([...CH.FREE, ...(p.closet||[]), ...(p.hats ? p.hats.split(',') : []), ...CH.lookItems(lk), ...worn])].filter(k=>CH.ITEM(k.split('#')[0]));
+  const lk = CH.migrateLook(p.look), worn = Object.entries(lk.cc||{}).filter(([,c])=>c).map(([slot,c])=>{ const id = slot==='set' ? lk.set : lk[slot]; return id && id!=='none' ? id+'#'+c : null; }).filter(Boolean);
+  const closet = [...new Set([...CH.FREE, ...(p.closet||[]), ...(p.hats ? p.hats.split(',') : []), ...CH.lookItems(lk), ...worn])].filter(k=>k.split('#')[0] !== 'none' && CH.ITEM(k.split('#')[0]));
   return { ...p, look:CH.migrateLook(p.look), closet, rel:p.rel||{}, inv,
     gardens:Array.from({length:Math.max(2, Math.min(PLOT_MAX, p.plots||2))}, (_,i)=>i).map(i=>{ const s = g[i]; if (!s) return null; return {crop: s.stage>=0 ? {type:s.type||'c01', stage:s.stage, wateredAt:s.wateredAt||null} : null}; }) };
 }
@@ -1235,7 +1235,7 @@ function firebaseNet(){
     marketList: l => F.push(F.ref(db, 'market'), {...l, at:F.serverTimestamp()}),
     marketBuy: async id => { try { const r = await F.runTransaction(F.ref(db, 'market/'+id), cur => (cur && !cur.buyer && cur.uid!==uid) ? {...cur, buyer:uid, bnick:me.nick} : undefined, {applyLocally:false}); return r.committed && r.snapshot.val()?.buyer===uid; } catch(e){ return false; } },
     marketCancel: async id => { try { const r = await F.runTransaction(F.ref(db, 'market/'+id), cur => (cur && cur.uid===uid && !cur.buyer) ? null : undefined, {applyLocally:false}); return r.committed && !r.snapshot.exists(); } catch(e){ return false; } },
-    marketCollect: async id => { if (collecting.has(id)) return false; collecting.add(id); try { const r = await F.runTransaction(F.ref(db, 'market/'+id), cur => (cur && cur.uid===uid && cur.buyer) ? null : undefined, {applyLocally:false}); return r.committed && !r.snapshot.exists(); } catch(e){ collecting.delete(id); return false; } },
+    marketCollect: async id => { if (collecting.has(id)) return false; collecting.add(id); try { const r = await F.runTransaction(F.ref(db, 'market/'+id), cur => (cur && cur.uid===uid && cur.buyer) ? null : undefined, {applyLocally:false}); const ok = r.committed && !r.snapshot.exists(); if (!ok) collecting.delete(id); return ok; } catch(e){ collecting.delete(id); return false; } },
     letterSend: async (to, l) => { const id = F.push(F.ref(db, 'letters/'+to)).key; await F.set(F.ref(db, 'letters/'+to+'/'+id), {...l, at:F.serverTimestamp()}); if (!admin) await F.set(F.ref(db, 'lettersOut/'+uid+'/'+id), {...l, to, at:F.serverTimestamp()}).catch(()=>{}); },
     letterMark: (to, id, v) => F.update(F.ref(db, 'letters/'+to+'/'+id), v),
     letterDel: (to, id) => F.remove(F.ref(db, 'letters/'+to+'/'+id)),
@@ -2715,7 +2715,7 @@ const FURN_LIST = FURN_ALL; // 가구 43 종 (art/furniture.js)
 const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5]}]));
 function workshopPanel(){
   const plots = me.plots || 2, next = plots + 1, pc = PLOT_COST[next];
-  const plotRow = pc ? `<button class="np" data-id="plot"><span class="np-name">텃밭 늘리기 (${plots} → ${next} 칸) <small>${pc[0].toLocaleString()} G + ${itemName(pc[1])} ${pc[2]}</small></span><span class="np-place">${me.inv.gold>=pc[0]&&invCount(pc[1])>=pc[2]?'늘리기':'재료 부족'}</span></button>` : `<div class="np"><span class="np-name">텃밭이 최대 6 칸이에요</span></div>`;
+  const plotRow = pc ? `<button class="np" data-id="plot"><span class="np-name">텃밭 늘리기 (${plots} → ${next} 칸) <small>${pc[0].toLocaleString()} G + ${itemName(pc[1])} ${pc[2]}</small></span><span class="np-place">${me.inv.gold>=pc[0]&&invCount(pc[1])>=pc[2]?'늘리기':'재료 부족'}</span></button>` : `<div class="np"><span class="np-name">텃밭이 최대 10 칸이에요</span></div>`;
   openPanel('보리 공방 · 💰 '+me.inv.gold+' G', plotRow + Object.entries(FURN).map(([id,f])=>{
     const ok = me.inv.gold >= f.gold && invCount(f.need) >= f.n;
     return `<button class="np" data-id="${id}" ${ok?'':'style="opacity:.55"'}><span class="np-name">${f.name} <small>${f.gold.toLocaleString()} G + ${itemName(f.need)} ${f.n}</small></span><span class="np-place">${ok?'만들기':'재료 부족'}</span>${invCount('furn:'+id)?`<span class="np-day">가진 것 ${invCount('furn:'+id)}</span>`:''}</button>`;
@@ -2943,6 +2943,7 @@ function lookChanged(){ spriteCache.clear(); previewCache.clear(); saveMe(); }
 function wearItem(k){
   const [id, c] = k.slice(5).split(/[~#]/), sl = slotOfWear(id); if (!sl || invCount(k) < 1) return;
   invAdd(k, -1);
+  { const ck = ownKey(id, +c||0); if (!CLOSET().includes(ck)) CLOSET().push(ck); } // 거래소에서 산 옷도 모은 옷으로
   for (const o of sl==='set' ? ['set','top','bottom'] : sl==='top' || sl==='bottom' ? [sl, 'set'] : [sl]) takeOff(o); // 한 벌을 입으면 상의·하의도 벗어 가방에
   me.look = {...me.look, [sl]: id, cc:{...(me.look.cc||{}), [sl]: +c||0}};
   stat('outfitChanged'); lookChanged(); toast(`${itemName(k)}을(를) 입었어요 · 입던 옷은 가방에 넣었어요`);
@@ -2957,7 +2958,7 @@ function useInterior(k){
   const [cat, id] = k.split(':'), H = myHouse(), cur = cat==='wall' ? 'wall' : 'floor', list = cat==='wall' ? WALLS : FLOORS;
   if (!list[id] || invCount(k) < 1) return;
   invAdd(k, -1); if (H[cur] && list[H[cur]] && list[H[cur]].price > 0) invAdd(cat+':'+H[cur], 1); // 기본 벽지·바닥은 언제든 공짜라 가방에 안 넣어요
-  H[cur] = id; saveMe(); staticSig = ''; toast(`${list[id].name}${cat==='wall' ? ' 벽지를 발랐어요' : ' 바닥을 깔았어요'} · 쓰던 건 가방에 넣었어요`);
+  H[cur] = id; const key = cat==='wall' ? 'walls' : 'floors'; if (!H[key].includes(id)) H[key] = [...H[key], id]; saveMe(); staticSig = ''; toast(`${list[id].name}${cat==='wall' ? ' 벽지를 발랐어요' : ' 바닥을 깔았어요'} · 쓰던 건 가방에 넣었어요`);
 }
 // 가방 맨 위: 지금 입은 옷·고른 우산 (누르면 벗어서 가방에)
 function wornRow(){
@@ -3378,7 +3379,7 @@ function hotToday(){
 }
 // 시세: 날마다 품목별로 70%~140% 사이에서 바뀌어요
 function marketMul(key){ const b = baseKey(key); if (hotToday().includes(b)) return 2; return .7 + (hash(today()+'|'+b) % 71)/100; }
-function soldToday(){ if (!me.sold || me.sold.d !== today()) me.sold = {d:today(), c:{}}; return me.sold.c; }
+function soldToday(){ if (!me.sold || me.sold.d !== today()) me.sold = {d:today(), c:{}}; me.sold.c = me.sold.c || {}; return me.sold.c; } // 빈 {} 는 서버에 안 남아서 다시 만들어요
 // 같은 물건을 하루에 많이 팔면 값이 조금씩 내려가요 (개당 -3%, 최저 50%)
 const glut = (key, extra=0) => Math.max(.5, 1 - .03*((soldToday()[baseKey(key).replace(':','_')]||0) + extra));
 function buyerBonus(n, key){
@@ -3436,7 +3437,7 @@ function onMarket(v){
     net.marketCollect(id).then(ok=>{ if (!ok) return; const g = Math.floor(l.price*(1-MARKET_FEE)); me.inv.gold += g; me.earned = (me.earned||0) + g; saveMe(true); renderHud();
       stat('marketSold'); addLog(`거래소: ${String(l.bnick||'누군가').slice(0,8)} 님이 ${itemName(l.item)} ${l.n} 개를 샀어요! +${g} G`, true); }).catch(()=>{});
   }
-  if (!$('npcPanel').hidden && $('npcPanel').dataset.market) marketPanel();
+  if (!$('npcPanel').hidden && $('npcPanel').dataset.market && $('talk').hidden) marketPanel(); // 사기·내리기 확인 창이 떠 있으면 닫지 않아요
 }
 function marketPanel(){
   const list = Object.entries(market).filter(([,l])=>!l.buyer).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
@@ -3449,7 +3450,7 @@ function marketPanel(){
      <div class="bag-sec"><b>사고 싶은 물건 ${others.length}</b>${others.map(row).join('') || '<p class="mnote">아직 올라온 물건이 없어요.</p>'}</div>
      ${mine.length ? `<div class="bag-sec"><b>내가 올린 물건 ${mine.length}/${MARKET_MAX}</b>${mine.map(row).join('')}</div>` : ''}`,
     b=>{ const id = b.dataset.id, l = market[id]; if (!l) return;
-      if (l.uid===uid) return say('거래소', `${itemName(l.item)} ${l.n} 개를 내릴까요?`, [['내리기', async ()=>{ if (await net.marketCancel(id)){ invAdd(l.item, l.n); saveMe(true); renderHud(); toast('물건을 돌려받았어요'); } else toast('이미 팔렸거나 내릴 수 없어요'); closeTalk(); marketPanel(); }], ['그만두기', marketPanel]], '', true);
+      if (l.uid===uid) return say('거래소', `${itemName(l.item)} ${l.n} 개를 내릴까요?`, [['내리기', async ()=>{ if (invRoom(l.item) < l.n){ closeTalk(); return toast(`가방에 ${itemName(l.item)}을(를) ${l.n} 개 넣을 자리가 없어요`); } if (await net.marketCancel(id)){ invAdd(l.item, l.n); saveMe(true); renderHud(); toast('물건을 돌려받았어요'); } else toast('이미 팔렸거나 내릴 수 없어요'); closeTalk(); marketPanel(); }], ['그만두기', marketPanel]], '', true);
       if (me.inv.gold < l.price) return toast('골드가 모자라요');
       if (invRoom(l.item) < l.n) return toast(`${itemName(l.item)}은(는) 가방에 ${invRoom(l.item)} 개까지만 더 넣을 수 있어요`);
       withIcon(l.item);
@@ -3470,6 +3471,7 @@ function marketAdd(){
   draw();
 }
 // 개수 → 값을 고르면 게시판에 올려요
+const MARKET_PRICE_MAX = 1000000;
 function marketList(k){
   if (marketFull()) return toast(`한 번에 ${MARKET_MAX} 개까지 올릴 수 있어요`);
   const c = invCount(k); if (!c) return;
@@ -3477,7 +3479,7 @@ function marketList(k){
   const ns = [...new Set([1, 5, 10, 20, Math.min(c, 99)])].filter(x=>x<=c);
   say('거래소에 올리기', `${itemName(k)}을(를) 몇 개 올릴까요? (가진 것 ${c} 개)`, ns.map(q=>[`${q} 개`, ()=>{
     const base = unitPrice(k) * q;
-    const ps = [...new Set([.8, 1, 1.3, 1.6, 2].map(m=>Math.max(1, Math.round(base*m/5)*5 || 1)))];
+    const ps = [...new Set([.8, 1, 1.3, 1.6, 2].map(m=>Math.min(MARKET_PRICE_MAX, Math.max(1, Math.round(base*m/5)*5 || 1))))]; // 서버 규칙: 한 번에 100만 G 까지
     withIcon(k);
     say('거래소에 올리기', `${itemName(k)} ${q} 개, 얼마에 팔까요?\n(상점 시세로는 ${base} G)`, ps.map(p=>[`${p} G`, async ()=>{
       if (invCount(k) < q) return closeTalk();
@@ -3495,7 +3497,7 @@ function marketList(k){
 // 다음 판 첫 방송이 시작되면 남은 별사탕은 녹아 없어져요. 값은 모두에게 같아요.
 const SHOW_HOURS = [13, 22], SHOW_MIN = 60, CANDY_MAX = 500, CANDY_PER = 6;
 const TV_ID = Object.keys(FURN).find(k=>FURN[k].shape==='tv');
-const kstParts = (t=Date.now()) => { const d = new Date(t + 9*3600000); return {day:Math.floor(d.getTime()/86400000), h:d.getUTCHours(), m:d.getUTCMinutes()}; };
+const kstParts = (t=Date.now() + serverOffset) => { const d = new Date(t + 9*3600000); return {day:Math.floor(d.getTime()/86400000), h:d.getUTCHours(), m:d.getUTCMinutes()}; };
 function showLive(){ const {day, h, m} = kstParts(), s = SHOW_HOURS.indexOf(h); return s >= 0 && m < SHOW_MIN ? {slot:day*2 + s, left:SHOW_MIN - m} : null; }
 function lastSlot(){ const {day, h} = kstParts(); return h >= SHOW_HOURS[1] ? day*2 + 1 : h >= SHOW_HOURS[0] ? day*2 : day*2 - 1; } // 가장 최근에 시작한 방송
 const cycleOf = slot => Math.floor(slot / CANDY_PER);
@@ -3539,7 +3541,7 @@ function tvPanel(){
   if (!hasTV()) return toast('보리 공방에서 동그란 TV를 만들어 집에 놓으면 홈쇼핑을 볼 수 있어요');
   if (Z().house !== uid) return toast('홈쇼핑은 집에 있는 TV로 봐요');
   const live = showLive(), cur = live ? live.slot : lastSlot(), c = myCandy(), cyc = cycleOf(cur), first = cyc * CANDY_PER;
-  const nx = live ? null : (()=>{ let k = lastSlot() + 1; return {slot:k, wait:slotTime(k) - Date.now()}; })();
+  const nx = live ? null : (()=>{ let k = lastSlot() + 1; return {slot:k, wait:slotTime(k) - (Date.now() + serverOffset)}; })();
   const rows = Array.from({length:CANDY_PER}, (_,i)=>{ const k = first + i, d = Math.floor(k/2) - Math.floor(first/2) + 1, past = k <= lastSlot();
     return `<div class="tv-cell ${live && k===cur ? 'on' : ''}"><small>${d}일째 ${slotName(k)}</small><b>${past ? candyPrice(k) + ' G' : '?'}</b></div>`; }).join('');
   const price = live ? candyPrice(live.slot) : null;
