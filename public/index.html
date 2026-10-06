@@ -3704,6 +3704,21 @@ function mailboxTap(w){
     if (Math.abs(w.x-x) < 18 && w.y > y-56 && w.y < y+6) return id === uid ? {x:x-24, y:y+18, act:()=>postPanel()} : {x:pos.x, y:pos.y, act:()=>toast(`${String(p.nick||'').slice(0,8)} 님의 우편함이에요 · 주인만 열 수 있어요`), mark:performance.now()}; }
   return null;
 }
+// ===== 새 버전이 배포되면 켜 둔 앱도 알아서 새로고침해요 =====
+// 배포할 때 version.json 에 버전이 적혀요. 2 분마다·앱으로 돌아올 때 확인하고, 바뀌었으면 저장한 뒤 새로고침해요.
+// 다른 앱에 가 있다 돌아오면 바로, 보고 있는 중이면 20 초 동안 손을 안 대거나 3 분이 지나면.
+let appVer = null, updReady = 0, lastInput = Date.now();
+addEventListener('pointerdown', ()=>{ lastInput = Date.now(); }, true); addEventListener('keydown', ()=>{ lastInput = Date.now(); }, true);
+async function checkVersion(){
+  try { const r = await fetch('version.json?t=' + Date.now(), {cache:'no-store'}); if (!r.ok) return; const v = (await r.json()).v; if (!v) return;
+    if (appVer === null){ appVer = v; return; }
+    if (v !== appVer && !updReady){ updReady = Date.now(); if (document.hidden) return; toast('새 버전이 나왔어요 · 잠시 뒤 새로고침해요'); }
+  } catch(e){}
+}
+async function updateNow(){ try { if (me && !admin && !kicked && typeof flushSave === 'function') await flushSave(); } catch(e){} location.reload(); }
+setInterval(()=>{ if (updReady && !document.hidden && (Date.now() - lastInput > 20000 || Date.now() - updReady > 180000)) updateNow(); }, 10000);
+setInterval(checkVersion, 120000); checkVersion();
+document.addEventListener('visibilitychange', ()=>{ if (document.hidden) return; if (updReady) updateNow(); else checkVersion(); });
 // ===== 다크 모드: 주민 12 명의 집 = 방탈출 =====
 // 관리자가 다크 모드를 켜면 하루에 한 방씩 열려요 (DARK_ORDER). 여러 명이 같은 방에 들어가 문제 15 개를 같이 풀고,
 // 다 풀면 그 주민이 아주 강한 보스로 깨어나요. 첫 입장부터 2 시간 안에 못 끝내면 방이 처음으로 돌아가요.
