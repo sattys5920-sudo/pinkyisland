@@ -3295,6 +3295,7 @@ function onLetters(v){
   const next = {}; for (const [id,l] of Object.entries(v||{})) if (l && typeof l.text==='string') next[id] = l;
   const fresh = Object.entries(next).filter(([id,l])=>!l.read && letterSeen && !letterSeen.has(id));
   letterSeen = new Set(Object.keys(next)); letters = next;
+  if (!fresh.length && !onLetters.told){ const n = Object.values(next).filter(l=>!l.read).length; if (n){ onLetters.told = true; setTimeout(()=>{ addLog(`✉️ 읽지 않은 편지가 ${n} 통 있어요. 토리 우체국에서 읽어요`, true); toast(`읽지 않은 편지 ${n} 통 · 토리 우체국`); }, 2500); } } // 접속해 보니 와 있던 답장도 알려 줘요
   for (const [,l] of fresh){ addLog(`✉️ ${String(l.nick || letterWho(l.from) || '누군가').slice(0,10)} 님에게서 편지가 왔어요. 토리 우체국에서 읽어요`, true); toast('토리 우체국에 편지가 왔어요'); }
   if (!$('npcPanel').hidden && $('npcPanel').dataset.post) postPanel(postView);
 }
