@@ -316,6 +316,7 @@ body.typing #chatin{background:#fff}
 .adm-chk{display:flex;gap:8px;align-items:center}.adm-chk input{width:20px;height:20px}
 .adm-wrow{display:flex;gap:8px}#admWipeTxt{flex:1;min-width:0;font:inherit;border:0;border-radius:10px;padding:2px 10px}.adm-btn:disabled{opacity:.4;cursor:default}
 #admChatWho{font:inherit;font-size:18px;border-radius:10px;border:0;padding:1px 8px;pointer-events:auto}
+body.admin #stats,body.admin #quest{display:none!important}
 body.admin #toast{z-index:40;background:rgba(28,22,30,.92);color:#f4eef2;border-radius:14px}
 button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 4px;border-radius:10px}button.adm-r:hover{background:rgba(255,255,255,.08)}
 .adm-tbl{position:absolute;left:50%;top:66px;transform:translateX(-50%);width:min(1120px,calc(100% - 20px));max-height:calc(100% - 80px);background:rgba(28,22,30,.94);border-radius:16px;padding:8px 12px 10px;pointer-events:auto;display:flex;flex-direction:column;gap:6px;z-index:2}
@@ -325,10 +326,25 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 .adm-tbl td{text-align:center;padding:2px 6px;border-radius:8px;position:relative}.adm-tbl td.g{text-align:right;font-variant-numeric:tabular-nums}.adm-tbl td.g small{display:block;font-size:14px;opacity:.85;line-height:1}.adm-tbl td.up small{color:#7dff9a;opacity:1}.adm-tbl td.dn small{color:#ff8a98;opacity:1}
 .adm-tbl td.t1{background:rgba(255,255,255,.06)}.adm-tbl td.t2{background:#5d4558}.adm-tbl td.t3{background:#9a4f78}.adm-tbl td.t4{background:#ff9fc4;color:#2a2429}
 .adm-tbl td em{position:absolute;right:2px;top:2px;width:6px;height:6px;border-radius:50%;background:#7dff9a}.adm-tbl tr.sel td{outline:2px solid #ff9fc4}
+/* 폰 관리자: 위 한 줄 막대 + [메뉴] 버튼, 표·채팅·편지·지우기는 아래까지 꽉 찬 창으로 */
+.adm-menu{display:none}
 @media (max-width:640px){
-  .adm-zones{top:auto;bottom:10px;left:10px;right:10px;flex-direction:row;overflow-x:auto;max-height:none}.adm-zone{min-width:auto;white-space:nowrap}
-  .adm-side{top:auto;bottom:58px;left:10px;right:10px;width:auto;max-height:38%}
-  .adm-tbl{top:104px;max-height:calc(100% - 170px)}
+  #adminUi{font-size:18px}
+  .adm-top{left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px);flex-wrap:nowrap;gap:8px;padding:5px 8px 5px 12px}
+  .adm-top b{font-size:19px;white-space:nowrap}.adm-top .rec{font-size:14px;white-space:nowrap}.adm-clock{display:none}
+  .adm-view{flex:1;min-width:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .adm-top .adm-btn{white-space:nowrap;padding:3px 10px}
+  .adm-menu{display:inline-block}.adm-menu.on{background:#ff9fc4}
+  .adm-zones{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);left:8px;right:8px;flex-direction:row;overflow-x:auto;max-height:none;scrollbar-width:none}.adm-zones::-webkit-scrollbar{display:none}.adm-zone{min-width:auto;white-space:nowrap}
+  .adm-side{display:none;top:calc(env(safe-area-inset-top,0px) + 60px);bottom:calc(env(safe-area-inset-bottom,0px) + 56px);left:8px;right:8px;width:auto;max-height:none}
+  #adminUi.side-open .adm-side{display:flex}
+  #adminUi.panel-open .adm-side,#adminUi.panel-open .adm-zones{display:none}
+  .adm-tbl,.adm-wipe{left:0;right:0;transform:none;width:auto;top:calc(env(safe-area-inset-top,0px) + 58px);bottom:0;max-height:none;border-radius:18px 18px 0 0;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 14px)}
+  .adm-tbl-head b{font-size:20px}.adm-tbl-head small{font-size:15px;flex-basis:100%;order:3}
+  .adm-tbl table{font-size:16px}
+  .adm-chat-list{flex:1;min-height:0}
+  .adm-letter .adm-wrow{flex-direction:column}.adm-letter .adm-btn{align-self:flex-end}
+  .adm-msg{flex-wrap:wrap;column-gap:6px}.adm-msg span{flex-basis:100%}
 }
 </style>
 </head>
@@ -3636,6 +3652,7 @@ function frame(t){
 }
 // ===== 관리자 CCTV: 캐릭터 없이 구역을 골라 보거나 접속한 사람을 따라가며 지켜봐요 =====
 let admWipe = false, admWipeTxt = '', admWipeChat = false, wiping = false; // 모든 가입 데이터 지우기 창
+let admSide = false; // 폰에서 [메뉴]로 여닫는 관리 목록
 let adminLetterData = {}, admPost = false, admDrafts = {}; // 주민·오투모에게 온 편지 (관리자가 답장)
 let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
 let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
@@ -3644,7 +3661,7 @@ const kstClock = () => new Date(Date.now() + 9*3600000).toISOString().slice(0, 1
 const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : (ZONES[z]?.name || '집터');
 function enterAdmin(){
   obStep = null; $('ob').hidden = true;
-  for (const id of ['hud','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
+  for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
   let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
@@ -3653,6 +3670,7 @@ function enterAdmin(){
 }
 function renderAdmin(){
   const box = $('adminUi'); if (!box || !admin) return;
+  box.classList.toggle('panel-open', !!(admWipe || admPost || admTbl !== null || admChat !== null)); box.classList.toggle('side-open', admSide);
   const online = [...others.values()], onIds = new Set(online.map(o=>o.uid)), count = {};
   for (const o of online) count[o.z] = (count[o.z]||0) + 1;
   const regs = Object.entries(players).sort(([,a],[,b])=>String(a.nick).localeCompare(String(b.nick), 'ko'));
@@ -3660,7 +3678,7 @@ function renderAdmin(){
   const wasTyping = document.activeElement && document.activeElement.id==='admWipeTxt'; // 다시 그려도 입력하던 칸은 그대로
   const typingRk = document.activeElement?.dataset?.rk, pl = box.querySelector('.adm-post-list'), postScroll = pl ? pl.scrollTop : 0;
   box.innerHTML = `
-    <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span><button data-a="logout" class="adm-btn">로그아웃</button></div>
+    <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span><button data-a="side" class="adm-btn adm-menu ${admSide ? 'on' : ''}">메뉴${adminInbox().some(x=>!x.l.replied) ? ' ●' : ''}</button><button data-a="logout" class="adm-btn">로그아웃</button></div>
     <div class="adm-zones">${Object.keys(ZONES).map(z=>`<button data-z="${z}" class="adm-zone ${zoneId===z && !cam.follow ? 'on' : ''}">${esc(ZONES[z].name)}<i>${count[z]||0}</i></button>`).join('')}</div>
     <div class="adm-side">
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
@@ -3755,6 +3773,7 @@ function adminClick(e){
   if (b.dataset.a==='table'){ admPost = false; admTbl = admTbl===null ? '' : null; admChat = null; admWipe = false; admScroll = [0, 0]; return renderAdmin(); }
   if (b.dataset.a==='chat'){ admPost = false; admChat = admChat===null ? '' : null; admTbl = null; admWipe = false; admChatScroll = null; return renderAdmin(); }
   if (b.dataset.a==='cclose'){ admChat = null; return renderAdmin(); }
+  if (b.dataset.a==='side'){ admSide = !admSide; admPost = false; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
   if (b.dataset.a==='post'){ admPost = !admPost; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
   if (b.dataset.a==='pclose'){ admPost = false; return renderAdmin(); }
   if (b.dataset.a==='lreply') return adminReply(b.dataset.to, b.dataset.id);
@@ -3764,8 +3783,8 @@ function adminClick(e){
   if (b.dataset.a==='wipego') return wipeAll();
   if (b.dataset.a==='tclose'){ admTbl = null; return renderAdmin(); }
   if (b.dataset.p){ admTbl = admTbl===b.dataset.p ? null : b.dataset.p; admChat = null; admWipe = false; return renderAdmin(); }
-  if (b.dataset.z){ cam.follow = null; cam.zone = b.dataset.z; const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2); renderAdmin(); }
-  else if (b.dataset.f){ cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
+  if (b.dataset.z){ admSide = false; cam.follow = null; cam.zone = b.dataset.z; const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2); renderAdmin(); }
+  else if (b.dataset.f){ admSide = false; cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) net.setWorld({dark:v, darkAt:Date.now()}).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
   else if (b.dataset.a==='logout'){ if (confirm('관리자 페이지에서 나갈까요?')) logout(); }
 }
@@ -3866,7 +3885,7 @@ function talkBubble(key, x, y, t){
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-80);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { tvPanel, candyPrice, candyTrade, showLive, lastSlot, adminTest: ()=>{ admin = true; others.set('t1', {x:820, y:640, sx:820, sy:640, z:'village', dir:'down', look:CH.defaultLook(), nick:'테스트', uid:'t1'}); enterAdmin(); }, showAdminLogin, housePanel, myHouse, HOUSE_LV, WALLS, FLOORS, iconURL, uiURL, menuPanel, situationsNow, situationLine, showLogin, logout, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { postPanel, relOf, get dlg(){ return dlg; }, giftMenu, gainExp, eat, foodOf, travelTo, get sta(){ return playerSta; }, ZONES, tvPanel, candyPrice, candyTrade, showLive, lastSlot, adminTest: ()=>{ admin = true; others.set('t1', {x:820, y:640, sx:820, sy:640, z:'village', dir:'down', look:CH.defaultLook(), nick:'테스트', uid:'t1'}); enterAdmin(); }, showAdminLogin, housePanel, myHouse, HOUSE_LV, WALLS, FLOORS, iconURL, uiURL, menuPanel, situationsNow, situationLine, showLogin, logout, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
 </body>
 </html>
