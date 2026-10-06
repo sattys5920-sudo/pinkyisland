@@ -1098,7 +1098,7 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz;
-    Object.assign(o, {um: umbOk(s.um), down: !!s.down && String(s.z||'').startsWith('dark:'), sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), nick:String(s.nick||'').slice(0,8), uid:id});
+    Object.assign(o, {um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), nick:String(s.nick||'').slice(0,8), uid:id});
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
   }
@@ -1145,6 +1145,8 @@ function soloNet(){
     petClaim: async sp => { petClaims[sp] = {uid}; return true; },
     snowman: async s => { snowmen[uid] = s; },
     darkTx: async (npc, fn) => { const st_ = soloNet.dark || (soloNet.dark = {}); const r = fn(st_[npc] ? structuredClone(st_[npc]) : null); if (r !== undefined){ if (r === null) delete st_[npc]; else st_[npc] = r; } onDarkRooms(structuredClone(st_)); return r !== undefined; },
+    reviveSend: async (id, by) => { if (id === uid) onRevive({by, at:darkNow()}); },
+    reviveClear: async () => {},
     darkWipe: async npc => { const st_ = soloNet.dark || (soloNet.dark = {}); if (npc) delete st_[npc]; else for (const k in st_) delete st_[k]; onDarkRooms(structuredClone(st_)); },
     adminRemove: async id => { delete st.players[id]; onPlayers(structuredClone(st.players)); },
     sessionClaim: () => {},
@@ -1191,6 +1193,8 @@ function firebaseNet(){
     snowman: s => F.set(F.ref(db, 'snowmen/'+uid), s),
     darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
+    reviveSend: (id, by) => F.set(F.ref(db, 'revive/'+id), {by:String(by).slice(0,12), at:F.serverTimestamp()}),
+    reviveClear: () => F.remove(F.ref(db, 'revive/'+uid)).catch(()=>{}),
     // 입주한 뒤 남아 있는 내 옛 선점(다른 지붕·집터)을 풀어 줘요
     cleanupClaims: async (roof, lot) => { for (const [kind, mine] of [['roofs', roof], ['lots', lot]]){ try { const v = (await F.get(F.ref(db, kind))).val() || {}; for (const [k,c] of Object.entries(v)) if (c && c.uid===uid && +k !== mine) await F.remove(F.ref(db, kind+'/'+k)).catch(()=>{}); } catch(e){} } },
     adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ['snowmen/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
@@ -1216,6 +1220,7 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'petClaims'), s=>{ petClaims = s.val() || {}; }, ()=>{});
       F.onValue(F.ref(db, 'snowmen'), s=>{ snowmen = s.val() || {}; }, ()=>{});
       F.onValue(F.ref(db, 'darkRooms'), s=>onDarkRooms(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'revive/'+uid), s=>onRevive(s.val()), ()=>{});
       F.onValue(F.ref(db, 'lettersOut/'+uid), s=>onLettersOut(s.val()), ()=>{});
       F.onValue(F.ref(db, 'market'), s=>onMarket(s.val()));
       F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
@@ -1517,6 +1522,7 @@ function renderHud(){
   $('quest').hidden = me.quest >= TUT_DONE; $('quest').innerHTML = `<b>할 일${me.quest >= TUT_START ? ` · 섬 생활 첫걸음 ${me.quest - TUT_START + 1}/${TUT.length}` : ''}</b>${QUESTS[Math.min(me.quest, TUT_DONE)]}`; setTimeout(tutCheck);
   const it = [['can','물뿌리개',me.inv.can],['rod','낚싯대',me.inv.rod],['pick','곡괭이',me.inv.pick],['sword',me.inv.sword ? `${weapon().name} (공격력 ${weapon().atk})` : '검',me.inv.sword]];
   $('swingBtn').hidden = !me.inv.sword; snowBtnUpdate(); darkHud();
+  if (darkDown && !zoneId.startsWith('dark:')){ $('quest').hidden = false; $('quest').innerHTML = '<b style="color:#ff4f87">기절했어요</b>친구가 다가와 눌러 주면 일어나요 · 잠깐 쉬어요'; }
   $('bar').innerHTML = it.map(([e,n,c])=>`<div class="${c?'':'off'}" title="${n}" aria-label="${n}${c?'':' 없음'}">${ui(e,'bi')}</div>`).join('') + `<div id="bagBtn" title="가방" aria-label="가방" style="cursor:pointer">${ui('bag','bi')}</div>`;
   $('bagBtn').onclick = showBag;
   if (!$('npcPanel').hidden && $('npcPanel').dataset.kind==='npc') renderNpcPanel();
@@ -1930,6 +1936,7 @@ function mapInfo(){
   const go = $('mapGo'); if (go) go.onclick = ()=>travelTo(id);
 }
 function travelTo(id){
+  if (darkDown) return toast('기절해 있어서 움직일 수 없어요');
   if (fishing) return toast('낚시 중에는 갈 수 없어요');
   if (nearFoe(260)) return toast('몬스터가 가까이 있어서 지금은 못 가요');
   if (!useSta('travel')) return;
@@ -2382,7 +2389,7 @@ function updateMobs(dt, t){
     const dx = tx-mob.x, dy = ty-mob.y, l = Math.hypot(dx,dy);
     if (mob.kb > 0){ mob.kb -= dt; const nx = mob.x + mob.kvx*dt, ny = mob.y + mob.kvy*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; mob.kvx *= .86; mob.kvy *= .86; continue; }
     if (l > 22 && mob.hurt <= 0){ const nx = mob.x + dx/l*sp*dt, ny = mob.y + dy/l*sp*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; }
-    if (d < 30 && mob.cd <= 0 && !talking){
+    if (d < 30 && mob.cd <= 0 && !talking && !darkDown && t > wakeGuardUntil){
       mob.cd = 1.2; playerHp -= m.atk; lastHurt = t; pushPlayer(pos.x-mob.x, pos.y-mob.y, 18); setExpr('surprised', 1200);
       fx.push({x:pos.x, y:pos.y-50, text:'-'+m.atk, t, color:'#ff3b6b'});
       if (playerHp <= 0) return faint();
@@ -2478,11 +2485,12 @@ function hitMob(mob, t, vx, vy){
     if (mob.id==='m28' && net && net.sendChat) net.sendChat('(동굴의 주인을 물리쳤다!)').catch(()=>{});
   }
 }
-function faint(){
-  if (zoneId.startsWith('dark:')) return darkRespawn();
-  playerHp = maxHp(); mobs = []; mobZone = null;
+function faint(){ return darkRespawn(); }
+// 아무도 깨워 주지 않을 때: 집 앞에서 깨어나요 (일반 모드)
+function wakeAtHome(){
+  darkDown = null; playerHp = maxHp(); mobs = []; mobZone = null; renderHud();
   const L = LOTS[me.lot]; enterZone('home', null, L.x, L.y + 18);
-  say('기절', '눈앞이 깜깜해졌어요.... 정신을 차려 보니 집 앞이에요.', [], '체력이 다시 가득 찼어요');
+  say('기절', '집에서 푹 쉬고 일어났어요. 몸이 가뿐해요!', [], '체력이 다시 가득 찼어요');
 }
 function drawMob(d, mob, t){
   const m = MONSTERS[mob.id], c = d.ctx, x = mob.x, y = mob.y, s = .9 + Math.min(1, m.hp/200)*.35, bob = Math.sin(t/180 + x)*1.5;
@@ -3640,7 +3648,7 @@ function updateBoss(dt, t){
   const d = Math.hypot(pos.x-BOSS.x, pos.y-BOSS.y);
   bossCd -= dt;
   bossHurt -= dt;
-  if (d < 70 && bossCd <= 0 && $('talk').hidden){ bossCd = 1.6; playerHp -= BOSS.atk; lastHurt = t; pushPlayer(pos.x-BOSS.x, pos.y-BOSS.y, 30); setExpr('surprised', 1200); fx.push({x:pos.x, y:pos.y-50, text:'-'+BOSS.atk, t, color:'#ff3b6b'}); if (playerHp <= 0) return faint(); }
+  if (d < 70 && bossCd <= 0 && $('talk').hidden && !darkDown && t > wakeGuardUntil){ bossCd = 1.6; playerHp -= BOSS.atk; lastHurt = t; pushPlayer(pos.x-BOSS.x, pos.y-BOSS.y, 30); setExpr('surprised', 1200); fx.push({x:pos.x, y:pos.y-50, text:'-'+BOSS.atk, t, color:'#ff3b6b'}); if (playerHp <= 0) return faint(); }
   if (bossPending && t - bossFlushT > 1000){ bossFlushT = t; const p = bossPending; bossPending = 0; net.bossHit && net.bossHit(p); }
 }
 function drawBoss(d, t){
@@ -3745,7 +3753,6 @@ function drawDarkFx(c, t){
 function darkTap(w){
   if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (NPC[npc]?.zone === zoneId){ const [x, y] = darkDoorOf(npc); if (Math.abs(w.x-x) < 30 && w.y > y-80 && w.y < y+8) return {x, y:y+30, act:()=>darkEnter(npc)}; }
   const z = Z(); if (!z.dark) return null;
-  for (const [id, o] of others) if (o.down && o.z === zoneId && Math.abs(w.x-o.x) < 40 && Math.abs(w.y-(o.y-10)) < 34) return {x:o.x + 30, y:o.y + 10, act:()=>{ darkRevive = {id, uid:o.uid, at:performance.now()}; toast(`${o.nick} 님을 살리는 중.... 가까이 있어요`); }};
   for (const pz of darkPuzzles(z.dark)) if (Math.abs(w.x-pz.x) < 34 && w.y > pz.y-80 && w.y < pz.y+12) return {x:pz.x, y:pz.y+34, act:()=>darkPuzzlePanel(pz)};
   return null;
 }
@@ -3764,21 +3771,35 @@ async function darkEnter(npc){
 function darkLeave(msg){ const z = Z(); if (!z.dark) return; if (darkDown){ darkDown = null; playerHp = maxHp(); } const [dx, dy] = darkDoorOf(z.dark); darkSlams = []; enterZone(NPC[z.dark].zone, null, dx, dy + 44); if (msg) say('다크 모드', msg); }
 // 쓰러지면 그 자리에 누워 있어요. 다른 사람이 다가와 눌러 주거나(2 초) 관리자가 살려 주면 일어나요
 let darkDown = null, darkRevive = null; // darkDown: 쓰러진 시각 · darkRevive: 내가 살리는 중인 사람 {id, at}
+// 일반 모드는 순하게: '기절'·'깨우기', 다크 모드는 '쓰러짐'·'살리기'
+const downWords = () => zoneId.startsWith('dark:') ? {down:'쓰러짐', did:'쓰러졌어요', help:'살리기', helped:'살려 줬어요', helping:'살리는 중'} : {down:'기절', did:'기절했어요', help:'깨우기', helped:'깨워 줬어요', helping:'깨우는 중'};
+let downOffer = false, wakeGuardUntil = 0; // 깨어난 뒤 3 초는 몬스터가 안 때려요
 function darkRespawn(){
   if (darkDown) return;
-  playerHp = 0; darkDown = darkNow(); darkSlams = []; target = null; setExpr('sad', 3000);
-  toast('쓰러졌어요.... 다른 사람이 살려 줄 때까지 기다려요'); renderHud();
+  playerHp = 0; darkDown = darkNow(); downOffer = false; darkSlams = []; target = null; setExpr('sad', 3000);
+  toast(zoneId.startsWith('dark:') ? '쓰러졌어요.... 다른 사람이 살려 줄 때까지 기다려요' : '앗, 기운이 다 빠져서 기절했어요.... 친구가 와서 깨워 주면 일어나요'); renderHud();
 }
 function darkStandUp(by){
-  if (!darkDown) return; darkDown = null; playerHp = Math.round(maxHp()*.5); darkGuard = 3; renderHud();
-  toast(by ? `${String(by).slice(0,8)} 님이 살려 줬어요! 다시 싸워요` : '다시 일어났어요');
+  if (!darkDown) return; darkDown = null; playerHp = Math.round(maxHp()*.5); darkGuard = 3; wakeGuardUntil = performance.now() + 3000; renderHud();
+  closeTalk(); toast(by ? `${String(by).slice(0,8)} 님이 ${downWords().helped}! ${zoneId.startsWith('dark:') ? '다시 싸워요' : '조심해서 다녀요'}` : '다시 일어났어요');
 }
 function drawDowned(c, x, y, look, t, key){
   c.save(); c.translate(x, y-6); c.rotate(-Math.PI/2); c.globalAlpha = .7; drawPlayer(c, 14, 18, look, 'down', 0, false, 1, 'dot'); c.restore();
   c.save(); c.fillStyle = '#ffd76a'; for (let i = 0; i < 3; i++){ const a = t/400 + i*2.1; c.beginPath(); c.arc(x - 6 + Math.cos(a)*16, y - 26 + Math.sin(a)*5, 2.6, 0, 7); c.fill(); } c.restore(); // 머리 위 별
   if (darkRevive && darkRevive.id === key){ const a = Math.min(1, (performance.now() - darkRevive.at) / 2000); c.save(); c.strokeStyle = '#59c27a'; c.lineWidth = 5; c.beginPath(); c.arc(x, y-20, 24, -Math.PI/2, -Math.PI/2 + a*Math.PI*2); c.stroke(); c.restore(); }
 }
-function darkReviveSend(npc, id, by){ return net.darkTx(npc, cur => cur ? {...cur, revive:{...(cur.revive||{}), [id]:{by, at:darkNow()}}} : undefined); }
+function darkReviveSend(npc, id, by){ return net.reviveSend(id, by); }
+// 누가 나를 깨웠어요 (revive/<내 uid>)
+function onRevive(v){ if (!v || !darkDown || !(v.at >= darkDown)) return; darkStandUp(v.by); net.reviveClear && net.reviveClear(); }
+// 기절·쓰러짐: 깨우는 중 진행, 혼자 깨어나기 제안 (모든 구역)
+function updateDown(dt, t){
+  if (darkRevive){ const o = others.get(darkRevive.id), far = !o || Math.hypot(pos.x-o.x, pos.y-o.y) > 80;
+    if (o && !o.down) darkRevive = null;
+    else if (!o || o.z !== zoneId || darkDown || far){ darkRevive = null; toast(`${downWords().help}가 끊겼어요`); }
+    else if (t - darkRevive.at > 2000){ net.reviveSend(darkRevive.uid, me.nick); darkRevive = null; gainExp(10); toast(`${o.nick} 님을 ${downWords().helped.replace('줬어요', '줬어요!')}`); } }
+  if (darkDown && !zoneId.startsWith('dark:') && !downOffer && darkNow() - darkDown > 60000){ downOffer = true;
+    say('기절', '한참 기다렸는데 아무도 오지 않았어요.... 집에서 푹 쉬고 일어날까요?', [['집에서 깨어나기', ()=>{ closeTalk(); wakeAtHome(); }], ['조금 더 기다리기', ()=>{ closeTalk(); downOffer = false; darkDown = darkNow(); }]], '', true); }
+}
 // ----- 문제 -----
 const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
 function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of darkPuzzles(z.dark)){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
@@ -3823,9 +3844,6 @@ function updateDark(dt, t){
   if (t > darkHudT){ darkHudT = t + 1000; if (zoneId.startsWith('dark:')) darkHud(); }
   const z = Z(); if (!z.dark) return; const npc = z.dark, r = roomOf(npc);
   darkGuard -= dt; darkHurtT -= dt;
-  if (darkRevive){ const o = others.get(darkRevive.id); if (!o || !o.down || o.z !== zoneId || darkDown || Math.hypot(pos.x-o.x, pos.y-o.y) > 80){ if (o && !o.down) darkRevive = null; else if (!o || darkDown || Math.hypot(pos.x-o.x, pos.y-o.y) > 80){ darkRevive = null; toast('살리기가 끊겼어요'); } }
-    else if (t - darkRevive.at > 2000){ darkReviveSend(npc, darkRevive.uid, me.nick); darkRevive = null; gainExp(10); toast(`${o.nick} 님을 살렸어요!`); } }
-  if (darkDown){ const rv = (r.revive || {})[uid]; if (rv && rv.at >= darkDown){ darkStandUp(rv.by); net.darkTx(npc, cur => { if (!cur || !cur.revive) return undefined; const v = {...cur.revive}; delete v[uid]; return {...cur, revive:v}; }); } }
   if (darkOn() && npc !== darkToday() && !r.clear) return darkLeave('이 방의 문이 닫혔어요');
   if (r.start && !r.clear && darkNow() > r.start + DARK_LIMIT_MS){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? {att:(cur.att|0)+1} : undefined); return darkLeave('2 시간이 지났어요.... 방이 처음으로 돌아갔어요. 다시 들어가면 새로 시작해요.'); }
   if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
@@ -4082,6 +4100,7 @@ addEventListener('keydown', e=>{
   if (e.key==='Enter'){ if (typing()){ sendChat(); } else { openChat(); } e.preventDefault(); return; }
   if (e.key==='Escape'){ closeTalk(); $('chatin').blur(); return; }
   if (typing()) return;
+  if (darkDown) return;
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase()==='f' || e.key.toLowerCase()==='j'){ e.preventDefault(); swing(); return; }
   if (e.key===' '||e.key.toLowerCase()==='e'){ e.preventDefault(); if (!fishTap()){ if (me.inv.sword && nearFoe()) swing(); else interactNear(); } }
@@ -4102,6 +4121,7 @@ document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow
 
 function toWorld(cx, cy){ return { x: view.cx + cx/view.zoom, y: view.cy + cy/view.zoom }; }
 function hitTarget(w){
+  for (const [id, o] of others) if (o.down && o.z === zoneId && Math.abs(w.x-o.x) < 40 && Math.abs(w.y-(o.y-10)) < 34) return {x:o.x + 30, y:o.y + 10, act:()=>{ darkRevive = {id, uid:o.uid, at:performance.now()}; toast(`${o.nick} 님을 ${downWords().helping}.... 곁에 있어 줘요`); }};
   const pt = petTap(w); if (pt) return pt;
   for (const pl of (Z().places||[])) if (pl.post){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:()=>postPanel()}; }
   for (const pl of (Z().places||[])) if (pl.shelter){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:shelterPanel}; }
@@ -4121,7 +4141,7 @@ cv.addEventListener('pointerdown', e=>{
   // 폰에서 아래 시트가 열려 있으면, 바깥을 누르면 시트만 닫혀요
   if (matchMedia('(max-width:640px)').matches && (!$('npcPanel').hidden || !$('mapPanel').hidden)){ $('npcPanel').hidden = true; $('mapPanel').hidden = true; return; }
   if (fishTap()) return;
-  if (darkDown) return toast('쓰러져 있어요 · 다른 사람이 살려 줄 때까지 기다려요');
+  if (darkDown) return toast(zoneId.startsWith('dark:') ? '쓰러져 있어요 · 다른 사람이 살려 줄 때까지 기다려요' : '기절해 있어요 · 친구가 깨워 줄 때까지 잠깐 쉬어요');
   const w = toWorld(e.clientX, e.clientY), t = hitTarget(w) || contentTarget(w) || fishTarget(w);
   target = t ? t : {x:w.x, y:w.y, act:null, mark:performance.now()};
 });
@@ -4334,7 +4354,7 @@ function frame(t){
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
     if (admin){ moveOthers(dt); adminCam(); }
-    else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateDark(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
+    else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateDark(dt, t); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
     const z = view.zoom, vw = view.w/z, vh = view.h/z;
@@ -4355,13 +4375,13 @@ function frame(t){
     const ents = [
       ...darkEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
-      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.down){ tag(ctx, `${o.nick} · 쓰러짐 (눌러서 살리기)`, o.x, o.y-40, '#ff4f87'); return; } tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-80); talkBubble(k,o.x,o.y,t); }})),
+      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-80); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
       ...snowmenHere().map(([,s])=>({y:s.y, draw:()=>drawSnowman(d, s, t), label:()=>{}})),
-      ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (umbKey() && isRain() && snowOutside()) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving); }, label:()=>{ if (darkDown){ tag(ctx, `${me.nick} · 쓰러짐`, pos.x, pos.y-40, '#ff4f87'); return; } tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-80); talkBubble('me',pos.x,pos.y,t); }}]),
+      ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (umbKey() && isRain() && snowOutside()) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving); }, label:()=>{ if (darkDown){ tag(ctx, `${me.nick} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-80); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
@@ -4407,6 +4427,7 @@ function renderAdmin(){
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
+      ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>`).join('')}</div>` : ''}
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
       <div class="adm-sec"><b>데이터 관리</b><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
@@ -4425,7 +4446,6 @@ function adminDarkSec(){
     : r.start ? `문제 ${darkSolvedN(r)}/${n} · 남은 ${Math.ceil(left/60000)} 분 · ${(r.att|0)+1} 번째 도전` : '아직 아무도 안 들어갔어요';
   return `<div class="adm-dark"><b>${i+1} 일 차 · ${npc ? esc(NPC[npc].name)+'의 방' : '-'}</b><small>${state} · 방 안 ${inRoom} 명</small>
     <div class="adm-wrow"><button data-a="dkprev" class="adm-btn">◀ 이전 방</button><button data-a="dknext" class="adm-btn">다음 방 ▶</button></div>
-    ${npc ? [...others.values()].filter(o=>o.z==='dark:'+npc && o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 살리기 (쓰러짐)</button>`).join('') : ''}
     <div class="adm-wrow"><button data-a="dkview" class="adm-btn" ${npc ? '' : 'disabled'}>방 보기</button><button data-a="dkreset" class="adm-btn warn" ${npc ? '' : 'disabled'}>이 방 처음으로</button></div></div>`;
 }
 // 주민 캐릭터·옷·우산·펫·가방 옷, 집(단계·벽지·바닥·가구·텃밭)을 한눈에. [집 안 보기]로 CCTV를 그 집으로
@@ -4567,7 +4587,7 @@ function adminClick(e){
   if (b.dataset.z){ admSide = false; cam.follow = null; cam.zone = b.dataset.z; const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2); renderAdmin(); }
   else if (b.dataset.f){ admSide = false; cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
   else if (b.dataset.a==='dkprev' || b.dataset.a==='dknext'){ net.setWorld({darkShift:(world.darkShift|0) + (b.dataset.a==='dknext' ? 1 : -1)}); }
-  else if (b.dataset.rv){ const npc = darkToday(); if (npc) darkReviveSend(npc, b.dataset.rv, '관리자').then(()=>toast('살렸어요')); }
+  else if (b.dataset.rv){ net.reviveSend(b.dataset.rv, '관리자').then(()=>toast('깨웠어요')); }
   else if (b.dataset.a==='dkreset'){ const npc = darkToday(); if (npc && confirm(`${NPC[npc].name}의 방을 처음 상태로 되돌릴까요? 푼 문제·시간·보스 체력이 모두 지워져요.`)) net.darkWipe(npc); }
   else if (b.dataset.a==='dkview'){ const npc = darkToday(); if (npc){ admSide = false; cam.follow = null; cam.zone = 'dark:'+npc; enterZone('dark:'+npc, null, DARK_ROOM.W/2, DARK_ROOM.H/2); renderAdmin(); } }
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) (v && net.darkWipe ? net.darkWipe() : Promise.resolve()).then(()=>net.setWorld({dark:v, darkAt:Date.now(), darkShift:0})).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }

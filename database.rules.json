@@ -113,6 +113,13 @@
         }
       }
     },
+    "revive": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.child('at').isNumber() && newData.child('by').isString() && newData.child('by').val().length <= 12)"
+      }
+    },
     "darkRooms": {
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
