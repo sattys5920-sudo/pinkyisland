@@ -155,6 +155,7 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .np-day{font-size:16px;color:var(--soft);text-align:right}
 .np-h small{color:var(--soft);letter-spacing:0}
 .np-keep{grid-column:1/-1;font-size:16px;color:var(--ink);opacity:.8}
+.dk-q{font-size:18px;line-height:1.5;margin:4px 2px 10px;white-space:pre-wrap}.dk-ans{display:flex;gap:6px;margin-bottom:8px}.dk-ans input{flex:1;min-width:0;font:inherit;font-size:18px;padding:8px 12px;border-radius:12px;border:2px solid #f2c6d6}.dk-ok{color:#2f9b57;font-size:17px}.adm-dark{display:grid;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.12)}.adm-dark small{opacity:.8}
 .worn-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}.worn-row>b{font-size:14px;width:100%}.worn{display:flex;align-items:center;gap:6px;background:#fff;border:0;border-radius:14px;padding:4px 10px 4px 4px;box-shadow:0 2px 0 #f2d6e1;font:inherit;cursor:pointer;color:inherit}.worn img{width:38px;height:38px}.worn span{display:grid;line-height:1.15;text-align:left;font-size:13px}.worn small{color:var(--soft,#9b7d8b);font-size:11px}.worn b{font-size:12px;color:#e0708f;margin-left:2px}
 .umb-cols{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 2px 8px}.umb-cols b{font-size:14px;margin-right:2px}.umb-sw{width:30px;height:30px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px #e7c9d6, inset -3px -4px 6px rgba(90,40,70,.18), inset 3px 3px 5px rgba(255,255,255,.5);padding:0;cursor:pointer}.umb-sw.on{box-shadow:0 0 0 3px #ff7aa8, inset -3px -4px 6px rgba(90,40,70,.18), inset 3px 3px 5px rgba(255,255,255,.5)}
 #sideBtns{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 78px);display:flex;flex-direction:column;gap:8px;z-index:5}
@@ -413,6 +414,7 @@ import { SITUATIONS } from './situations.js';
 import { UI, EMOJI_UI } from './art/ui.js';
 import { FURN_ALL, FURN_DRAW } from './art/furniture.js';
 import { PET_SPECIES, PET_DRAW } from './art/pets.js';
+import { DARK_ORDER, DARK_LIMIT_MS, DARK_ROOM, DARK_BOSS, DARK_REWARD, DARK_ROOMS, placeholderPuzzles } from './dark.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
 import { ART_PART as ART_CROPS } from './art/crops.js';
@@ -746,7 +748,7 @@ function drawFence(d, L){
 
 // 지금 있는 구역
 let zoneId = 'home';
-const Z = () => zoneId.startsWith('house:') ? houseZone(zoneId.slice(6)) : ZONES[zoneId];
+const Z = () => zoneId.startsWith('house:') ? houseZone(zoneId.slice(6)) : zoneId.startsWith('dark:') ? darkZone(zoneId.slice(5)) : ZONES[zoneId];
 function houseRect(p){ const w = p.wide ? 150 : 112; return {x:p.x-w/2,y:p.y-108,w,h:110}; }
 const obstacles = { circles: [], rects: [], ells: [] };
 // 가로등: 길 옆에 자동으로 놓여요 (가운데와 출구 쪽 길 중간). 다른 물건과 겹치는 자리는 빼요
@@ -773,6 +775,8 @@ function rebuildObstacles(){
   if (zoneId==='home') for (const p of Object.values(players)) if (p.lot!=null){ const L=LOTS[p.lot]; o.rects.push({x:L.x-54,y:L.y-106,w:108,h:108}); }
   // 남의 울타리(빈 집터 포함)는 못 들어가요. 내 울타리만 드나들 수 있어요
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (me && me.lot===i) return; if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return; o.rects.push({x:L.x-FENCE.w/2, y:L.y+FENCE.top-6, w:FENCE.w, h:FENCE.h+6}); });
+  if (z.dark) for (const pz of darkPuzzles(z.dark)) o.circles.push({x:pz.x, y:pz.y-4, r:26});
+  if (darkOn() && !z.dark && !z.house) for (const npc of DARK_ORDER) if (NPC[npc]?.zone===zoneId){ const [dx, dy] = darkDoorOf(npc); o.rects.push({x:dx-26, y:dy-70, w:52, h:72}); }
   Object.assign(obstacles, o);
   if (!z.lamps && z.theme!=='room' && z.theme!=='cave'){ placeLamps(z); staticSig = ''; }
   for (const l of (z.lamps||[])) obstacles.circles.push({x:l.x, y:l.y, r:8});
@@ -801,6 +805,7 @@ function checkExit(){
   let side = null;
   if (ex.n && pos.y < 30) side = 'n'; else if (ex.s && pos.y > z.H-30) side = 's';
   else if (ex.w && pos.x < 30) side = 'w'; else if (ex.e && pos.x > z.W-30) side = 'e';
+  if (side && z.dark){ const [dx, dy] = darkDoorOf(z.dark); return enterZone(NPC[z.dark].zone, null, dx, dy + 44); }
   if (side && z.house){ const p = z.house===uid ? me : players[z.house], L = LOTS[(p && p.lot!=null) ? p.lot : me.lot]; return enterZone('home', null, L.x, L.y + 24); }
   if (side) enterZone(ex[side], {n:'s', s:'n', w:'e', e:'w'}[side]);
 }
@@ -813,7 +818,7 @@ let fadeT = 0;
 function enterZone(id, from, x, y){
   if (!zoneOk(id)) id = 'home';
   decorating = null;
-  if (me){ const v = (me.visited||'home').split(',').filter(Boolean); const zid = id.startsWith('house:') ? 'house' : id; if (!v.includes(zid)){ v.push(zid); me.visited = v.join(','); syncStats(); } }
+  if (me){ const v = (me.visited||'home').split(',').filter(Boolean); const zid = id.includes(':') ? id.split(':')[0] : id; if (!v.includes(zid)){ v.push(zid); me.visited = v.join(','); syncStats(); } }
   zoneId = id; const z = Z(); target = null; staticSig = '';
   if (x!=null){ pos.x = x; pos.y = y; }
   else if (from==='n'){ pos.x = z.W/2; pos.y = M+40; }
@@ -822,7 +827,7 @@ function enterZone(id, from, x, y){
   else if (from==='e'){ pos.x = z.W-M-40; pos.y = z.H/2; }
   rebuildObstacles(); fadeT = performance.now();
   if (blocked(pos.x, pos.y)){ const [fx_, fy_] = freeSpot(pos.x, pos.y); pos.x = fx_; pos.y = fy_; } // 예전 자리가 막혀 있거나 구역 밖이면 가까운 빈자리로
-  if (me){ chatZone(); renderDecor(); me.zone = id.startsWith('house:') ? 'home' : id; me.zx = Math.round(pos.x); me.zy = Math.round(pos.y); saveMe(); renderHud(); if (!$('mapPanel').hidden) renderMap(); }
+  if (me){ chatZone(); renderDecor(); me.zone = id.startsWith('house:') ? 'home' : id.startsWith('dark:') ? (NPC[id.slice(5)]?.zone || 'village') : id; me.zx = Math.round(id.startsWith('dark:') ? darkDoorOf(id.slice(5))[0] : pos.x); me.zy = Math.round(id.startsWith('dark:') ? darkDoorOf(id.slice(5))[1] + 40 : pos.y); saveMe(); renderHud(); if (!$('mapPanel').hidden) renderMap(); }
   toast(`${z.name}`);
 }
 
@@ -1138,6 +1143,8 @@ function soloNet(){
     cleanupClaims: async () => {},
     petClaim: async sp => { petClaims[sp] = {uid}; return true; },
     snowman: async s => { snowmen[uid] = s; },
+    darkTx: async (npc, fn) => { const st_ = soloNet.dark || (soloNet.dark = {}); const r = fn(st_[npc] ? structuredClone(st_[npc]) : null); if (r !== undefined){ if (r === null) delete st_[npc]; else st_[npc] = r; } onDarkRooms(structuredClone(st_)); return r !== undefined; },
+    darkWipe: async npc => { const st_ = soloNet.dark || (soloNet.dark = {}); if (npc) delete st_[npc]; else for (const k in st_) delete st_[k]; onDarkRooms(structuredClone(st_)); },
     adminRemove: async id => { delete st.players[id]; onPlayers(structuredClone(st.players)); },
     sessionClaim: () => {},
     presence: async () => {},
@@ -1181,6 +1188,8 @@ function firebaseNet(){
     claimLot: i => tx('lots/'+i, {uid, at:Date.now()}, 'lot', i),
     petClaim: sp => tx('petClaims/'+sp, {uid, at:Date.now()}),
     snowman: s => F.set(F.ref(db, 'snowmen/'+uid), s),
+    darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
+    darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
     // 입주한 뒤 남아 있는 내 옛 선점(다른 지붕·집터)을 풀어 줘요
     cleanupClaims: async (roof, lot) => { for (const [kind, mine] of [['roofs', roof], ['lots', lot]]){ try { const v = (await F.get(F.ref(db, kind))).val() || {}; for (const [k,c] of Object.entries(v)) if (c && c.uid===uid && +k !== mine) await F.remove(F.ref(db, kind+'/'+k)).catch(()=>{}); } catch(e){} } },
     adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ['snowmen/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
@@ -1192,7 +1201,7 @@ function firebaseNet(){
     // 장소마다 100 줄만 남기고 오래된 줄은 지워요
     chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, darkRooms:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -1205,6 +1214,7 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'dmIndex/'+uid), s=>onDmIndex(s.val()), ()=>{});
       F.onValue(F.ref(db, 'petClaims'), s=>{ petClaims = s.val() || {}; }, ()=>{});
       F.onValue(F.ref(db, 'snowmen'), s=>{ snowmen = s.val() || {}; }, ()=>{});
+      F.onValue(F.ref(db, 'darkRooms'), s=>onDarkRooms(s.val()), ()=>{});
       F.onValue(F.ref(db, 'lettersOut/'+uid), s=>onLettersOut(s.val()), ()=>{});
       F.onValue(F.ref(db, 'market'), s=>onMarket(s.val()));
       F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
@@ -1505,7 +1515,7 @@ function renderHud(){
   $('stats').hidden = false; barSig = ''; updateBars(); placeTop();
   $('quest').hidden = me.quest >= TUT_DONE; $('quest').innerHTML = `<b>할 일${me.quest >= TUT_START ? ` · 섬 생활 첫걸음 ${me.quest - TUT_START + 1}/${TUT.length}` : ''}</b>${QUESTS[Math.min(me.quest, TUT_DONE)]}`; setTimeout(tutCheck);
   const it = [['can','물뿌리개',me.inv.can],['rod','낚싯대',me.inv.rod],['pick','곡괭이',me.inv.pick],['sword',me.inv.sword ? `${weapon().name} (공격력 ${weapon().atk})` : '검',me.inv.sword]];
-  $('swingBtn').hidden = !me.inv.sword; snowBtnUpdate();
+  $('swingBtn').hidden = !me.inv.sword; snowBtnUpdate(); darkHud();
   $('bar').innerHTML = it.map(([e,n,c])=>`<div class="${c?'':'off'}" title="${n}" aria-label="${n}${c?'':' 없음'}">${ui(e,'bi')}</div>`).join('') + `<div id="bagBtn" title="가방" aria-label="가방" style="cursor:pointer">${ui('bag','bi')}</div>`;
   $('bagBtn').onclick = showBag;
   if (!$('npcPanel').hidden && $('npcPanel').dataset.kind==='npc') renderNpcPanel();
@@ -2427,6 +2437,7 @@ function swing(){
     const dx = mob.x-pos.x, dy = mob.y-pos.y;
     if (Math.hypot(mob.x-cx, mob.y-cy) < 58 && dx*vx + dy*vy > -12) hitMob(mob, t, vx, vy);
   }
+  darkSwing(cx, cy, vx, vy, t);
   if (bossAlive()){
     const dx = BOSS.x-pos.x, dy = BOSS.y-pos.y;
     if (Math.hypot(BOSS.x-cx, BOSS.y-cy) < 100 && dx*vx + dy*vy > -20){
@@ -2466,6 +2477,7 @@ function hitMob(mob, t, vx, vy){
   }
 }
 function faint(){
+  if (zoneId.startsWith('dark:')) return darkRespawn();
   playerHp = maxHp(); mobs = []; mobZone = null;
   const L = LOTS[me.lot]; enterZone('home', null, L.x, L.y + 18);
   say('기절', '눈앞이 깜깜해졌어요.... 정신을 차려 보니 집 앞이에요.', [], '체력이 다시 가득 찼어요');
@@ -2709,7 +2721,7 @@ function houseZone(owner){
   z.name = `${p ? p.nick : '누군가'}의 집`;
   return z;
 }
-const zoneOk = id => typeof id==='string' && (!!ZONES[id] || (id.startsWith('house:') && (id.slice(6)===uid || !!players[id.slice(6)])));
+const zoneOk = id => typeof id==='string' && (!!ZONES[id] || (id.startsWith('house:') && (id.slice(6)===uid || !!players[id.slice(6)])) || (id.startsWith('dark:') && DARK_ORDER.includes(id.slice(5))));
 function furnOf(owner){ const p = owner===uid ? me : players[owner]; return (p && Array.isArray(p.furn)) ? p.furn : (p && p.furn ? Object.values(p.furn) : []); }
 let decorating = null; // 고른 가구 id
 function drawFurn(d, f, x, y){
@@ -3644,6 +3656,187 @@ function drawBoss(d, t){
   c.font='bold 18px "Dongle",sans-serif'; c.textAlign='center'; c.fillStyle='#fff'; c.fillText(`먼지 여왕 ${Math.max(0,Math.ceil(boss.hp))}/${boss.max} · 다 함께 물리쳐요!`, x, y-134);
 }
 
+// ===== 다크 모드: 주민 12 명의 집 = 방탈출 =====
+// 관리자가 다크 모드를 켜면 하루에 한 방씩 열려요 (DARK_ORDER). 여러 명이 같은 방에 들어가 문제 15 개를 같이 풀고,
+// 다 풀면 그 주민이 아주 강한 보스로 깨어나요. 첫 입장부터 2 시간 안에 못 끝내면 방이 처음으로 돌아가요.
+// 방 상태는 모두 함께 써요: darkRooms/<주민> = {start, att(몇 번째 도전), solved:{p01:{uid,nick,at}}, hp, max, bossAt, clear:{at,nick}}
+let darkRooms = {}, darkPending = 0, darkFlushT = 0, darkTouchCd = 0, darkSlams = [], darkSlamT = 0, darkHurtT = 0, darkGuard = 0, darkHudT = 0, darkBusy = false;
+const darkOn = () => !!(world && world.dark);
+const kstDayOf = ms => Math.floor((ms + 9*3600000) / 86400000);
+const darkNow = () => Date.now() + serverOffset;
+function darkIdx(){ return darkOn() ? today() - kstDayOf(world.darkAt || Date.now()) + (world.darkShift|0) : -1; }
+function darkToday(){ const i = darkIdx(); return i >= 0 && i < DARK_ORDER.length ? DARK_ORDER[i] : null; }
+const darkPuzzles = npc => DARK_ROOMS[npc]?.puzzles || (darkPuzzles._ph || (darkPuzzles._ph = placeholderPuzzles()));
+const roomOf = npc => darkRooms[npc] || {};
+const darkSolvedN = r => Object.keys(r.solved || {}).length;
+const darkBossUp = r => r && r.hp > 0 && !r.clear;
+const npcVisible = n => !(darkOn() && n.id === darkToday() && !roomOf(n.id).clear); // 오늘 방 주인은 집 안에 숨어 있어요
+function darkDoorOf(npc){ const n = NPC[npc]; return [Math.round(n.homeX + 64), Math.round(n.homeY - 6)]; }
+const darkZoneCache = {};
+function darkZone(npc){
+  return darkZoneCache[npc] || (darkZoneCache[npc] = {theme:'room', W:DARK_ROOM.W, H:DARK_ROOM.H, grid:[2,1], exits:{s:'out'}, places:[], trees:[], dark:npc, name:`${NPC[npc]?.name || ''}의 방`});
+}
+function onDarkRooms(v){
+  darkRooms = v || {};
+  if (me && !admin) for (const npc of Object.keys(darkRooms)) darkClaim(npc);
+  if (admin) renderAdmin();
+  if (zoneId.startsWith('dark:')){ renderHud(); const r = roomOf(zoneId.slice(5)); if (!r.hp && !r.clear && darkSolvedN(r) >= darkPuzzles(zoneId.slice(5)).length) darkWake(zoneId.slice(5)); }
+}
+// ----- 문 (다크 모드 동안 주민 자리 옆에 생겨요) -----
+function darkDoorState(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(); if (roomOf(npc).clear) return 'clear'; if (i === di) return 'open'; return i < di ? 'missed' : 'locked'; }
+function drawDarkDoor(d, npc, t){
+  const c = d.ctx, [x, y] = darkDoorOf(npc), st = darkDoorState(npc), glow = st === 'open' ? .55 + Math.sin(t/300)*.25 : 0;
+  if (glow){ c.save(); c.globalAlpha = glow; const g = c.createRadialGradient(x, y-36, 6, x, y-36, 70); g.addColorStop(0, 'rgba(255,60,110,.8)'); g.addColorStop(1, 'rgba(255,60,110,0)'); c.fillStyle = g; c.fillRect(x-70, y-106, 140, 140); c.restore(); }
+  d.ell(x, y+2, 30, 7, 'rgba(0,0,0,.25)');
+  d.rr(x-26, y-72, 52, 74, 22, st === 'clear' ? '#8a7f96' : '#3b2a44');
+  d.rr(x-19, y-64, 38, 64, 17, st === 'open' ? '#5a1f3a' : st === 'clear' ? '#b8aec4' : '#22162a');
+  c.save(); c.strokeStyle = st === 'open' ? '#ff7aa8' : '#9a86a8'; c.lineWidth = 1.6; c.setLineDash([4, 4]); c.beginPath(); c.roundRect(x-22, y-68, 44, 68, 19); c.stroke(); c.restore(); // 솔기
+  d.circle(x+11, y-30, 2.6, '#ffd76a');
+  if (st === 'locked' || st === 'missed'){ d.rr(x-7, y-40, 14, 11, 3, '#c9b37a'); c.save(); c.strokeStyle = '#c9b37a'; c.lineWidth = 2.4; c.beginPath(); c.arc(x, y-41, 5, Math.PI, 0); c.stroke(); c.restore(); }
+}
+function darkDoorLabel(c, npc, t){
+  const [x, y] = darkDoorOf(npc), st = darkDoorState(npc), n = NPC[npc];
+  tag(c, `${n.name}의 집 · ${{open:'열림', clear:'꿰매짐', locked:'잠김', missed:'닫힘'}[st]}`, x, y-80, st === 'open' ? '#ff4f87' : null);
+}
+function darkEntities(d, t){
+  const out = [];
+  if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (NPC[npc]?.zone === zoneId){ const [, y] = darkDoorOf(npc); out.push({y, draw:()=>drawDarkDoor(d, npc, t), label:()=>darkDoorLabel(d.ctx, npc, t)}); }
+  const z = Z(); if (!z.dark) return out;
+  const r = roomOf(z.dark);
+  for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawFurn(d, {id:pz.furn}, pz.x, pz.y), label:()=>darkObjLabel(d, pz, r, t)});
+  if (darkBossUp(r)){ const [bx, by] = darkBossPos(r); out.push({y:by, draw:()=>drawDarkBoss(d, z.dark, r, bx, by, t), label:()=>{}}); }
+  return out;
+}
+const darkLocked = (pz, r) => (pz.need || []).some(id => !(r.solved || {})[id]);
+function darkObjLabel(d, pz, r, t){
+  const c = d.ctx, done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), x = pz.x, y = pz.y - 86;
+  if (done){ d.circle(x, y, 10, '#59c27a'); d.line(k=>{ k.moveTo(x-5, y); k.lineTo(x-1, y+4); k.lineTo(x+5, y-4); }, '#ffffff', 2.6); return; }
+  if (lock){ d.circle(x, y, 10, '#6e5a7e'); d.rr(x-5, y-1, 10, 7, 2, '#ffd76a'); c.save(); c.strokeStyle = '#ffd76a'; c.lineWidth = 1.8; c.beginPath(); c.arc(x, y-1, 3.4, Math.PI, 0); c.stroke(); c.restore(); return; }
+  const b = Math.sin(t/260 + x) * 3; d.circle(x, y + b, 11, '#ff4f87'); c.save(); c.font = 'bold 20px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText('?', x, y + b + 6); c.restore();
+}
+// ----- 방 그림 (어두운 벽·바닥, 실밥 무늬, 아래 문) -----
+function drawDarkRoomStatic(c, d, z){
+  const W = z.W, H = z.H, wy = 40, wallH = 200, fy = wy + wallH - 10;
+  c.fillStyle = '#1d1422'; c.fillRect(0, 0, W, H);
+  c.save(); c.beginPath(); c.roundRect(60, wy, W-120, wallH, 16); c.clip();
+  c.fillStyle = '#3a2840'; c.fillRect(60, wy, W-120, wallH); c.fillStyle = 'rgba(0,0,0,.18)'; for (let i = 80; i < W-60; i += 46) c.fillRect(i, wy, 22, wallH);
+  c.strokeStyle = 'rgba(255,140,180,.35)'; c.lineWidth = 2; c.setLineDash([6, 6]); for (let k = 0; k < 5; k++){ const x0 = 140 + k*190; c.beginPath(); c.moveTo(x0, wy+10); c.quadraticCurveTo(x0+40, wy+wallH/2, x0-10, wy+wallH-10); c.stroke(); } c.setLineDash([]);
+  c.restore();
+  c.save(); c.beginPath(); c.roundRect(60, fy, W-120, H-fy-50, 14); c.clip();
+  c.fillStyle = '#3d2e3a'; c.fillRect(60, fy, W-120, H-fy); for (let j = fy; j < H; j += 34){ c.fillStyle = 'rgba(0,0,0,.16)'; c.fillRect(60, j, W-120, 2); }
+  const g = c.createRadialGradient(W/2, (fy+H)/2, 60, W/2, (fy+H)/2, 420); g.addColorStop(0, 'rgba(120,30,60,.18)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(60, fy, W-120, H-fy);
+  c.restore();
+  d.rr(60, fy-6, W-120, 12, 6, '#5a4462');
+  for (const wx of [W*.3, W*.7]){ d.rr(wx-70, wy+46, 140, 96, 12, '#1b2238'); d.line(k=>{ k.moveTo(wx, wy+46); k.lineTo(wx, wy+142); k.moveTo(wx-70, wy+94); k.lineTo(wx+70, wy+94); }, '#5a4462', 4); d.circle(wx+30, wy+70, 9, '#fff2b8'); }
+  d.rr(W/2-44, H-60, 88, 60, 10, '#5a1f3a');
+  c.font = 'bold 19px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#ffd0df'; c.fillText('↓ 나가기', W/2, H-24);
+}
+// 손전등처럼 내 주변만 밝아요
+function drawDarkFx(c, t){
+  const z = Z(); if (!z.dark) return;
+  const fl = 1 + Math.sin(t/90)*.02 + (Math.random() < .02 ? -.08 : 0), x = admin ? z.W/2 : pos.x, y = admin ? z.H/2 : pos.y - 20, R = admin ? 900 : 330*fl;
+  c.save(); const g = c.createRadialGradient(x, y, R*.35, x, y, R); g.addColorStop(0, 'rgba(8,2,12,0)'); g.addColorStop(1, 'rgba(8,2,12,.82)'); c.fillStyle = g; c.fillRect(0, 0, z.W, z.H); c.restore();
+}
+// ----- 들어가기 · 나가기 -----
+function darkTap(w){
+  if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (NPC[npc]?.zone === zoneId){ const [x, y] = darkDoorOf(npc); if (Math.abs(w.x-x) < 30 && w.y > y-80 && w.y < y+8) return {x, y:y+30, act:()=>darkEnter(npc)}; }
+  const z = Z(); if (!z.dark) return null;
+  for (const pz of darkPuzzles(z.dark)) if (Math.abs(w.x-pz.x) < 34 && w.y > pz.y-80 && w.y < pz.y+12) return {x:pz.x, y:pz.y+34, act:()=>darkPuzzlePanel(pz)};
+  return null;
+}
+async function darkEnter(npc){
+  const st = darkDoorState(npc), n = NPC[npc];
+  if (st === 'locked') return say(`${n.name}의 집`, `문이 굳게 꿰매져 있어요. ${DARK_ORDER.indexOf(npc) - darkIdx()} 일 뒤에 열려요.`);
+  if (st === 'missed') return say(`${n.name}의 집`, '이 집의 문은 이미 다시 닫혔어요.');
+  if (!me.inv.sword) toast('검이 없으면 마지막에 싸울 수 없어요 · 콩이에게 받아 와요');
+  if (st === 'open' && darkBusy) return; darkBusy = true;
+  if (st === 'open') await net.darkTx(npc, cur => { const now = darkNow(); cur = cur || {}; if (cur.clear) return undefined; if (!cur.start) return {...cur, start:now}; if (now > cur.start + DARK_LIMIT_MS) return {att:(cur.att|0)+1, start:now}; return undefined; });
+  darkBusy = false; darkGuard = 3;
+  enterZone('dark:'+npc, null, DARK_ROOM.door[0], DARK_ROOM.door[1]);
+  if (st === 'clear') toast('이미 꿰매진 방이에요. 조용해요');
+  else say(`${n.name}의 방`, '불이 꺼진 방이에요. 빛나는 물음표가 있는 물건에 다가가 문제를 풀어요. 문제 15 개를 다 풀면.... 무언가 깨어나요. 2 시간 안에 끝내야 해요.');
+}
+function darkLeave(msg){ const z = Z(); if (!z.dark) return; const [dx, dy] = darkDoorOf(z.dark); darkSlams = []; enterZone(NPC[z.dark].zone, null, dx, dy + 44); if (msg) say('다크 모드', msg); }
+function darkRespawn(){
+  playerHp = maxHp(); darkSlams = []; darkGuard = 3; pos.x = DARK_ROOM.door[0]; pos.y = DARK_ROOM.door[1]; target = null; fadeT = performance.now();
+  toast('쓰러졌어요.... 입구에서 다시 일어났어요 · 다시 가서 싸워요');
+}
+// ----- 문제 -----
+const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
+function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of darkPuzzles(z.dark)){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
+function darkPuzzlePanel(pz){
+  const npc = Z().dark; if (!npc) return; const r = roomOf(npc), done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), list = darkPuzzles(npc);
+  const body = done ? `<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요 · 정답 <b>${esc(pz.a[0])}</b></p>`
+    : lock ? `<p class="dk-q">이 물건은 아직 열리지 않아요.</p><p class="mnote">먼저 풀어야 하는 것: ${(pz.need||[]).filter(id=>!(r.solved||{})[id]).map(id=>esc(list.find(x=>x.id===id)?.title || id)).join(', ')}</p>`
+    : `<p class="dk-q">${esc(pz.q)}</p><div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>`;
+  openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body);
+  if (done || lock) return;
+  const go = async () => {
+    const v = $('dkIn').value; if (!darkNorm(v)) return;
+    if (!pz.a.some(a => darkNorm(a) === darkNorm(v))){ $('dkIn').value = ''; $('dkIn').placeholder = '틀렸어요. 다시 생각해 봐요'; setExpr('sad', 1200); return; }
+    const ok = await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; return {...cur, solved:{...(cur.solved||{}), [pz.id]:{uid, nick:me.nick, at:darkNow()}}}; });
+    $('npcPanel').hidden = true;
+    if (ok){ gainExp(20); toast(`${pz.title}: 정답! 문을 여는 소리가 들려요 (${darkSolvedN(roomOf(npc))}/${list.length})`); setExpr('sparkle', 1500); }
+    else toast('누군가 먼저 풀었거나 방이 바뀌었어요');
+  };
+  $('dkGo').onclick = go; $('dkIn').onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); go(); } };
+  $('dkHint').onclick = () => { $('dkHintT').hidden = false; };
+  setTimeout(()=>$('dkIn')?.focus(), 50);
+}
+// ----- 보스: 문제를 다 풀면 그 주민이 깨어나요. 체력은 모두가 같이 깎아요 -----
+function darkWake(npc){ net.darkTx(npc, cur => cur && cur.start && !cur.clear && !(cur.hp > 0) && darkSolvedN(cur) >= darkPuzzles(npc).length ? {...cur, hp:DARK_BOSS.hp, max:DARK_BOSS.hp, bossAt:darkNow()} : undefined); }
+function darkBossPos(r){ const s = (darkNow() - (r.bossAt || 0)) / 1000, W = DARK_ROOM.W; return [W/2 + Math.cos(s*.31)*300 + Math.sin(s*.83)*60, 560 + Math.sin(s*.47)*150]; } // 모두에게 같은 자리
+function drawDarkBoss(d, npc, r, x, y, t){
+  const c = d.ctx, n = NPC[npc], rage = r.hp < r.max/2, pulse = .5 + Math.sin(t/200)*.5;
+  c.save(); const g = c.createRadialGradient(x, y-50, 10, x, y-50, 120); g.addColorStop(0, `rgba(${rage ? '255,40,80' : '160,40,200'},${.35 + pulse*.2})`); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x-130, y-180, 260, 220); c.restore();
+  c.save(); if (darkHurtT > 0 && Math.floor(t/60)%2) c.globalAlpha = .55; drawCritter(c, x, y, n.look || {kind:n.sp.kind, fur:n.sp.fur}, t/1000, true, 2.4, Math.cos(t/1000) < 0); c.restore();
+  const w = 180; c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(x-w/2, y-178, w, 10); c.fillStyle = rage ? '#ff3b6b' : '#b58cff'; c.fillRect(x-w/2, y-178, w*Math.max(0, r.hp)/r.max, 10);
+  c.font = 'bold 19px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(`깨어난 ${n.name} ${Math.max(0, Math.ceil(r.hp)).toLocaleString()}/${r.max.toLocaleString()}`, x, y-184);
+  for (const sl of darkSlams){ const a = Math.min(1, (t - sl.at) / (DARK_BOSS.slamWarn*1000)); c.save(); c.globalAlpha = .25 + a*.35; c.fillStyle = '#ff2d55'; c.beginPath(); c.ellipse(sl.x, sl.y, sl.r*a, sl.r*a*.6, 0, 0, 7); c.fill(); c.globalAlpha = .9; c.strokeStyle = '#ff2d55'; c.lineWidth = 2; c.beginPath(); c.ellipse(sl.x, sl.y, sl.r, sl.r*.6, 0, 0, 7); c.stroke(); c.restore(); }
+}
+function darkSwing(cx, cy, vx, vy, t){
+  const z = Z(); if (!z.dark) return; const r = roomOf(z.dark); if (!darkBossUp(r)) return;
+  const [bx, by] = darkBossPos(r); if (Math.hypot(bx-cx, by-cy) > 110) return;
+  const dmg = swordAtk(); darkPending += dmg; darkHurtT = .2; fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
+  me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.att|0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
+}
+function darkHurt(n, t){ if (darkGuard > 0) return; playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0) darkRespawn(); }
+function updateDark(dt, t){
+  if (t > darkHudT){ darkHudT = t + 1000; if (zoneId.startsWith('dark:')) darkHud(); }
+  const z = Z(); if (!z.dark) return; const npc = z.dark, r = roomOf(npc);
+  darkGuard -= dt; darkHurtT -= dt;
+  if (darkOn() && npc !== darkToday() && !r.clear) return darkLeave('이 방의 문이 닫혔어요');
+  if (r.start && !r.clear && darkNow() > r.start + DARK_LIMIT_MS){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? {att:(cur.att|0)+1} : undefined); return darkLeave('2 시간이 지났어요.... 방이 처음으로 돌아갔어요. 다시 들어가면 새로 시작해요.'); }
+  if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
+    net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; const hp = Math.max(0, cur.hp - dmg); return {...cur, hp, ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
+  if (!darkBossUp(r)){ darkSlams = []; return; }
+  // 보스 공격: 가까이 있으면 할퀴기, 주기적으로 내 발밑에 내려찍기 (빨간 원이 커지면 피해요)
+  const [bx, by] = darkBossPos(r), rage = r.hp < r.max/2, k = rage ? 1.3 : 1;
+  darkTouchCd -= dt;
+  if (Math.hypot(pos.x-bx, pos.y-by) < 80 && darkTouchCd <= 0 && $('npcPanel').hidden){ darkTouchCd = 1.1; pushPlayer(pos.x-bx, pos.y-by, 40); darkHurt(Math.round(DARK_BOSS.touch*k), t); }
+  if (t - darkSlamT > DARK_BOSS.slamGap*1000/(rage ? 1.6 : 1)){ darkSlamT = t; darkSlams.push({x:pos.x, y:pos.y, r:DARK_BOSS.slamR*(rage ? 1.15 : 1), at:t});
+    if (rage) for (let i = 0; i < 2; i++) darkSlams.push({x:pos.x + (Math.random()-.5)*260, y:pos.y + (Math.random()-.5)*160, r:DARK_BOSS.slamR, at:t + 200}); }
+  darkSlams = darkSlams.filter(sl => { if (t - sl.at < DARK_BOSS.slamWarn*1000) return true; if (((pos.x-sl.x)/sl.r)**2 + ((pos.y-sl.y)/(sl.r*.6))**2 < 1) darkHurt(Math.round(DARK_BOSS.slam*k), t); fx.push({x:sl.x, y:sl.y-10, text:'쾅', t, color:'#ff2d55'}); return false; });
+}
+// 보스를 쓰러뜨린 도전에서 한 번이라도 때렸으면 보상 (어디에 있든)
+function darkClaim(npc){
+  const r = roomOf(npc); if (!r.clear) return; me.darkDone = me.darkDone || {};
+  if (me.darkDone[npc] || (me.darkHit || {})[npc] !== `${npc}:${r.att|0}`) return;
+  me.darkDone[npc] = r.clear.at || 1; me.inv.gold += DARK_REWARD.gold; gainExp(DARK_REWARD.exp); saveMe(true); renderHud();
+  say(`${NPC[npc].name}을(를) 다시 꿰맸어요!`, `깨어난 ${NPC[npc].name}이(가) 쓰러지고, 방에 불이 조용히 켜졌어요. 함께 싸운 모두가 보상을 받았어요.`, [], `${DARK_REWARD.gold.toLocaleString()} G · 경험치 +${DARK_REWARD.exp}`);
+}
+// 위쪽 할 일 칸: 방 안에서는 남은 시간 · 푼 문제 · 보스 체력
+function darkHud(){
+  const q = $('quest'); if (!q || !me) return;
+  if (!zoneId.startsWith('dark:')) return;
+  const npc = zoneId.slice(5), r = roomOf(npc), n = darkPuzzles(npc).length;
+  const left = r.start ? Math.max(0, r.start + DARK_LIMIT_MS - darkNow()) : DARK_LIMIT_MS, hh = Math.floor(left/3600000), mm = Math.floor(left/60000)%60, ss = Math.floor(left/1000)%60;
+  const time = `${hh}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  q.hidden = false;
+  q.innerHTML = r.clear ? `<b>${esc(NPC[npc].name)}의 방</b>꿰매진 방이에요 · ${esc(String(r.clear.nick||'').slice(0,8))} 님이 마지막 일격`
+    : `<b style="color:#ff4f87">남은 시간 ${time}</b>${darkBossUp(r) ? `깨어난 ${esc(NPC[npc].name)} ${Math.ceil(r.hp).toLocaleString()} · 다 같이 싸워요!` : `문제 ${darkSolvedN(r)}/${n} · 빛나는 물음표를 찾아요`}`;
+  placeTop();
+}
 // ===== 별빛 언덕 밤 =====
 const stars = [];
 function wishKey(){ const d = new Date(Date.now() + 9*3600000), h = d.getUTCHours(); return today() - (h < 5 ? 1 : 0); }
@@ -3894,7 +4087,8 @@ function hitTarget(w){
   if (zoneId==='starhill'){ for (const st of stars){ const a = (performance.now()-st.t)/4000, sx = st.x + a*160, sy = st.y + a*90; if (Math.hypot(w.x-sx, w.y-sy) < 40){ makeWish(); return {x:pos.x, y:pos.y, act:null, mark:performance.now()}; } } { const tr = Z().places.find(p=>p.kind==='tree'); if (tr && Math.hypot(w.x-tr.x, w.y-(tr.y-20)) < 70) return {x:tr.x, y:tr.y+100, act:promiseTree}; } }
   if (bossAlive() && Math.hypot(w.x-BOSS.x, w.y-(BOSS.y-30)) < 60){ if (!me.inv.sword){ toast('검이 없어요. 마을 광장의 콩이에게 가 봐요'); return {x:pos.x,y:pos.y,act:null,mark:performance.now()}; } return {x:BOSS.x, y:BOSS.y+70, act:()=>{ faceTo(BOSS.x, BOSS.y); swing(); }}; }
   for (const [id,s] of snowmenHere()) if (Math.abs(w.x-s.x)<22 && w.y>s.y-70 && w.y<s.y+8) return {x:s.x, y:s.y+34, act:()=>say('눈사람', id===uid ? '내가 만든 눈사람이에요. 눈이 그치면 녹아요.' : `${s.nick} 님이 만든 눈사람이에요. 눈이 그치면 녹아요.`)};
-  for (const n of NPCS) if (n.zone===zoneId && Math.abs(w.x-n.x)<22 && w.y>n.y-48 && w.y<n.y+8) return {x:n.x, y:n.y+30, act:()=>talkTo(n)};
+  { const dt_ = darkTap(w); if (dt_) return dt_; }
+  for (const n of NPCS) if (n.zone===zoneId && npcVisible(n) && Math.abs(w.x-n.x)<22 && w.y>n.y-48 && w.y<n.y+8) return {x:n.x, y:n.y+30, act:()=>talkTo(n)};
   if (zoneId==='home' && me.lot!=null) for (const [i,s] of slotsOf(me.lot, me.plots).entries()) if (Math.abs(w.x-s.x)<18 && Math.abs(w.y-s.y)<18) return {x:s.x, y:s.y+26, act:()=>useSlot(i)};
   return null;
 }
@@ -3910,7 +4104,8 @@ cv.addEventListener('pointerdown', e=>{
 ['pointerdown','pointermove'].forEach(ev=>$('fgTrack').addEventListener(ev, e=>{ if (ev==='pointermove' && !e.buttons && e.pointerType!=='mouse') return; setZoneFromPointer(e); }));
 function interactNear(){
   let best = null, bd = 1e9;
-  for (const n of NPCS){ if (n.zone!==zoneId) continue; const d = Math.hypot(pos.x-n.x, pos.y-n.y); if (d<64 && d<bd){ bd=d; best=()=>talkTo(n); } }
+  if (zoneId.startsWith('dark:')){ const pz = darkNear(); if (pz) return darkPuzzlePanel(pz); }
+  for (const n of NPCS){ if (n.zone!==zoneId || !npcVisible(n)) continue; const d = Math.hypot(pos.x-n.x, pos.y-n.y); if (d<64 && d<bd){ bd=d; best=()=>talkTo(n); } }
   if (zoneId==='home' && me.lot!=null) slotsOf(me.lot, me.plots).forEach((s,i)=>{ const d = Math.hypot(pos.x-s.x, pos.y-s.y-10); if (d<48 && d<bd){ bd=d; best=()=>useSlot(i); } });
   if (best) best(); else toast('가까이에 할 수 있는 게 없어요');
 }
@@ -4032,6 +4227,7 @@ function buildStatic(){
   staticLayer.width = z.W*s; staticLayer.height = z.H*s;
   const c = staticLayer.getContext('2d'); c.setTransform(s,0,0,s,0,0);
   const d = painter(c);
+  if (z.dark){ drawDarkRoomStatic(c, d, z); return; }
   if (z.theme==='room'){ drawRoomStatic(c, d, z); return; }
   c.fillStyle = T.ground; c.fillRect(0,0,z.W,z.H);
   // 바닥 클레이 질감: 넓은 명암 얼룩 + 고운 입자 + 가장자리 어둡게
@@ -4113,7 +4309,7 @@ function frame(t){
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
     if (admin){ moveOthers(dt); adminCam(); }
-    else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
+    else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateDark(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
     const z = view.zoom, vw = view.w/z, vh = view.h/z;
@@ -4132,7 +4328,8 @@ function frame(t){
     drawRocks(d, t);
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
-      ...NPCS.filter(n=>n.zone===zoneId).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
+      ...darkEntities(d, t),
+      ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-80); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
@@ -4144,7 +4341,7 @@ function frame(t){
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
     for (const e of ents) e.label();
-    drawNight(ctx, t); drawWeather(ctx, t);
+    drawNight(ctx, t); drawDarkFx(ctx, t); drawWeather(ctx, t);
     const fo = Math.max(0, 1 - (t - fadeT)/450); if (fo !== lastFade){ lastFade = fo; $('fade').style.opacity = fo; }
   }
   requestAnimationFrame(frame);
@@ -4157,9 +4354,9 @@ let admLook = null; // 주민 캐릭터·옷·집 보기 (null 닫힘 / '' 열�
 let adminLetterData = {}, admPost = false, admDrafts = {}; // 주민·오투모에게 온 편지 (관리자가 답장)
 let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
 let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
-function onWorld(w){ world = w || {}; if (admin) renderAdmin(); }
+function onWorld(w){ const was = darkOn(); world = w || {}; if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('다크 모드가 끝나 방에서 나왔어요'); if (darkOn() && !admin) say('섬이 어두워졌어요', '어딘가에서 실이 끊어지는 소리가 들려요.... 오늘 문이 열린 주민의 집을 찾아가 봐요.'); } }
 const kstClock = () => new Date(Date.now() + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
-const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : (ZONES[z]?.name || '집터');
+const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : z && z.startsWith('dark:') ? `${NPC[z.slice(5)]?.name || ''}의 방 (다크)` : (ZONES[z]?.name || '집터');
 function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
@@ -4184,7 +4381,7 @@ function renderAdmin(){
     <div class="adm-side">
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
-        <small>바꾸면 접속한 모든 사람에게 바로 전달돼요. 게임 화면 연출은 다음 업데이트에서 붙어요.</small></div>
+        <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
       <div class="adm-sec"><b>데이터 관리</b><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
@@ -4194,6 +4391,16 @@ function renderAdmin(){
   const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
   const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
   const cl = box.querySelector('.adm-chat-list'); if (cl){ cl.scrollTop = admChatScroll ?? cl.scrollHeight; cl.onscroll = ()=>{ admChatScroll = cl.scrollTop + cl.clientHeight >= cl.scrollHeight - 4 ? null : cl.scrollTop; }; }
+}
+function adminDarkSec(){
+  const i = darkIdx(), npc = darkToday(), r = npc ? roomOf(npc) : {}, n = npc ? darkPuzzles(npc).length : 0;
+  const left = r.start ? Math.max(0, r.start + DARK_LIMIT_MS - darkNow()) : 0, inRoom = npc ? [...others.values()].filter(o=>o.z==='dark:'+npc).length : 0;
+  const state = !npc ? (i >= DARK_ORDER.length ? '12 방이 모두 끝났어요' : '열린 방이 없어요')
+    : r.clear ? `꿰매짐 ✓ (${esc(String(r.clear.nick||'').slice(0,8))} 님 마지막 일격)` : darkBossUp(r) ? `보스전 ${Math.ceil(r.hp).toLocaleString()}/${r.max.toLocaleString()} · 남은 ${Math.ceil(left/60000)} 분`
+    : r.start ? `문제 ${darkSolvedN(r)}/${n} · 남은 ${Math.ceil(left/60000)} 분 · ${(r.att|0)+1} 번째 도전` : '아직 아무도 안 들어갔어요';
+  return `<div class="adm-dark"><b>${i+1} 일 차 · ${npc ? esc(NPC[npc].name)+'의 방' : '-'}</b><small>${state} · 방 안 ${inRoom} 명</small>
+    <div class="adm-wrow"><button data-a="dkprev" class="adm-btn">◀ 이전 방</button><button data-a="dknext" class="adm-btn">다음 방 ▶</button></div>
+    <div class="adm-wrow"><button data-a="dkview" class="adm-btn" ${npc ? '' : 'disabled'}>방 보기</button><button data-a="dkreset" class="adm-btn warn" ${npc ? '' : 'disabled'}>이 방 처음으로</button></div></div>`;
 }
 // 주민 캐릭터·옷·우산·펫·가방 옷, 집(단계·벽지·바닥·가구·텃밭)을 한눈에. [집 안 보기]로 CCTV를 그 집으로
 function adminLooks(regs){
@@ -4333,7 +4540,10 @@ function adminClick(e){
   if (b.dataset.p){ admTbl = admTbl===b.dataset.p ? null : b.dataset.p; admChat = null; admWipe = false; return renderAdmin(); }
   if (b.dataset.z){ admSide = false; cam.follow = null; cam.zone = b.dataset.z; const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2); renderAdmin(); }
   else if (b.dataset.f){ admSide = false; cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
-  else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) net.setWorld({dark:v, darkAt:Date.now()}).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
+  else if (b.dataset.a==='dkprev' || b.dataset.a==='dknext'){ net.setWorld({darkShift:(world.darkShift|0) + (b.dataset.a==='dknext' ? 1 : -1)}); }
+  else if (b.dataset.a==='dkreset'){ const npc = darkToday(); if (npc && confirm(`${NPC[npc].name}의 방을 처음 상태로 되돌릴까요? 푼 문제·시간·보스 체력이 모두 지워져요.`)) net.darkWipe(npc); }
+  else if (b.dataset.a==='dkview'){ const npc = darkToday(); if (npc){ admSide = false; cam.follow = null; cam.zone = 'dark:'+npc; enterZone('dark:'+npc, null, DARK_ROOM.W/2, DARK_ROOM.H/2); renderAdmin(); } }
+  else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) (v && net.darkWipe ? net.darkWipe() : Promise.resolve()).then(()=>net.setWorld({dark:v, darkAt:Date.now(), darkShift:0})).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
   else if (b.dataset.a==='logout'){ if (confirm('관리자 페이지에서 나갈까요?')) logout(); }
 }
 // 카메라: 따라가는 사람이 있으면 그 사람을, 없으면 고른 구역 전체를 한눈에
@@ -4391,9 +4601,9 @@ function updatePets(dt){
 function drawPet(c, sp, col, x, y, t, walk, flip){ c.save(); if (flip){ c.translate(x, 0); c.scale(-1, 1); c.translate(-x, 0); } try { PET_DRAW[sp](CH.mattePainter(c), x, y, col, t, walk); } catch(e){} c.restore(); }
 function petEntities(d, t){
   const c = d.ctx, out = [], T = t/1000;
-  if (Z().house){ petsOf(Z().house).forEach((pt, i)=>{ const p = petHomePos(Z().house, i); pt._x = p.x; pt._y = p.y; out.push({y:p.y, draw:()=>drawPet(c, pt.sp, petCol(pt), p.x, p.y, T, p.walk, p.flip), label:()=>{ if (pt.name) tag(c, pt.name, p.x, p.y-30, null); }}); }); }
-  const wp = walkingPet(); if (wp && petFollow) out.push({y:petFollow.y, draw:()=>drawPet(c, wp.sp, petCol(wp), petFollow.x, petFollow.y, T, petFollow.walk, petFollow.flip), label:()=>{}});
-  for (const [id,f] of othersPets){ const o = others.get(id); if (!o || !o.pet) continue; out.push({y:f.y, draw:()=>drawPet(c, o.pet.sp, PET[o.pet.sp].cols[o.pet.col], f.x, f.y, T, f.walk, f.flip), label:()=>{}}); }
+  if (Z().house){ petsOf(Z().house).forEach((pt, i)=>{ const p = petHomePos(Z().house, i); pt._x = p.x; pt._y = p.y; out.push({y:p.y, draw:()=>drawPet(c, pt.sp, petCol(pt), p.x, p.y, T, p.walk, p.flip), label:()=>{ if (pt.name) tag(c, Z().house===uid ? pt.name : `${pt.name} · ${String(players[Z().house]?.nick||'').slice(0,8)}의 펫`, p.x, p.y-30, null); }}); }); }
+  const wp = walkingPet(); if (wp && petFollow) out.push({y:petFollow.y, draw:()=>drawPet(c, wp.sp, petCol(wp), petFollow.x, petFollow.y, T, petFollow.walk, petFollow.flip), label:()=>tag(c, `${String(wp.name||PET[wp.sp].name).slice(0,8)} · 내 펫`, petFollow.x, petFollow.y-30, null)});
+  for (const [id,f] of othersPets){ const o = others.get(id); if (!o || !o.pet) continue; out.push({y:f.y, draw:()=>drawPet(c, o.pet.sp, PET[o.pet.sp].cols[o.pet.col], f.x, f.y, T, f.walk, f.flip), label:()=>tag(c, `${o.pet.name || PET[o.pet.sp].name} · ${String(o.nick||'').slice(0,8)}의 펫`, f.x, f.y-30, null)}); }
   return out;
 }
 function petTap(w){

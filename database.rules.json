@@ -113,6 +113,14 @@
         }
       }
     },
+    "darkRooms": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$npc": {
+        ".write": "auth != null && $npc.matches(/^[a-z]{2,12}$/)",
+        ".validate": "!newData.exists() || ((!newData.child('start').exists() || newData.child('start').isNumber()) && (!newData.child('hp').exists() || newData.child('hp').isNumber()))"
+      }
+    },
     "snowmen": {
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
