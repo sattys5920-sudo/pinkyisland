@@ -1391,7 +1391,7 @@ function jukePlay(i){
   const s = JUKE_SONGS[i]; if (!s) return; jukeStop(true); jukeOn = s; bgmStop();
   const d = document.createElement('div'); d.id = 'juke';
   d.innerHTML = `<iframe title="${esc(s.name)}" width="100%" height="20" scrolling="no" frameborder="no" allow="autoplay" src="${jukeSrc(s.url)}"></iframe><button id="jukeX" aria-label="끄기">✕</button>`;
-  document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop();
+  if (admin) d.style.zIndex = 35; document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop();
   $('npcPanel').hidden = true;
 }
 function jukeStop(quiet){ const d = $('juke'); if (d) d.remove(); const was = jukeOn; jukeOn = null; if (was && !quiet){ if (bgmStarted && bgmOn()) bgmStart(); toast('주크박스를 껐어요'); } }
@@ -4597,6 +4597,7 @@ function renderAdmin(){
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>`).join('')}</div>` : ''}
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
+      <div class="adm-sec"><b>주크박스 시험 듣기</b>${JUKE_SONGS.map((s,i)=>`<button data-jt="${i}" class="adm-btn">▶ ${esc(s.name)}</button>`).join('')}</div>
       <div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
     </div>${admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
@@ -4757,6 +4758,7 @@ function adminClick(e){
   if (b.dataset.z){ admSide = false; cam.follow = null; cam.zone = b.dataset.z; const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2); renderAdmin(); }
   else if (b.dataset.f){ admSide = false; cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
   else if (b.dataset.a==='dkprev' || b.dataset.a==='dknext'){ Promise.resolve(net.setWorld({darkShift:(world.darkShift|0) + (b.dataset.a==='dknext' ? 1 : -1)})).catch(()=>toast('방을 옮기지 못했어요. 관리자 권한을 확인해 주세요')); }
+  else if (b.dataset.jt){ jukePlay(+b.dataset.jt); }
   else if (b.dataset.rv){ net.reviveSend(b.dataset.rv, '관리자').then(()=>toast('깨웠어요')); }
   else if (b.dataset.a==='reloadall'){ if (confirm('지금 접속한 사람 모두의 게임을 새로고침할까요? 진행 상황은 저장한 뒤 새로고침돼요.')) Promise.resolve(net.setWorld({reloadAt:Date.now() + serverOffset})).then(()=>toast('전원 새로고침을 보냈어요')).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.a==='dkreset'){ const npc = darkToday(); if (npc && confirm(`${NPC[npc].name}의 방을 처음 상태로 되돌릴까요? 푼 문제·시간·보스 체력이 모두 지워져요.`)) net.darkWipe(npc); }
