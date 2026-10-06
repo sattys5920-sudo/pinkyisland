@@ -20,7 +20,10 @@ jobs:
           if [ -z "$SA" ]; then echo "FIREBASE_SERVICE_ACCOUNT 시크릿이 없어요. README의 배포 설정을 확인해 주세요."; exit 1; fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
       - name: 새 버전 표시 (켜 둔 앱이 알아서 새로고침하게)
-        run: printf '{"v":"%s"}' "${{ github.sha }}" > public/version.json
+        run: |
+          printf '{"v":"%s"}' "${{ github.sha }}" > public/version.json
+          sed -i "s/const BUILD = 'dev';/const BUILD = '${{ github.sha }}';/" public/index.html
+          grep -q "const BUILD = '${{ github.sha }}';" public/index.html
       - name: 호스팅과 DB 규칙 배포
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json

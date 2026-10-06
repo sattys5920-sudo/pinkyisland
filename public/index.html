@@ -3799,15 +3799,23 @@ function mailboxTap(w){
 // ===== 새 버전이 배포되면 켜 둔 앱도 알아서 새로고침해요 =====
 // 배포할 때 version.json 에 버전이 적혀요. 2 분마다·앱으로 돌아올 때 확인하고, 바뀌었으면 저장한 뒤 새로고침해요.
 // 다른 앱에 가 있다 돌아오면 바로, 보고 있는 중이면 20 초 동안 손을 안 대거나 3 분이 지나면.
-let appVer = null, updReady = 0, lastInput = Date.now();
+// BUILD 는 배포할 때 그 버전으로 바뀌어요. 페이지가 자기 버전을 알아서, 예전 페이지가 캐시로 떠도 version.json 과 다르면 새로고침해요
+const BUILD = 'dev';
+let appVer = null, updReady = 0, updVer = '', lastInput = Date.now();
+try { if (/[?&]v=/.test(location.search)) history.replaceState(null, '', location.pathname + location.hash); } catch(e){}
 addEventListener('pointerdown', ()=>{ lastInput = Date.now(); }, true); addEventListener('keydown', ()=>{ lastInput = Date.now(); }, true);
 async function checkVersion(){
   try { const r = await fetch('version.json?t=' + Date.now(), {cache:'no-store'}); if (!r.ok) return; const v = (await r.json()).v; if (!v) return;
-    if (appVer === null){ appVer = v; return; }
-    if (v !== appVer && !updReady){ updReady = Date.now(); if (document.hidden) return; toast('새 버전이 나왔어요 · 잠시 뒤 새로고침해요'); }
+    if (BUILD === 'dev'){ if (appVer === null){ appVer = v; return; } if (v === appVer) return; }
+    else if (v === BUILD) return;
+    let tried = ''; try { tried = sessionStorage.getItem('pinky-upd') || ''; } catch(e){}
+    if (tried === v) return; // 이 버전으로 이미 한 번 새로고침했는데도 예전 페이지면 더 반복하지 않아요
+    if (!updReady){ updReady = Date.now(); updVer = v; if (document.hidden) return; toast('새 버전이 나왔어요 · 잠시 뒤 새로고침해요'); }
   } catch(e){}
 }
-async function updateNow(){ try { if (me && !admin && !kicked && typeof flushSave === 'function') await flushSave(); } catch(e){} location.reload(); }
+async function updateNow(){ try { if (me && !admin && !kicked && typeof flushSave === 'function') await flushSave(); } catch(e){}
+  try { if (updVer) sessionStorage.setItem('pinky-upd', updVer); } catch(e){}
+  location.replace(location.pathname + '?v=' + encodeURIComponent(updVer || Date.now()) + location.hash); } // 주소를 바꿔서 캐시 말고 새 페이지를 받아요
 setInterval(()=>{ if (updReady && !document.hidden && (Date.now() - lastInput > 20000 || Date.now() - updReady > 180000)) updateNow(); }, 10000);
 setInterval(checkVersion, 120000); checkVersion();
 document.addEventListener('visibilitychange', ()=>{ if (document.hidden) return; if (updReady) updateNow(); else checkVersion(); });
