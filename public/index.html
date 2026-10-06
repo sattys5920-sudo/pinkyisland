@@ -160,6 +160,14 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 .bag-sec{display:flex;flex-direction:column;gap:4px}
 .bag-sec b{font-size:18px;color:var(--soft);padding:0 4px}
 .inv-tabs,.inv-grid,.inv-foot,.inv-detail{flex:none}
+.np.letter.new{box-shadow:inset 0 -2px 0 #f6e6ec,0 0 0 2px var(--pinkd)}
+.np.letter.new .np-name::before{content:'● ';color:#ff5a8a}
+.letter-paper{flex:none;background:#fffdf6;border-radius:14px;padding:12px 14px;box-shadow:inset 0 0 0 1.5px #f3e1c6;background-image:repeating-linear-gradient(transparent 0 27px,#f6e7cf 27px 28px)}
+.letter-paper small{display:block;color:var(--soft);font-size:15px;margin-bottom:4px}
+.letter-paper p{margin:0;font-size:19px;line-height:28px;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
+.lt-lab{flex:none;display:flex;gap:8px;align-items:center;font-size:17px;color:var(--soft)}
+.lt-lab select{flex:1;min-width:0;font:inherit;font-size:17px;border:2px solid var(--line);border-radius:10px;padding:4px 6px;background:#fff;color:var(--ink)}
+#ltText{flex:none;font:inherit;font-size:18px;line-height:1.5;border:2px solid var(--line);border-radius:12px;padding:8px 10px;resize:vertical;background:#fffdf6;color:var(--ink)}
 .inv-tabs{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px;margin:0 -2px}
 .inv-tabs::-webkit-scrollbar{display:none}
 .itab{flex:none;border:0;border-radius:999px;background:#fff;padding:3px 12px;font-size:17px;color:var(--soft);box-shadow:inset 0 -2px 0 #f6e6ec}
@@ -302,6 +310,7 @@ body.typing #chatin{background:#fff}
 .adm-r{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}.adm-r small{grid-column:2}
 .adm-r i{width:9px;height:9px;border-radius:50%;background:#6e6470;display:inline-block}.adm-r i.on{background:#7dff9a}
 .adm-chat-list{overflow:auto;display:flex;flex-direction:column;gap:2px;min-height:120px}.adm-day{align-self:center;font-size:16px;opacity:.7;background:rgba(255,255,255,.1);border-radius:10px;padding:0 10px;margin:6px 0 2px}
+.adm-letter{background:rgba(255,255,255,.06);border-radius:12px;padding:8px 10px;margin:4px 0;display:flex;flex-direction:column;gap:4px}.adm-letter.done{opacity:.6}.adm-lhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.adm-lhead b{color:#ff9fc4;font-weight:400}.adm-lhead span{opacity:.7;font-size:16px}.adm-lhead i{font-style:normal;color:#9fe0b0;font-size:16px}.adm-letter p{margin:0;white-space:pre-wrap;line-height:1.35}.adm-letter textarea{flex:1;min-width:0;font:inherit;font-size:17px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:#f4eef2;padding:4px 8px;resize:vertical}
 .adm-msg{display:flex;gap:8px;align-items:baseline;line-height:1.15}.adm-msg small{opacity:.6;font-variant-numeric:tabular-nums;font-size:16px}.adm-msg b{color:#ff9fc4;font-weight:400;white-space:nowrap}.adm-msg i{font-style:normal;font-size:15px;opacity:.55;white-space:nowrap}.adm-msg span{word-break:break-all}
 .adm-wipe{width:min(560px,calc(100% - 20px));gap:8px}.adm-wipe p{margin:0;line-height:1.2}.adm-wipe p small{font-size:17px;opacity:.75}
 .adm-chk{display:flex;gap:8px;align-items:center}.adm-chk input{width:20px;height:20px}
@@ -515,7 +524,7 @@ const ZONES = {
     {kind:'house', x:420, y:380, roof:'#ff9fc4', label:'모모 케이크', icon:'🍰'},
     {kind:'house', x:1180, y:380, roof:'#9fd6ff', label:'몽실 옷가게', icon:'👕'},
     {kind:'house', x:420, y:880, roof:'#b5e35a', label:'단단 카페', icon:'☕'},
-    {kind:'house', x:1180, y:880, roof:'#ffa14f', label:'토리 우체국', icon:'✉️'},
+    {kind:'house', x:1180, y:880, roof:'#ffa14f', label:'토리 우체국', icon:'✉️', post:true},
   ], trees:[[200,740],[1400,740],[620,180],[980,180]]},
   museum:    {name:'박물관 언덕', theme:'grass', W:1600, H:1100, grid:[3,1], places:[
     {kind:'house', x:560, y:440, roof:'#b9a6ff', label:'올리 박물관', icon:'🏛️', wide:true},
@@ -1021,6 +1030,10 @@ function soloNet(){
     wipeAll: async withChat => { st.players = {}; st.roofs = {}; st.market = {}; if (withChat){ st.chat = {}; st.chatCb && st.chatCb({}); } onPlayers({}); onRoofs({}); onMarket({}); },
     contestSubmit: async (w, size) => { contestBoard = [{nick:me.nick, size}]; },
     mailSend: async () => { throw new Error('solo'); },
+    letterSend: async (to, l) => { st.letters = st.letters || {}; const id = 'l'+Date.now()+Math.random().toString(36).slice(2,6); (st.letters[to] = st.letters[to] || {})[id] = {...l, at:Date.now()}; st.out = {...(st.out||{}), [id]: {...l, to, at:Date.now()}}; onLettersOut(st.out); if (to===uid) onLetters(st.letters[uid]); st.adminCb && st.adminCb(st.letters); },
+    letterMark: async (to, id, v) => { const l = st.letters?.[to]?.[id]; if (l){ Object.assign(l, v); if (to===uid) onLetters(st.letters[uid]); st.adminCb && st.adminCb(st.letters); } },
+    letterDel: async (to, id) => { if (st.letters?.[to]) delete st.letters[to][id]; if (to===uid) onLetters(st.letters[uid]); },
+    adminLetters: cb => { st.adminCb = cb; cb(st.letters||{}); },
     marketList: async l => { st.market = st.market || {}; st.market['m'+Date.now()] = {...l, at:Date.now()}; onMarket(st.market); },
     marketBuy: async id => { const l = st.market?.[id]; if (!l || l.buyer) return false; l.buyer = uid; l.bnick = me.nick; onMarket(st.market); return true; },
     marketCancel: async id => { const l = st.market?.[id]; if (!l || l.buyer || l.uid!==uid) return false; delete st.market[id]; onMarket(st.market); return true; },
@@ -1048,7 +1061,7 @@ function firebaseNet(){
     presence: p => F.set(meRef, p),
     sendChat: t => F.push(F.ref(db, 'chat'), {uid, nick:me.nick, t, z:zoneId, at:F.serverTimestamp()}),
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -1057,6 +1070,8 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'contest/'+weekKey()), s=>{ contestBoard = Object.values(s.val()||{}).filter(r=>r && typeof r.size==='number').sort((a,b)=>b.size-a.size); });
       F.onChildAdded(F.ref(db, 'mail/'+uid), s=>onMail(s.val(), ()=>F.remove(s.ref).catch(()=>{})));
       F.onValue(F.ref(db, 'boss'), s=>onBoss(s.val()));
+      F.onValue(F.ref(db, 'letters/'+uid), s=>onLetters(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'lettersOut/'+uid), s=>onLettersOut(s.val()), ()=>{});
       F.onValue(F.ref(db, 'market'), s=>onMarket(s.val()));
       F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
     },
@@ -1066,7 +1081,10 @@ function firebaseNet(){
     marketBuy: async id => { try { const r = await F.runTransaction(F.ref(db, 'market/'+id), cur => (cur && !cur.buyer && cur.uid!==uid) ? {...cur, buyer:uid, bnick:me.nick} : undefined, {applyLocally:false}); return r.committed && r.snapshot.val()?.buyer===uid; } catch(e){ return false; } },
     marketCancel: async id => { try { const r = await F.runTransaction(F.ref(db, 'market/'+id), cur => (cur && cur.uid===uid && !cur.buyer) ? null : undefined, {applyLocally:false}); return r.committed && !r.snapshot.exists(); } catch(e){ return false; } },
     marketCollect: async id => { if (collecting.has(id)) return false; collecting.add(id); try { const r = await F.runTransaction(F.ref(db, 'market/'+id), cur => (cur && cur.uid===uid && cur.buyer) ? null : undefined, {applyLocally:false}); return r.committed && !r.snapshot.exists(); } catch(e){ collecting.delete(id); return false; } },
-    mailSend: (to, item) => F.push(F.ref(db, 'mail/'+to), {from:uid, nick:me.nick, item, at:F.serverTimestamp()}),
+    letterSend: async (to, l) => { const id = F.push(F.ref(db, 'letters/'+to)).key; await F.set(F.ref(db, 'letters/'+to+'/'+id), {...l, at:F.serverTimestamp()}); if (!admin) await F.set(F.ref(db, 'lettersOut/'+uid+'/'+id), {...l, to, at:F.serverTimestamp()}).catch(()=>{}); },
+    letterMark: (to, id, v) => F.update(F.ref(db, 'letters/'+to+'/'+id), v),
+    letterDel: (to, id) => F.remove(F.ref(db, 'letters/'+to+'/'+id)),
+    adminLetters: cb => F.onValue(F.ref(db, 'letters'), s=>cb(s.val()||{}), ()=>{}),
     bossReset: (gen, max) => F.runTransaction(F.ref(db, 'boss'), cur => (!cur || cur.gen !== gen) ? {hp:max, max, gen} : undefined).catch(()=>{}),
     bossHit: dmg => F.runTransaction(F.ref(db, 'boss/hp'), cur => typeof cur==='number' ? Math.max(0, cur - dmg) : cur).catch(()=>{}),
   };
@@ -1497,7 +1515,7 @@ function npcActions(n){
   if (n.id==='momo') acts.push(...sellActions(n));
   if (n.id==='dandan') acts.push(['요리하기', cookPanel]);
   if (n.id!=='momo' && BUYERS[n.id]) acts.push(['물건 팔기', ()=>sellPanel(n)]);
-  if (n.id==='tori') acts.push(['오늘의 심부름', errandPanel]);
+  if (n.id==='tori') acts.push(['오늘의 심부름', errandPanel], [`우체국 편지함${unreadLetters() ? ' ('+unreadLetters()+')' : ''}`, ()=>postPanel()]);
   if (n.id==='bori') acts.push(['공방 (텃밭·가구)', workshopPanel], ['집 늘리기·인테리어', housePanel]);
   if (n.id==='mongsil') acts.push(['옷가게 · 갈아입기', clothesPanel]);
   if (n.id==='kongi' && me.inv.sword) acts.push(['경비대 무기고', weaponPanel]);
@@ -2406,7 +2424,7 @@ function eatDish(id){ eat('dish:'+id); }
 
 // ===== 공통 패널 =====
 function openPanel(title, body, onClick){
-  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv;
+  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.post; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv;
   p.innerHTML = deEmoji(`<div class="np-head"><b>${title}</b><button class="mini" id="pnClose">닫기</button></div>${body}`);
   $('pnClose').onclick = ()=>{ p.hidden = true; };
   if (onClick) p.querySelectorAll('.np[data-id]').forEach(b=>b.onclick = ()=>onClick(b));
@@ -2765,6 +2783,64 @@ function contestPanel(){
 
 // ===== 친구에게 선물 보내기 =====
 // 친구에게 바로 보내기는 없어요. 물건은 거래소에 올려서 사고팔아요 (예전에 받은 우편은 그대로 받아요)
+// ===== 토리 우체국 · 편지 =====
+// 플레이어끼리 · 주민(NPC)에게 · 오투모에게 편지를 써요 (300 자). 플레이어끼리는 서로 답장하고, 주민과 오투모의 답장은 관리자가 써요.
+// 받은 편지: letters/<받는 사람>. 주민은 'npc_<id>', 오투모는 'otumo'. 내가 보낸 편지 사본: lettersOut/<나>
+const OTUMO = {key:'otumo', name:'오투모'};
+const LETTER_MAX = 300;
+let letters = {}, lettersOut = {}, letterSeen = null;
+const letterWho = key => key===OTUMO.key ? OTUMO.name : key && key.startsWith('npc_') ? (NPC[key.slice(4)]?.name || '주민') : (players[key]?.nick || '');
+const unreadLetters = () => Object.values(letters).filter(l=>l && !l.read).length;
+function onLetters(v){
+  const next = {}; for (const [id,l] of Object.entries(v||{})) if (l && typeof l.text==='string') next[id] = l;
+  const fresh = Object.entries(next).filter(([id,l])=>!l.read && letterSeen && !letterSeen.has(id));
+  letterSeen = new Set(Object.keys(next)); letters = next;
+  for (const [,l] of fresh){ addLog(`✉️ ${String(l.nick || letterWho(l.from) || '누군가').slice(0,10)} 님에게서 편지가 왔어요. 토리 우체국에서 읽어요`, true); toast('토리 우체국에 편지가 왔어요'); }
+  if (!$('npcPanel').hidden && $('npcPanel').dataset.post) postPanel(postView);
+}
+function onLettersOut(v){ lettersOut = {}; for (const [id,l] of Object.entries(v||{})) if (l && typeof l.text==='string') lettersOut[id] = l; if (!$('npcPanel').hidden && $('npcPanel').dataset.post && postView.tab==='out') postPanel(postView); }
+const dateOf = at => { const d = new Date((at||0) + 9*3600000); return `${d.getUTCMonth()+1}/${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; };
+let postView = {tab:'in'};
+function postPanel(v){
+  postView = v || {tab:'in'}; const tab = postView.tab;
+  const inList = Object.entries(letters).sort((a,b)=>(b[1].at||0)-(a[1].at||0)), outList = Object.entries(lettersOut).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
+  const tabs = `<div class="inv-tabs"><button class="itab${tab==='in'||tab==='read' ? ' on' : ''}" data-pt="in">받은 편지${unreadLetters() ? ` ${unreadLetters()}` : ''}</button><button class="itab${tab==='write' ? ' on' : ''}" data-pt="write">편지 쓰기</button><button class="itab${tab==='out' ? ' on' : ''}" data-pt="out">보낸 편지</button></div>`;
+  const row = ([id,l], out) => `<button class="np letter${!out && !l.read ? ' new' : ''}" data-lid="${id}"><span class="np-name">${out ? '→ ' + esc(letterWho(l.to) || '???') : esc(String(l.nick || letterWho(l.from) || '누군가').slice(0,10))}${l.replyTo ? ' <small>· 답장</small>' : ''}</span><span class="np-place">${dateOf(l.at)}</span><span class="np-day" style="grid-column:1/-1;text-align:left">${esc(l.text.replace(/\n/g,' ').slice(0,40))}${l.text.length > 40 ? '…' : ''}</span></button>`;
+  let body = '';
+  if (tab==='in') body = inList.length ? inList.map(x=>row(x, false)).join('') : '<p class="mnote">아직 받은 편지가 없어요.</p>';
+  if (tab==='out') body = outList.length ? outList.map(x=>row(x, true)).join('') : '<p class="mnote">아직 보낸 편지가 없어요.</p>';
+  if (tab==='read'){ const l = letters[postView.id];
+    if (!l) return postPanel({tab:'in'});
+    const canReply = l.from && l.from !== uid && (l.from===OTUMO.key || l.from.startsWith('npc_') || players[l.from]);
+    body = `<div class="letter-paper"><small>${dateOf(l.at)} · ${esc(String(l.nick || letterWho(l.from) || '누군가').slice(0,10))} 님이 보낸 편지</small><p>${esc(l.text)}</p></div>
+      <div class="idt-acts">${canReply ? '<button class="btn" data-pa="reply">답장 쓰기</button>' : ''}<button class="btn ghost" data-pa="del">지우기</button><button class="btn ghost" data-pa="back">목록</button></div>`; }
+  if (tab==='write'){
+    const opts = [...Object.entries(players).filter(([id])=>id!==uid).map(([id,p])=>[id, `${p.nick} (주민 플레이어)`]), ...NPCS.map(n=>['npc_'+n.id, `${n.name} (${n.animal} · ${n.role})`]), [OTUMO.key, '오투모']];
+    body = `<p class="mnote" style="margin:0 2px">섬 친구, 동물 주민, 오투모에게 편지를 보낼 수 있어요. 주민과 오투모의 답장은 시간이 조금 걸려요.</p>
+      <label class="lt-lab">받는 사람<select id="ltTo">${opts.map(([k,n])=>`<option value="${k}" ${postView.to===k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
+      <textarea id="ltText" maxlength="${LETTER_MAX}" rows="6" placeholder="하고 싶은 말을 적어요 (${LETTER_MAX} 자까지)">${esc(postView.draft||'')}</textarea>
+      <div class="inv-foot"><span id="ltCount">${(postView.draft||'').length} / ${LETTER_MAX}</span><button class="btn" data-pa="send">보내기</button></div>`; }
+  openPanel('토리 우체국', tabs + body);
+  const p = $('npcPanel'); p.dataset.post = '1';
+  p.querySelectorAll('[data-pt]').forEach(b=>b.onclick = ()=>postPanel({tab:b.dataset.pt}));
+  p.querySelectorAll('[data-lid]').forEach(b=>b.onclick = ()=>{ const id = b.dataset.lid;
+    if (tab==='out'){ const l = lettersOut[id]; return say(`→ ${letterWho(l.to) || '???'}`, `${l.text}`, [['우체국으로', ()=>postPanel({tab:'out'})]], dateOf(l.at)); }
+    if (!letters[id].read){ letters[id].read = true; net.letterMark(uid, id, {read:true}).catch(()=>{}); }
+    postPanel({tab:'read', id}); });
+  const ta = $('ltText'); if (ta) ta.oninput = ()=>{ postView.draft = ta.value; $('ltCount').textContent = `${ta.value.length} / ${LETTER_MAX}`; };
+  const sel = $('ltTo'); if (sel) sel.onchange = ()=>{ postView.to = sel.value; };
+  p.querySelectorAll('[data-pa]').forEach(b=>b.onclick = async ()=>{ const a = b.dataset.pa, l = letters[postView.id];
+    if (a==='back') return postPanel({tab:'in'});
+    if (a==='del'){ net.letterDel(uid, postView.id).catch(()=>{}); delete letters[postView.id]; return postPanel({tab:'in'}); }
+    if (a==='reply') return postPanel({tab:'write', to:l.from, replyTo:postView.id});
+    if (a==='send'){ const to = $('ltTo').value, text = $('ltText').value.trim().slice(0, LETTER_MAX);
+      if (!text) return toast('편지 내용을 적어 주세요');
+      if (to===uid) return toast('나에게는 보낼 수 없어요');
+      b.disabled = true;
+      try { await net.letterSend(to, {from:uid, nick:me.nick, text, ...(postView.replyTo ? {replyTo:postView.replyTo} : {})}); stat('lettersSent'); toast(`${letterWho(to)}에게 편지를 보냈어요`); postPanel({tab:'out'}); }
+      catch(e){ b.disabled = false; toast('보내지 못했어요. 잠시 뒤 다시 해 봐요'); } }
+  });
+}
 function onMail(m, remove){
   if (!m || typeof m.item!=='string' || !/^(dish|crop|fish|ore|loot|seed|furn):[a-z0-9_]{2,8}$/.test(m.item)) return remove();
   if (invRoom(m.item) < 1){ addLog(`${String(m.nick||'누군가').slice(0,8)} 님이 보낸 ${itemName(m.item)}이(가) 우편함에 있어요 (가방이 가득 차서 못 받았어요)`, true); return; }
@@ -3263,7 +3339,7 @@ function resize(){
 addEventListener('resize', resize); if (window.visualViewport) visualViewport.addEventListener('resize', resize);
 // 폰 키패드가 올라오면 채팅창을 키패드 바로 위로 옮기고, 아래쪽 버튼은 잠깐 숨겨요
 function keyboardLayout(){
-  const vv = window.visualViewport, box = $('chatbox'), on = typing() && vv;
+  const vv = window.visualViewport, box = $('chatbox'), on = document.activeElement?.id==='chatin' && vv;
   document.body.classList.toggle('typing', !!on);
   if (on){
     if (vv.offsetTop) scrollTo(0, 0);
@@ -3273,7 +3349,7 @@ function keyboardLayout(){
 if (window.visualViewport){ visualViewport.addEventListener('resize', keyboardLayout); visualViewport.addEventListener('scroll', keyboardLayout); }
 $('chatin').addEventListener('focus', ()=>{ setTimeout(keyboardLayout, 50); setTimeout(keyboardLayout, 350); });
 $('chatin').addEventListener('blur', ()=>{ setTimeout(keyboardLayout, 50); setTimeout(resize, 350); }); addEventListener('orientationchange', ()=>setTimeout(resize, 200)); resize();
-const typing = () => document.activeElement && document.activeElement.tagName==='INPUT';
+const typing = () => document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
 function openChat(){ document.body.classList.add('chat-open'); insetT = 0; $('chatin').focus(); }
 $('chatin').addEventListener('blur', ()=>setTimeout(()=>{ if (!typing() && !$('chatin').value.trim()) { document.body.classList.remove('chat-open'); $('emorow').hidden = true; insetT = 0; } }, 150));
 addEventListener('keydown', e=>{
@@ -3303,6 +3379,7 @@ document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow
 function toWorld(cx, cy){ return { x: view.cx + cx/view.zoom, y: view.cy + cy/view.zoom }; }
 function hitTarget(w){
   const pt = petTap(w); if (pt) return pt;
+  for (const pl of (Z().places||[])) if (pl.post){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:()=>postPanel()}; }
   for (const pl of (Z().places||[])) if (pl.shelter){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:shelterPanel}; }
   const ht = houseTap(w); if (ht) return ht;
   if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const L = LOTS[p.lot]; if (w.x>L.x-56 && w.x<L.x+56 && w.y>L.y-150 && w.y<L.y){ const HL = HOUSE_LV[houseOf(p).lv-1]; return {x:L.x, y:L.y+16, act:()=>enterZone('house:'+id, null, HL.W/2, HL.H-100)}; } }
@@ -3559,6 +3636,7 @@ function frame(t){
 }
 // ===== 관리자 CCTV: 캐릭터 없이 구역을 골라 보거나 접속한 사람을 따라가며 지켜봐요 =====
 let admWipe = false, admWipeTxt = '', admWipeChat = false, wiping = false; // 모든 가입 데이터 지우기 창
+let adminLetterData = {}, admPost = false, admDrafts = {}; // 주민·오투모에게 온 편지 (관리자가 답장)
 let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
 let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
 function onWorld(w){ world = w || {}; if (admin) renderAdmin(); }
@@ -3568,7 +3646,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -3580,6 +3658,7 @@ function renderAdmin(){
   const regs = Object.entries(players).sort(([,a],[,b])=>String(a.nick).localeCompare(String(b.nick), 'ko'));
   const watching = cam.follow ? `따라가는 중 · ${esc(others.get(cam.follow)?.nick || '')}` : `보는 곳 · ${esc(zoneName(zoneId))}`;
   const wasTyping = document.activeElement && document.activeElement.id==='admWipeTxt'; // 다시 그려도 입력하던 칸은 그대로
+  const typingRk = document.activeElement?.dataset?.rk, pl = box.querySelector('.adm-post-list'), postScroll = pl ? pl.scrollTop : 0;
   box.innerHTML = `
     <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span><button data-a="logout" class="adm-btn">로그아웃</button></div>
     <div class="adm-zones">${Object.keys(ZONES).map(z=>`<button data-z="${z}" class="adm-zone ${zoneId===z && !cam.follow ? 'on' : ''}">${esc(ZONES[z].name)}<i>${count[z]||0}</i></button>`).join('')}</div>
@@ -3589,8 +3668,10 @@ function renderAdmin(){
         <small>바꾸면 접속한 모든 사람에게 바로 전달돼요. 게임 화면 연출은 다음 업데이트에서 붙어요.</small></div>
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
       <div class="adm-sec"><b>데이터 관리</b><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
-      <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
-    </div>${admWipe ? adminWipe(regs) : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
+      <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
+    </div>${admWipe ? adminWipe(regs) : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
+  const npl = box.querySelector('.adm-post-list'); if (npl) npl.scrollTop = postScroll;
+  if (typingRk){ const ta = box.querySelector(`[data-rk="${typingRk}"]`); if (ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }
   const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
   const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
   const cl = box.querySelector('.adm-chat-list'); if (cl){ cl.scrollTop = admChatScroll ?? cl.scrollHeight; cl.onscroll = ()=>{ admChatScroll = cl.scrollTop + cl.clientHeight >= cl.scrollHeight - 4 ? null : cl.scrollTop; }; }
@@ -3647,14 +3728,38 @@ function adminTable(regs){
   return `<div class="adm-tbl"><div class="adm-tbl-head"><b>자금 · 별사탕 · 호감도</b><small>총자산 = 자금 + 별사탕(최근 방송 값) · 별사탕 아래 작은 숫자 = 손익 · 숫자 = 하트 (0~10) · 색 = 관계 단계 (아는 사이 → 괜찮은 사람 → 친한 친구 → 소중한 짝) · 초록 점 = 오늘 대화함 · 칸을 누르면 자세히</small><button data-a="tclose" class="adm-btn">닫기</button></div>
     <div class="adm-tbl-scroll"><table><thead><tr><th>닉네임</th><th>총자산</th><th>자금</th><th>별사탕</th>${NPCS.map(n=>`<th>${esc(n.name)}</th>`).join('')}<th>♥ 합계</th></tr></thead><tbody>${rows.map(([id,p])=>`<tr class="${admTbl===id ? 'sel' : ''}"><td>${esc(p.nick)}</td><td class="g"><b>${total(p).toLocaleString()} G</b></td><td class="g">${Number(p.inv?.gold||0).toLocaleString()} G</td>${stCell(p)}${NPCS.map(n=>cell(p, n)).join('')}<td>${NPCS.reduce((a,n)=>a + heartsOf(((p.rel||{})[n.id]||{}).pts), 0)}</td></tr>`).join('') || `<tr><td colspan="${NPCS.length+5}">아직 주민이 없어요</td></tr>`}</tbody></table></div></div>`;
 }
+// 주민·오투모에게 온 편지: 답장 안 한 것 먼저, 최신 순. 답장은 그 주민(또는 오투모) 이름으로 보내져요
+function adminInbox(){
+  const out = []; for (const [to, box] of Object.entries(adminLetterData||{})) if (to===OTUMO.key || to.startsWith('npc_')) for (const [id,l] of Object.entries(box||{})) if (l && typeof l.text==='string') out.push({to, id, l});
+  return out.sort((a,b)=>(!!a.l.replied - !!b.l.replied) || (b.l.at||0) - (a.l.at||0));
+}
+function adminPost(){
+  const list = adminInbox();
+  const rows = list.map(({to,id,l})=>{ const rk = to+'|'+id;
+    return `<div class="adm-letter${l.replied ? ' done' : ''}"><div class="adm-lhead"><b>→ ${esc(letterWho(to))}</b><span>${esc(String(l.nick||'누군가').slice(0,10))} 님이 보냄 · ${kstTime(l.at).slice(5,16)}</span>${l.replied ? '<i>답장함 ✓</i>' : ''}</div>
+      <p>${esc(l.text)}</p>
+      <div class="adm-wrow"><textarea data-rk="${rk}" maxlength="${LETTER_MAX}" rows="2" placeholder="${esc(letterWho(to))}의 말투로 답장 쓰기">${esc(admDrafts[rk]||'')}</textarea><button data-a="lreply" data-to="${to}" data-id="${id}" class="adm-btn">${esc(letterWho(to))} 이름으로 답장</button></div></div>`; }).join('');
+  return `<div class="adm-tbl adm-chat"><div class="adm-tbl-head"><b>편지함 · 주민·오투모</b><small>${list.length} 통 · 답장 대기 ${list.filter(x=>!x.l.replied).length}</small><button data-a="pclose" class="adm-btn">닫기</button></div>
+    <div class="adm-chat-list adm-post-list">${rows || '<small>아직 온 편지가 없어요</small>'}</div></div>`;
+}
+async function adminReply(to, id){
+  const l = adminLetterData?.[to]?.[id], rk = to+'|'+id, text = String(admDrafts[rk]||'').trim().slice(0, LETTER_MAX);
+  if (!l || !text) return toast('답장 내용을 적어 주세요');
+  try { await net.letterSend(l.from, {from:to, nick:letterWho(to), text, replyTo:id}); await net.letterMark(to, id, {read:true, replied:true}); delete admDrafts[rk]; toast(`${l.nick||'플레이어'} 님에게 ${letterWho(to)} 이름으로 답장했어요`); }
+  catch(e){ toast('답장을 보내지 못했어요. 관리자 권한이나 인터넷 연결을 확인해 주세요.'); }
+  renderAdmin();
+}
 function adminClick(e){
   const td = e.target.closest('.adm-tbl td[title]'); if (td) return toast(td.title);
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.a==='table'){ admTbl = admTbl===null ? '' : null; admChat = null; admWipe = false; admScroll = [0, 0]; return renderAdmin(); }
-  if (b.dataset.a==='chat'){ admChat = admChat===null ? '' : null; admTbl = null; admWipe = false; admChatScroll = null; return renderAdmin(); }
+  if (b.dataset.a==='table'){ admPost = false; admTbl = admTbl===null ? '' : null; admChat = null; admWipe = false; admScroll = [0, 0]; return renderAdmin(); }
+  if (b.dataset.a==='chat'){ admPost = false; admChat = admChat===null ? '' : null; admTbl = null; admWipe = false; admChatScroll = null; return renderAdmin(); }
   if (b.dataset.a==='cclose'){ admChat = null; return renderAdmin(); }
+  if (b.dataset.a==='post'){ admPost = !admPost; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
+  if (b.dataset.a==='pclose'){ admPost = false; return renderAdmin(); }
+  if (b.dataset.a==='lreply') return adminReply(b.dataset.to, b.dataset.id);
   if (b.dataset.a==='chatdl') return chatDownload();
-  if (b.dataset.a==='wipe'){ admWipe = !admWipe; admTbl = null; admChat = null; admWipeTxt = ''; return renderAdmin(); }
+  if (b.dataset.a==='wipe'){ admPost = false; admWipe = !admWipe; admTbl = null; admChat = null; admWipeTxt = ''; return renderAdmin(); }
   if (b.dataset.a==='wclose'){ admWipe = false; admWipeTxt = ''; return renderAdmin(); }
   if (b.dataset.a==='wipego') return wipeAll();
   if (b.dataset.a==='tclose'){ admTbl = null; return renderAdmin(); }

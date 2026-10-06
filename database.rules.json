@@ -60,6 +60,28 @@
         }
       }
     },
+    "letters": {
+      ".read": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$to": {
+        ".read": "auth != null && auth.uid === $to",
+        "$id": {
+          ".write": "auth != null && ((!data.exists() && newData.child('from').val() === auth.uid && $to !== auth.uid && ($to === 'otumo' || $to.beginsWith('npc_') || root.child('players/' + $to).exists())) || (auth.uid === $to && data.exists()))",
+          ".validate": "newData.hasChildren(['from', 'nick', 'text', 'at']) && newData.child('text').isString() && newData.child('text').val().length >= 1 && newData.child('text').val().length <= 300 && newData.child('nick').isString() && newData.child('nick').val().length <= 10"
+        }
+      }
+    },
+    "lettersOut": {
+      ".read": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$id": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['from', 'nick', 'text', 'at']) && newData.child('text').isString() && newData.child('text').val().length >= 1 && newData.child('text').val().length <= 300 && newData.child('nick').isString() && newData.child('nick').val().length <= 10"
+        }
+      }
+    },
     "boss": {
       ".read": "auth != null",
       ".write": "auth != null",
