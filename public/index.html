@@ -704,7 +704,21 @@ function updateNpcs(now){
     n.x = p.x; n.y = p.y; n.mv = p.mv; if (p.dx) n.flip = p.dx < 0;
   }
 }
-function slotsOf(lot, n=2){ const L = LOTS[lot]; return [[-40,44],[0,44],[40,44],[-40,82],[0,82],[40,82]].slice(0, Math.max(2, Math.min(6, n))).map(([dx,dy])=>({x:L.x+dx, y:L.y+dy})); }
+// 텃밭은 집 앞 울타리 안에만 놓여요 (5 × 2 = 최대 10 칸). 옆집 울타리와 겹치지 않게 집터 간격(190) 안에 들어가요
+const PLOT_MAX = 10, FENCE = {w:182, top:22, h:86};
+const SLOT_POS = [[-68,46],[-34,46],[0,46],[34,46],[68,46],[-68,82],[-34,82],[0,82],[34,82],[68,82]];
+const SLOT_ORDER = [1,2,3,6,7,8,0,4,5,9]; // 가운데부터 채워요
+function slotsOf(lot, n=2){ const L = LOTS[lot]; return SLOT_ORDER.slice(0, Math.max(2, Math.min(PLOT_MAX, n))).map(k=>({x:L.x+SLOT_POS[k][0], y:L.y+SLOT_POS[k][1]})); }
+function drawFence(d, L){
+  const c = d.ctx, x0 = L.x - FENCE.w/2, x1 = L.x + FENCE.w/2, y0 = L.y + FENCE.top, y1 = y0 + FENCE.h, gate = 18;
+  c.save(); c.globalAlpha = .9; c.fillStyle = 'rgba(176,122,85,.10)'; c.beginPath(); c.roundRect(x0, y0, FENCE.w, FENCE.h, 10); c.fill(); c.restore();
+  const rail = (ax, ay, bx, by) => { d.line(k=>{ k.moveTo(ax, ay-4); k.lineTo(bx, by-4); k.moveTo(ax, ay+1); k.lineTo(bx, by+1); }, '#d9a877', 2.2, 1); };
+  rail(x0, y0, L.x-gate, y0); rail(L.x+gate, y0, x1, y0); rail(x0, y1, x1, y1); rail(x0, y0, x0, y1); rail(x1, y0, x1, y1);
+  const post = (x, y) => { d.rr(x-2.6, y-9, 5.2, 11, 2, '#c98e5b'); d.circle(x, y-9, 2.8, '#e8c39e'); };
+  for (let x = x0; x <= L.x-gate+0.1; x += (L.x-gate-x0)/3) post(x, y0); for (let x = L.x+gate; x <= x1+0.1; x += (x1-L.x-gate)/3) post(x, y0);
+  for (let x = x0; x <= x1+0.1; x += FENCE.w/6) post(x, y1);
+  for (const x of [x0, x1]) for (let y = y0 + FENCE.h/3; y < y1-1; y += FENCE.h/3) post(x, y);
+}
 
 // 지금 있는 구역
 let zoneId = 'home';
@@ -971,7 +985,7 @@ function fromDB(p){
   const lk = CH.migrateLook(p.look), worn = Object.entries(lk.cc||{}).filter(([,c])=>c).map(([slot,c])=>{ const id = slot==='set' ? lk.set : lk[slot]; return id ? id+'#'+c : null; }).filter(Boolean);
   const closet = [...new Set([...CH.FREE, ...(p.closet||[]), ...(p.hats ? p.hats.split(',') : []), ...CH.lookItems(lk), ...worn])].filter(k=>CH.ITEM(k.split('#')[0]));
   return { ...p, look:CH.migrateLook(p.look), closet, rel:p.rel||{}, inv,
-    gardens:Array.from({length:Math.max(2, Math.min(6, p.plots||2))}, (_,i)=>i).map(i=>{ const s = g[i]; if (!s) return null; return {crop: s.stage>=0 ? {type:s.type||'c01', stage:s.stage, wateredAt:s.wateredAt||null} : null}; }) };
+    gardens:Array.from({length:Math.max(2, Math.min(PLOT_MAX, p.plots||2))}, (_,i)=>i).map(i=>{ const s = g[i]; if (!s) return null; return {crop: s.stage>=0 ? {type:s.type||'c01', stage:s.stage, wateredAt:s.wateredAt||null} : null}; }) };
 }
 function toDB(p){
   return { ...p, gardens: p.gardens.map(g => g ? {stage: g.crop ? g.crop.stage : -1, wateredAt: (g.crop && g.crop.wateredAt) || 0, type: (g.crop && g.crop.type) || ''} : false) };
@@ -2525,7 +2539,7 @@ function errandPanel(){
 }
 
 // ===== 보리 공방: 텃밭 늘리기 · 가구 =====
-const PLOT_COST = {3:[3000,'ore:o11',3], 4:[7500,'ore:o12',3], 5:[18000,'ore:o21',2], 6:[36000,'ore:o30',1]};
+const PLOT_COST = {3:[3000,'ore:o11',3], 4:[7500,'ore:o12',3], 5:[18000,'ore:o21',2], 6:[36000,'ore:o30',1], 7:[60000,'ore:o21',4], 8:[90000,'ore:o30',2], 9:[130000,'ore:o36',1], 10:[180000,'ore:o37',1]}; // 울타리 안 최대 10 칸
 // [이름, 골드, 재료, 개수, 모양, 색]
 const FURN_LIST = FURN_ALL; // 가구 43 종 (art/furniture.js)
 const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5]}]));
@@ -3604,6 +3618,7 @@ function buildStatic(){
   for (const [x,y] of z.trees) drawTree(d,x,y,x+y);
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return;
     const owner = Object.values(players).find(p=>p.lot===i);
+    drawFence(d, L);
     if (owner) drawHouse(d, L.x, L.y, ROOFS[owner.roof][1], owner.nick, houseOf(owner===players[uid] ? me : owner).lv);
     else {
       c.save(); c.setLineDash([6,5]); c.lineWidth=2; c.strokeStyle='#ffffffcc'; c.beginPath(); c.roundRect(L.x-48,L.y-78,96,78,12); c.stroke(); c.restore();
