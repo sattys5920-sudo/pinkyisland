@@ -575,7 +575,7 @@ export const EXPRS = [['dot','기본'],['happy','웃음'],['laugh','깔깔'],['s
 // 옛 저장(outfit/outfitColor/eyes) → 새 형식
 export function migrateLook(L){
   if (!L) return defaultLook();
-  if (L.top || L.set) return {...defaultLook(), ...L};
+  if ('top' in L || L.set) return {...defaultLook(), ...L};
   const n = {...defaultLook(), skin:L.skin||'#f9d3b8', hair:HAIR[L.hair] ? L.hair : 'long', hairColor:L.hairColor||'#4a3228', hat:HATS[L.hat] ? L.hat : 'none'};
   const o = L.outfit; if (o==='overall') n.set = 's01'; else if (o==='dress') n.set = 's02'; else if (o==='hoodie'){ n.top = 't04'; n.bottom = 'b06'; } else if (o==='shirt'){ n.top = 't05'; } else if (o==='tee'){ n.top = 't02'; }
   return n;
