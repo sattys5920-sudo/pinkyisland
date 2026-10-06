@@ -387,7 +387,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 <div id="dim"></div>
 <div id="npcPanel" class="pill" hidden></div>
 <div id="mapPanel" class="pill" hidden></div>
-<div id="sideBtns" hidden><button id="menuBtn" class="round" aria-label="메뉴">메뉴</button><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="chatBtn" class="round">채팅</button><button id="friendBtn" class="round">친구<b id="dmBadge" hidden></b></button><button id="decoBtn" class="round" hidden>꾸미기</button><button id="swingBtn" class="round swing" hidden>휘두르기</button></div>
+<div id="sideBtns" hidden><button id="menuBtn" class="round" aria-label="메뉴">메뉴</button><button id="mapBtn" class="round">지도</button><button id="npcBtn" class="round">주민</button><button id="chatBtn" class="round">채팅</button><button id="friendBtn" class="round">친구<b id="dmBadge" hidden></b></button><button id="decoBtn" class="round" hidden>꾸미기</button><button id="snowBtn" class="round" hidden>눈사람</button><button id="swingBtn" class="round swing" hidden>휘두르기</button></div>
 <div id="fade"></div>
 <div id="fishGame" class="pill" hidden><b id="fgTitle">무언가 걸렸어요!</b><div id="fgTrack"><div id="fgZone"></div><div id="fgBob"></div></div><div id="fgMeter"><div id="fgBar"></div></div><p id="fgText"></p><small>누른 채 좌우로 움직여 찌를 따라가요 (키보드: ← →)</small></div>
 <div id="toast" class="pill" style="opacity:0"></div>
@@ -1108,6 +1108,7 @@ function soloNet(){
     claimLot: async () => true,
     cleanupClaims: async () => {},
     petClaim: async sp => { petClaims[sp] = {uid}; return true; },
+    snowman: async s => { snowmen[uid] = s; },
     adminRemove: async id => { delete st.players[id]; onPlayers(structuredClone(st.players)); },
     sessionClaim: () => {},
     presence: async () => {},
@@ -1148,14 +1149,15 @@ function firebaseNet(){
     releaseRoof: i => F.remove(F.ref(db, 'roofs/'+i)).catch(()=>{}),
     claimLot: i => tx('lots/'+i, {uid, at:Date.now()}, 'lot', i),
     petClaim: sp => tx('petClaims/'+sp, {uid, at:Date.now()}),
+    snowman: s => F.set(F.ref(db, 'snowmen/'+uid), s),
     // 입주한 뒤 남아 있는 내 옛 선점(다른 지붕·집터)을 풀어 줘요
     cleanupClaims: async (roof, lot) => { for (const [kind, mine] of [['roofs', roof], ['lots', lot]]){ try { const v = (await F.get(F.ref(db, kind))).val() || {}; for (const [k,c] of Object.entries(v)) if (c && c.uid===uid && +k !== mine) await F.remove(F.ref(db, kind+'/'+k)).catch(()=>{}); } catch(e){} } },
-    adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
+    adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ['snowmen/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
     sessionClaim: sid => { const r = F.ref(db, 'sessions/'+uid); F.set(r, sid).catch(()=>{}); F.onValue(r, s=>{ const v = s.val(); if (v && v !== sid) onKicked(); }); },
     presence: p => F.set(meRef, p),
     sendChat: t => F.push(F.ref(db, 'chat'), {uid, nick:me.nick, t, z:zoneId, at:F.serverTimestamp()}),
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -1168,6 +1170,7 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'letters/'+uid), s=>onLetters(s.val()), ()=>{});
       F.onValue(F.ref(db, 'dmIndex/'+uid), s=>onDmIndex(s.val()), ()=>{});
       F.onValue(F.ref(db, 'petClaims'), s=>{ petClaims = s.val() || {}; }, ()=>{});
+      F.onValue(F.ref(db, 'snowmen'), s=>{ snowmen = s.val() || {}; }, ()=>{});
       F.onValue(F.ref(db, 'lettersOut/'+uid), s=>onLettersOut(s.val()), ()=>{});
       F.onValue(F.ref(db, 'market'), s=>onMarket(s.val()));
       F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
@@ -1446,6 +1449,7 @@ function enterGame(doc){
   $('dim').onclick = ()=>{ $('npcPanel').hidden = true; $('mapPanel').hidden = true; };
   $('decoBtn').onclick = decorMenu;
   $('chatBtn').onclick = openChat;
+  $('snowBtn').onclick = snowmanMenu;
   $('friendBtn').onclick = ()=>friendPanel();
   $('menuBtn').onclick = menuPanel;
   $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); swing(); });
@@ -1467,13 +1471,13 @@ function renderHud(){
   $('stats').hidden = false; barSig = ''; updateBars(); placeTop();
   $('quest').hidden = me.quest >= TUT_DONE; $('quest').innerHTML = `<b>할 일${me.quest >= TUT_START ? ` · 섬 생활 첫걸음 ${me.quest - TUT_START + 1}/${TUT.length}` : ''}</b>${QUESTS[Math.min(me.quest, TUT_DONE)]}`; setTimeout(tutCheck);
   const it = [['can','물뿌리개',me.inv.can],['rod','낚싯대',me.inv.rod],['pick','곡괭이',me.inv.pick],['sword',me.inv.sword ? `${weapon().name} (공격력 ${weapon().atk})` : '검',me.inv.sword]];
-  $('swingBtn').hidden = !me.inv.sword;
+  $('swingBtn').hidden = !me.inv.sword; snowBtnUpdate();
   $('bar').innerHTML = it.map(([e,n,c])=>`<div class="${c?'':'off'}" title="${n}" aria-label="${n}${c?'':' 없음'}">${ui(e,'bi')}</div>`).join('') + `<div id="bagBtn" title="가방" aria-label="가방" style="cursor:pointer">${ui('bag','bi')}</div>`;
   $('bagBtn').onclick = showBag;
   if (!$('npcPanel').hidden && $('npcPanel').dataset.kind==='npc') renderNpcPanel();
 }
 const wxClockText = () => { const d = new Date(Date.now() + serverOffset + 9*3600000), w = wxNow(); return `${w[1]} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; };
-setInterval(()=>{ const el = $('wxClock'); if (el) el.textContent = wxClockText(); }, 20000);
+setInterval(()=>{ const el = $('wxClock'); if (el) el.textContent = wxClockText(); if (me && !admin) snowBtnUpdate(); }, 20000);
 let toastT = 0;
 function toast(t, key){ const el = $('toast'); el.innerHTML = (key ? iconImg(key, 'tic') : '') + deEmoji(esc(t)); el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(()=>el.style.opacity=0, 2600); }
 function addLog(t, sys){
@@ -2222,7 +2226,7 @@ const lvOf = () => Math.max(1, Math.min(LV_MAX, (me && me.lv) || 1));
 const maxHp = () => 100 + (lvOf()-1)*10, maxSta = () => 100 + (lvOf()-1)*10;
 const expNeed = lv => 40 + lv*30;
 // 기력: 일할 때마다 조금씩 써요. 천천히 차오르고, 날이 바뀌면 가득, 먹으면 바로 차요
-const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10};
+const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10, snow:2};
 let playerSta = 100, tiredToastT = 0, dayChkT = 0;
 function useSta(kind){
   const c = STA_COST[kind] || 1;
@@ -2901,7 +2905,7 @@ const isSnow = () => wxNow()[2]==='snow';
 const isRainbow = () => wxNow()[2]==='rainbow';
 function forecast(){
   const a = wxNow(), b = weatherOf(wxBlock()+1, true), nextH = ((wxBlock()+1)*WX_BLOCK) % 24;
-  return `지금은 ${a[1]} ${a[0]}, ${nextH} 시부터는 ${b[1]} ${b[0]}! ${a[2]==='rain' ? '비가 오면 텃밭에 물을 안 줘도 되고, 희귀한 물고기가 잘 나와.' : a[2]==='snow' ? '눈 오는 날은 포근하게 입어. 밤엔 가로등 불빛이 눈에 반짝여.' : a[2]==='rainbow' ? '무지개 뜬 날엔 바위에서 귀한 광석이 잘 나와!' : ''}`;
+  return `지금은 ${a[1]} ${a[0]}, ${nextH} 시부터는 ${b[1]} ${b[0]}! ${a[2]==='rain' ? '비가 오면 텃밭에 물을 안 줘도 되고, 희귀한 물고기가 잘 나와.' : a[2]==='snow' ? '눈 오는 날은 포근하게 입어. 바깥에서 눈사람도 만들 수 있어. 눈이 그치면 녹지만!' : a[2]==='rainbow' ? '무지개 뜬 날엔 바위에서 귀한 광석이 잘 나와!' : ''}`;
 }
 let rainT = 0;
 function rainWater(t){
@@ -2912,6 +2916,57 @@ function rainWater(t){
 }
 const drops = Array.from({length:70}, (_,i)=>({x:Math.random(), y:Math.random(), s:.6+Math.random()*.6}));
 const flakes = Array.from({length:90}, ()=>({x:Math.random(), y:Math.random(), s:.35+Math.random()*.5, r:1.2+Math.random()*2.2, p:Math.random()*6.28}));
+// ===== 눈사람: 눈 오는 4 시간 동안 바깥 어디서나 한 사람이 하나씩 만들어요. 눈이 그치면 녹아요 =====
+let snowmen = {}, snowBuild = null; // snowmen/<uid> = {z, x, y, nick, b(만든 날씨 칸), sc(목도리), hat, at}
+const SNOW_SCARF = [['빨간','#e8505b'],['분홍','#ff8fb6'],['파란','#5b8fe8'],['초록','#4fb36b'],['노란','#ffcf4d']];
+const SNOW_HAT = [['양동이 모자','bucket'],['털모자','beanie'],['모자 없이','none']];
+const snowOutside = () => { const z = Z(); return !z.house && z.theme!=='room' && z.theme!=='cave'; };
+function snowBtnUpdate(){ const b = $('snowBtn'); if (b) b.hidden = !(me && !admin && isSnow() && snowOutside()); }
+function snowmenHere(){ if (!isSnow()) return []; const b = wxBlock(); return Object.entries(snowmen).filter(([,s])=>s && s.b===b && s.z===zoneId); }
+function snowmanMenu(){
+  snowBtnUpdate();
+  if (!isSnow()) return toast('눈이 와야 눈사람을 만들 수 있어요');
+  if (!snowOutside()) return toast('바깥에서만 눈사람을 만들 수 있어요');
+  const mine = snowmen[uid] && snowmen[uid].b===wxBlock();
+  snowBuild = {step:0, sc:0, hat:'bucket'};
+  say('눈사람 만들기', `${mine ? '이번 눈에 만든 눈사람이 벌써 있어요. 새로 만들면 먼저 만든 눈사람은 녹아요. ' : ''}눈덩이를 세 번 굴려 몸을 만들고 목도리와 모자로 꾸며요. (굴릴 때마다 기력 2)`, [['눈 굴리기', snowRoll]]);
+}
+function snowRoll(){
+  if (!isSnow()){ closeTalk(); return toast('눈이 그쳤어요'); }
+  if (!useSta('snow')) return;
+  snowBuild.step++;
+  if (snowBuild.step < 3) return say('눈사람 만들기', ['', '데굴데굴… 아랫몸이 커다래졌어요!', '윗몸도 동글동글 만들어 올렸어요!'][snowBuild.step], [['한 번 더 굴리기', snowRoll]]);
+  snowDeco();
+}
+function snowDeco(){
+  const B = snowBuild;
+  say('눈사람 꾸미기', '목도리 색과 모자를 골라 줘요.', [...SNOW_SCARF.map(([n],i)=>[(B.sc===i ? '● ' : '')+n+' 목도리', ()=>{ B.sc = i; snowDeco(); }]), ...SNOW_HAT.map(([n,k])=>[(B.hat===k ? '● ' : '')+n, ()=>{ B.hat = k; snowDeco(); }]), ['완성!', snowPlace]], '', false, true);
+}
+function snowPlace(){
+  closeTalk();
+  if (!isSnow() || !snowOutside()) return toast('눈이 그쳐서 눈사람이 녹아 버렸어요');
+  const o = {up:[0,-40], down:[0,40], left:[-40,0], right:[40,0]}[pos.dir] || [0,40];
+  let x = pos.x+o[0], y = pos.y+o[1]; if (blocked(x, y)){ x = pos.x; y = pos.y+40; } if (blocked(x, y)){ x = pos.x; y = pos.y; }
+  const first = !(snowmen[uid] && snowmen[uid].b===wxBlock());
+  const s = {z:zoneId, x:Math.round(x), y:Math.round(y), nick:me.nick, b:wxBlock(), sc:snowBuild.sc, hat:snowBuild.hat, at:Date.now()};
+  snowmen[uid] = s; net.snowman(s).catch(()=>toast('눈사람을 섬에 세우지 못했어요'));
+  stat('snowmen'); if (first) gainExp(15);
+  toast(first ? '눈사람 완성! 눈이 그칠 때까지 여기 서 있어요 · 경험치 +15' : '눈사람을 새로 만들었어요');
+}
+function drawSnowman(d, s, t){
+  const c = d.ctx, x = s.x, y = s.y, col = (SNOW_SCARF[s.sc|0] || SNOW_SCARF[0])[1];
+  d.ell(x, y+1, 21, 6, 'rgba(60,70,110,.16)');
+  c.save(); c.strokeStyle = '#7a5a40'; c.lineWidth = 2.5; c.lineCap = 'round'; c.beginPath();
+  c.moveTo(x-14, y-36); c.lineTo(x-30, y-48); c.moveTo(x-25, y-44); c.lineTo(x-29, y-53); c.moveTo(x+14, y-36); c.lineTo(x+30, y-46); c.moveTo(x+25, y-43); c.lineTo(x+31, y-38); c.stroke(); c.restore();
+  d.circle(x, y-17, 19, '#f7faff'); d.circle(x, y-45, 14, '#fbfdff');
+  d.dot(x, y-24, 2.2, '#4a3f4f'); d.dot(x, y-15, 2.2, '#4a3f4f');
+  d.dot(x-5, y-48, 2.2, '#3a3040'); d.dot(x+5, y-48, 2.2, '#3a3040');
+  c.save(); c.fillStyle = '#ff8a3d'; c.beginPath(); c.moveTo(x-1, y-45.5); c.lineTo(x+11, y-43.5); c.lineTo(x-1, y-41.5); c.closePath(); c.fill(); c.restore();
+  d.dot(x-9, y-42, 2.4, '#ffb3c8', .7); d.dot(x+9, y-42, 2.4, '#ffb3c8', .7);
+  d.rr(x-14, y-35, 28, 7, 3.5, col); d.rr(x+4, y-32, 7, 14, 3, col);
+  if (s.hat==='bucket'){ d.rr(x-13, y-61, 26, 5, 2.5, '#5d84ad'); d.rr(x-9, y-72, 18, 13, 3, '#7aa0c8'); }
+  else if (s.hat==='beanie'){ d.rr(x-13, y-64, 26, 12, 6, col); d.rr(x-13, y-57, 26, 5, 2.5, mixHex(col, '#ffffff', .4)); d.circle(x, y-66, 4.5, '#ffffff'); }
+}
 // ===== 하루의 빛: 한국 시간 그대로. 해 질 녘(17~19 시)에 어두워지고, 밤에는 가로등·창문·등대가 켜져요 =====
 function nightLevel(){ const d = new Date(Date.now() + serverOffset + 9*3600000), h = d.getUTCHours() + d.getUTCMinutes()/60;
   if (h >= 7 && h < 17) return 0; if (h >= 17 && h < 19) return (h-17)/2; if (h >= 5 && h < 7) return 1 - (h-5)/2; return 1; }
@@ -3654,6 +3709,7 @@ function hitTarget(w){
   if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const L = LOTS[p.lot]; if (w.x>L.x-56 && w.x<L.x+56 && w.y>L.y-150 && w.y<L.y){ const HL = HOUSE_LV[houseOf(p).lv-1]; return {x:L.x, y:L.y+16, act:()=>enterZone('house:'+id, null, HL.W/2, HL.H-100)}; } }
   if (zoneId==='starhill'){ for (const st of stars){ const a = (performance.now()-st.t)/4000, sx = st.x + a*160, sy = st.y + a*90; if (Math.hypot(w.x-sx, w.y-sy) < 40){ makeWish(); return {x:pos.x, y:pos.y, act:null, mark:performance.now()}; } } { const tr = Z().places.find(p=>p.kind==='tree'); if (tr && Math.hypot(w.x-tr.x, w.y-(tr.y-20)) < 70) return {x:tr.x, y:tr.y+100, act:promiseTree}; } }
   if (bossAlive() && Math.hypot(w.x-BOSS.x, w.y-(BOSS.y-30)) < 60){ if (!me.inv.sword){ toast('검이 없어요. 마을 광장의 콩이에게 가 봐요'); return {x:pos.x,y:pos.y,act:null,mark:performance.now()}; } return {x:BOSS.x, y:BOSS.y+70, act:()=>{ faceTo(BOSS.x, BOSS.y); swing(); }}; }
+  for (const [id,s] of snowmenHere()) if (Math.abs(w.x-s.x)<22 && w.y>s.y-70 && w.y<s.y+8) return {x:s.x, y:s.y+34, act:()=>say('눈사람', id===uid ? '내가 만든 눈사람이에요. 눈이 그치면 녹아요.' : `${s.nick} 님이 만든 눈사람이에요. 눈이 그치면 녹아요.`)};
   for (const n of NPCS) if (n.zone===zoneId && Math.abs(w.x-n.x)<22 && w.y>n.y-48 && w.y<n.y+8) return {x:n.x, y:n.y+30, act:()=>talkTo(n)};
   if (zoneId==='home' && me.lot!=null) for (const [i,s] of slotsOf(me.lot, me.plots).entries()) if (Math.abs(w.x-s.x)<18 && Math.abs(w.y-s.y)<18) return {x:s.x, y:s.y+26, act:()=>useSlot(i)};
   return null;
@@ -3897,6 +3953,7 @@ function frame(t){
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
+      ...snowmenHere().map(([,s])=>({y:s.y, draw:()=>drawSnowman(d, s, t), label:()=>{}})),
       ...(admin ? [] : [{y:pos.y, draw:()=>drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()), label:()=>{ tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-80); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
