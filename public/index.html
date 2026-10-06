@@ -1148,6 +1148,7 @@ function soloNet(){
     cleanupClaims: async () => {},
     petClaim: async sp => { petClaims[sp] = {uid}; return true; },
     snowman: async s => { snowmen[uid] = s; },
+    museumGive: async (cat, id) => { const c = museum[cat] || (museum[cat] = {}); if (c[id]) return false; c[id] = {uid, nick:me.nick, at:Date.now()}; onMuseum(museum); return true; },
     darkTx: async (npc, fn) => { const st_ = soloNet.dark || (soloNet.dark = {}); const r = fn(st_[npc] ? structuredClone(st_[npc]) : null); if (r !== undefined){ if (r === null) delete st_[npc]; else st_[npc] = r; } onDarkRooms(structuredClone(st_)); return r !== undefined; },
     reviveSend: async (id, by) => { if (id === uid) onRevive({by, at:darkNow()}); },
     reviveClear: async () => {},
@@ -1196,6 +1197,7 @@ function firebaseNet(){
     claimLot: i => tx('lots/'+i, {uid, at:Date.now()}, 'lot', i),
     petClaim: sp => tx('petClaims/'+sp, {uid, at:Date.now()}),
     snowman: s => F.set(F.ref(db, 'snowmen/'+uid), s),
+    museumGive: async (cat, id) => { try { const r = await F.runTransaction(F.ref(db, 'museum/'+cat+'/'+id), cur => cur ? undefined : {uid, nick:String(me.nick||'').slice(0,16), at:Date.now() + serverOffset}); return r.committed; } catch(e){ return false; } },
     darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
     reviveSend: (id, by) => F.set(F.ref(db, 'revive/'+id), {by:String(by).slice(0,12), at:F.serverTimestamp()}),
@@ -1213,7 +1215,7 @@ function firebaseNet(){
     // 장소마다 100 줄만 남기고 오래된 줄은 지워요
     chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, darkRooms:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, darkRooms:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -1228,6 +1230,7 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'dmIndex/'+uid), s=>onDmIndex(s.val()), ()=>{});
       F.onValue(F.ref(db, 'petClaims'), s=>{ petClaims = s.val() || {}; }, ()=>{});
       F.onValue(F.ref(db, 'snowmen'), s=>{ snowmen = s.val() || {}; }, ()=>{});
+      F.onValue(F.ref(db, 'museum'), s=>onMuseum(s.val()), ()=>{});
       F.onValue(F.ref(db, 'darkRooms'), s=>onDarkRooms(s.val()), ()=>{});
       F.onValue(F.ref(db, 'revive/'+uid), s=>onRevive(s.val()), ()=>{});
       F.onValue(F.ref(db, 'lettersOut/'+uid), s=>onLettersOut(s.val()), ()=>{});
@@ -2719,7 +2722,7 @@ function eatDish(id){ eat('dish:'+id); }
 
 // ===== 공통 패널 =====
 function openPanel(title, body, onClick){
-  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv;
+  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv; delete p.dataset.museum;
   p.innerHTML = deEmoji(`<div class="np-head"><b>${title}</b><button class="mini" id="pnClose">닫기</button></div>${body}`);
   $('pnClose').onclick = ()=>{ p.hidden = true; };
   if (onClick) p.querySelectorAll('.np[data-id]').forEach(b=>b.onclick = ()=>onClick(b));
@@ -3070,22 +3073,49 @@ function colorPanel(slot, id){
   });
 }
 
-// ===== 올리 박물관 기부 =====
+// ===== 올리 박물관: 섬 주민 12 명이 함께 채워요 =====
+// museum/<f|o|m>/<id> = {uid, nick, at} · 한 칸은 먼저 기증한 한 사람만 (이름이 남아요)
+// me.museum 은 '내가 기증한 것' 목록이에요. 10 점마다 받는 보상은 사람마다 따로예요.
+const MUSEUM_CAT = {f:'물고기', o:'광석', m:'몬스터 전리품'};
+let museum = {f:{}, o:{}, m:{}}, museumView = 'give', museumBusy = false;
+function onMuseum(v){ v = v || {}; museum = {f:v.f || {}, o:v.o || {}, m:v.m || {}}; museumSync();
+  const p = $('npcPanel'); if (p && !p.hidden && p.dataset.museum && !museumBusy) museumPanel(); }
 function museumSet(k){ return new Set(((me.museum||{})[k]||'').split(',').filter(Boolean)); }
-function museumTotal(){ return ['f','o','m'].reduce((a,k)=>a+museumSet(k).size, 0); }
+function museumTotal(){ return me ? ['f','o','m'].reduce((a,k)=>a+museumSet(k).size, 0) : 0; } // 내가 기증한 수
+function museumShared(){ return ['f','o','m'].reduce((a,k)=>a+Object.keys(museum[k]).length, 0); } // 섬 전체
+function museumName(cat, id){ return cat==='f' ? FISH[id]?.name : cat==='o' ? ORES[id]?.name : MONSTERS[id]?.drop; }
+// 함께 쓰기 전에 혼자 기증해 둔 것은 비어 있는 칸이면 내 이름으로 올려요
+let museumSynced = false;
+function museumSync(){ if (museumSynced || !me || !net || !net.museumGive || admin) return; museumSynced = true;
+  for (const k of ['f','o','m']) for (const id of museumSet(k)) if (!museum[k][id]) net.museumGive(k, id).catch(()=>{}); }
 function museumPanel(){
-  const fs = museumSet('f'), os = museumSet('o'), ms = museumSet('m'), rows = [];
-  for (const [k] of itemsOf('fish')){ const id = parseFish(k.slice(5)).id; if (!fs.has(id) && !rows.some(r=>r.id===id)) rows.push({cat:'f', id, key:k, name:FISH[id].name}); }
-  for (const [k] of itemsOf('ore')){ const id = k.slice(4); if (!os.has(id)) rows.push({cat:'o', id, key:k, name:ORES[id].name}); }
-  for (const [k] of itemsOf('loot')){ const id = k.slice(5); if (!ms.has(id)) rows.push({cat:'m', id, key:k, name:MONSTERS[id].drop}); }
-  const total = museumTotal();
-  openPanel(`올리 박물관 · 기증 ${total}/120`, `<div class="np"><span class="np-name">물고기 ${fs.size}/50 · 광석 ${os.size}/40 · 몬스터 전리품 ${ms.size}/30</span><span class="np-keep" style="color:var(--soft)">10 개 기증할 때마다 800 G와 올리의 호감도 +20</span></div>` +
-    (rows.length ? rows.map((r,i)=>`<button class="np" data-id="${i}"><span class="np-name">${iconImg(r.key)}${r.name}</span><span class="np-place">기증하기</span></button>`).join('') : '<p class="mnote">기증할 새 물건이 없어요. 아직 박물관에 없는 물고기·광석·전리품을 가져와요.</p>'), b=>{
-      const r = rows[+b.dataset.id]; invAdd(r.key, -1);
-      me.museum = me.museum || {}; me.museum[r.cat] = [...museumSet(r.cat), r.id].join(',');
-      const t = museumTotal(); if (t % 10 === 0){ me.inv.gold += 800; addPts(NPC.olly, 20); toast(`기증 ${t} 개 달성! 800 G를 받았어요`); } else toast(`${r.name}을(를) 기증했어요`);
-      saveMe(); renderHud(); museumPanel();
-    });
+  if (!me) return;
+  const shared = museumShared(), mine = museumTotal(), rows = [];
+  const has = (cat, id) => !!museum[cat][id];
+  for (const [k] of itemsOf('fish')){ const id = parseFish(k.slice(5)).id; if (!has('f', id) && !rows.some(r=>r.id===id)) rows.push({cat:'f', id, key:k, name:FISH[id].name}); }
+  for (const [k] of itemsOf('ore')){ const id = k.slice(4); if (!has('o', id)) rows.push({cat:'o', id, key:k, name:ORES[id].name}); }
+  for (const [k] of itemsOf('loot')){ const id = k.slice(5); if (!has('m', id)) rows.push({cat:'m', id, key:k, name:MONSTERS[id].drop}); }
+  const cnt = k => Object.keys(museum[k]).length;
+  const head = `<div class="np" style="display:block"><b>섬 박물관 ${shared}/120</b> · 물고기 ${cnt('f')}/50 · 광석 ${cnt('o')}/40 · 전리품 ${cnt('m')}/30<br><small>내가 기증한 것 ${mine} 점 · 내가 10 점 기증할 때마다 800 G (다음 보상까지 ${10 - mine % 10} 점)</small></div>
+    <div style="display:flex;gap:6px"><button class="mini ${museumView==='give' ? 'on' : ''}" data-mv="give">기증하기</button><button class="mini ${museumView==='list' ? 'on' : ''}" data-mv="list">기증 목록 · 누가 했나</button></div>`;
+  let body;
+  if (museumView === 'list'){
+    body = ['f','o','m'].map(k=>{ const e = Object.entries(museum[k]).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
+      return `<p class="mnote" style="margin:6px 0 2px"><b>${MUSEUM_CAT[k]} ${e.length}</b></p>` + (e.length ? e.map(([id,d])=>`<div class="np"><span class="np-name">${esc(museumName(k, id) || id)}</span><span class="np-place">${d.uid===uid ? '나' : esc(d.nick || '누군가')}</span></div>`).join('') : '<p class="mnote">아직 없어요</p>'); }).join('');
+  } else body = rows.length ? rows.map((r,i)=>`<button class="np" data-id="${i}"><span class="np-name">${iconImg(r.key)}${r.name}</span><span class="np-place">기증하기</span></button>`).join('') : '<p class="mnote">기증할 새 물건이 없어요. 아직 박물관에 없는 물고기·광석·전리품을 가져와요. 다른 주민이 이미 기증한 건 다시 못 해요.</p>';
+  openPanel(`올리 박물관 · 섬 전체 ${shared}/120`, head + body);
+  const P = $('npcPanel'); P.dataset.museum = '1';
+  P.querySelectorAll('button[data-mv]').forEach(b=>b.onclick = ()=>{ museumView = b.dataset.mv; museumPanel(); });
+  P.querySelectorAll('button[data-id]').forEach(b=>b.onclick = async ()=>{
+    if (museumBusy) return; const r = rows[+b.dataset.id]; if (!r || invCount(r.key) < 1) return museumPanel();
+    museumBusy = true; b.disabled = true;
+    const ok = await net.museumGive(r.cat, r.id); museumBusy = false;
+    if (!ok){ toast(`방금 다른 주민이 ${r.name}을(를) 먼저 기증했어요`); return museumPanel(); }
+    invAdd(r.key, -1);
+    me.museum = me.museum || {}; me.museum[r.cat] = [...museumSet(r.cat), r.id].join(',');
+    const t = museumTotal(); if (t % 10 === 0){ me.inv.gold += 800; addPts(NPC.olly, 20); toast(`내 기증 ${t} 점 달성! 800 G를 받았어요`); } else toast(`${r.name}을(를) 기증했어요 · 내 이름이 남아요`);
+    saveMe(); renderHud(); museumPanel();
+  });
 }
 
 // ===== 날씨 (펭펭) =====
@@ -3628,7 +3658,7 @@ function stat(key, n=1){ const st = stats(); st[key] = (st[key]||0) + n; checkAc
 function statSet(key, v){ const st = stats(); if (st[key] !== v){ st[key] = v; checkAchievements(); } }
 function syncStats(){ // 다른 데이터에서 바로 계산되는 기록
   const st = stats(); st.dexFish = Object.keys(me.dex||{}).length; st.dexOre = Object.keys(me.odex||{}).length; st.dexMon = Object.keys(me.mdex||{}).length;
-  st.earned = me.earned||0; st.closetCount = (me.closet||[]).length; st.plots = me.plots||2; st.museumDonated = museumTotal();
+  st.earned = me.earned||0; st.closetCount = (me.closet||[]).length; st.plots = me.plots||2; st.museumDonated = museumTotal() ? museumShared() : 0;
   const hearts = NPCS.map(n=>heartsN(n)); st.maxHearts = Math.max(0, ...hearts); st.friends7 = hearts.filter(h=>h>=7).length; st.soulmates = hearts.filter(h=>h>=10).length;
   st.weaponTier = Math.max(1, WEAPON_LIST.findIndex(w=>w[0]===(me.inv.weapon||'w1')) + 1);
   st.zonesVisited = (me.visited||'home').split(',').filter(Boolean).length; st.questsDone = (me.q&&me.q.done||[]).length;

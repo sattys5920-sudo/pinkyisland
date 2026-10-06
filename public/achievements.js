@@ -75,7 +75,7 @@ export const ACHIEVEMENTS = [
   { id:'attend_30',  name:'성실한 섬 주민',    desc:'토토에게 출석 30 일 하기',       stat:'daysAttended', n:30,     reward:{gold:5000,  title:'성실한 섬 주민'},    icon:'📅' },
 
   // ── 탐험 & 기타 ──
-  { id:'museum_120', name:'박물관의 은인',     desc:'박물관에 120 점 모두 기증하기',  stat:'museumDonated', n:120,   reward:{gold:20000, title:'박물관의 은인'},     icon:'🏛️' },
+  { id:'museum_120', name:'박물관의 은인',     desc:'섬 박물관 120 점이 다 채워지기 (나도 1 점 이상 기증)',  stat:'museumDonated', n:120,   reward:{gold:20000, title:'박물관의 은인'},     icon:'🏛️' },
   { id:'zones_13',   name:'섬 구석구석',       desc:'섬의 13 구역 모두 방문하기',     stat:'zonesVisited', n:13,     reward:{gold:1500,  title:'섬 구석구석'},       icon:'🗺️' },
   { id:'wish_10',    name:'별을 세는 사람',    desc:'별빛 언덕에서 소원 10 번 빌기',  stat:'wishes',      n:10,      reward:{gold:3000,  title:'별을 세는 사람'},    icon:'🌠' },
   { id:'walk_100k',  name:'섬 한 바퀴',        desc:'100,000 px 걷기',                stat:'distanceWalked', n:100000, reward:{gold:1000, title:'섬 한 바퀴'},        icon:'👣' },
