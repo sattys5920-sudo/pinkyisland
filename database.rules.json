@@ -12,7 +12,7 @@
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$i": {
-        ".write": "auth != null && $i.matches(/^([0-9]|1[01])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
+        ".write": "auth != null && $i.matches(/^([0-9]|1[01])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000) || (root.child('players/' + data.child('uid').val()).exists() && ('' + root.child('players/' + data.child('uid').val() + '/roof').val()) !== $i))",
         ".validate": "newData.child('uid').val() === auth.uid && newData.child('at').isNumber()"
       }
     },
@@ -20,7 +20,7 @@
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$i": {
-        ".write": "auth != null && $i.matches(/^([0-9]|1[01])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000))",
+        ".write": "auth != null && $i.matches(/^([0-9]|1[01])$/) && (!data.exists() || data.child('uid').val() === auth.uid || (!root.child('players/' + data.child('uid').val()).exists() && data.child('at').val() < now - 600000) || (root.child('players/' + data.child('uid').val()).exists() && ('' + root.child('players/' + data.child('uid').val() + '/lot').val()) !== $i))",
         ".validate": "newData.child('uid').val() === auth.uid && newData.child('at').isNumber()"
       }
     },
@@ -82,10 +82,18 @@
         }
       }
     },
+    "sessions": {
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.isString() && newData.val().length <= 40"
+      }
+    },
     "boss": {
       ".read": "auth != null",
       ".write": "auth != null",
-      ".validate": "newData.hasChildren(['hp','max','gen'])",
+      ".validate": "newData.hasChildren(['hp','max','gen']) && newData.child('gen').isNumber() && newData.child('max').isNumber() && (!data.exists() || newData.child('gen').val() >= data.child('gen').val())",
       "hp": {
         ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
       }
