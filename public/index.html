@@ -2764,23 +2764,7 @@ function contestPanel(){
 }
 
 // ===== 친구에게 선물 보내기 =====
-const sendState = {tab:'all', page:0, sel:null};
-function sendMenu(){
-  if (!Object.keys(players).some(id=>id!==uid)) return toast('아직 섬에 다른 주민이 없어요');
-  const draw = ()=>{ keepScroll(()=>openPanel('친구에게 선물 보내기', invGrid(['crop','dish','fish','ore','loot','seed','furn'], sendState)));
-    invBind(sendState, draw, (el,k)=>detailBox(el, k, [['보낼 친구 고르기', ()=>sendTo(k)]]), '보낼 물건을 골라요.'); };
-  draw();
-}
-function sendTo(k){
-  const friends = Object.entries(players).filter(([id])=>id!==uid);
-  if (!friends.length) return toast('아직 섬에 다른 주민이 없어요');
-  $('npcPanel').hidden = true;
-  say('선물 보내기', `${itemName(k)}을(를) 누구에게 보낼까요?`, friends.map(([id,p])=>[p.nick, async ()=>{
-    if (!invCount(k)) return closeTalk();
-    try { await net.mailSend(id, k); invAdd(k, -1); saveMe(); renderHud(); closeTalk(); toast(`${p.nick} 님에게 ${itemName(k)}을(를) 보냈어요`); }
-    catch(e){ toast('보내지 못했어요. 잠시 뒤 다시 해 봐요'); }
-  }]), '', false, true);
-}
+// 친구에게 바로 보내기는 없어요. 물건은 거래소에 올려서 사고팔아요 (예전에 받은 우편은 그대로 받아요)
 function onMail(m, remove){
   if (!m || typeof m.item!=='string' || !/^(dish|crop|fish|ore|loot|seed|furn):[a-z0-9_]{2,8}$/.test(m.item)) return remove();
   if (invRoom(m.item) < 1){ addLog(`${String(m.nick||'누군가').slice(0,8)} 님이 보낸 ${itemName(m.item)}이(가) 우편함에 있어요 (가방이 가득 차서 못 받았어요)`, true); return; }
@@ -2869,7 +2853,7 @@ function marketPanel(){
   const row = ([id,l]) => { const each = Math.round(l.price/l.n), ref = unitPrice(l.item);
     return `<button class="np" data-id="${id}"><span class="np-name">${iconImg(l.item)}${esc(itemName(l.item))} <small>×${l.n} · ${esc(String(l.nick||'').slice(0,8))}</small></span><span class="np-place">${l.price} G</span><span class="np-day">${l.uid===uid ? '내리기' : `개당 ${each} G · 상점 시세 ${ref} G`}</span></button>`; };
   openPanel(`거래소 · 💰 ${me.inv.gold} G`,
-    `<p class="mnote" style="margin-top:0">친구들이 올린 물건을 사거나, 내 물건을 원하는 값에 올려요. 팔리면 수수료 5%를 빼고 골드가 들어와요. (최대 ${MARKET_MAX} 개)</p>
+    `<p class="mnote" style="margin-top:0">섬 주민끼리 물건을 사고파는 거래 게시판이에요. 친구에게 바로 주는 건 안 되고, 여기에 올리면 누구나 사 갈 수 있어요. 팔리면 수수료 5%를 빼고 골드가 들어와요. (최대 ${MARKET_MAX} 개)</p>
      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="mkAdd">물건 올리기</button><button class="mini" id="mkPrice">오늘의 시세</button></div>
      <div class="bag-sec"><b>사고 싶은 물건 ${others.length}</b>${others.map(row).join('') || '<p class="mnote">아직 올라온 물건이 없어요.</p>'}</div>
      ${mine.length ? `<div class="bag-sec"><b>내가 올린 물건 ${mine.length}/${MARKET_MAX}</b>${mine.map(row).join('')}</div>` : ''}`,
@@ -2886,24 +2870,32 @@ function marketPanel(){
   $('npcPanel').dataset.market = '1';
   $('mkAdd').onclick = marketAdd; $('mkPrice').onclick = pricePanel;
 }
+const listState = {tab:'all', page:0, sel:null};
+const marketFull = () => Object.values(market).filter(l=>l.uid===uid && !l.buyer).length >= MARKET_MAX;
 function marketAdd(){
-  if (Object.values(market).filter(l=>l.uid===uid && !l.buyer).length >= MARKET_MAX) return toast(`한 번에 ${MARKET_MAX} 개까지 올릴 수 있어요`);
-  const items = ['crop','fish','ore','loot','dish','seed','furn'].flatMap(cat=>itemsOf(cat));
-  if (!items.length) return toast('올릴 물건이 없어요');
-  say('물건 올리기', '무엇을 올릴까요?', items.slice(0,30).map(([k,c])=>[`${itemName(k)} (${c})`, ()=>{
-    const ns = [...new Set([1, 5, 10, Math.min(c, 99)])].filter(x=>x<=c);
-    say('물건 올리기', `${itemName(k)}을(를) 몇 개 올릴까요?`, ns.map(q=>[`${q} 개`, ()=>{
-      const base = unitPrice(k) * q;
-      const ps = [...new Set([.8, 1, 1.3, 1.6, 2].map(m=>Math.max(1, Math.round(base*m/5)*5 || 1)))];
-      say('물건 올리기', `${itemName(k)} ${q} 개, 얼마에 팔까요?\n(상점 시세로는 ${base} G)`, ps.map(p=>[`${p} G`, async ()=>{
-        if (invCount(k) < q) return closeTalk();
-        invAdd(k, -q); saveMe(); renderHud();
-        try { await net.marketList({uid, nick:me.nick, item:k, n:q, price:p}); toast(`${itemName(k)} ${q} 개를 ${p} G에 올렸어요`); }
-        catch(e){ invAdd(k, q); saveMe(); renderHud(); toast('올리지 못했어요. 잠시 뒤 다시 해 봐요'); }
-        closeTalk(); marketPanel();
-      }]).concat([['그만두기', marketPanel]]), '', false, true);
-    }]), '', false, true);
-  }]), '', false, true);
+  if (marketFull()) return toast(`한 번에 ${MARKET_MAX} 개까지 올릴 수 있어요`);
+  const draw = ()=>{ keepScroll(()=>openPanel('거래소에 올리기', `<p class="mnote" style="margin:0 2px">올린 물건은 거래 게시판에 걸리고, 누가 사 가면 수수료 ${Math.round(MARKET_FEE*100)}%를 뺀 골드가 들어와요.</p>${invGrid(['crop','dish','fish','ore','loot','seed','furn'], listState)}`));
+    invBind(listState, draw, (el,k)=>detailBox(el, k, [['이 물건 올리기', ()=>marketList(k)]]), '올릴 물건을 골라요.'); };
+  draw();
+}
+// 개수 → 값을 고르면 게시판에 올려요
+function marketList(k){
+  if (marketFull()) return toast(`한 번에 ${MARKET_MAX} 개까지 올릴 수 있어요`);
+  const c = invCount(k); if (!c) return;
+  $('npcPanel').hidden = true; withIcon(k);
+  const ns = [...new Set([1, 5, 10, 20, Math.min(c, 99)])].filter(x=>x<=c);
+  say('거래소에 올리기', `${itemName(k)}을(를) 몇 개 올릴까요? (가진 것 ${c} 개)`, ns.map(q=>[`${q} 개`, ()=>{
+    const base = unitPrice(k) * q;
+    const ps = [...new Set([.8, 1, 1.3, 1.6, 2].map(m=>Math.max(1, Math.round(base*m/5)*5 || 1)))];
+    withIcon(k);
+    say('거래소에 올리기', `${itemName(k)} ${q} 개, 얼마에 팔까요?\n(상점 시세로는 ${base} G)`, ps.map(p=>[`${p} G`, async ()=>{
+      if (invCount(k) < q) return closeTalk();
+      invAdd(k, -q); saveMe(); renderHud();
+      try { await net.marketList({uid, nick:me.nick, item:k, n:q, price:p}); toast(`${itemName(k)} ${q} 개를 ${p} G에 올렸어요`); }
+      catch(e){ invAdd(k, q); saveMe(); renderHud(); toast('올리지 못했어요. 잠시 뒤 다시 해 봐요'); }
+      closeTalk(); marketPanel();
+    }]).concat([['그만두기', marketPanel]]), '', false, true);
+  }]).concat([['그만두기', ()=>{ closeTalk(); showBag(); }]]), '', false, true);
 }
 
 // ===== 핑키 홈쇼핑 · 별사탕: 동물의 숲 무처럼 사 두고 값이 오르길 기다려요 =====
@@ -3230,15 +3222,15 @@ function showBag(sel){
   const cats = ['crop','dish','fish','ore','loot','seed','furn'];
   keepScroll(()=>openPanel('가방',
     `<div class="np"><span class="np-name">💰 ${me.inv.gold} G <small>· 체력 ${Math.ceil(playerHp)}/${maxHp()} · 기력 ${Math.floor(playerSta)}/${maxSta()}</small></span><span class="np-day" style="grid-column:1/-1;text-align:left">도구: ${tools}</span></div>${invGrid(cats, bagState)}
-     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">친구에게 선물 보내기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷장</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`));
+     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">거래소에 올리기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷장</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`));
   invBind(bagState, ()=>showBag(), (el,k)=>{ const acts = [];
     if (foodOf(k)) acts.push(['먹기', ()=>{ eat(k); showBag(); }]);
-    if (Object.keys(players).some(id=>id!==uid)) acts.push(['친구에게 보내기', ()=>sendTo(k)]);
+    acts.push(['거래소에 올리기', ()=>marketList(k)]);
     detailBox(el, k, acts); }, '칸을 누르면 자세히 볼 수 있어요.');
   $('bgCloset').onclick = clothesPanel; $('bgQuest').onclick = questLog; $('bgAch').onclick = achPanel;
   $('bgMarket').onclick = marketPanel; $('bgPrice').onclick = pricePanel; $('bgStock').onclick = tvPanel;
   $('dxF').onclick = showDex; $('dxO').onclick = oreDex; $('dxM').onclick = monDex;
-  $('bgSend').onclick = ()=>sendMenu();
+  $('bgSend').onclick = marketAdd;
 }
 function itemInfo(k){ showBag(k); }
 function dexGridBind(entries){ $('npcPanel').querySelectorAll('.tile[data-aid]').forEach(t=>t.onclick = ()=>{ const e = entries.find(x=>x.aid===t.dataset.aid); dexInfo(e.aid, e.got, e.name); }); }
