@@ -228,7 +228,7 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 .btn{border:0;border-radius:12px;padding:7px 16px;background:var(--pink);color:var(--ink);font-size:21px;box-shadow:inset 0 -3px 0 #f2c3d3}
 .btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 -3px 0 #f6e6ec}
 .btn:disabled{opacity:.4;cursor:default}
-#juke{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);top:calc(env(safe-area-inset-top,0px) + 130px);width:min(240px,calc(100vw - 20px));z-index:8;background:#fffafc;border:2px solid #f3d6e2;border-radius:14px;padding:4px 6px 6px;box-shadow:0 4px 14px rgba(90,40,64,.22)}#juke iframe{display:block;border-radius:8px}.juke-top{display:flex;align-items:center;gap:6px;padding:0 2px 4px;font-size:15px}.juke-top b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#jukeX{border:0;background:#f7e3ea;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer}
+#juke{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);top:calc(env(safe-area-inset-top,0px) + 130px);width:min(280px,calc(100vw - 20px));z-index:8;background:#fffafc;border:2px solid #f3d6e2;border-radius:12px;padding:3px 3px 3px 6px;box-shadow:0 3px 10px rgba(90,40,64,.2);display:flex;align-items:center;gap:4px;box-sizing:border-box}#juke iframe{display:block;flex:1;min-width:0}#jukeX{border:0;background:#f7e3ea;border-radius:50%;width:22px;height:22px;font-size:12px;line-height:22px;padding:0;cursor:pointer;flex:none}
 #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 120px);transform:translateX(-50%);padding:8px 16px;z-index:9;font-size:20px;transition:opacity .4s;pointer-events:none;text-align:center;max-width:calc(100vw - 32px)}
 #ob{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;position:fixed;inset:0;z-index:20;background:#fffafb;overflow:auto;touch-action:auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 16px 40px}
 .obc{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
@@ -1388,9 +1388,9 @@ function jukeSrc(url){ return 'https://w.soundcloud.com/player/?' + new URLSearc
 function jukePlay(i){
   const s = JUKE_SONGS[i]; if (!s) return; jukeStop(true); jukeOn = s; bgmStop();
   const d = document.createElement('div'); d.id = 'juke';
-  d.innerHTML = `<div class="juke-top"><b>🎵 ${esc(s.name)}</b><button id="jukeX" aria-label="끄기">✕</button></div><iframe title="${esc(s.name)}" width="100%" height="120" scrolling="no" frameborder="no" allow="autoplay" src="${jukeSrc(s.url)}"></iframe>`;
+  d.innerHTML = `<iframe title="${esc(s.name)}" width="100%" height="20" scrolling="no" frameborder="no" allow="autoplay" src="${jukeSrc(s.url)}"></iframe><button id="jukeX" aria-label="끄기">✕</button>`;
   document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop();
-  $('npcPanel').hidden = true; toast('주크박스를 틀었어요');
+  $('npcPanel').hidden = true;
 }
 function jukeStop(quiet){ const d = $('juke'); if (d) d.remove(); const was = jukeOn; jukeOn = null; if (was && !quiet){ if (bgmStarted && bgmOn()) bgmStart(); toast('주크박스를 껐어요'); } }
 function jukePanel(){
