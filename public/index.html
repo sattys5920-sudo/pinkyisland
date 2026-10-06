@@ -1029,7 +1029,8 @@ function fromDB(p){
     gardens:Array.from({length:Math.max(2, Math.min(PLOT_MAX, p.plots||2))}, (_,i)=>i).map(i=>{ const s = g[i]; if (!s) return null; return {crop: s.stage>=0 ? {type:s.type||'c01', stage:s.stage, wateredAt:s.wateredAt||null} : null}; }) };
 }
 function toDB(p){
-  return { ...p, gardens: p.gardens.map(g => g ? {stage: g.crop ? g.crop.stage : -1, wateredAt: (g.crop && g.crop.wateredAt) || 0, type: (g.crop && g.crop.type) || ''} : false) };
+  const inv = p.inv && p.inv.wear ? {...p.inv, wear:Object.fromEntries(Object.entries(p.inv.wear).map(([k,n])=>[k.replace(/[#.$\[\]\/]/g, '~'), n]))} : p.inv; // 저장 못 하는 글자는 ~ 로
+  return { ...p, inv, gardens: p.gardens.map(g => g ? {stage: g.crop ? g.crop.stage : -1, wateredAt: (g.crop && g.crop.wateredAt) || 0, type: (g.crop && g.crop.type) || ''} : false) };
 }
 // 입주하지 않은 채 10 분이 지난 선점은 다른 사람이 가져갈 수 있어요
 // 선점이 풀린 자리: 주인이 이미 다른 지붕·집터로 입주했거나, 입주 안 하고 10 분이 지났어요
@@ -2142,7 +2143,7 @@ function itemName(key){
   if (cat==='loot') return MONSTERS[id]?.drop || '전리품';
   if (cat==='dish') return DISHES[id]?.name || '요리';
   if (cat==='furn') return FURN[id]?.name || '가구';
-  if (cat==='wear'){ const [wid, c] = id.split('#'), it = CH.ITEM(wid); return (it?.name || '옷') + (+c ? ` (${+c+1} 번 색)` : ''); }
+  if (cat==='wear'){ const [wid, c] = id.split(/[~#]/), it = CH.ITEM(wid); return (it?.name || '옷') + (+c ? ` (${+c+1} 번 색)` : ''); }
   if (cat==='umb') return (UMB[id]?.name || '') + ' 우산';
   if (cat==='wall') return (WALLS[id]?.name || '') + ' 벽지';
   if (cat==='floor') return (FLOORS[id]?.name || '') + ' 바닥';
@@ -2157,7 +2158,7 @@ function itemPrice(key){
   if (cat==='loot') return MONSTERS[id]?.dropPrice || 0;
   if (cat==='dish') return DISHES[id] ? dishPrice(id) : 0;
   if (cat==='furn') return FURN[id] ? Math.round(FURN[id].gold/2) : 0;
-  if (cat==='wear') return Math.round((CH.ITEM(id.split('#')[0])?.price || 0)/2);
+  if (cat==='wear') return Math.round((CH.ITEM(id.split(/[~#]/)[0])?.price || 0)/2);
   if (cat==='umb') return Math.round((UMB[id]?.price || 0)/2);
   if (cat==='wall' || cat==='floor') return Math.round(((cat==='wall' ? WALLS : FLOORS)[id]?.price || 0)/2);
   return 0;
@@ -2906,21 +2907,23 @@ function wearPreview(L, size=96){
 }
 // 옷마다 색 5 가지. 옷장에는 '아이디'(1 번 색) 또는 '아이디#색번호'로 들어가요. 기본 옷은 모든 색이 무료
 const ownKey = (id, c) => c ? `${id}#${c}` : id;
+// 가방 속 옷 칸 이름: Firebase 키에는 # 을 못 써서 ~ 로 (옷장 기록은 값이라 # 그대로)
+const bagKey = (id, c) => c ? `${id}~${c}` : id;
 const freeItem = it => it && it.price===0 && !it.need;
 const owns = (id, c=0) => haveWear(id, c) > 0;
-const ownsAny = id => wearing(id) || itemsOf('wear').some(([k])=>k.slice(5).split('#')[0]===id);
+const ownsAny = id => wearing(id) || itemsOf('wear').some(([k])=>k.slice(5).split(/[~#]/)[0]===id);
 const wornColor = (id, c) => { const sl = slotOfWear(id); return sl && me.look[sl]===id && (me.look.cc?.[sl]||0)===c; };
-const haveWear = (id, c) => invCount('wear:'+ownKey(id, c)) + (wornColor(id, c) ? 1 : 0);
+const haveWear = (id, c) => invCount('wear:'+bagKey(id, c)) + (wornColor(id, c) ? 1 : 0);
 function tryOn(L, slot, id, c=0){ const n = {...L, cc:{...(L.cc||{}), [slot]:c}}; if (slot==='set'){ n.set = id; } else if (slot==='top' || slot==='bottom'){ n.set = ''; n[slot] = id; } else n[slot] = id; return n; }
 function wear(slot, id){ if (id==='none'){ unwear(slot); clothesPanel(); } }
 // ===== 옷·우산·벽지·바닥도 모두 가방 아이템: 사면 가방에 들어가고, 가방에서 입거나 쓰면 원래 것이 가방으로 돌아와요 =====
 const slotOfWear = id => (CH.CATS.find(([,,cat])=>cat[id] && id!=='none') || [])[0];
 const emptyOf = sl => sl==='hat' || sl==='acc' ? 'none' : '';
 const SLOT_NAME = Object.fromEntries(CH.CATS.map(([k,l])=>[k,l]));
-function takeOff(sl){ const id = me.look[sl]; if (!id || id==='none') return false; invAdd('wear:'+ownKey(id, me.look.cc?.[sl]||0), 1); me.look = {...me.look, [sl]: emptyOf(sl)}; return true; }
+function takeOff(sl){ const id = me.look[sl]; if (!id || id==='none') return false; invAdd('wear:'+bagKey(id, me.look.cc?.[sl]||0), 1); me.look = {...me.look, [sl]: emptyOf(sl)}; return true; }
 function lookChanged(){ spriteCache.clear(); previewCache.clear(); saveMe(); }
 function wearItem(k){
-  const [id, c] = k.slice(5).split('#'), sl = slotOfWear(id); if (!sl || invCount(k) < 1) return;
+  const [id, c] = k.slice(5).split(/[~#]/), sl = slotOfWear(id); if (!sl || invCount(k) < 1) return;
   invAdd(k, -1);
   for (const o of sl==='set' ? ['set','top','bottom'] : sl==='top' || sl==='bottom' ? [sl, 'set'] : [sl]) takeOff(o); // 한 벌을 입으면 상의·하의도 벗어 가방에
   me.look = {...me.look, [sl]: id, cc:{...(me.look.cc||{}), [sl]: +c||0}};
@@ -2940,7 +2943,7 @@ function useInterior(k){
 }
 // 가방 맨 위: 지금 입은 옷·고른 우산 (누르면 벗어서 가방에)
 function wornRow(){
-  const chips = CH.CATS.map(([sl,l])=>{ const id = me.look[sl]; if (!id || id==='none') return ''; const k = 'wear:'+ownKey(id, me.look.cc?.[sl]||0);
+  const chips = CH.CATS.map(([sl,l])=>{ const id = me.look[sl]; if (!id || id==='none') return ''; const k = 'wear:'+bagKey(id, me.look.cc?.[sl]||0);
     return `<button class="worn" data-off="${sl}" title="벗기">${iconImg(k)}<span><small>${l}</small>${esc(itemName(k))}</span><b>벗기</b></button>`; }).join('');
   const um = me.umb && UMB[me.umb] ? `<button class="worn" data-off="umb">${iconImg('umb:'+me.umb)}<span><small>우산</small>${esc(UMB[me.umb].name)}</span><b>넣기</b></button>` : '';
   return `<div class="worn-row"><b>입고 있는 것</b>${chips || um ? chips + um : '<span class="mnote">아무것도 안 입었어요</span>'}</div>`;
@@ -2950,9 +2953,9 @@ function bindWornRow(again){ $('npcPanel').querySelectorAll('[data-off]').forEac
 function migrateItems(){
   if ((me.invV|0) >= 2) return;
   const L = me.look || {};
-  if (L.set) for (const sl of ['top','bottom']) if (L[sl] && L[sl]!=='none'){ if (!freeItem(CH.ITEM(L[sl]))) invAdd('wear:'+ownKey(L[sl], L.cc?.[sl]||0), 1); me.look = {...me.look, [sl]: ''}; }
+  if (L.set) for (const sl of ['top','bottom']) if (L[sl] && L[sl]!=='none'){ if (!freeItem(CH.ITEM(L[sl]))) invAdd('wear:'+bagKey(L[sl], L.cc?.[sl]||0), 1); me.look = {...me.look, [sl]: ''}; }
   const worn = new Set(CH.CATS.map(([sl])=>me.look[sl] && me.look[sl]!=='none' ? ownKey(me.look[sl], me.look.cc?.[sl]||0) : '').filter(Boolean));
-  for (const k of [...new Set(me.closet || [])]) if (!worn.has(k) && CH.ITEM(k.split('#')[0]) && !freeItem(CH.ITEM(k.split('#')[0]))) invAdd('wear:'+k, 1);
+  for (const k of [...new Set(me.closet || [])]) if (!worn.has(k) && CH.ITEM(k.split('#')[0]) && !freeItem(CH.ITEM(k.split('#')[0]))) invAdd('wear:'+k.replace('#', '~'), 1);
   for (const id of Object.keys(me.umbs || {})) if (UMB[id] && id !== me.umb) invAdd('umb:'+id, 1);
   delete me.umbs;
   const H = myHouse();
@@ -2984,10 +2987,10 @@ function colorPanel(slot, id){
   $('cpBack').onclick = ()=>clothesPanel();
   pn.querySelectorAll('.tile[data-c]').forEach(b=>b.onclick = ()=>{
     const c = +b.dataset.c;
-    if (free){ if (owns(id, c)) return toast('기본 옷은 한 벌씩만 받을 수 있어요 · 가방에서 [입기]로 입어요'); invAdd('wear:'+ownKey(id, c), 1); saveMe(); colorPanel(slot, id); return toast(`${it.name}(${c+1} 번 색)을(를) 받았어요 · 가방에 넣었어요`); }
+    if (free){ if (owns(id, c)) return toast('기본 옷은 한 벌씩만 받을 수 있어요 · 가방에서 [입기]로 입어요'); invAdd('wear:'+bagKey(id, c), 1); saveMe(); colorPanel(slot, id); return toast(`${it.name}(${c+1} 번 색)을(를) 받았어요 · 가방에 넣었어요`); }
     if (!can) return toast(it.need ? '재료나 돈이 모자라요' : '돈이 모자라요');
     say(it.name, it.need ? `${it.price?it.price+' G와 ':''}${itemName(it.need)} ${it.n} 개로 ${c+1} 번 색을 만들까요?` : `${owns(id, c) ? `이미 ${haveWear(id, c)} 벌 있어요. ` : ''}${c+1} 번 색을 ${it.price.toLocaleString()} G에 살까요? 사면 가방에 들어가요.`, [[it.need ? '만들기' : '사기', ()=>{
-      me.inv.gold -= it.price; if (it.need) invAdd(it.need, -it.n); invAdd('wear:'+ownKey(id, c), 1); if (!CLOSET().includes(ownKey(id, c))) CLOSET().push(ownKey(id, c)); stat('bought'); syncStats(); saveMe(true); renderHud(); closeTalk(); colorPanel(slot, id); toast(`${it.name}(${c+1} 번 색)을(를) ${it.need?'만들었어요':'샀어요'} · 가방에서 [입기]로 입어요`); }], ['그만두기', ()=>{ closeTalk(); colorPanel(slot, id); }]], '', true);
+      me.inv.gold -= it.price; if (it.need) invAdd(it.need, -it.n); invAdd('wear:'+bagKey(id, c), 1); if (!CLOSET().includes(ownKey(id, c))) CLOSET().push(ownKey(id, c)); stat('bought'); syncStats(); saveMe(true); renderHud(); closeTalk(); colorPanel(slot, id); toast(`${it.name}(${c+1} 번 색)을(를) ${it.need?'만들었어요':'샀어요'} · 가방에서 [입기]로 입어요`); }], ['그만두기', ()=>{ closeTalk(); colorPanel(slot, id); }]], '', true);
   });
 }
 
@@ -3402,8 +3405,8 @@ function pricePanel(){
 const MARKET_FEE = .05, MARKET_MAX = 5;
 let market = {};
 // 거래할 수 있는 아이템 키인지 (옷·우산·벽지·바닥도 거래돼요)
-function itemKeyOk(k){ const m = /^(dish|crop|fish|ore|loot|seed|furn|wear|umb|wall|floor):([A-Za-z0-9_#]{2,12})$/.exec(k || ''); if (!m) return false; const [, cat, id] = m;
-  if (cat==='wear'){ const [w, c] = id.split('#'); return !!slotOfWear(w) && (c===undefined || /^[1-4]$/.test(c)); }
+function itemKeyOk(k){ const m = /^(dish|crop|fish|ore|loot|seed|furn|wear|umb|wall|floor):([A-Za-z0-9_~]{2,12})$/.exec(k || ''); if (!m) return false; const [, cat, id] = m;
+  if (cat==='wear'){ const [w, c] = id.split(/[~#]/); return !!slotOfWear(w) && (c===undefined || /^[1-4]$/.test(c)); }
   if (cat==='umb') return !!UMB[id]; if (cat==='wall') return !!WALLS[id]; if (cat==='floor') return !!FLOORS[id]; return /^[a-z0-9_]{2,8}$/.test(id); }
 const validListing = l => l && typeof l.item==='string' && itemKeyOk(l.item) && l.n>=1 && l.n<=99 && l.price>=1 && typeof l.uid==='string';
 function onMarket(v){
@@ -3934,7 +3937,7 @@ function iconURL(aid, size=96, silhouette=false){
 // 옷·우산·벽지·바닥 그림: 옷은 내 캐릭터가 그 옷 하나만 입은 모습, 우산은 지금 고른 색, 벽지·바닥은 견본
 function specialIcon(key){
   const [cat, id] = String(key).split(':');
-  if (cat==='wear'){ const [wid, c] = id.split('#'), slot = slotOfWear(wid); if (!slot) return ''; return wearPreview(tryOn({...me.look, top:'', bottom:'', set:'', hat:'none', acc:'none', shoes:''}, slot, wid, +c||0)); }
+  if (cat==='wear'){ const [wid, c] = id.split(/[~#]/), slot = slotOfWear(wid); if (!slot) return ''; return wearPreview(tryOn({...me.look, top:'', bottom:'', set:'', hat:'none', acc:'none', shoes:''}, slot, wid, +c||0)); }
   if (cat==='umb') return UMB[id] ? umbIcon(id+':'+Math.max(0, Math.min(UMB_COLS.length-1, me.umbCol|0))) : '';
   if (cat==='wall' && WALLS[id]) return swatchURL('wall', id);
   if (cat==='floor' && FLOORS[id]) return swatchURL('floor', id);
