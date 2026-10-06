@@ -228,6 +228,7 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 .btn{border:0;border-radius:12px;padding:7px 16px;background:var(--pink);color:var(--ink);font-size:21px;box-shadow:inset 0 -3px 0 #f2c3d3}
 .btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 -3px 0 #f6e6ec}
 .btn:disabled{opacity:.4;cursor:default}
+#juke{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);top:calc(env(safe-area-inset-top,0px) + 130px);width:min(240px,calc(100vw - 20px));z-index:8;background:#fffafc;border:2px solid #f3d6e2;border-radius:14px;padding:4px 6px 6px;box-shadow:0 4px 14px rgba(90,40,64,.22)}#juke iframe{display:block;border-radius:8px}.juke-top{display:flex;align-items:center;gap:6px;padding:0 2px 4px;font-size:15px}.juke-top b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#jukeX{border:0;background:#f7e3ea;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer}
 #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 120px);transform:translateX(-50%);padding:8px 16px;z-index:9;font-size:20px;transition:opacity .4s;pointer-events:none;text-align:center;max-width:calc(100vw - 32px)}
 #ob{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;position:fixed;inset:0;z-index:20;background:#fffafb;overflow:auto;touch-action:auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 16px 40px}
 .obc{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
@@ -1363,7 +1364,7 @@ function bgmSchedule(){
   }
 }
 function bgmStart(){
-  if (!bgmOn() || document.visibilityState==='hidden') return;
+  if (!bgmOn() || document.visibilityState==='hidden' || jukeOn) return;
   bgmStarted = true;
   if (!bgmUseSynth){
     if (!bgmAudio){ bgmAudio = new Audio(BGM_FILE); bgmAudio.loop = true; bgmAudio.volume = BGM_VOL; bgmAudio.addEventListener('error', ()=>{ bgmUseSynth = true; bgmAudio = null; bgmStart(); }, {once:true}); }
@@ -1378,6 +1379,27 @@ function bgmStop(){ if (bgmAudio) bgmAudio.pause(); if (bgmTimer){ clearInterval
 // 브라우저는 처음 화면을 누르기 전엔 소리를 못 내요. 첫 터치·키 입력 때 시작해요
 for (const ev of ['pointerdown','keydown']) addEventListener(ev, ()=>{ if (me && !admin && !bgmStarted) bgmStart(); }, {passive:true});
 document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='hidden') bgmStop(); else if (bgmStarted && bgmOn()) bgmStart(); });
+// ===== 주크박스: 집의 주크박스를 누르면 곡을 골라 사운드클라우드 작은 플레이어로 들어요. 듣는 동안 배경 음악은 쉬어요 =====
+const JUKE_SONGS = [
+  {name:'오후 6 시의 오투모', url:'https://on.soundcloud.com/BbjZBXtK7fBJds7N13'},
+];
+let jukeOn = null;
+function jukeSrc(url){ return 'https://w.soundcloud.com/player/?' + new URLSearchParams({url, color:'#ff8fb1', auto_play:'true', show_user:'false', show_artist:'false', hide_related:'true', show_comments:'false', show_reposts:'false', show_teaser:'false', visual:'false', sharing:'false', buying:'false', download:'false'}); }
+function jukePlay(i){
+  const s = JUKE_SONGS[i]; if (!s) return; jukeStop(true); jukeOn = s; bgmStop();
+  const d = document.createElement('div'); d.id = 'juke';
+  d.innerHTML = `<div class="juke-top"><b>🎵 ${esc(s.name)}</b><button id="jukeX" aria-label="끄기">✕</button></div><iframe title="${esc(s.name)}" width="100%" height="120" scrolling="no" frameborder="no" allow="autoplay" src="${jukeSrc(s.url)}"></iframe>`;
+  document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop();
+  $('npcPanel').hidden = true; toast('주크박스를 틀었어요');
+}
+function jukeStop(quiet){ const d = $('juke'); if (d) d.remove(); const was = jukeOn; jukeOn = null; if (was && !quiet){ if (bgmStarted && bgmOn()) bgmStart(); toast('주크박스를 껐어요'); } }
+function jukePanel(){
+  openPanel('🎵 주크박스', JUKE_SONGS.map((s,i)=>`<div class="np"><span class="np-name">${esc(s.name)}${jukeOn===s ? ' <small>지금 나오는 중</small>' : ''}</span><button class="mini" data-jk="${i}">${jukeOn===s ? '처음부터' : '틀기'}</button></div>`).join('') +
+    (jukeOn ? '<button class="btn ghost" id="jkOff" style="width:100%;margin-top:6px">주크박스 끄기</button>' : '') +
+    '<p class="mnote">사운드클라우드 플레이어로 나와요. 저절로 안 나오면 플레이어의 ▶ 를 눌러요. 듣는 동안 섬 배경 음악은 쉬고, ✕ 로 끄면 다시 나와요.</p>');
+  $('npcPanel').querySelectorAll('button[data-jk]').forEach(b=>b.onclick = ()=>jukePlay(+b.dataset.jk));
+  if ($('jkOff')) $('jkOff').onclick = ()=>{ jukeStop(); $('npcPanel').hidden = true; };
+}
 async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); if (saveTimer) await flushSave(); try { if (net && net.presenceLeave) await net.presenceLeave(); } catch(e){} try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); } // 로그아웃 전에 접속 표시를 지워요 (나간 뒤엔 권한이 없어서 못 지워요)
 // 글꼴이 다 내려받히기 전에 그린 캔버스(지형·스프라이트)는 기본 글꼴로 굳어 버려요. 먼저 기다리고, 늦게 오면 캐시를 지워 다시 그려요.
 const fontReady = (async()=>{ try { await Promise.race([document.fonts.load('700 20px "Dongle"', '핑키 디저트 아일랜드 가나다 ABC 123'), new Promise(r=>setTimeout(r, 3000))]); } catch(e){} })();
@@ -2763,7 +2785,8 @@ function drawFurn(d, f, x, y){
 let movingFurn = -1;
 function houseTap(w){
   const z = Z(); if (!z.house || z.house!==uid) return null;
-  if (!decorating){ const tv = furnOf(uid).find(f=>f.id===TV_ID && Math.abs(f.x-w.x)<40 && w.y>f.y-80 && w.y<f.y+14); return tv ? {x:tv.x, y:tv.y+34, act:tvPanel} : null; }
+  if (!decorating){ const tv = furnOf(uid).find(f=>f.id===TV_ID && Math.abs(f.x-w.x)<40 && w.y>f.y-80 && w.y<f.y+14); if (tv) return {x:tv.x, y:tv.y+34, act:tvPanel};
+    const jb = furnOf(uid).find(f=>FURN[f.id]?.shape==='jukebox' && Math.abs(f.x-w.x)<34 && w.y>f.y-76 && w.y<f.y+10); return jb ? {x:jb.x, y:jb.y+34, act:jukePanel} : null; }
   const stay = {x:pos.x, y:pos.y, act:null, mark:performance.now()}, list = furnOf(uid);
   const hit = () => list.findIndex(f=>Math.abs(f.x-w.x)<38 && w.y>f.y-70 && w.y<f.y+12);
   const onFloor = w.y >= 250 && w.y <= z.H-70 && w.x >= 80 && w.x <= z.W-80;
