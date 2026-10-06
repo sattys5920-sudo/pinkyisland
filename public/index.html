@@ -155,7 +155,8 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .np-day{font-size:16px;color:var(--soft);text-align:right}
 .np-h small{color:var(--soft);letter-spacing:0}
 .np-keep{grid-column:1/-1;font-size:16px;color:var(--ink);opacity:.8}
-.dk-q{font-size:18px;line-height:1.5;margin:4px 2px 10px;white-space:pre-wrap}.dk-ans{display:flex;gap:6px;margin-bottom:8px}.dk-ans input{flex:1;min-width:0;font:inherit;font-size:18px;padding:8px 12px;border-radius:12px;border:2px solid #f2c6d6}.dk-ok{color:#2f9b57;font-size:17px}.adm-dark{display:grid;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.12)}.adm-dark small{opacity:.8}
+.dk-q{font-size:18px;line-height:1.5;margin:4px 2px 10px;white-space:pre-wrap}.dk-ans{display:flex;gap:6px;margin-bottom:8px}.dk-ans input{flex:1;min-width:0;font:inherit;font-size:18px;padding:8px 12px;border-radius:12px;border:2px solid #f2c6d6}.dk-ok{color:#2f9b57;font-size:17px}.adm-lhead i.rd{color:#7dff9a;margin-left:6px;font-style:normal}.adm-lhead i.unrd{color:#ffb86b;margin-left:6px;font-style:normal}
+.adm-dark{display:grid;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.12)}.adm-dark small{opacity:.8}
 .worn-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}.worn-row>b{font-size:14px;width:100%}.worn{display:flex;align-items:center;gap:6px;background:#fff;border:0;border-radius:14px;padding:4px 10px 4px 4px;box-shadow:0 2px 0 #f2d6e1;font:inherit;cursor:pointer;color:inherit}.worn img{width:38px;height:38px}.worn span{display:grid;line-height:1.15;text-align:left;font-size:13px}.worn small{color:var(--soft,#9b7d8b);font-size:11px}.worn b{font-size:12px;color:#e0708f;margin-left:2px}
 .umb-cols{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 2px 8px}.umb-cols b{font-size:14px;margin-right:2px}.umb-sw{width:30px;height:30px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px #e7c9d6, inset -3px -4px 6px rgba(90,40,70,.18), inset 3px 3px 5px rgba(255,255,255,.5);padding:0;cursor:pointer}.umb-sw.on{box-shadow:0 0 0 3px #ff7aa8, inset -3px -4px 6px rgba(90,40,70,.18), inset 3px 3px 5px rgba(255,255,255,.5)}
 #sideBtns{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 78px);display:flex;flex-direction:column;gap:8px;z-index:5}
@@ -3330,7 +3331,7 @@ function postPanel(v){
   p.querySelectorAll('[data-pt]').forEach(b=>b.onclick = ()=>postPanel({tab:b.dataset.pt}));
   p.querySelectorAll('[data-lid]').forEach(b=>b.onclick = ()=>{ const id = b.dataset.lid;
     if (tab==='out'){ const l = lettersOut[id]; return say(`→ ${letterWho(l.to) || '???'}`, `${l.text}`, [['우체국으로', ()=>postPanel({tab:'out'})]], dateOf(l.at)); }
-    if (!letters[id].read){ letters[id].read = true; net.letterMark(uid, id, {read:true}).catch(()=>{}); }
+    if (!letters[id].read){ letters[id].read = true; net.letterMark(uid, id, {read:true, readAt:Date.now() + serverOffset}).catch(()=>{}); }
     postPanel({tab:'read', id}); });
   const ta = $('ltText'); if (ta) ta.oninput = ()=>{ postView.draft = ta.value; $('ltCount').textContent = `${ta.value.length} / ${LETTER_MAX}`; };
   const sel = $('ltTo'); if (sel) sel.onchange = ()=>{ postView.to = sel.value; };
@@ -4567,12 +4568,14 @@ function adminInbox(){
 function adminPost(){
   const list = adminInbox();
   const rows = list.map(({to,id,l})=>{ const rk = to+'|'+id;
-    return `<div class="adm-letter${l.replied ? ' done' : ''}"><div class="adm-lhead"><b>→ ${esc(letterWho(to))}</b><span>${esc(String(l.nick||'누군가').slice(0,10))} 님이 보냄 · ${kstTime(l.at).slice(5,16)}</span>${l.replied ? '<i>답장함 ✓</i>' : ''}</div>
+    return `<div class="adm-letter${l.replied ? ' done' : ''}"><div class="adm-lhead"><b>→ ${esc(letterWho(to))}</b><span>${esc(String(l.nick||'누군가').slice(0,10))} 님이 보냄 · ${kstTime(l.at).slice(5,16)}</span>${l.replied ? (()=>{ const r = adminReplyOf(to, id, l); return `<i>답장함 ✓</i>${r ? (r.read ? `<i class="rd">읽음 ✓${r.readAt ? ' · ' + kstTime(r.readAt).slice(5,16) : ''}</i>` : '<i class="unrd">아직 안 읽음</i>') : ''}`; })() : ''}</div>
       <p>${esc(l.text)}</p>
       <div class="adm-wrow"><textarea data-rk="${rk}" maxlength="${LETTER_MAX}" rows="2" placeholder="${esc(letterWho(to))}의 말투로 답장 쓰기">${esc(admDrafts[rk]||'')}</textarea><button data-a="lreply" data-to="${to}" data-id="${id}" class="adm-btn">${esc(letterWho(to))} 이름으로 답장</button></div></div>`; }).join('');
   return `<div class="adm-tbl adm-chat"><div class="adm-tbl-head"><b>편지함 · 주민·오투모</b><small>${list.length} 통 · 답장 대기 ${list.filter(x=>!x.l.replied).length}</small><button data-a="pclose" class="adm-btn">닫기</button></div>
     <div class="adm-chat-list adm-post-list">${rows || '<small>아직 온 편지가 없어요</small>'}</div></div>`;
 }
+// 관리자가 보낸 답장: 받은 사람의 편지함(letters/<받은 사람>)에서 replyTo 로 찾아 읽었는지 봐요
+function adminReplyOf(to, id, l){ const box = adminLetterData?.[l.from] || {}; const list = Object.values(box).filter(x=>x && x.replyTo===id && x.from===to); return list.sort((a,b)=>(b.at||0)-(a.at||0))[0] || null; }
 async function adminReply(to, id){
   const l = adminLetterData?.[to]?.[id], rk = to+'|'+id, text = String(admDrafts[rk]||'').trim().slice(0, LETTER_MAX);
   if (!l || !text) return toast('답장 내용을 적어 주세요');
