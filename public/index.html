@@ -151,6 +151,7 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .np-day{font-size:16px;color:var(--soft);text-align:right}
 .np-h small{color:var(--soft);letter-spacing:0}
 .np-keep{grid-column:1/-1;font-size:16px;color:var(--ink);opacity:.8}
+.umb-cols{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 2px 8px}.umb-cols b{font-size:14px;margin-right:2px}.umb-sw{width:30px;height:30px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px #e7c9d6, inset -3px -4px 6px rgba(90,40,70,.18), inset 3px 3px 5px rgba(255,255,255,.5);padding:0;cursor:pointer}.umb-sw.on{box-shadow:0 0 0 3px #ff7aa8, inset -3px -4px 6px rgba(90,40,70,.18), inset 3px 3px 5px rgba(255,255,255,.5)}
 #sideBtns{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 78px);display:flex;flex-direction:column;gap:8px;z-index:5}
 .round.swing{width:64px;height:64px;font-size:16px;letter-spacing:-.5px;background:linear-gradient(#fff,#fde4ec);box-shadow:inset 0 -3px 0 #f2c3d3,0 4px 14px #d4a3b52e}
 .round{width:50px;height:50px;border-radius:50%;border:0;padding:0;line-height:1.05;white-space:nowrap;background:linear-gradient(#fff,#fff8fa);color:var(--ink);font-size:18px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
@@ -1083,7 +1084,7 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz;
-    Object.assign(o, {um: UMB[s.um] ? s.um : '', sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), nick:String(s.nick||'').slice(0,8), uid:id});
+    Object.assign(o, {um: umbOk(s.um), sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), nick:String(s.nick||'').slice(0,8), uid:id});
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
   }
@@ -2916,49 +2917,57 @@ function rainWater(t){
 }
 const drops = Array.from({length:70}, (_,i)=>({x:Math.random(), y:Math.random(), s:.6+Math.random()*.6}));
 const flakes = Array.from({length:90}, ()=>({x:Math.random(), y:Math.random(), s:.35+Math.random()*.5, r:1.2+Math.random()*2.2, p:Math.random()*6.28}));
-// ===== 우산: 몽실이네 우산 가게에서 사고, 하나 골라 두면 비 올 때 저절로 써요 (다른 사람에게도 보여요) =====
-const UMB = {
-  u1:{name:'투명 비닐 우산', price:3000, col:'#dff3ff', a:.55},
-  u2:{name:'분홍 땡땡이 우산', price:8000, col:'#ff9cc0', dot:'#ffffff'},
-  u3:{name:'노란 병아리 우산', price:12000, col:'#ffd84d', dot:'#ff9a3d'},
-  u4:{name:'하늘 구름 우산', price:18000, col:'#8cc8ff', dot:'#ffffff', cloud:1},
-  u5:{name:'딸기 우산', price:28000, col:'#ff5b6e', dot:'#ffe9a8', leaf:1},
-  u6:{name:'보라 별빛 우산', price:45000, col:'#9b7be0', dot:'#fff2a8'},
-  u7:{name:'무지개 우산', price:70000, rainbow:['#ff6b7a','#ffa94d','#ffe066','#7bd389','#6fb6ff','#a98bff']},
+// ===== 우산: 몽실이네 우산 가게에서 무늬를 사고 색은 마음대로 골라요. 골라 두면 비 올 때 바깥에서 저절로 펼쳐 써요 (다른 사람에게도 보여요) =====
+const UMB = { // 무늬 7 가지 (u1~u7)
+  u1:{name:'민무늬', price:3000}, u2:{name:'땡땡이', price:8000}, u3:{name:'줄무늬', price:12000}, u4:{name:'구름', price:18000},
+  u5:{name:'하트', price:28000}, u6:{name:'별', price:45000}, u7:{name:'무지개', price:70000, rainbow:true},
 };
-function drawUmbrella(c, x, y, id, dir, t, walk){
-  const U = UMB[id]; if (!U) return;
+const UMB_COLS = [['분홍','#ff9cc0'],['딸기','#ff6b7a'],['귤','#ffa94d'],['레몬','#ffd84d'],['풀잎','#9ad66b'],['하늘','#8cc8ff'],['라벤더','#b49bff'],['크림','#f6efe6']];
+const RAINBOW = ['#ff7a88','#ffad5c','#ffe070','#8fd68a','#7cbcff','#b49bff'];
+const umbKey = () => me.umb && UMB[me.umb] ? me.umb + ':' + Math.max(0, Math.min(UMB_COLS.length-1, me.umbCol|0)) : '';
+function umbOk(k){ const [id, ci] = String(k||'').split(':'); return UMB[id] && UMB_COLS[ci|0] ? id+':'+(ci|0) : ''; }
+// 클레이 우산: 볼록한 지붕(그라데이션·가장자리 음영) + 동글동글 끝 구슬 + 홈 파인 살 + 나무 손잡이
+function drawUmbrella(c, x, y, key, dir, t, walk){
+  const [id, ci] = String(key).split(':'), U = UMB[id]; if (!U) return;
+  const col = UMB_COLS[ci|0][1], d = painter(c), light = ['#ffd84d','#f6efe6','#9ad66b'].includes(col), ink = light ? '#ff8fb6' : '#fff8f0';
   const sw = walk ? Math.sin(t/1000*9)*1.5 : Math.sin(t/1000*1.6)*.8, side = dir==='left' ? -1 : 1;
   const hx = x + side*18, cx = x + side*6 + sw, cy = y - 88, R = 34;
-  c.save(); c.lineCap = 'round';
-  c.strokeStyle = '#6e5a6a'; c.lineWidth = 2.2; c.beginPath(); c.moveTo(cx, cy); c.lineTo(hx, y-26); c.stroke(); // 손잡이 막대
-  c.beginPath(); c.arc(hx - side*3.5, y-26, 3.5, 0, Math.PI, side<0); c.stroke();
-  const dome = () => { c.beginPath(); c.moveTo(cx-R, cy+10); c.quadraticCurveTo(cx-R, cy-24, cx, cy-26); c.quadraticCurveTo(cx+R, cy-24, cx+R, cy+10);
-    for (let i=0;i<4;i++){ const a = cx+R - i*R/2; c.quadraticCurveTo(a - R/4, cy+3, a - R/2, cy+10); } c.closePath(); };
-  c.globalAlpha = U.a || 1;
-  if (U.rainbow){ dome(); c.save(); c.clip(); U.rainbow.forEach((k,i)=>{ c.fillStyle = k; c.fillRect(cx-R + i*(2*R/U.rainbow.length), cy-30, 2*R/U.rainbow.length+1, 44); }); c.restore(); }
-  else { const g = c.createRadialGradient(cx-10, cy-18, 2, cx, cy-6, R*1.2); g.addColorStop(0, mixHex(U.col, '#ffffff', .45)); g.addColorStop(1, U.col); dome(); c.fillStyle = g; c.fill(); }
-  if (U.dot){ dome(); c.save(); c.clip(); c.fillStyle = U.dot; const pts = U.cloud ? [[-16,-6,7],[-9,-9,8],[-2,-6,6],[12,-12,6],[18,-10,5]] : [[-20,-2,3],[-10,-14,3],[0,-4,3],[10,-16,3],[20,-3,3],[-24,-12,2.5],[24,-12,2.5],[0,-20,2.5]]; for (const [dx,dy,r] of pts){ c.beginPath(); c.arc(cx+dx, cy+dy, U.leaf ? 1.6 : r, 0, 7); c.fill(); } c.restore(); }
-  c.globalAlpha = 1; dome(); c.strokeStyle = U.a ? 'rgba(120,150,180,.7)' : 'rgba(80,40,70,.28)'; c.lineWidth = 1.4; c.stroke();
-  c.strokeStyle = U.a ? 'rgba(120,150,180,.45)' : 'rgba(80,40,70,.18)'; c.lineWidth = 1; for (const k of [-.5, 0, .5]){ c.beginPath(); c.moveTo(cx, cy-26); c.quadraticCurveTo(cx + k*R*.9, cy-14, cx + k*R, cy+8); c.stroke(); }
-  if (U.leaf){ c.fillStyle = '#4fb36b'; for (const k of [-1, 1]){ c.beginPath(); c.ellipse(cx + k*5, cy-27, 6, 3, k*.5, 0, 7); c.fill(); } }
-  c.fillStyle = '#6e5a6a'; c.beginPath(); c.arc(cx, cy-27, 2.4, 0, 7); c.fill();
+  // 손잡이: 기울어진 막대 + 갈고리 (굵은 선 두 겹으로 둥글게)
+  for (const [w, k] of [[4.6, '#6b4a3c'], [2.4, '#a9806a']]){ c.save(); c.lineCap = 'round'; c.strokeStyle = k; c.lineWidth = w; c.beginPath(); c.moveTo(cx, cy-8); c.lineTo(hx, y-26); c.arc(hx - side*4, y-26, 4, 0, Math.PI, side<0); c.stroke(); c.restore(); }
+  const dome = () => { c.beginPath(); c.moveTo(cx-R, cy+8); c.bezierCurveTo(cx-R, cy-22, cx-14, cy-30, cx, cy-30); c.bezierCurveTo(cx+14, cy-30, cx+R, cy-22, cx+R, cy+8);
+    for (let i=0;i<4;i++){ const a = cx+R - i*R/2; c.quadraticCurveTo(a - R/4, cy+1, a - R/2, cy+8); } c.closePath(); };
+  d.shape(dome, U.rainbow ? RAINBOW[2] : col, [cx, cy-10, R]);
+  c.save(); dome(); c.clip();
+  if (U.rainbow) RAINBOW.forEach((k,i)=>{ const w = 2*R/RAINBOW.length; c.globalAlpha = .9; c.fillStyle = k; c.fillRect(cx-R+i*w, cy-32, w+.6, 44); });
+  c.globalAlpha = .92; c.fillStyle = ink;
+  if (id==='u2') for (const [dx,dy,r] of [[-22,0,3.2],[-12,-14,3.2],[0,-3,3.2],[12,-18,3],[22,-1,3.2],[-26,-14,2.6],[25,-15,2.6],[0,-24,2.6],[-6,4,2]]) { c.beginPath(); c.arc(cx+dx, cy+dy, r, 0, 7); c.fill(); }
+  if (id==='u3') for (const k of [-.66, 0, .66]){ c.beginPath(); c.moveTo(cx + k*R*.15 - 4, cy-30); c.quadraticCurveTo(cx + k*R*.75 - 5, cy-14, cx + k*R - 5, cy+10); c.lineTo(cx + k*R + 5, cy+10); c.quadraticCurveTo(cx + k*R*.75 + 5, cy-14, cx + k*R*.15 + 4, cy-30); c.fill(); }
+  if (id==='u4') for (const [dx,dy] of [[-14,-8],[14,-16]]) for (const [ox,oy,r] of [[-6,1,5],[0,-3,6.5],[7,1,5],[0,3,5]]) { c.beginPath(); c.arc(cx+dx+ox, cy+dy+oy, r, 0, 7); c.fill(); }
+  if (id==='u5') for (const [dx,dy,k] of [[-18,-6,1],[0,-18,.9],[16,-4,1],[-4,2,.7],[24,-16,.6],[-26,-17,.6]]) { const hx2 = cx+dx, hy = cy+dy; c.beginPath(); c.moveTo(hx2, hy+4*k); c.bezierCurveTo(hx2-7*k, hy-1*k, hx2-4*k, hy-7*k, hx2, hy-3*k); c.bezierCurveTo(hx2+4*k, hy-7*k, hx2+7*k, hy-1*k, hx2, hy+4*k); c.fill(); }
+  if (id==='u6') for (const [dx,dy,k] of [[-17,-5,1],[3,-17,.9],[18,-3,1],[-1,3,.6],[-26,-17,.55],[24,-18,.55]]) { c.beginPath(); for (let i=0;i<10;i++){ const r = (i%2 ? 2.3 : 5.4)*k, a = -Math.PI/2 + i*Math.PI/5; c.lineTo(cx+dx + Math.cos(a)*r, cy+dy + Math.sin(a)*r); } c.closePath(); c.fill(); }
+  // 살 홈: 어두운 선 + 바로 옆 밝은 선
+  c.globalAlpha = 1; for (const k of [-.5, 0, .5]) for (const [o, st] of [[0, 'rgba(90,40,70,.20)'], [1.2, 'rgba(255,255,255,.28)']]){ c.strokeStyle = st; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx+o, cy-29); c.quadraticCurveTo(cx + k*R*.88 + o, cy-14, cx + k*R + o, cy+7); c.stroke(); }
   c.restore();
+  for (let i=0;i<=4;i++) d.circle(cx - R + i*R/2, cy+8.5, 2.6, U.rainbow ? RAINBOW[[0,1,3,4,5][i]] : mixHex(col, '#5a2e48', .12)); // 살 끝 구슬
+  d.circle(cx, cy-31, 3.6, '#a9806a'); // 꼭지
 }
 const umbIcons = {};
-function umbIcon(id){ if (umbIcons[id]) return umbIcons[id]; const cv = document.createElement('canvas'); cv.width = cv.height = 96; const c = cv.getContext('2d'); c.scale(1.2, 1.2); drawUmbrella(c, 33, 112, id, 'down', 0, false); return umbIcons[id] = cv.toDataURL(); }
+function umbIcon(key){ if (umbIcons[key]) return umbIcons[key]; const cv = document.createElement('canvas'); cv.width = cv.height = 96; const c = cv.getContext('2d'); c.scale(.92, .92); drawUmbrella(c, 44, 126, key, 'down', 0, false); return umbIcons[key] = cv.toDataURL(); }
 function umbPanel(){
-  me.umbs = me.umbs || {};
+  me.umbs = me.umbs || {}; const ci = Math.max(0, Math.min(UMB_COLS.length-1, me.umbCol|0));
   const tiles = Object.entries(UMB).map(([id,U])=>{ const own = me.umbs[id], on = me.umb===id;
-    return `<button class="tile ${on?'on':''}" data-id="${id}" title="${esc(U.name)}"><img class="ic" src="${umbIcon(id)}" alt=""><em>${esc(U.name)}</em><s>${on ? '쓰는 중' : own ? '가지고 있어요' : U.price.toLocaleString()+' G'}</s></button>`; }).join('');
-  openPanel(`몽실 우산 가게 · ${ui('coin')} ${me.inv.gold.toLocaleString()} G`, `<p class="mnote" style="margin:0 2px 6px">우산을 사서 골라 두면 비가 올 때 저절로 펼쳐 써요. 다른 사람들에게도 보여요.</p><div class="bag-grid">${tiles}</div>${me.umb ? '<button class="btn ghost" id="umbOff" style="width:100%;margin-top:8px">우산 안 쓰기</button>' : ''}`);
+    return `<button class="tile ${on?'on':''}" data-id="${id}" title="${esc(U.name)}"><img class="ic" src="${umbIcon(id+':'+ci)}" alt=""><em>${esc(U.name)}</em><s>${on ? '쓰는 중' : own ? '가지고 있어요' : U.price.toLocaleString()+' G'}</s></button>`; }).join('');
+  const sw = UMB_COLS.map(([n,k],i)=>`<button class="umb-sw ${i===ci?'on':''}" data-c="${i}" title="${n}" aria-label="${n}" style="background:${k}"></button>`).join('');
+  openPanel(`몽실 우산 가게 · ${ui('coin')} ${me.inv.gold.toLocaleString()} G`, `<p class="mnote" style="margin:0 2px 6px">무늬를 사면 색은 언제든 마음대로 바꿀 수 있어요. 골라 둔 우산은 비가 올 때 바깥에서 저절로 펼쳐 써요.</p>
+    <div class="umb-cols"><b>색</b>${sw}</div><div class="bag-grid">${tiles}</div>${me.umb ? '<button class="btn ghost" id="umbOff" style="width:100%;margin-top:8px">우산 안 쓰기</button>' : ''}`);
   if ($('umbOff')) $('umbOff').onclick = ()=>{ me.umb = ''; saveMe(); umbPanel(); toast('이제 비가 와도 우산을 안 써요'); };
+  $('npcPanel').querySelectorAll('.umb-sw').forEach(b=>b.onclick = ()=>{ me.umbCol = +b.dataset.c; saveMe(); umbPanel(); });
   $('npcPanel').querySelectorAll('.tile[data-id]').forEach(b=>b.onclick = ()=>{
     const id = b.dataset.id, U = UMB[id];
-    if (me.umbs[id]){ me.umb = id; saveMe(); umbPanel(); return toast(`${U.name}을(를) 골랐어요${isRain() ? '' : ' · 비가 오면 펼쳐요'}`); }
-    say(U.name, `${U.price.toLocaleString()} G예요. 살까요?`, [['사기', ()=>{
+    if (me.umbs[id]){ me.umb = id; saveMe(); umbPanel(); return toast(`${U.name} 우산을 골랐어요${isRain() ? '' : ' · 비가 오면 펼쳐요'}`); }
+    say(`${U.name} 우산`, `${U.price.toLocaleString()} G예요. 사면 색은 언제든 바꿀 수 있어요. 살까요?`, [['사기', ()=>{
       if (me.inv.gold < U.price){ closeTalk(); return toast('돈이 모자라요'); }
-      me.inv.gold -= U.price; me.umbs[id] = 1; me.umb = id; saveMe(true); renderHud(); closeTalk(); umbPanel(); toast(`${U.name}을(를) 샀어요! 비가 오면 펼쳐 써요`);
+      me.inv.gold -= U.price; me.umbs[id] = 1; me.umb = id; saveMe(true); renderHud(); closeTalk(); umbPanel(); toast(`${U.name} 우산을 샀어요! 비가 오면 펼쳐 써요`);
     }]]);
   });
 }
@@ -3810,7 +3819,7 @@ function sendPresence(t){
   if (!net || !me || admin) return;
   const tgt = target && !keyMoving ? target : null;
   const p = {z:zoneId, nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : ''};
-  if (isRain() && me.umb && UMB[me.umb] && snowOutside()) p.um = me.umb;
+  if (isRain() && umbKey() && snowOutside()) p.um = umbKey();
   const wp = walkingPet(); if (wp) p.pet = {sp:wp.sp, col:wp.col|0, name:String(wp.name||'').slice(0,8)};
   if (tgt){ p.tx = Math.round(tgt.x); p.ty = Math.round(tgt.y); }
   const sig = JSON.stringify(tgt ? {...p, x:0, y:0, dir:0, mv:0} : p);
@@ -4001,7 +4010,7 @@ function frame(t){
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
       ...snowmenHere().map(([,s])=>({y:s.y, draw:()=>drawSnowman(d, s, t), label:()=>{}})),
-      ...(admin ? [] : [{y:pos.y, draw:()=>{ drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (me.umb && UMB[me.umb] && isRain() && snowOutside()) drawUmbrella(ctx, pos.x, pos.y, me.umb, pos.dir, t, pos.moving); }, label:()=>{ tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-80); talkBubble('me',pos.x,pos.y,t); }}]),
+      ...(admin ? [] : [{y:pos.y, draw:()=>{ drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (umbKey() && isRain() && snowOutside()) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving); }, label:()=>{ tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-80); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
