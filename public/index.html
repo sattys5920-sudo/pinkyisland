@@ -337,7 +337,7 @@ body.typing #chatin{background:#fff}
 .adm-msg{display:flex;gap:8px;align-items:baseline;line-height:1.15}.adm-msg small{opacity:.6;font-variant-numeric:tabular-nums;font-size:16px}.adm-msg b{color:#ff9fc4;font-weight:400;white-space:nowrap}.adm-msg i{font-style:normal;font-size:15px;opacity:.55;white-space:nowrap}.adm-msg span{word-break:break-all}
 .adm-wipe{width:min(560px,calc(100% - 20px));gap:8px}.adm-wipe p{margin:0;line-height:1.2}.adm-wipe p small{font-size:17px;opacity:.75}
 .adm-chk{display:flex;gap:8px;align-items:center}.adm-chk input{width:20px;height:20px}
-.adm-wrow{display:flex;gap:8px}#admWipeTxt{flex:1;min-width:0;font:inherit;border:0;border-radius:10px;padding:2px 10px}.adm-btn:disabled{opacity:.4;cursor:default}
+.adm-wrow{display:flex;gap:8px}.adm-letter textarea{flex:1;min-width:0;min-height:150px;font:inherit;font-size:17px;line-height:1.5;border:0;border-radius:10px;padding:8px 10px;resize:vertical;background:#fff8fb;color:#2b2128}.adm-letter .adm-lhead[data-lt]{cursor:pointer}.adm-letter.fold{gap:0}.adm-lprev{margin:2px 0 0;opacity:.75;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}#admWipeTxt{flex:1;min-width:0;font:inherit;border:0;border-radius:10px;padding:2px 10px}.adm-btn:disabled{opacity:.4;cursor:default}
 #admChatWho{font:inherit;font-size:18px;border-radius:10px;border:0;padding:1px 8px;pointer-events:auto}
 body.admin #stats,body.admin #quest{display:none!important}
 body.admin #toast{z-index:40;background:rgba(28,22,30,.92);color:#f4eef2;border-radius:14px}
@@ -4750,7 +4750,7 @@ function renderAdmin(){
   if (typingRk){ const ta = box.querySelector(`[data-rk="${typingRk}"]`); if (ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }
   const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
   const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
-  const cl = box.querySelector('.adm-chat-list'); if (cl){ cl.scrollTop = admChatScroll ?? cl.scrollHeight; cl.onscroll = ()=>{ admChatScroll = cl.scrollTop + cl.clientHeight >= cl.scrollHeight - 4 ? null : cl.scrollTop; }; }
+  const cl = box.querySelector('.adm-chat-list:not(.adm-post-list)'); if (cl){ cl.scrollTop = admChatScroll ?? cl.scrollHeight; cl.onscroll = ()=>{ admChatScroll = cl.scrollTop + cl.clientHeight >= cl.scrollHeight - 4 ? null : cl.scrollTop; }; }
 }
 function adminDarkSec(){
   const i = darkIdx(), npc = darkToday(), r = npc ? roomOf(npc) : {}, n = npc ? darkPuzzles(npc).length : 0;
@@ -4847,12 +4847,15 @@ function adminInbox(){
   const out = []; for (const [to, box] of Object.entries(adminLetterData||{})) if (to===OTUMO.key || to.startsWith('npc_')) for (const [id,l] of Object.entries(box||{})) if (l && typeof l.text==='string') out.push({to, id, l});
   return out.sort((a,b)=>(!!a.l.replied - !!b.l.replied) || (b.l.at||0) - (a.l.at||0));
 }
+// 편지함: 답장 안 한 새 편지가 맨 위. 편지 머리를 누르면 접었다 펴요 (답장한 편지는 접힌 채로 시작)
+const admLetterOpen = new Map();
 function adminPost(){
   const list = adminInbox();
-  const rows = list.map(({to,id,l})=>{ const rk = to+'|'+id;
-    return `<div class="adm-letter${l.replied ? ' done' : ''}"><div class="adm-lhead"><b>→ ${esc(letterWho(to))}</b><span>${esc(String(l.nick||'누군가').slice(0,10))} 님이 보냄 · ${kstTime(l.at).slice(5,16)}</span>${l.replied ? (()=>{ const r = adminReplyOf(to, id, l); return `<i>답장함 ✓</i>${r ? (r.read ? `<i class="rd">읽음 ✓${r.readAt ? ' · ' + kstTime(r.readAt).slice(5,16) : ''}</i>` : '<i class="unrd">아직 안 읽음</i>') : ''}`; })() : ''}</div>
+  const rows = list.map(({to,id,l})=>{ const rk = to+'|'+id, open = admLetterOpen.has(rk) ? admLetterOpen.get(rk) : !l.replied;
+    if (!open) return `<div class="adm-letter fold${l.replied ? ' done' : ''}"><div class="adm-lhead" data-lt="${rk}"><b>▸ → ${esc(letterWho(to))}</b><span>${esc(String(l.nick||'누군가').slice(0,10))} · ${kstTime(l.at).slice(5,16)}</span>${l.replied ? '<i>답장함 ✓</i>' : '<i class="unrd">답장 대기</i>'}</div><p class="adm-lprev">${esc(String(l.text).slice(0, 40))}${String(l.text).length > 40 ? '…' : ''}</p></div>`;
+    return `<div class="adm-letter${l.replied ? ' done' : ''}"><div class="adm-lhead" data-lt="${rk}"><b>▾ → ${esc(letterWho(to))}</b><span>${esc(String(l.nick||'누군가').slice(0,10))} 님이 보냄 · ${kstTime(l.at).slice(5,16)}</span>${l.replied ? (()=>{ const r = adminReplyOf(to, id, l); return `<i>답장함 ✓</i>${r ? (r.read ? `<i class="rd">읽음 ✓${r.readAt ? ' · ' + kstTime(r.readAt).slice(5,16) : ''}</i>` : '<i class="unrd">아직 안 읽음</i>') : ''}`; })() : ''}</div>
       <p>${esc(l.text)}</p>
-      <div class="adm-wrow"><textarea data-rk="${rk}" maxlength="${LETTER_MAX}" rows="2" placeholder="${esc(letterWho(to))}의 말투로 답장 쓰기">${esc(admDrafts[rk]||'')}</textarea><button data-a="lreply" data-to="${to}" data-id="${id}" class="adm-btn">${esc(letterWho(to))} 이름으로 답장</button></div></div>`; }).join('');
+      <div class="adm-wrow"><textarea data-rk="${rk}" maxlength="${LETTER_MAX}" rows="6" placeholder="${esc(letterWho(to))}의 말투로 답장 쓰기">${esc(admDrafts[rk]||'')}</textarea><button data-a="lreply" data-to="${to}" data-id="${id}" class="adm-btn">${esc(letterWho(to))} 이름으로 답장</button></div></div>`; }).join('');
   return `<div class="adm-tbl adm-chat"><div class="adm-tbl-head"><b>편지함 · 주민·오투모</b><small>${list.length} 통 · 답장 대기 ${list.filter(x=>!x.l.replied).length}</small><button data-a="pclose" class="adm-btn">닫기</button></div>
     <div class="adm-chat-list adm-post-list">${rows || '<small>아직 온 편지가 없어요</small>'}</div></div>`;
 }
@@ -4877,6 +4880,7 @@ function adminDm(){
 }
 function adminClick(e){
   const td = e.target.closest('.adm-tbl td[title]'); if (td) return toast(td.title);
+  const lt = e.target.closest('[data-lt]'); if (lt){ const k = lt.dataset.lt, l = adminInbox().find(x=>x.to+'|'+x.id===k); const cur = admLetterOpen.has(k) ? admLetterOpen.get(k) : !(l && l.l.replied); admLetterOpen.set(k, !cur); return renderAdmin(); }
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.a==='looks'){ admLook = admLook===null ? '' : null; admDm = null; admPost = false; admTbl = null; admChat = null; admWipe = false; admSide = false; return renderAdmin(); }
   if (b.dataset.a==='lclose'){ admLook = null; return renderAdmin(); }
