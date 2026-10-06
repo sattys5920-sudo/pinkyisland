@@ -1335,9 +1335,9 @@ function menuPanel(){
   const row = (key, icon, label, sub) => `<button class="np" data-id="${key}" style="grid-template-columns:auto 1fr;align-items:center"><span>${ui(icon,'mi')}</span><span class="np-name">${label}${sub ? ` <small>${sub}</small>` : ''}</span></button>`;
   openPanel('메뉴',
     `<div class="np" style="grid-template-columns:auto 1fr;align-items:center"><span>${ui('people','mi')}</span><span class="np-name">${esc(me.nick)} <small>${solo ? '혼자 보기 모드' : id ? '아이디 ' + esc(id) : '로그인 중'}</small></span></div>` +
-    row('bag','bag','가방','아이템·도감·거래') + row('closet','shirt','옷장','갈아입기') + row('quest','scroll','퀘스트','진행 중인 부탁') + row('ach','trophy','업적','칭호 고르기') + row('map','map','섬 지도','') + row('bgm','sparkle', bgmOn() ? '배경 음악 끄기' : '배경 음악 켜기', bgmOn() ? '지금 켜져 있어요' : '지금 꺼져 있어요') + row('dlgsize','scroll','대화 글자 크기',{s:'작게',m:'보통',l:'크게'}[dlgSize]) + row('dlglog','scroll','대화 기록','최근 대사 다시 보기') +
+    row('bag','bag','가방','아이템·도감·거래') + row('closet','shirt','옷장','갈아입기') + row('quest','scroll','퀘스트','진행 중인 부탁') + row('ach','trophy','업적','칭호 고르기') + row('map','map','섬 지도','') + row('bgm','sparkle', bgmOn() ? '배경 음악 끄기' : '배경 음악 켜기', bgmOn() ? '지금 켜져 있어요' : '지금 꺼져 있어요') + row('mymusic','sparkle','내 음악 고르기', myMusic ? '지금: ' + esc(myMusic.name) : '내 기기의 곡을 배경 음악으로') + row('dlgsize','scroll','대화 글자 크기',{s:'작게',m:'보통',l:'크게'}[dlgSize]) + row('dlglog','scroll','대화 기록','최근 대사 다시 보기') +
     `<button class="btn ghost" id="logoutBig" style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px">${ui('door','mi')}로그아웃</button>`,
-    b=>({bag:showBag, closet:clothesPanel, quest:questLog, ach:achPanel, dlgsize:()=>{ setDlgSize({s:'m', m:'l', l:'s'}[dlgSize]); menuPanel(); }, dlglog:()=>{ $('npcPanel').hidden = true; dlgLogOpen(); }, map:()=>{ $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }, bgm:()=>{ bgmSet(!bgmOn()); menuPanel(); }})[b.dataset.id]?.());
+    b=>({bag:showBag, closet:clothesPanel, quest:questLog, ach:achPanel, dlgsize:()=>{ setDlgSize({s:'m', m:'l', l:'s'}[dlgSize]); menuPanel(); }, dlglog:()=>{ $('npcPanel').hidden = true; dlgLogOpen(); }, map:()=>{ $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }, bgm:()=>{ bgmSet(!bgmOn()); menuPanel(); }, mymusic:()=>myMusicPanel()})[b.dataset.id]?.());
   $('logoutBig').onclick = ()=>{ if (confirm('로그아웃할까요? 캐릭터와 집은 아이디에 저장돼 있어요.')) logout(); };
 }
 // ===== 배경 음악: 들어오면 무한 반복. 메뉴에서 끄고 켤 수 있어요 (이 기기에 기억) =====
@@ -1365,8 +1365,9 @@ function bgmSchedule(){
 function bgmStart(){
   if (!bgmOn() || document.visibilityState==='hidden') return;
   bgmStarted = true;
-  if (!bgmUseSynth){
-    if (!bgmAudio){ bgmAudio = new Audio(BGM_FILE); bgmAudio.loop = true; bgmAudio.volume = BGM_VOL; bgmAudio.addEventListener('error', ()=>{ bgmUseSynth = true; bgmAudio = null; bgmStart(); }, {once:true}); }
+  if (!bgmUseSynth || myMusic){
+    if (bgmTimer){ clearInterval(bgmTimer); bgmTimer = 0; if (bgmCtx) bgmCtx.suspend().catch(()=>{}); }
+    if (!bgmAudio){ bgmAudio = new Audio(myMusic ? myMusic.url : BGM_FILE); bgmAudio.loop = true; bgmAudio.volume = BGM_VOL; bgmAudio.addEventListener('error', ()=>{ if (myMusic){ myMusic = null; toast('내 음악을 틀지 못했어요 · 기본 음악으로 돌아갈게요'); } else bgmUseSynth = true; bgmAudio = null; bgmStart(); }, {once:true}); }
     bgmAudio.play().catch(()=>{}); return;
   }
   try {
@@ -1374,6 +1375,24 @@ function bgmStart(){
     bgmCtx.resume(); if (!bgmTimer){ bgmNext = Math.max(bgmNext, bgmCtx.currentTime + .1); bgmSchedule(); bgmTimer = setInterval(bgmSchedule, 400); }
   } catch(e){}
 }
+// ===== 내 음악: 내 기기에 있는 곡을 골라 배경 음악으로. 서버에 안 올라가고 이 기기(브라우저)에만 저장돼요 =====
+let myMusic = null; // {name, url}
+function musicDb(){ return new Promise((res, rej)=>{ const r = indexedDB.open('pinky-music', 1); r.onupgradeneeded = ()=>r.result.createObjectStore('m'); r.onsuccess = ()=>res(r.result); r.onerror = ()=>rej(r.error); }); }
+async function myMusicLoad(){ try { const db = await musicDb(); const v = await new Promise(res=>{ const q = db.transaction('m').objectStore('m').get('bgm'); q.onsuccess = ()=>res(q.result); q.onerror = ()=>res(null); }); if (v && v.blob) myMusic = {name:v.name, url:URL.createObjectURL(v.blob)}; } catch(e){} }
+async function myMusicStore(v){ try { const db = await musicDb(); await new Promise((res, rej)=>{ const tx = db.transaction('m', 'readwrite'); const st = tx.objectStore('m'); if (v) st.put(v, 'bgm'); else st.delete('bgm'); tx.oncomplete = res; tx.onerror = ()=>rej(tx.error); }); return true; } catch(e){ return false; } }
+function bgmSwap(){ if (bgmAudio){ bgmAudio.pause(); bgmAudio = null; } bgmUseSynth = false; if (bgmOn()) bgmStart(); }
+function myMusicPanel(){
+  openPanel('내 음악', `<p class="mnote" style="margin:0 2px 6px">내 폰·컴퓨터에 있는 음악 파일을 골라 배경 음악으로 틀어요. 파일은 서버에 올라가지 않고 이 기기에서만 재생돼요. 다른 사람에게는 안 들려요.</p>
+    <div class="np"><span class="np-name">지금 배경 음악 <small>${myMusic ? esc(myMusic.name) : '섬 오르골 (기본)'}</small></span></div>
+    <label class="btn" style="display:block;text-align:center;margin-top:8px;cursor:pointer">음악 파일 고르기<input type="file" id="mmFile" accept="audio/*" hidden></label>
+    ${myMusic ? '<button class="btn ghost" id="mmReset" style="width:100%;margin-top:6px">기본 음악으로 돌아가기</button>' : ''}`);
+  $('mmFile').onchange = async e=>{ const f = e.target.files && e.target.files[0]; if (!f) return; if (f.size > 40*1024*1024) return toast('40MB 아래 파일만 고를 수 있어요');
+    if (myMusic) URL.revokeObjectURL(myMusic.url); const name = f.name.replace(/\.[^.]+$/, '').slice(0, 40);
+    myMusic = {name, url:URL.createObjectURL(f)}; const ok = await myMusicStore({name, blob:f});
+    try { localStorage.setItem('pinky-bgm', 'on'); } catch(e){} bgmStarted = true; bgmSwap(); toast(ok ? `'${name}'을(를) 배경 음악으로 틀어요` : `'${name}'을(를) 틀어요 (이 기기에 기억하지는 못했어요)`); myMusicPanel(); };
+  if ($('mmReset')) $('mmReset').onclick = async ()=>{ if (myMusic) URL.revokeObjectURL(myMusic.url); myMusic = null; await myMusicStore(null); bgmSwap(); toast('기본 음악으로 돌아왔어요'); myMusicPanel(); };
+}
+myMusicLoad();
 function bgmStop(){ if (bgmAudio) bgmAudio.pause(); if (bgmTimer){ clearInterval(bgmTimer); bgmTimer = 0; } if (bgmCtx) bgmCtx.suspend().catch(()=>{}); }
 // 브라우저는 처음 화면을 누르기 전엔 소리를 못 내요. 첫 터치·키 입력 때 시작해요
 for (const ev of ['pointerdown','keydown']) addEventListener(ev, ()=>{ if (me && !admin && !bgmStarted) bgmStart(); }, {passive:true});
@@ -2763,7 +2782,8 @@ function drawFurn(d, f, x, y){
 let movingFurn = -1;
 function houseTap(w){
   const z = Z(); if (!z.house || z.house!==uid) return null;
-  if (!decorating){ const tv = furnOf(uid).find(f=>f.id===TV_ID && Math.abs(f.x-w.x)<40 && w.y>f.y-80 && w.y<f.y+14); return tv ? {x:tv.x, y:tv.y+34, act:tvPanel} : null; }
+  if (!decorating){ const tv = furnOf(uid).find(f=>f.id===TV_ID && Math.abs(f.x-w.x)<40 && w.y>f.y-80 && w.y<f.y+14); if (tv) return {x:tv.x, y:tv.y+34, act:tvPanel};
+    const jb = furnOf(uid).find(f=>FURN[f.id]?.shape==='jukebox' && Math.abs(f.x-w.x)<34 && w.y>f.y-76 && w.y<f.y+10); return jb ? {x:jb.x, y:jb.y+34, act:myMusicPanel} : null; } // 주크박스 = 내 음악 고르기
   const stay = {x:pos.x, y:pos.y, act:null, mark:performance.now()}, list = furnOf(uid);
   const hit = () => list.findIndex(f=>Math.abs(f.x-w.x)<38 && w.y>f.y-70 && w.y<f.y+12);
   const onFloor = w.y >= 250 && w.y <= z.H-70 && w.x >= 80 && w.x <= z.W-80;
