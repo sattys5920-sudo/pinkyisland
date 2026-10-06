@@ -2969,6 +2969,11 @@ const CLOSET = () => { me.closet = me.closet || [...CH.FREE]; return me.closet; 
 const wearing = id => CH.lookItems(me.look).includes(id);
 const previewCache = new Map();
 // 옷 미리보기: 내 캐릭터가 그 옷을 입은 모습 (정면)
+// 관리자 캐릭터 카드: 입은 옷 그대로 + 고른 표정
+function lookCard(L){ const key = 'card|' + JSON.stringify(L); if (previewCache.has(key)) return previewCache.get(key);
+  const c = document.createElement('canvas'); c.width = c.height = 132; const x = c.getContext('2d'); x.setTransform(132/80, 0, 0, 132/80, 66, 127);
+  try { CH.figure(CH.mattePainter(x), L, 'down', 0, false, L.expr || 'dot'); } catch(e){}
+  const url = c.toDataURL(); previewCache.set(key, url); return url; }
 function wearPreview(L, size=96){
   const key = JSON.stringify(L)+'|'+size; if (previewCache.has(key)) return previewCache.get(key);
   const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d');
@@ -4664,14 +4669,14 @@ function adminDarkSec(){
 function adminLooks(regs){
   const cnt = o => Object.values(o||{}).reduce((a,n)=>a+(n|0), 0);
   const cards = regs.map(([id,p])=>{
-    const L = CH.migrateLook(p.look), H = houseOf(p), HL = HOUSE_LV[H.lv-1], furn = furnOf(id), pets = petsOf(id), on = [...others.values()].some(o=>o.uid===id);
-    const wear = CH.CATS.map(([sl,l])=>{ const w = L[sl]; if (!w || w==='none' || !CH.ITEM(w)) return ''; const c = L.cc?.[sl]||0; return `<li><small>${l}</small>${esc(CH.ITEM(w).name)}${c ? ` <em>${c+1}번 색</em>` : ''}</li>`; }).join('') || '<li><small>옷</small>기본 차림</li>';
+    const live = [...others.values()].find(o=>o.uid===id && o.look), L = CH.migrateLook(live ? live.look : p.look), H = houseOf(p), HL = HOUSE_LV[H.lv-1], furn = furnOf(id), pets = petsOf(id), on = !!live || [...others.values()].some(o=>o.uid===id); // 접속 중이면 지금 입은 그대로
+    const wear = CH.CATS.map(([sl,l])=>{ const w = L[sl]; if (!w || w==='none' || !CH.ITEM(w) || (L.set && (sl==='top' || sl==='bottom'))) return ''; const c = L.cc?.[sl]||0; return `<li><small>${l}</small>${esc(CH.ITEM(w).name)}${c ? ` <em>${c+1}번 색</em>` : ''}</li>`; }).join('') || '<li><small>옷</small>기본 차림</li>';
     const fc = {}; for (const f of furn) if (f && FURN[f.id]) fc[f.id] = (fc[f.id]||0) + 1;
     const fl = Object.entries(fc).map(([f,n])=>esc(FURN[f].name) + (n > 1 ? ` ×${n}` : '')).join(', ');
     const umb = p.umb && UMB[p.umb] ? `${esc(UMB[p.umb].name)} (${UMB_COLS[Math.max(0, Math.min(UMB_COLS.length-1, p.umbCol|0))][0]})` : '없음';
     const bagW = cnt(p.inv?.wear), bagF = cnt(p.inv?.furn), bagU = cnt(p.inv?.umbrellas);
     return `<div class="adm-card">
-      <div class="adm-face"><img src="${wearPreview(L, 132)}" alt=""><b>${esc(String(p.nick||'').slice(0,8))}</b><small>Lv ${p.lv||1}${on ? ' · <i class="on">접속 중</i>' : ''}</small>${p.title ? `<small>${esc(titleOf(p.title))}</small>` : ''}</div>
+      <div class="adm-face"><img src="${lookCard(L)}" alt=""><b>${esc(String(p.nick||'').slice(0,8))}</b><small>Lv ${p.lv||1}${on ? ' · <i class="on">접속 중</i>' : ''}</small>${p.title ? `<small>${esc(titleOf(p.title))}</small>` : ''}</div>
       <div class="adm-info">
         <ul>${wear}<li><small>우산</small>${umb}</li><li><small>펫</small>${pets.length ? pets.map(x=>`${esc(String(x.name||PET[x.sp].name).slice(0,8))} (${PET[x.sp].name})`).join(', ') : '없음'}</li><li><small>가방</small>옷 ${bagW} · 우산 ${bagU} · 가구 ${bagF} · ${(p.inv?.gold|0).toLocaleString()} G</li></ul>
         <div class="adm-house"><img src="${swatchURL('wall', WALLS[H.wall] ? H.wall : 'w00')}" alt=""><img src="${swatchURL('floor', FLOORS[H.floor] ? H.floor : 'f00')}" alt=""><div>
