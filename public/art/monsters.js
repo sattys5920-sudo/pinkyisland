@@ -78,3 +78,12 @@ ART_PART.m32 = (d, t = 0) => { ART_PART.m10(d, t); bossCrown(d, -32, '#ffe08a');
 ART_PART.m33 = (d, t = 0) => { ART_PART.m22(d, t); bossCrown(d, -35, '#bfe9ff'); }; // 심연의 크라켄
 ART_PART.m34 = (d, t = 0) => { ART_PART.m26(d, t); bossCrown(d, -23, '#ffd23f'); }; // 용암 군주
 ART_PART.m35 = (d, t = 0) => { ART_PART.m29(d, t); bossCrown(d, -34, '#ffd23f'); }; // 별고래 유령
+// ===== 강한 몬스터 (원래 몬스터를 바탕으로 뿔과 다른 색 무늬를 더해요) =====
+const elite = (base, col, top, k = 1) => (d, t = 0) => { ART_PART[base](d, t); for (const s of [-1, 1]){ d.circle(s * 7 * k, top + 1, 3.4 * k, col); d.circle(s * 8.6 * k, top - 3, 2.3 * k, col); d.circle(s * 9.6 * k, top - 6, 1.4 * k, col); } };
+Object.assign(ART_PART, {
+  m36: elite('m08', '#8a5a3b', -30), m37: elite('m04', '#ff6b6b', -27), m38: elite('m02', '#7fb3ff', -26),
+  m39: elite('m14', '#4f8f46', -28), m40: elite('m10', '#b03a7a', -29), m41: elite('m13', '#2f2f3a', -30),
+  m42: elite('m17', '#c9504f', -17), m43: elite('m19', '#5fb5c9', -32), m44: elite('m20', '#ff8fb1', -34),
+  m45: elite('m25', '#2b2440', -34), m46: elite('m24', '#ff7a2f', -28), m47: elite('m23', '#b9a6ff', -30),
+  m48: elite('m13', '#ffd84f', -30), m49: elite('m30', '#ffb35a', -34), m50: elite('m08', '#d9e3ff', -30),
+});
