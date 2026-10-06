@@ -4595,7 +4595,8 @@ const loveLv = pt => Math.min(10, Math.floor((pt.love||0) / 10));
 const petMood = pt => { const f = fullness(pt); return f < 15 ? '너무 배고파서 기운이 없어요' : f < 35 ? '배고파요' : f < 60 ? '밥이 먹고 싶어요' : (pt.love||0) >= 60 ? '아주 행복해요' : '기분 좋아요'; };
 // 이 종을 이미 데려간 다른 주민 (없으면 null)
 const petTakenBy = sp => { for (const [id,p] of Object.entries(players)) if (id!==uid && petsOf(id).some(x=>x.sp===sp)) return p; const c = petClaims[sp]; if (c && c.uid!==uid && players[c.uid]) return players[c.uid]; return null; };
-const walkingPet = () => me && myPets().find(p=>p.walk);
+const NO_WALK = new Set(['goldfish']); // 어항에 사는 금붕어는 산책을 못 해요
+const walkingPet = () => me && myPets().find(p=>p.walk && !NO_WALK.has(p.sp));
 const petCol = pt => PET[pt.sp].cols[Math.max(0, Math.min(2, pt.col|0))];
 const petIconCache = new Map();
 function petIcon(sp, col, size=96){ const key = sp+'|'+col+'|'+size; if (petIconCache.has(key)) return petIconCache.get(key); const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d'), k = size/40; x.setTransform(k,0,0,k,size/2, size*.82); try { PET_DRAW[sp](CH.mattePainter(x), 0, 0, PET[sp].cols[col|0], 0, false); } catch(e){} const u = c.toDataURL(); petIconCache.set(key, u); return u; }
@@ -4603,6 +4604,7 @@ function petIcon(sp, col, size=96){ const key = sp+'|'+col+'|'+size; if (petIcon
 function petHomePos(owner, i){
   const z = Z(), seed = hash(owner + i), slot = Math.floor(Date.now() / 9000), r = seeded(seed + slot), r0 = seeded(seed + slot - 1);
   const top = 300, pick = rr => ({x: 90 + rr()*(z.W-180), y: top + rr()*(z.H-top-90)});
+  const pt = petsOf(owner)[i]; if (pt && NO_WALK.has(pt.sp)){ const f = pick(seeded(seed)); return {x:f.x, y:f.y, walk:false, flip:false}; } // 어항은 늘 같은 자리
   const a = pick(r0), b = pick(r), k = Math.min(1, (Date.now() % 9000) / 3000);
   return {x: a.x + (b.x-a.x)*k, y: a.y + (b.y-a.y)*k, walk: k < 1, flip: b.x < a.x};
 }
@@ -4674,13 +4676,15 @@ function petPanel(pt){
     Object.entries(PET_FOODS).map(([k,fd])=>`<button class="np" data-id="feed" data-k="${k}"><span class="np-name">${fd.icon} ${fd.name} 주기 <small>배부름 +${fd.full} · 친밀도 +${fd.love} · 가진 것 ${petFoodCount(k)} 개</small></span></button>`).join('') +
     `<button class="np" data-id="play"><span class="np-name">놀아 주기 <small>친밀도 +2 · 배부름 −${PET_PLAY_COST} (배가 고프면 못 놀아요)</small></span></button>` +
     `<button class="np" data-id="pat"><span class="np-name">쓰다듬기 <small>한 시간에 한 번 친해져요</small></span></button>` +
-    `<button class="np" data-id="walk"><span class="np-name">${pt.walk ? '산책 그만하기' : '산책 데리고 다니기'} <small>${pt.walk ? '지금 밖에서 따라다녀요 · 걸으면 배가 고파져요' : '켜면 밖에서 나를 따라다녀요 (한 마리만)'}</small></span></button>` +
+    (NO_WALK.has(pt.sp) ? `<div class="np"><span class="np-name">산책은 못 해요 <small>어항에 살아서 집에서만 지내요</small></span></div>` :
+    `<button class="np" data-id="walk"><span class="np-name">${pt.walk ? '산책 그만하기' : '산책 데리고 다니기'} <small>${pt.walk ? '지금 밖에서 따라다녀요 · 걸으면 배가 고파져요' : '켜면 밖에서 나를 따라다녀요 (한 마리만)'}</small></span></button>`) +
     `<button class="np" data-id="name"><span class="np-name">이름 바꾸기 <small>지금 이름: ${esc(pt.name)}</small></span></button>`,
     b=>{ const id = b.dataset.id;
       if (id==='feed'){ const k = b.dataset.k, fd = PET_FOODS[k]; if (!petFoodCount(k)) return toast(`${fd.name}이(가) 없어요. 공방 거리 보호소에서 살 수 있어요`); if (fullness(pt) >= 95) return toast(`${pt.name}은(는) 배불러요`);
         me.inv.pfood[k]--; pt.full = Math.min(100, fullness(pt) + fd.full); pt.fullAt = Date.now(); pt.fedAt = Date.now(); pt.love = (pt.love||0) + fd.love; stat('petFed'); saveMe(); toast(`${pt.name}이(가) ${fd.name}을(를) 맛있게 먹었어요`); }
       if (id==='play'){ if (fullness(pt) < 15 + PET_PLAY_COST) return toast(`${pt.name}이(가) 배고파서 놀 기운이 없어요`); if (Date.now() - (pt.playAt||0) < 600000) return toast(`${pt.name}이(가) 조금 쉬고 싶대요 (10 분 뒤에 다시)`); pt.playAt = Date.now(); petSpend(pt, PET_PLAY_COST); pt.love = (pt.love||0) + 2; saveMe(); toast(`${pt.name}이(가) 신나게 뛰어놀았어요`); }
       if (id==='pat'){ if (Date.now() - (pt.petAt||0) < 3600000){ toast(`${pt.name}이(가) 좋아해요`); return; } pt.petAt = Date.now(); pt.love = (pt.love||0) + 2; saveMe(); toast(`${pt.name}이(가) 꼬리를 흔들어요`); }
+      if (id==='walk' && NO_WALK.has(pt.sp)) return toast('금붕어는 어항에 살아서 산책을 못 해요');
       if (id==='walk'){ const on = !pt.walk; if (on && fullness(pt) < 15) return toast(`${pt.name}이(가) 배고파서 나가기 싫대요. 밥을 먼저 주세요`); for (const p of myPets()) p.walk = false; pt.walk = on; saveMe(); toast(on ? `${pt.name}이(가) 산책을 따라가요` : `${pt.name}은(는) 집에서 쉬어요`); }
       if (id==='name'){ const nm = prompt('새 이름 (8 글자까지)', pt.name); if (nm && nm.trim()){ pt.name = nm.trim().slice(0,8); saveMe(); toast(`이제 '${pt.name}'(이)라고 불러요`); } }
       petPanel(pt); });
