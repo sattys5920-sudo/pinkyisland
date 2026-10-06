@@ -2353,7 +2353,7 @@ const MONSTER_LIST = [
   ['흑요석 골렘','cave',380,32,32,'#3a3346','golem','흑요석 조각',110,8], ['불꽃 박쥐','cave',260,34,120,'#ff7a2f','bat','불꽃 날개',105,9], ['수정 거미','cave',300,36,80,'#b9a6ff','dust','수정 거미줄',120,7],
   ['별자리 늑대','starhill',260,26,95,'#4a4f7a','dust','별빛 송곳니',80,8], ['혜성 나비','starhill',200,24,110,'#ffd0a0','bug','혜성 가루',70,9], ['달토끼 기사','starhill',320,30,70,'#e8ecff','dust','달토끼 방패',100,6],
 ];
-const MONSTERS = Object.fromEntries(MONSTER_LIST.map((m,i)=>['m'+String(i+1).padStart(2,'0'), {name:m[0], zone:m[1], hp:m[2], atk:m[3], speed:m[4], color:m[5], shape:m[6], drop:m[7], dropPrice:m[8], weight:m[9], gold:m[10]||0, boss:!!m[10]}]));
+const MONSTERS = Object.fromEntries(MONSTER_LIST.map((m,i)=>['m'+String(i+1).padStart(2,'0'), {name:m[0], zone:m[1], hp:m[2], atk:m[3], speed:m[4], color:m[5], shape:m[6], drop:m[7], dropPrice:m[8], weight:m[9], gold:m[10]||0, boss:!!m[10], strong:!!m[10] || i >= 35}]));
 const COMBAT_ZONES = {forest:6, deepforest:7, seacave:5, cave:7, starhill:5}; // 구역마다 한 번에 나오는 몬스터 수 (보스 빼고)
 // ===== 체력·기력·레벨 =====
 // 레벨이 오를 때마다 최대 체력·최대 기력이 10 씩 늘어요. 경험치는 퀘스트·몬스터·이야기·채집·낚시·채굴에서 받아요
@@ -2446,14 +2446,19 @@ const MOB_RESPAWN = 10000, BOSS_RESPAWN = 3600000, BOSS_SLOT = '90'; // 보스�
 const ZONE_BOSS = Object.fromEntries(Object.entries(MONSTERS).filter(([,m])=>m.boss).map(([id,m])=>[m.zone, id]));
 let mobMap = {}, mobSub = null, mobSubZone = null, mobLoaded = false, mobPosAt = 0, mobTry = {};
 const mobNow = () => Date.now() + serverOffset;
+// 강한 몬스터·보스는 구역 깊숙한 곳(드나드는 길에서 가장 먼 곳)에 나와요
+function exitPts(z){ return Object.keys(z.exits||{}).map(k=>({n:[z.W/2, 0], s:[z.W/2, z.H], w:[0, z.H/2], e:[z.W, z.H/2]})[k]).filter(Boolean); }
 function newMobData(gen, force){
-  const z = Z();
-  for (let k=0;k<40;k++){
+  const z = Z(), id = force || rollMonster(), m = MONSTERS[id], ex = exitPts(z);
+  let best = null, bestD = -1;
+  for (let k=0;k<(m.strong ? 60 : 40);k++){
     const x = M + 60 + Math.random()*(z.W - 2*M - 120), y = M + 60 + Math.random()*(z.H - 2*M - 120);
     if (blocked(x,y) || Math.hypot(x-pos.x, y-pos.y) < 320 || [...others.values()].some(o=>o.z===zoneId && Math.hypot(x-o.x, y-o.y) < 240)) continue;
-    const id = force || rollMonster(), m = MONSTERS[id]; return {id, x:Math.round(x), y:Math.round(y), hp:m.hp, max:m.hp, gen};
+    if (!m.strong || !ex.length){ best = [x, y]; break; }
+    const dd = Math.min(...ex.map(([ex_, ey])=>Math.hypot(x-ex_, y-ey))); if (dd > bestD){ bestD = dd; best = [x, y]; }
   }
-  return null;
+  if (!best) return null;
+  const [x, y] = best.map(Math.round); return {id, x, y, hx:x, hy:y, hp:m.hp, max:m.hp, gen};
 }
 function mobOwner(){ let best = uid; for (const [id,o] of others) if (o.z===zoneId && id < best) best = id; return best === uid; }
 function onMobs(zone, v){
@@ -2463,7 +2468,7 @@ function onMobs(zone, v){
     if (!d || !MONSTERS[d.id]) continue;
     let mob = mobMap[slot];
     if (!mob || mob.gen !== d.gen){ if (mobLoaded && MONSTERS[d.id].boss && d.hp > 0) setTimeout(()=>toast(`⚠ ${MONSTERS[d.id].name}이(가) 나타났어요! 다 같이 잡아요`), 300); mob = {slot, x:d.x, y:d.y, cd:0, wander:0, wx:d.x, wy:d.y, hurt:0}; }
-    Object.assign(mob, {id:d.id, gen:d.gen, hp:d.hp, max:d.max, tx:d.x, ty:d.y, deadAt:d.deadAt||0, hits:d.hits||{}});
+    Object.assign(mob, {id:d.id, gen:d.gen, hp:d.hp, max:d.max, tx:d.x, ty:d.y, hx:d.hx ?? d.x, hy:d.hy ?? d.y, deadAt:d.deadAt||0, hits:d.hits||{}});
     next[slot] = mob;
     if (!(d.hp > 0) && mob.hits[uid]) mobReward(zone, slot, d);
   }
@@ -2514,8 +2519,10 @@ function updateMobs(dt, t){
     if (owner){ // 가장 가까운 사람을 쫓아가요 (기절했거나 막 깨어난 사람은 빼고)
       let tg = null, best = m.boss ? 320 : 240; for (const p of chase) if (p.ok){ const dd = Math.hypot(p.x-mob.x, p.y-mob.y); if (dd < best){ best = dd; tg = p; } }
       let tx, ty, sp = m.speed;
-      if (tg){ tx = tg.x; ty = tg.y; }
-      else { if ((mob.wander -= dt) <= 0){ mob.wander = 1.5 + Math.random()*2.5; mob.wx = mob.x + (Math.random()-.5)*200; mob.wy = mob.y + (Math.random()-.5)*200; } tx = mob.wx; ty = mob.wy; sp *= .4; }
+      const far = m.strong && Math.hypot(mob.x-mob.hx, mob.y-mob.hy) > 420; // 강한 몬스터는 자기 자리에서 너무 멀어지면 돌아가요
+      if (tg && !(far && Math.hypot(tg.x-mob.hx, tg.y-mob.hy) > 420)){ tx = tg.x; ty = tg.y; }
+      else if (far){ tx = mob.hx; ty = mob.hy; }
+      else { if ((mob.wander -= dt) <= 0){ mob.wander = 1.5 + Math.random()*2.5; const bx = m.strong ? mob.hx : mob.x, by = m.strong ? mob.hy : mob.y; mob.wx = bx + (Math.random()-.5)*(m.strong ? 260 : 200); mob.wy = by + (Math.random()-.5)*(m.strong ? 260 : 200); } tx = mob.wx; ty = mob.wy; sp *= .4; }
       const dx = tx-mob.x, dy = ty-mob.y, l = Math.hypot(dx,dy);
       if (l > (m.boss ? 40 : 22) && mob.hurt <= 0){ const nx = mob.x + dx/l*sp*dt, ny = mob.y + dy/l*sp*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; }
     } else if (mob.tx != null){ // 움직이는 사람 화면의 자리로 부드럽게 따라가요
