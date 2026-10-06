@@ -2723,7 +2723,7 @@ function clothesPanel(){
   const tabs = CH.CATS.map(([k,l])=>`<button class="mini" data-tab="${k}" style="${k===shopTab?'':'background:#fff'}">${l}</button>`).join('');
   const rows = Object.entries(cat).map(([id,it])=>{
     const own = ownsAny(id), on = wearing(id) || (id==='none' && (slot==='hat' ? me.look.hat==='none' : slot==='acc' ? me.look.acc==='none' : false));
-    const cost = it.need ? `${it.price?it.price+' G + ':''}${itemName(it.need)} ${invCount(it.need)}/${it.n}` : `${it.price} G`;
+    const cost = it.need ? `${it.price?it.price.toLocaleString()+' G + ':''}${itemName(it.need)} ${invCount(it.need)}/${it.n}` : `${it.price.toLocaleString()} G`;
     const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
     return `<button class="tile ${on?'on':''}" data-id="${id}" title="${esc(it.name)}">${id==='none' ? '<span style="font-size:30px;line-height:44px">✕</span>' : `<img class="ic" src="${wearPreview(tryOn(me.look, slot, id))}" alt="">`}<em>${esc(it.name)}</em><s style="color:${own?'var(--soft)':can?'#e48fac':'#c9b3bc'}">${own ? (on ? '입는 중' : '입기') : cost}</s></button>`; }).join('');
   openPanel(`몽실 옷가게 · 💰 ${me.inv.gold} G`, `<div style="display:flex;gap:5px;flex-wrap:wrap">${tabs}</div><p class="mnote" style="margin:4px 2px 0">옷을 누르면 색 5 가지 중에서 골라요. 산 옷은 옷장에 들어가고, 갈아입는 건 공짜예요. 한 벌을 입으면 상의·하의는 가려져요.</p><div class="bag-grid">${rows}</div>`);
