@@ -71,3 +71,10 @@ export const ART_PART = {
   m29: (d, t = 0) => { for (let i = 1; i <= 3; i++) d.circle(-6 - i * 5, -12 + i * 4, 4 - i, '#fff6b0'); for (let i = 0; i < 5; i++) { const a = -PI / 2 + i * PI * 2 / 5; d.circle(Math.cos(a) * 9, -20 + Math.sin(a) * 9, 6, '#fff6b0'); } d.circle(0, -20, 9, '#fff0a0'); face(d, 0, -20, .8, 'smile'); }, // 별똥 유령
   m30: (d, t = 0) => { wings(d, -18, '#d9e3ff', t, 15, 7); for (const s of [-1, 1]) d.circle(s * 12, -14, 2, '#b9c9ff', flat); for (const s of [-1, 1]) d.circle(s * 4, -33, 2.4, '#d9e3ff'); oval(d, 0, -17, 7, 11, 0, '#eef2ff'); face(d, 0, -21, .7, 'o'); }, // 달빛 나방
 };
+// ===== 구역 보스 (다 같이 잡는 큰 몬스터): 원래 몬스터 그림에 왕관을 씌우고 색을 바꿔요. 크기는 게임에서 두 배로 =====
+const bossCrown = (d, y, col = '#ffd23f') => { d.rr(-9, y, 18, 5, 2.5, col); for (const x of [-7, 0, 7]) d.circle(x, y - 1, 3, col); d.circle(0, y + 1, 1.5, '#ff4f6d', flat); };
+ART_PART.m31 = (d, t = 0) => { ART_PART.m01(d, t); bossCrown(d, -31); };            // 먼지 뭉치 대왕
+ART_PART.m32 = (d, t = 0) => { ART_PART.m10(d, t); bossCrown(d, -32, '#ffe08a'); }; // 가시 덤불 거인
+ART_PART.m33 = (d, t = 0) => { ART_PART.m22(d, t); bossCrown(d, -35, '#bfe9ff'); }; // 심연의 크라켄
+ART_PART.m34 = (d, t = 0) => { ART_PART.m26(d, t); bossCrown(d, -23, '#ffd23f'); }; // 용암 군주
+ART_PART.m35 = (d, t = 0) => { ART_PART.m29(d, t); bossCrown(d, -34, '#ffd23f'); }; // 별고래 유령

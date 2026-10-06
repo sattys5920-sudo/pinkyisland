@@ -2342,8 +2342,12 @@ const MONSTER_LIST = [
   ['광석 골렘','cave',180,22,30,'#a39aa8','golem','골렘 심장석',77,10], ['용암 슬라임','cave',120,24,55,'#ff6b3b','slime','용암 젤리',64,10],
   ['그림자 광부','cave',150,26,75,'#3b3b46','ghost','낡은 헬멧 조각',94,6], ['동굴의 주인','cave',400,35,45,'#5b2f6f','golem','동굴의 왕관',1500,1],
   ['별똥 유령','starhill',90,16,80,'#fff6b0','ghost','별가루',36,10], ['달빛 나방','starhill',70,14,100,'#d9e3ff','bug','달빛 비늘',30,12],
+  // 구역 보스: 다 같이 잡는 큰 몬스터 (구역마다 하나, 쓰러지면 10 분 뒤 다시). 마지막 값은 함께 잡은 사람마다 받는 골드
+  ['먼지 뭉치 대왕','forest',1500,25,40,'#bdb5c9','dust','대왕의 솜 왕관',600,0,800], ['가시 덤불 거인','deepforest',3000,40,45,'#4f8f46','plant','거인의 가시 심',1200,0,1500],
+  ['심연의 크라켄','seacave',3500,45,50,'#6f4fb5','slime','크라켄의 진주',1500,0,2000], ['용암 군주','cave',6000,60,35,'#ff6b3b','slime','군주의 용암 핵',3000,0,4000],
+  ['별고래 유령','starhill',4500,50,55,'#fff6b0','ghost','별고래의 꼬리별',2500,0,3000],
 ];
-const MONSTERS = Object.fromEntries(MONSTER_LIST.map((m,i)=>['m'+String(i+1).padStart(2,'0'), {name:m[0], zone:m[1], hp:m[2], atk:m[3], speed:m[4], color:m[5], shape:m[6], drop:m[7], dropPrice:m[8], weight:m[9]}]));
+const MONSTERS = Object.fromEntries(MONSTER_LIST.map((m,i)=>['m'+String(i+1).padStart(2,'0'), {name:m[0], zone:m[1], hp:m[2], atk:m[3], speed:m[4], color:m[5], shape:m[6], drop:m[7], dropPrice:m[8], weight:m[9], gold:m[10]||0, boss:!!m[10]}]));
 const COMBAT_ZONES = {forest:5, deepforest:6, seacave:4, cave:6, starhill:4};
 // ===== 체력·기력·레벨 =====
 // 레벨이 오를 때마다 최대 체력·최대 기력이 10 씩 늘어요. 경험치는 퀘스트·몬스터·이야기·채집·낚시·채굴에서 받아요
@@ -2425,48 +2429,50 @@ function updateBars(){
 let mobs = [], playerHp = 100, lastHurt = 0, lastSwing = 0;
 const fx = []; // 떠오르는 숫자
 function rollMonster(){
-  const list = Object.entries(MONSTERS).filter(([,m])=>m.zone===zoneId);
+  const list = Object.entries(MONSTERS).filter(([,m])=>m.zone===zoneId && m.weight > 0);
   const total = list.reduce((a,[,m])=>a+m.weight,0);
   let r = Math.random()*total; for (const [id,m] of list){ if ((r-=m.weight) < 0) return id; } return list[0][0];
 }
 // ===== 몬스터: 같은 구역에 있는 사람 모두가 같은 몬스터를 봐요 (mobs/<구역>/<칸>) =====
 // 구역에 있는 사람 중 한 명(아이디가 가장 앞선 사람)이 몬스터를 움직이고 자리를 알려 줘요. 체력은 다 같이 깎고,
 // 쓰러뜨리면 한 대라도 친 사람 모두가 보상을 받아요. 쓰러진 자리는 MOB_RESPAWN 뒤에 새 몬스터가 나와요.
-const MOB_RESPAWN = 10000;
+const MOB_RESPAWN = 10000, BOSS_RESPAWN = 600000, BOSS_SLOT = '90';
+const ZONE_BOSS = Object.fromEntries(Object.entries(MONSTERS).filter(([,m])=>m.boss).map(([id,m])=>[m.zone, id]));
 let mobMap = {}, mobSub = null, mobSubZone = null, mobLoaded = false, mobPosAt = 0, mobTry = {};
 const mobNow = () => Date.now() + serverOffset;
-function newMobData(gen){
+function newMobData(gen, force){
   const z = Z();
   for (let k=0;k<40;k++){
     const x = M + 60 + Math.random()*(z.W - 2*M - 120), y = M + 60 + Math.random()*(z.H - 2*M - 120);
     if (blocked(x,y) || Math.hypot(x-pos.x, y-pos.y) < 320 || [...others.values()].some(o=>o.z===zoneId && Math.hypot(x-o.x, y-o.y) < 240)) continue;
-    const id = rollMonster(), m = MONSTERS[id]; return {id, x:Math.round(x), y:Math.round(y), hp:m.hp, max:m.hp, gen};
+    const id = force || rollMonster(), m = MONSTERS[id]; return {id, x:Math.round(x), y:Math.round(y), hp:m.hp, max:m.hp, gen};
   }
   return null;
 }
 function mobOwner(){ let best = uid; for (const [id,o] of others) if (o.z===zoneId && id < best) best = id; return best === uid; }
 function onMobs(zone, v){
-  if (zone !== zoneId || zone !== mobSubZone) return; mobLoaded = true; v = v || {};
+  if (zone !== zoneId || zone !== mobSubZone) return; v = v || {};
   const next = {};
   for (const [slot, d] of Object.entries(v)){
     if (!d || !MONSTERS[d.id]) continue;
     let mob = mobMap[slot];
-    if (!mob || mob.gen !== d.gen) mob = {slot, x:d.x, y:d.y, cd:0, wander:0, wx:d.x, wy:d.y, hurt:0};
+    if (!mob || mob.gen !== d.gen){ if (mobLoaded && MONSTERS[d.id].boss && d.hp > 0) setTimeout(()=>toast(`⚠ ${MONSTERS[d.id].name}이(가) 나타났어요! 다 같이 잡아요`), 300); mob = {slot, x:d.x, y:d.y, cd:0, wander:0, wx:d.x, wy:d.y, hurt:0}; }
     Object.assign(mob, {id:d.id, gen:d.gen, hp:d.hp, max:d.max, tx:d.x, ty:d.y, deadAt:d.deadAt||0, hits:d.hits||{}});
     next[slot] = mob;
     if (!(d.hp > 0) && mob.hits[uid]) mobReward(zone, slot, d);
   }
-  mobMap = next; mobs = Object.values(mobMap).filter(m=>m.hp > 0);
+  mobMap = next; mobs = Object.values(mobMap).filter(m=>m.hp > 0); mobLoaded = true;
 }
 // 쓰러진 몬스터에 한 대라도 쳤으면 보상 (칸마다 마지막으로 받은 차례를 저장해서 새로고침해도 두 번 안 받아요)
 function mobReward(zone, slot, d){
   me.mobGot = me.mobGot || {}; const key = zone + ':' + slot; if ((me.mobGot[key]|0) >= d.gen) return; me.mobGot[key] = d.gen;
-  const m = MONSTERS[d.id], gold = Math.round(m.atk * (0.8 + Math.random()*.4)), crew = Object.keys(d.hits||{}).length;
+  const m = MONSTERS[d.id], gold = Math.round((m.gold || m.atk) * (0.8 + Math.random()*.4)), crew = Object.keys(d.hits||{}).length;
   stat('monsterKills'); if (d.id==='m28') stat('caveBossKills'); questEvent('kill', d.id);
   invAdd('loot:'+d.id, 1); me.inv.gold += gold;
   me.mdex = me.mdex || {}; const first = !me.mdex[d.id]; me.mdex[d.id] = (me.mdex[d.id]||0) + 1;
   gainExp(Math.max(3, Math.round(m.hp/6 + m.atk)));
   saveMe(); renderHud();
+  if (m.boss){ withIcon('loot:'+d.id); say('구역 보스', `${m.name}을(를) ${crew > 1 ? `${crew} 명이 함께 ` : ''}쓰러뜨렸어요!`, [], `${m.drop} · ${gold.toLocaleString()} G · 경험치 +${Math.max(3, Math.round(m.hp/6 + m.atk))}${first ? ' · 처음 물리친 보스!' : ''}`); return; }
   toast(`${m.name}을(를) ${crew > 1 ? `${crew} 명이 함께 ` : ''}물리쳤어요! ${m.drop} · ${gold} G${first ? ' · 처음 물리친 몬스터!' : ''}`, 'loot:'+d.id);
 }
 function syncMobs(){
@@ -2486,6 +2492,11 @@ function updateMobs(dt, t){
       if (!mob){ mobTry[sl] = t; const d = newMobData(1); if (d) net.mobSpawn(zoneId, sl, null, d); }
       else if (!(mob.hp > 0) && now - (mob.deadAt||0) > MOB_RESPAWN){ mobTry[sl] = t; const d = newMobData(mob.gen + 1); if (d) net.mobSpawn(zoneId, sl, mob.gen, d); }
     }
+    const bid = ZONE_BOSS[zoneId], bm = mobMap[BOSS_SLOT]; // 구역 보스 자리
+    if (bid && !(mobTry[BOSS_SLOT] && t - mobTry[BOSS_SLOT] < 3000)){
+      if (!bm){ mobTry[BOSS_SLOT] = t; const d = newMobData(1, bid); if (d) net.mobSpawn(zoneId, BOSS_SLOT, null, d); }
+      else if (!(bm.hp > 0) && now - (bm.deadAt||0) > BOSS_RESPAWN){ mobTry[BOSS_SLOT] = t; const d = newMobData(bm.gen + 1, bid); if (d) net.mobSpawn(zoneId, BOSS_SLOT, bm.gen, d); }
+    }
   }
   const chase = owner ? [{x:pos.x, y:pos.y, ok:!talking && !darkDown && t > wakeGuardUntil}, ...[...others.values()].filter(o=>o.z===zoneId && !o.down).map(o=>({x:o.x, y:o.y, ok:true}))] : [];
   for (const mob of mobs){
@@ -2493,18 +2504,18 @@ function updateMobs(dt, t){
     mob.cd -= dt; mob.hurt -= dt;
     if (mob.kb > 0){ mob.kb -= dt; const nx = mob.x + mob.kvx*dt, ny = mob.y + mob.kvy*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; mob.kvx *= .86; mob.kvy *= .86; continue; }
     if (owner){ // 가장 가까운 사람을 쫓아가요 (기절했거나 막 깨어난 사람은 빼고)
-      let tg = null, best = 240; for (const p of chase) if (p.ok){ const dd = Math.hypot(p.x-mob.x, p.y-mob.y); if (dd < best){ best = dd; tg = p; } }
+      let tg = null, best = m.boss ? 320 : 240; for (const p of chase) if (p.ok){ const dd = Math.hypot(p.x-mob.x, p.y-mob.y); if (dd < best){ best = dd; tg = p; } }
       let tx, ty, sp = m.speed;
       if (tg){ tx = tg.x; ty = tg.y; }
       else { if ((mob.wander -= dt) <= 0){ mob.wander = 1.5 + Math.random()*2.5; mob.wx = mob.x + (Math.random()-.5)*200; mob.wy = mob.y + (Math.random()-.5)*200; } tx = mob.wx; ty = mob.wy; sp *= .4; }
       const dx = tx-mob.x, dy = ty-mob.y, l = Math.hypot(dx,dy);
-      if (l > 22 && mob.hurt <= 0){ const nx = mob.x + dx/l*sp*dt, ny = mob.y + dy/l*sp*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; }
+      if (l > (m.boss ? 40 : 22) && mob.hurt <= 0){ const nx = mob.x + dx/l*sp*dt, ny = mob.y + dy/l*sp*dt; if (!blocked(nx, mob.y)) mob.x = nx; if (!blocked(mob.x, ny)) mob.y = ny; }
     } else if (mob.tx != null){ // 움직이는 사람 화면의 자리로 부드럽게 따라가요
       const dx = mob.tx-mob.x, dy = mob.ty-mob.y, l = Math.hypot(dx,dy);
       if (l > 220){ mob.x = mob.tx; mob.y = mob.ty; } else if (l > 1){ const k = Math.min(1, dt*6); mob.x += dx*k; mob.y += dy*k; }
     }
-    if (d < 30 && mob.cd <= 0 && !talking && !darkDown && t > wakeGuardUntil){
-      mob.cd = 1.2; playerHp -= m.atk; lastHurt = t; pushPlayer(pos.x-mob.x, pos.y-mob.y, 18); setExpr('surprised', 1200);
+    if (d < (m.boss ? 52 : 30) && mob.cd <= 0 && !talking && !darkDown && t > wakeGuardUntil){
+      mob.cd = m.boss ? 1.6 : 1.2; playerHp -= m.atk; lastHurt = t; pushPlayer(pos.x-mob.x, pos.y-mob.y, 18); setExpr('surprised', 1200);
       fx.push({x:pos.x, y:pos.y-50, text:'-'+m.atk, t, color:'#ff3b6b'});
       if (playerHp <= 0) return faint();
     }
@@ -2559,7 +2570,7 @@ function swing(){
   const cx = pos.x + vx*26, cy = pos.y + vy*26;
   for (const mob of [...mobs]){
     const dx = mob.x-pos.x, dy = mob.y-pos.y;
-    if (Math.hypot(mob.x-cx, mob.y-cy) < 58 && dx*vx + dy*vy > -12) hitMob(mob, t, vx, vy);
+    if (Math.hypot(mob.x-cx, mob.y-(MONSTERS[mob.id].boss ? cy+20 : cy)) < (MONSTERS[mob.id].boss ? 95 : 58) && dx*vx + dy*vy > (MONSTERS[mob.id].boss ? -40 : -12)) hitMob(mob, t, vx, vy);
   }
   darkSwing(cx, cy, vx, vy, t);
   if (bossAlive()){
@@ -2591,7 +2602,7 @@ function hitMob(mob, t, vx, vy){
   fx.push({x:mob.x, y:mob.y-40, text:String(dmg), t, color:'#ffffff'});
   if (mob.hp <= 0) mobs = mobs.filter(m=>m!==mob);
   const id = mob.id; // 체력은 다 같이: 서버에서 깎고, 쓰러지면 친 사람 모두에게 보상 (onMobs)
-  net.mobHit(zoneId, mob.slot, mob.gen, dmg).then(r=>{ if (r && r.killed && id==='m28' && net.sendChat) net.sendChat('(동굴의 주인을 물리쳤다!)').catch(()=>{}); }).catch(()=>{});
+  net.mobHit(zoneId, mob.slot, mob.gen, dmg).then(r=>{ if (r && r.killed && (id==='m28' || MONSTERS[id].boss) && net.sendChat) net.sendChat(`(${MONSTERS[id].name}을(를) 물리쳤다!)`).catch(()=>{}); }).catch(()=>{});
 }
 function faint(){ return darkRespawn(); }
 // 아무도 깨워 주지 않을 때: 집 앞에서 깨어나요 (일반 모드)
@@ -2601,9 +2612,11 @@ function wakeAtHome(){
   say('기절', '집에서 푹 쉬고 일어났어요. 몸이 가뿐해요!', [], '체력이 다시 가득 찼어요');
 }
 function drawMob(d, mob, t){
-  const m = MONSTERS[mob.id], c = d.ctx, x = mob.x, y = mob.y, s = .9 + Math.min(1, m.hp/200)*.35, bob = Math.sin(t/180 + x)*1.5;
+  const m = MONSTERS[mob.id], c = d.ctx, x = mob.x, y = mob.y, s = m.boss ? 2.1 : .9 + Math.min(1, m.hp/200)*.35, bob = Math.sin(t/180 + x)*1.5;
+  if (m.boss){ const a = .28 + Math.sin(t/260)*.1, g = c.createRadialGradient(x, y-30, 4, x, y-30, 70); g.addColorStop(0, `rgba(255,214,90,${a})`); g.addColorStop(1, 'rgba(255,214,90,0)'); c.save(); c.fillStyle = g; c.beginPath(); c.arc(x, y-30, 70, 0, 7); c.fill(); c.restore(); }
   c.save(); c.fillStyle='rgba(0,0,0,.14)'; c.beginPath(); c.ellipse(x,y+1,14*s,4*s,0,0,7); c.fill(); c.restore();
   if (!(mob.hurt > 0 && Math.floor(t/60)%2)){ c.save(); c.translate(x, y-bob); c.scale(s, s); try { ART[mob.id](d, t/1000); } catch(e){} c.restore(); }
+  if (m.boss){ const w = 90, by = y - 50*s - 8; c.fillStyle='rgba(0,0,0,.35)'; c.fillRect(x-w/2, by, w, 7); c.fillStyle='#ff5a88'; c.fillRect(x-w/2, by, w*Math.max(0,mob.hp)/mob.max, 7); tag(c, `${m.name} ${Math.max(0, Math.ceil(mob.hp))}/${mob.max}`, x, by - 10, '#ffd23f'); return; }
   if (mob.hp < mob.max){ c.fillStyle='rgba(0,0,0,.25)'; c.fillRect(x-14, y-52*s, 28, 4); c.fillStyle='#ff5a88'; c.fillRect(x-14, y-52*s, 28*Math.max(0,mob.hp)/mob.max, 4); }
 }
 function drawFx(c, t){
@@ -2614,7 +2627,7 @@ function drawFx(c, t){
 }
 // 몬스터·바위를 누르면
 function contentTarget(w){
-  for (const mob of mobs) if (Math.abs(w.x-mob.x) < 24 && w.y > mob.y-40 && w.y < mob.y+8){
+  for (const mob of mobs) if (MONSTERS[mob.id].boss ? (Math.abs(w.x-mob.x) < 50 && w.y > mob.y-95 && w.y < mob.y+10) : (Math.abs(w.x-mob.x) < 24 && w.y > mob.y-40 && w.y < mob.y+8)){
     if (!me.inv.sword){ toast('검이 없어요. 마을 광장의 콩이에게 가 봐요'); return {x:pos.x, y:pos.y, act:null, mark:performance.now()}; }
     const dx = pos.x-mob.x, dy = pos.y-mob.y, l = Math.hypot(dx,dy)||1;
     return {x:mob.x+dx/l*40, y:mob.y+dy/l*40, act:()=>{ faceTo(mob.x, mob.y); swing(); }};
@@ -3145,14 +3158,14 @@ function museumPanel(){
   for (const [k] of itemsOf('ore')){ const id = k.slice(4); if (!has('o', id)) rows.push({cat:'o', id, key:k, name:ORES[id].name}); }
   for (const [k] of itemsOf('loot')){ const id = k.slice(5); if (!has('m', id)) rows.push({cat:'m', id, key:k, name:MONSTERS[id].drop}); }
   const cnt = k => Object.keys(museum[k]).length;
-  const head = `<div class="np" style="display:block"><b>섬 박물관 ${shared}/120</b> · 물고기 ${cnt('f')}/50 · 광석 ${cnt('o')}/40 · 전리품 ${cnt('m')}/30<br><small>내가 기증한 것 ${mine} 점 · 내가 10 점 기증할 때마다 800 G (다음 보상까지 ${10 - mine % 10} 점)</small></div>
+  const head = `<div class="np" style="display:block"><b>섬 박물관 ${shared}/${90 + Object.keys(MONSTERS).length}</b> · 물고기 ${cnt('f')}/50 · 광석 ${cnt('o')}/40 · 전리품 ${cnt('m')}/${Object.keys(MONSTERS).length}<br><small>내가 기증한 것 ${mine} 점 · 내가 10 점 기증할 때마다 800 G (다음 보상까지 ${10 - mine % 10} 점)</small></div>
     <div style="display:flex;gap:6px"><button class="mini ${museumView==='give' ? 'on' : ''}" data-mv="give">기증하기</button><button class="mini ${museumView==='list' ? 'on' : ''}" data-mv="list">기증 목록 · 누가 했나</button></div>`;
   let body;
   if (museumView === 'list'){
     body = ['f','o','m'].map(k=>{ const e = Object.entries(museum[k]).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
       return `<p class="mnote" style="margin:6px 0 2px"><b>${MUSEUM_CAT[k]} ${e.length}</b></p>` + (e.length ? e.map(([id,d])=>`<div class="np"><span class="np-name">${esc(museumName(k, id) || id)}</span><span class="np-place">${d.uid===uid ? '나' : esc(d.nick || '누군가')}</span></div>`).join('') : '<p class="mnote">아직 없어요</p>'); }).join('');
   } else body = rows.length ? rows.map((r,i)=>`<button class="np" data-id="${i}"><span class="np-name">${iconImg(r.key)}${r.name}</span><span class="np-place">기증하기</span></button>`).join('') : '<p class="mnote">기증할 새 물건이 없어요. 아직 박물관에 없는 물고기·광석·전리품을 가져와요. 다른 주민이 이미 기증한 건 다시 못 해요.</p>';
-  openPanel(`올리 박물관 · 섬 전체 ${shared}/120`, head + body);
+  openPanel(`올리 박물관 · 섬 전체 ${shared}/${90 + Object.keys(MONSTERS).length}`, head + body);
   const P = $('npcPanel'); P.dataset.museum = '1';
   P.querySelectorAll('button[data-mv]').forEach(b=>b.onclick = ()=>{ museumView = b.dataset.mv; museumPanel(); });
   P.querySelectorAll('button[data-id]').forEach(b=>b.onclick = async ()=>{
@@ -4308,7 +4321,7 @@ function showBag(sel){
   const cats = ['crop','forage','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'];
   keepScroll(()=>openPanel('가방',
     `<div class="np"><span class="np-name">💰 ${me.inv.gold} G <small>· 체력 ${Math.ceil(playerHp)}/${maxHp()} · 기력 ${Math.floor(playerSta)}/${maxSta()}</small></span><span class="np-day" style="grid-column:1/-1;text-align:left">도구: ${tools}</span></div>${wornRow()}${invGrid(cats, bagState)}
-     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxG">채집 도감 ${Object.keys(me.gdex||{}).length}/${FORAGE.length}</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">거래소에 올리기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`));
+     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxG">채집 도감 ${Object.keys(me.gdex||{}).length}/${FORAGE.length}</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/${Object.keys(MONSTERS).length}</button><button class="mini" id="bgSend">거래소에 올리기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`));
   invBind(bagState, ()=>showBag(), (el,k)=>{ const acts = [];
     if (foodOf(k)) acts.push(['먹기', ()=>{ eat(k); showBag(); }]);
     const kc = k.split(':')[0];
@@ -4340,7 +4353,7 @@ function oreDex(){
 }
 function monDex(){
   const zn = {forest:'먼지 숲', deepforest:'깊은 숲', seacave:'해식 동굴', cave:'의문의 동굴', starhill:'별빛 언덕 밤'};
-  dexGrid(`몬스터 도감 ${Object.keys(me.mdex||{}).length}/30`, Object.entries(MONSTERS).map(([id,m])=>({aid:id, got:!!(me.mdex||{})[id], name:m.name, sub: (me.mdex||{})[id] ? `체력 ${m.hp} · 공격 ${m.atk}` : zn[m.zone]})));
+  dexGrid(`몬스터 도감 ${Object.keys(me.mdex||{}).length}/${Object.keys(MONSTERS).length}`, Object.entries(MONSTERS).map(([id,m])=>({aid:id, got:!!(me.mdex||{})[id], name:m.name, sub: (me.mdex||{})[id] ? `체력 ${m.hp} · 공격 ${m.atk}` : zn[m.zone]})));
 }
 
 // ===== 입력 =====

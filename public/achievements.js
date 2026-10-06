@@ -26,7 +26,7 @@ export const ACHIEVEMENTS = [
   { id:'mon_100',    name:'먼지 사냥꾼',       desc:'몬스터 100 마리 처치하기',       stat:'monsterKills', n:100,    reward:{gold:1500,  title:'먼지 사냥꾼'},       icon:'⚔️' },
   { id:'mon_1000',   name:'섬의 수호자',       desc:'몬스터 1000 마리 처치하기',      stat:'monsterKills', n:1000,   reward:{gold:8000,  title:'섬의 수호자'},       icon:'🛡️' },
   { id:'dexmon_15',  name:'몬스터 관찰자',     desc:'몬스터 15 종 발견하기',          stat:'dexMon',      n:15,      reward:{gold:1500,  title:'몬스터 관찰자'},     icon:'👀' },
-  { id:'dexmon_30',  name:'몬스터 박사',       desc:'몬스터 30 종 모두 발견하기',     stat:'dexMon',      n:30,      reward:{gold:10000, title:'몬스터 박사'},       icon:'🎓' },
+  { id:'dexmon_30',  name:'몬스터 박사',       desc:'몬스터 30 종 발견하기',     stat:'dexMon',      n:30,      reward:{gold:10000, title:'몬스터 박사'},       icon:'🎓' },
   { id:'boss_1',     name:'여왕을 마주한 자',  desc:'먼지 여왕 토벌 보상 1 회 받기',  stat:'bossKills',   n:1,       reward:{gold:1000,  title:'여왕을 마주한 자'},  icon:'👸' },
   { id:'boss_5',     name:'먼지 여왕의 천적',  desc:'먼지 여왕 토벌 보상 5 회 받기',  stat:'bossKills',   n:5,       reward:{gold:4000,  title:'먼지 여왕의 천적'},  icon:'🔥' },
   { id:'boss_30',    name:'왕관을 부수는 자',  desc:'먼지 여왕 토벌 보상 30 회 받기', stat:'bossKills',   n:30,      reward:{gold:15000, title:'왕관을 부수는 자'},  icon:'💥' },
