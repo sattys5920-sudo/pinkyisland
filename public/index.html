@@ -1806,7 +1806,7 @@ function castAt(bx, by){
   if (fishing) return;
   if (!useSta('fish')) return;
   pos.dir = Math.abs(bx-pos.x) > Math.abs(by-pos.y) ? (bx>pos.x?'right':'left') : (by>pos.y?'down':'up');
-  fishing = {phase:'wait', bx, by, biteAt: performance.now() + 5000 + Math.random()*7000, id: rollFish(), castAt: performance.now()};
+  fishing = {phase:'wait', bx, by, biteAt: performance.now() + 3000 + Math.random()*4000, id: rollFish(), castAt: performance.now()};
   toast('찌를 던졌어요.... 느낌표가 뜨면 탭!');
 }
 function stopFishing(msg){ fishing = null; $('fishGame').hidden = true; if (msg) toast(msg); }
@@ -1968,8 +1968,8 @@ function rollOre(zid){
   const total = list.reduce((a,[,o])=>a+w(o),0);
   let r = Math.random()*total; for (const [id,o] of list){ if ((r -= w(o)) < 0) return id; } return list[0][0];
 }
-const hourKey = () => Math.floor(Date.now()/1200000); // 바위는 20 분마다 다시 생겨요
-// 바위는 한 시간마다 다시 생겨요 (각자 화면 기준)
+const hourKey = () => Math.floor(Date.now()/300000); // 바위는 5 분마다 다시 생겨요
+// 바위는 사람마다 따로예요: 내가 캐도 친구 화면의 바위는 그대로 있어요
 function rocksHere(){
   const mz = MINE_ZONES[zoneId]; if (!mz) return [];
   const m = me ? (me.mined = me.mined || {})[zoneId] : null;
@@ -2109,7 +2109,7 @@ function syncMobs(){
 let respawnT = 0;
 function updateMobs(dt, t){
   const want = syncMobs(); if (!want) return;
-  if (mobs.length < want && t > respawnT){ spawnMob(); respawnT = t + 25000; }
+  if (mobs.length < want && t > respawnT){ spawnMob(); respawnT = t + 8000; } // 몬스터도 사람마다 따로, 8 초마다 한 마리씩 다시 나와요
   const talking = !$('talk').hidden;
   for (const mob of mobs){
     const m = MONSTERS[mob.id], d = Math.hypot(pos.x-mob.x, pos.y-mob.y);
