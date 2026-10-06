@@ -4820,7 +4820,7 @@ const othersPets = new Map();
 function updatePets(dt){
   petHungerCheck(performance.now());
   const wp = walkingPet();
-  if (!wp || Z().house){ petFollow = null; } else {
+  if (!wp){ petFollow = null; } else { // 산책 중인 펫은 집 안에서도 나를 따라다녀요
     const gx = pos.x - 26, gy = pos.y + 4; if (!petFollow || Math.hypot(petFollow.x-gx, petFollow.y-gy) > 300) petFollow = {x:gx, y:gy, walk:false, flip:false};
     const dx = gx-petFollow.x, dy = gy-petFollow.y, dd = Math.hypot(dx, dy); petFollow.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); petFollow.x += dx/dd*sp; petFollow.y += dy/dd*sp; petFollow.flip = dx < 0;
       petWalked += sp; if (petWalked >= PET_WALK_STEP){ petWalked = 0; petSpend(wp, 1); saveMe(); if (fullness(wp) < 15){ wp.walk = false; saveMe(); toast(`${wp.name}이(가) 배고파서 집으로 돌아갔어요. 밥을 챙겨 주세요`); } } }
@@ -4831,14 +4831,18 @@ function updatePets(dt){
 function drawPet(c, sp, col, x, y, t, walk, flip){ c.save(); if (flip){ c.translate(x, 0); c.scale(-1, 1); c.translate(-x, 0); } try { PET_DRAW[sp](CH.mattePainter(c), x, y, col, t, walk); } catch(e){} c.restore(); }
 function petEntities(d, t){
   const c = d.ctx, out = [], T = t/1000;
-  if (Z().house){ petsOf(Z().house).forEach((pt, i)=>{ const p = petHomePos(Z().house, i); pt._x = p.x; pt._y = p.y; out.push({y:p.y, draw:()=>drawPet(c, pt.sp, petCol(pt), p.x, p.y, T, p.walk, p.flip), label:()=>{ if (pt.name) tag(c, Z().house===uid ? pt.name : `${pt.name} · ${String(players[Z().house]?.nick||'').slice(0,8)}의 펫`, p.x, p.y-30, null); }}); }); }
-  const wp = walkingPet(); if (wp && CARRIED.has(wp.sp) && !Z().house && !admin){ const sd = pos.dir==='left' ? -1 : 1; out.push({y:pos.y+1, draw:()=>{ if (typeof darkDown==='undefined' || !darkDown) drawPet(c, wp.sp, petCol(wp), pos.x + sd*15, pos.y - 6, T, false, false); }, label:()=>{}}); }
+  if (Z().house){ petsOf(Z().house).forEach((pt, i)=>{ if (pt.walk){ pt._x = null; return; } /* 산책 나간 펫은 집에 없어요 */ const p = petHomePos(Z().house, i); pt._x = p.x; pt._y = p.y; out.push({y:p.y, draw:()=>drawPet(c, pt.sp, petCol(pt), p.x, p.y, T, p.walk, p.flip), label:()=>{ if (pt.name) tag(c, Z().house===uid ? pt.name : `${pt.name} · ${String(players[Z().house]?.nick||'').slice(0,8)}의 펫`, p.x, p.y-30, null); }}); }); }
+  const wp = walkingPet(); if (wp && CARRIED.has(wp.sp) && !admin){ const sd = pos.dir==='left' ? -1 : 1; out.push({y:pos.y+1, draw:()=>{ if (typeof darkDown==='undefined' || !darkDown) drawPet(c, wp.sp, petCol(wp), pos.x + sd*15, pos.y - 6, T, false, false); }, label:()=>{}}); }
   else if (wp && petFollow) out.push({y:petFollow.y, draw:()=>drawPet(c, wp.sp, petCol(wp), petFollow.x, petFollow.y, T, petFollow.walk, petFollow.flip), label:()=>tag(c, `${String(wp.name||PET[wp.sp].name).slice(0,8)} · 내 펫`, petFollow.x, petFollow.y-30, null)});
   for (const [id,f] of othersPets){ const o = others.get(id); if (!o || !o.pet) continue; if (CARRIED.has(o.pet.sp)){ if (!o.down) out.push({y:o.y+1, draw:()=>drawPet(c, o.pet.sp, PET[o.pet.sp].cols[o.pet.col], o.x + (o.dir==='left' ? -15 : 15), o.y - 6, T, false, false), label:()=>{}}); continue; } out.push({y:f.y, draw:()=>drawPet(c, o.pet.sp, PET[o.pet.sp].cols[o.pet.col], f.x, f.y, T, f.walk, f.flip), label:()=>tag(c, `${o.pet.name || PET[o.pet.sp].name} · ${String(o.nick||'').slice(0,8)}의 펫`, f.x, f.y-30, null)}); }
   return out;
 }
 function petTap(w){
-  if (!Z().house || !me) return null;
+  if (!me) return null;
+  // 산책 중인 내 펫: 따라오는 자리를 누르면 펫 창 (산책 그만하기도 여기서)
+  const wp = walkingPet(); if (wp && !admin){ const fx = CARRIED.has(wp.sp) ? pos.x + (pos.dir==='left' ? -15 : 15) : petFollow?.x, fy = CARRIED.has(wp.sp) ? pos.y - 6 : petFollow?.y;
+    if (fx!=null && Math.abs(w.x-fx) < 18 && w.y > fy-30 && w.y < fy+8) return {x:pos.x, y:pos.y, act:()=>petPanel(wp), mark:performance.now()}; }
+  if (!Z().house) return null;
   const owner = Z().house, list = petsOf(owner);
   for (const pt of list) if (pt._x!=null && Math.abs(w.x-pt._x) < 16 && w.y > pt._y-28 && w.y < pt._y+6){
     if (owner!==uid) return {x:pos.x, y:pos.y, act:()=>toast(`${players[owner]?.nick||'누군가'} 님의 ${PET[pt.sp].name} '${pt.name}'이에요 · ${petMood(pt)}`), mark:performance.now()};
