@@ -1411,11 +1411,21 @@ const JUKE_SONGS = [
 ];
 var jukeOn = null, jukeH = 20; // 집 밖으로 나가면 꺼져요 (enterZone) · jukeH: 플레이어 높이 (관리자 시험용)
 function jukeSrc(url){ return 'https://w.soundcloud.com/player/?' + new URLSearchParams({url, color:'#ff8fb1', auto_play:'true', show_user:'false', show_artist:'false', hide_related:'true', show_comments:'false', show_reposts:'false', show_teaser:'false', visual:'false', sharing:'false', buying:'false', download:'false'}); }
+// 줄인 링크(on.soundcloud.com)는 플레이어가 못 알아들을 때가 있어요. 사운드클라우드 oEmbed로 진짜 주소를 알아내 써요 (안 되면 그대로)
+async function jukeResolve(s){
+  if (s.full) return s.full; if (!/on\.soundcloud\.com/.test(s.url)) return s.url;
+  try { const c = new AbortController(); const t = setTimeout(()=>c.abort(), 4000);
+    const r = await fetch('https://soundcloud.com/oembed?format=json&url=' + encodeURIComponent(s.url), {signal:c.signal}); clearTimeout(t);
+    const j = await r.json(), m = /src="([^"]+)"/.exec(j.html || ''), u = m && new URL(m[1].replace(/&amp;/g, '&')).searchParams.get('url');
+    if (u){ s.full = u; return u; } } catch(e){}
+  return s.url;
+}
 function jukePlay(i){
   const s = JUKE_SONGS[i]; if (!s) return; jukeStop(true); jukeOn = s; bgmStop();
   const d = document.createElement('div'); d.id = 'juke';
-  d.innerHTML = `<iframe title="${esc(s.name)}" width="100%" height="${jukeH}" scrolling="no" frameborder="no" allow="autoplay" src="${jukeSrc(s.url)}"></iframe><a href="${esc(s.url)}" target="_blank" rel="noopener" aria-label="사운드클라우드에서 열기" style="flex:none;font-size:13px;text-decoration:none;color:#e0457b;padding:0 2px">↗</a><button id="jukeX" aria-label="끄기">✕</button>`;
-  if (admin){ d.style.zIndex = 35; d.style.top = 'auto'; d.style.bottom = 'calc(env(safe-area-inset-bottom,0px) + 70px)'; /* 관리자: 메뉴 버튼을 가리지 않게 아래쪽에 */ } document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop(); jukeLoop(d.querySelector('iframe'));
+  d.innerHTML = `<iframe title="${esc(s.name)}" width="100%" height="${jukeH}" scrolling="no" frameborder="no" allow="autoplay"></iframe><a href="${esc(s.url)}" target="_blank" rel="noopener" aria-label="사운드클라우드에서 열기" style="flex:none;font-size:13px;text-decoration:none;color:#e0457b;padding:0 2px">↗</a><button id="jukeX" aria-label="끄기">✕</button>`;
+  if (admin){ d.style.zIndex = 35; d.style.top = 'auto'; d.style.bottom = 'calc(env(safe-area-inset-bottom,0px) + 70px)'; /* 관리자: 메뉴 버튼을 가리지 않게 아래쪽에 */ } document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop();
+  const ifr = d.querySelector('iframe'); jukeResolve(s).then(u=>{ if (jukeOn !== s || !ifr.isConnected) return; ifr.src = jukeSrc(u); jukeLoop(ifr); });
   $('npcPanel').hidden = true;
 }
 // 사운드클라우드 플레이어에는 반복 설정이 없어서, 위젯 API로 곡이 끝나면 처음부터 다시 틀어요 (무한 반복)
