@@ -169,6 +169,9 @@
       "darkAt": {
         ".validate": "newData.isNumber()"
       },
+      "darkShift": {
+        ".validate": "newData.isNumber()"
+      },
       "$other": {
         ".validate": false
       }
