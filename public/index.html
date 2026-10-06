@@ -1092,6 +1092,7 @@ let firstPlayers = true, firstOnline = true;
 function onPlayers(raw){
   const next = {};
   for (const [k,v] of Object.entries(raw||{})) if (v) next[k] = fromDB(v);
+  if (admin && net && net.adminCapPts) adminCapHearts(next);
   if (!admin && !solo && me && players[uid] && !next[uid]){ me = null; alert('이 캐릭터가 섬에서 지워졌어요. 새로 캐릭터를 만들어 주세요.'); location.reload(); return; } // 관리자가 모든 데이터를 지웠어요
   players = next;
   rebuildObstacles();
@@ -1225,6 +1226,7 @@ function firebaseNet(){
     reviveClear: () => F.remove(F.ref(db, 'revive/'+uid)).catch(()=>{}),
     // 입주한 뒤 남아 있는 내 옛 선점(다른 지붕·집터)을 풀어 줘요
     cleanupClaims: async (roof, lot) => { for (const [kind, mine] of [['roofs', roof], ['lots', lot]]){ try { const v = (await F.get(F.ref(db, kind))).val() || {}; for (const [k,c] of Object.entries(v)) if (c && c.uid===uid && +k !== mine) await F.remove(F.ref(db, kind+'/'+k)).catch(()=>{}); } catch(e){} } },
+    adminCapPts: (ups) => F.update(F.ref(db), ups),
     adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ['snowmen/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
     sessionClaim: sid => { const r = F.ref(db, 'sessions/'+uid); F.set(r, sid).catch(()=>{}); F.onValue(r, s=>{ const v = s.val(); if (v && v !== sid) onKicked(); }); },
     presence: p => F.set(meRef, p),
@@ -1763,6 +1765,14 @@ const DAY_PTS = 50;
 // 하루 제한을 시작한 날(2026-10-06, 한국 시간)부터 센 날 수만큼만 하트가 올라가요: 첫날 ♥1, 둘째 날 ♥2 … (이미 오른 건 그대로 두고, 더 오르지만 않게)
 const HEART_DAY0 = 20732;
 const heartCapPts = () => (Math.max(0, today() - HEART_DAY0) + 1) * 50 + 49;
+// 관리자 화면: 날수보다 많이 오른 주민 호감도를 서버에서 바로 오늘 최대치로 맞춰요 (예전 앱을 켜 둔 사람도)
+let capBusy = false;
+function adminCapHearts(ps){
+  if (capBusy) return; const cap = heartCapPts(), ups = {}; let n = 0;
+  for (const [id, p] of Object.entries(ps)) for (const [npc, r] of Object.entries(p.rel||{})) if (r && r.pts > cap){ ups[`players/${id}/rel/${npc}/pts`] = cap; n++; }
+  if (!n) return; capBusy = true;
+  net.adminCapPts(ups).then(()=>toast(`호감도가 너무 높던 ${n} 곳을 오늘 최대치(♥${heartsOf(cap)})로 맞췄어요`)).catch(e=>console.warn('cap', e)).finally(()=>{ capBusy = false; });
+}
 // 들어올 때도 확인: 제한이 생기기 전이나 예전 앱에서 날수보다 많이 오른 호감도는 오늘 최대치로 맞춰요 (첫날 ♥1, 둘째 날 ♥2 …)
 function capHearts(){ const cap = heartCapPts(); let cut = false; for (const r of Object.values(me.rel||{})) if (r && r.pts > cap){ r.pts = cap; cut = true; } if (cut){ syncStats(); saveMe(); } }
 function addPts(n, v){
