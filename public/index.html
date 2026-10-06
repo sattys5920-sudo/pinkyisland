@@ -2504,6 +2504,8 @@ function updateMobs(dt, t){
       else if ((!(bm.hp > 0) && now - (bm.deadAt||0) > BOSS_RESPAWN) || (bm.hp > 0 && bm.id === bid && bm.max < MONSTERS[bid].hp)){ mobTry[BOSS_SLOT] = t; const d = newMobData(bm.gen + 1, bid); if (d) net.mobSpawn(zoneId, BOSS_SLOT, bm.gen, d); } // 예전 크기 보스는 새 크기로
     }
   }
+  { const bid = ZONE_BOSS[zoneId], bm = mobMap[BOSS_SLOT]; // 예전 크기로 남아 있는 보스는 새 판 화면을 가진 누구든 새 크기로 바꿔요
+    if (mobLoaded && bid && bm && bm.hp > 0 && bm.id === bid && bm.max < MONSTERS[bid].hp && !(mobTry.up && t - mobTry.up < 5000)){ mobTry.up = t; const d = newMobData(bm.gen + 1, bid); if (d) net.mobSpawn(zoneId, BOSS_SLOT, bm.gen, d); } }
   const chase = owner ? [{x:pos.x, y:pos.y, ok:!talking && !darkDown && t > wakeGuardUntil}, ...[...others.values()].filter(o=>o.z===zoneId && !o.down).map(o=>({x:o.x, y:o.y, ok:true}))] : [];
   for (const mob of mobs){
     const m = MONSTERS[mob.id], d = Math.hypot(pos.x-mob.x, pos.y-mob.y);
