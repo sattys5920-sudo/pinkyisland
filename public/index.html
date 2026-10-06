@@ -3652,16 +3652,16 @@ function candyPrice(slot){
   return Math.round(B * (.6 + r(i)*.85)); // 들쭉날쭉
 }
 const hasTV = () => !!TV_ID && (me.furn||[]).some(f=>f.id===TV_ID);
-// 내 별사탕: 산 방송부터 3 일(방송 6 번) 뒤 같은 시각 방송이 시작되면 녹아요. 산 묶음마다 따로 세고, 팔 때는 먼저 산 것부터
+// 내 별사탕: 산 방송부터 3 일 뒤 같은 시각 방송까지 팔 수 있고, 그 방송이 끝나면 녹아요. 산 묶음마다 따로 세고, 팔 때는 먼저 산 것부터
 const candyMeltName = until => { const d = new Date(slotTime(until) + 9*3600000); return `${d.getUTCMonth()+1}월 ${d.getUTCDate()}일 ${slotName(until)}`; };
 function myCandy(){
   let c = me.candy; if (!c) return null;
   if (!Array.isArray(c.lots)){ // 예전 저장(판 단위): 산 방송을 모르니 그 판 마지막 방송에 샀다고 보고 3 일
     const until = (c.cycle + 1) * CANDY_PER - 1 + CANDY_PER;
-    c = me.candy = c.n > 0 && typeof c.cycle === 'number' && lastSlot() < until ? {lots:[{n:c.n, cost:c.cost||0, until}]} : null; saveMe(); if (!c) return null;
+    c = me.candy = c.n > 0 && typeof c.cycle === 'number' && lastSlot() <= until ? {lots:[{n:c.n, cost:c.cost||0, until}]} : null; saveMe(); if (!c) return null;
   }
-  const now = lastSlot(), melted = c.lots.filter(l=>now >= l.until).reduce((a,l)=>a+l.n, 0);
-  if (melted){ c.lots = c.lots.filter(l=>now < l.until); toast(`별사탕 ${melted} 개가 녹아 버렸어요.... 다음엔 산 지 3 일 안에 팔아요`); saveMe(); }
+  const now = lastSlot(), melted = c.lots.filter(l=>now > l.until).reduce((a,l)=>a+l.n, 0);
+  if (melted){ c.lots = c.lots.filter(l=>now <= l.until); toast(`별사탕 ${melted} 개가 녹아 버렸어요.... 다음엔 산 지 3 일 안에 팔아요`); saveMe(); }
   c.lots = c.lots.filter(l=>l.n > 0).sort((a,b)=>a.until-b.until);
   if (!c.lots.length){ me.candy = null; return null; }
   return {lots:c.lots, n:c.lots.reduce((a,l)=>a+l.n, 0), cost:c.lots.reduce((a,l)=>a+l.cost, 0), until:c.lots[0].until};
@@ -3695,9 +3695,9 @@ function tvPanel(){
   openPanel(`📺 핑키 홈쇼핑 · 💰 ${me.inv.gold} G`,
     `<div class="np" style="display:block">${live ? `<b style="color:#e0457b">● 지금 방송 중</b> · ${live.left} 분 남았어요<br>오늘의 별사탕 <b style="font-size:30px">${price} G</b>` : `방송 쉬는 시간이에요. 다음 방송: ${slotName(nx.slot)} (${fmtLeft(nx.wait)} 뒤)`}</div>
      <div class="tv-grid">${rows}</div>
-     ${c ? `<div class="np" style="display:block">내 별사탕 <b>${c.n}</b> 개 · 평균 ${Math.round(c.cost/c.n)} G${price ? ` · 지금 팔면 ${price*c.n} G (${price*c.n - c.cost >= 0 ? '+' : ''}${price*c.n - c.cost} G)` : ''}<br><small>${c.lots.map(l=>`${l.n} 개는 ${candyMeltName(l.until)} 방송이 시작되면 녹아요`).join(' · ')}</small></div>` : ''}
+     ${c ? `<div class="np" style="display:block">내 별사탕 <b>${c.n}</b> 개 · 평균 ${Math.round(c.cost/c.n)} G${price ? ` · 지금 팔면 ${price*c.n} G (${price*c.n - c.cost >= 0 ? '+' : ''}${price*c.n - c.cost} G)` : ''}<br><small>${c.lots.map(l=>`${l.n} 개는 ${candyMeltName(l.until)} 방송까지 팔 수 있어요`).join(' · ')}</small></div>` : ''}
      ${live ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${[10, 50, 100].map(q=>`<button class="mini" data-q="${q}">${q} 개 사기</button>`).join('')}<button class="mini" data-q="999">최대로 사기</button>${c ? `<button class="mini" data-q="-10">10 개 팔기</button><button class="mini" data-q="-${c.n}">전부 팔기</button>` : ''}</div>` : ''}
-     <p class="mnote">방송은 매일 오후 1 시, 밤 10 시에 한 시간씩. 그때만 사고팔 수 있어요. 값은 3 일(방송 6 번)마다 오르내리는 모양이 바뀌어요. 별사탕은 산 때부터 3 일 뒤 같은 시각 방송이 시작되면 녹아요. 최대 ${CANDY_MAX} 개.</p>`);
+     <p class="mnote">방송은 매일 오후 1 시, 밤 10 시에 한 시간씩. 그때만 사고팔 수 있어요. 값은 3 일(방송 6 번)마다 오르내리는 모양이 바뀌어요. 별사탕은 산 때부터 3 일 뒤 같은 시각 방송까지 팔 수 있고, 그 방송이 끝나면 녹아요. 최대 ${CANDY_MAX} 개.</p>`);
   $('npcPanel').dataset.tv = '1';
   $('npcPanel').querySelectorAll('button[data-q]').forEach(b=>b.onclick = ()=>candyTrade(+b.dataset.q));
 }
@@ -4802,7 +4802,7 @@ async function adminKick(id){
 }
 function adminTable(regs){
   const d = today(), cs = lastSlot(), cp = candyPrice(showLive()?.slot ?? cs);
-  const stk = p => { const c = p.candy; if (!c) return []; const lots = Array.isArray(c.lots) ? c.lots.filter(l=>l && l.n > 0 && cs < l.until) : (c.n > 0 && c.cycle === cycleOf(cs) ? [c] : []); const n = lots.reduce((a,l)=>a+l.n, 0); return n ? [{n, cost:lots.reduce((a,l)=>a+(l.cost||0), 0), val:cp*n}] : []; };
+  const stk = p => { const c = p.candy; if (!c) return []; const lots = Array.isArray(c.lots) ? c.lots.filter(l=>l && l.n > 0 && cs <= l.until) : (c.n > 0 && c.cycle === cycleOf(cs) ? [c] : []); const n = lots.reduce((a,l)=>a+l.n, 0); return n ? [{n, cost:lots.reduce((a,l)=>a+(l.cost||0), 0), val:cp*n}] : []; };
   const sv = p => stk(p).reduce((a,x)=>a + x.val, 0), total = p => (p.inv?.gold||0) + sv(p);
   const rows = [...regs].sort(([,a],[,b])=>total(b) - total(a));
   const stCell = p => { const l = stk(p); if (!l.length) return `<td class="g" title="${esc(p.nick)} · 별사탕 없음">-</td>`;
