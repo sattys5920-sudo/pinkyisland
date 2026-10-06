@@ -1149,7 +1149,7 @@ function soloNet(){
     petClaim: async sp => { petClaims[sp] = {uid}; return true; },
     snowman: async s => { snowmen[uid] = s; },
     mobsZone: (z, cb) => { const M_ = soloNet.mobs || (soloNet.mobs = {}); soloNet.mobCb = [z, cb]; setTimeout(()=>cb(structuredClone(M_[z]||{}))); return ()=>{ soloNet.mobCb = null; }; },
-    mobSpawn: async (z, sl, oldGen, d) => { const M_ = soloNet.mobs, c = (M_[z] = M_[z] || {}), cur = c[sl]; if (oldGen == null ? cur : (!cur || cur.gen !== oldGen || cur.hp > 0)) return; c[sl] = d; soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); },
+    mobSpawn: async (z, sl, oldGen, d) => { const M_ = soloNet.mobs, c = (M_[z] = M_[z] || {}), cur = c[sl]; if (oldGen == null ? cur : (!cur || cur.gen !== oldGen || (cur.hp > 0 && !(cur.id === d.id && cur.max < d.max)))) return; c[sl] = d; soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); },
     mobHit: async (z, sl, gen, dmg) => { const c = (soloNet.mobs||{})[z] || {}, cur = c[sl]; if (!cur || cur.gen !== gen || !(cur.hp > 0)) return {committed:false}; cur.hp = Math.max(0, cur.hp - dmg); cur.hits = {...(cur.hits||{}), [uid]:true}; if (cur.hp <= 0) cur.deadAt = Date.now(); soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); return {committed:true, killed:cur.hp <= 0}; },
     mobPos: async (z, up) => { const c = (soloNet.mobs||{})[z] || {}; for (const [k,v] of Object.entries(up)){ const [sl, f] = k.split('/'); if (c[sl]) c[sl][f] = v; } },
     museumGive: async (cat, id) => { const c = museum[cat] || (museum[cat] = {}); if (c[id]) return false; c[id] = {uid, nick:me.nick, at:Date.now()}; onMuseum(museum); return true; },
@@ -1202,7 +1202,7 @@ function firebaseNet(){
     petClaim: sp => tx('petClaims/'+sp, {uid, at:Date.now()}),
     snowman: s => F.set(F.ref(db, 'snowmen/'+uid), s),
     mobsZone: (z, cb) => F.onValue(F.ref(db, 'mobs/'+z), s=>cb(s.val()), ()=>{}),
-    mobSpawn: async (z, sl, oldGen, d) => { try { await F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => (oldGen == null ? cur : (!cur || cur.gen !== oldGen || cur.hp > 0)) ? undefined : d); } catch(e){} },
+    mobSpawn: async (z, sl, oldGen, d) => { try { await F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => (oldGen == null ? cur : (!cur || cur.gen !== oldGen || (cur.hp > 0 && !(cur.id === d.id && cur.max < d.max)))) ? undefined : d); } catch(e){} },
     mobHit: async (z, sl, gen, dmg) => { let killed = false; try { const r = await F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => { if (!cur || cur.gen !== gen || !(cur.hp > 0)) return; const hp = Math.max(0, cur.hp - dmg); killed = hp <= 0; return {...cur, hp, hits:{...(cur.hits||{}), [uid]:true}, ...(killed ? {deadAt: Date.now() + serverOffset} : {})}; }); return {committed:r.committed, killed:r.committed && killed}; } catch(e){ return {committed:false}; } },
     mobPos: (z, up) => F.update(F.ref(db, 'mobs/'+z), up).catch(()=>{}),
     museumGive: async (cat, id) => { try { const r = await F.runTransaction(F.ref(db, 'museum/'+cat+'/'+id), cur => cur ? undefined : {uid, nick:String(me.nick||'').slice(0,16), at:Date.now() + serverOffset}); return r.committed; } catch(e){ return false; } },
@@ -2342,10 +2342,10 @@ const MONSTER_LIST = [
   ['광석 골렘','cave',180,22,30,'#a39aa8','golem','골렘 심장석',77,10], ['용암 슬라임','cave',120,24,55,'#ff6b3b','slime','용암 젤리',64,10],
   ['그림자 광부','cave',150,26,75,'#3b3b46','ghost','낡은 헬멧 조각',94,6], ['동굴의 주인','cave',400,35,45,'#5b2f6f','golem','동굴의 왕관',1500,1],
   ['별똥 유령','starhill',90,16,80,'#fff6b0','ghost','별가루',36,10], ['달빛 나방','starhill',70,14,100,'#d9e3ff','bug','달빛 비늘',30,12],
-  // 구역 보스: 다 같이 잡는 큰 몬스터 (구역마다 하나, 쓰러지면 10 분 뒤 다시). 마지막 값은 함께 잡은 사람마다 받는 골드
-  ['먼지 뭉치 대왕','forest',1500,25,40,'#bdb5c9','dust','대왕의 솜 왕관',600,0,800], ['가시 덤불 거인','deepforest',3000,40,45,'#4f8f46','plant','거인의 가시 심',1200,0,1500],
-  ['심연의 크라켄','seacave',3500,45,50,'#6f4fb5','slime','크라켄의 진주',1500,0,2000], ['용암 군주','cave',6000,60,35,'#ff6b3b','slime','군주의 용암 핵',3000,0,4000],
-  ['별고래 유령','starhill',4500,50,55,'#fff6b0','ghost','별고래의 꼬리별',2500,0,3000],
+  // 구역 보스: 다 같이 잡는 큰 몬스터 (구역마다 하나, 쓰러지면 1 시간 뒤 다시). 마지막 값은 함께 잡은 사람마다 받는 골드
+  ['먼지 뭉치 대왕','forest',10000,30,40,'#bdb5c9','dust','대왕의 솜 왕관',1500,0,2000], ['가시 덤불 거인','deepforest',25000,45,45,'#4f8f46','plant','거인의 가시 심',3000,0,4000],
+  ['심연의 크라켄','seacave',40000,55,50,'#6f4fb5','slime','크라켄의 진주',4500,0,6000], ['용암 군주','cave',100000,80,35,'#ff6b3b','slime','군주의 용암 핵',10000,0,12000],
+  ['별고래 유령','starhill',60000,65,55,'#fff6b0','ghost','별고래의 꼬리별',6000,0,8000],
   // 강한 몬스터: 구역마다 세 종씩 (다 같이 잡기 좋은 체력)
   ['먼지 멧돼지','forest',90,12,70,'#8a7a6a','dust','멧돼지 엄니',28,12], ['성난 털뭉치','forest',110,14,55,'#d9a6a6','dust','뭉친 털실',32,10], ['먼지 회오리','forest',130,15,90,'#c9d6f0','dust','회오리 솜',38,8],
   ['이끼 거북','deepforest',220,22,35,'#6f8f5a','plant','이끼 등껍질',60,10], ['독가시 덩굴','deepforest',200,26,50,'#7a3a6a','plant','독가시',66,10], ['그림자 늑대','deepforest',240,28,95,'#3b3846','dust','그림자 송곳니',75,8],
@@ -2442,7 +2442,7 @@ function rollMonster(){
 // ===== 몬스터: 같은 구역에 있는 사람 모두가 같은 몬스터를 봐요 (mobs/<구역>/<칸>) =====
 // 구역에 있는 사람 중 한 명(아이디가 가장 앞선 사람)이 몬스터를 움직이고 자리를 알려 줘요. 체력은 다 같이 깎고,
 // 쓰러뜨리면 한 대라도 친 사람 모두가 보상을 받아요. 쓰러진 자리는 MOB_RESPAWN 뒤에 새 몬스터가 나와요.
-const MOB_RESPAWN = 10000, BOSS_RESPAWN = 600000, BOSS_SLOT = '90';
+const MOB_RESPAWN = 10000, BOSS_RESPAWN = 3600000, BOSS_SLOT = '90'; // 보스는 1 시간
 const ZONE_BOSS = Object.fromEntries(Object.entries(MONSTERS).filter(([,m])=>m.boss).map(([id,m])=>[m.zone, id]));
 let mobMap = {}, mobSub = null, mobSubZone = null, mobLoaded = false, mobPosAt = 0, mobTry = {};
 const mobNow = () => Date.now() + serverOffset;
@@ -2476,9 +2476,9 @@ function mobReward(zone, slot, d){
   stat('monsterKills'); if (d.id==='m28') stat('caveBossKills'); questEvent('kill', d.id);
   invAdd('loot:'+d.id, 1); me.inv.gold += gold;
   me.mdex = me.mdex || {}; const first = !me.mdex[d.id]; me.mdex[d.id] = (me.mdex[d.id]||0) + 1;
-  gainExp(Math.max(3, Math.round(m.hp/6 + m.atk)));
+  const xp = m.boss ? Math.round(300 + m.hp/40) : Math.max(3, Math.round(m.hp/6 + m.atk)); gainExp(xp);
   saveMe(); renderHud();
-  if (m.boss){ withIcon('loot:'+d.id); say('구역 보스', `${m.name}을(를) ${crew > 1 ? `${crew} 명이 함께 ` : ''}쓰러뜨렸어요!`, [], `${m.drop} · ${gold.toLocaleString()} G · 경험치 +${Math.max(3, Math.round(m.hp/6 + m.atk))}${first ? ' · 처음 물리친 보스!' : ''}`); return; }
+  if (m.boss){ withIcon('loot:'+d.id); say('구역 보스', `${m.name}을(를) ${crew > 1 ? `${crew} 명이 함께 ` : ''}쓰러뜨렸어요!`, [], `${m.drop} · ${gold.toLocaleString()} G · 경험치 +${xp}${first ? ' · 처음 물리친 보스!' : ''}`); return; }
   toast(`${m.name}을(를) ${crew > 1 ? `${crew} 명이 함께 ` : ''}물리쳤어요! ${m.drop} · ${gold} G${first ? ' · 처음 물리친 몬스터!' : ''}`, 'loot:'+d.id);
 }
 function syncMobs(){
@@ -2501,7 +2501,7 @@ function updateMobs(dt, t){
     const bid = ZONE_BOSS[zoneId], bm = mobMap[BOSS_SLOT]; // 구역 보스 자리
     if (bid && !(mobTry[BOSS_SLOT] && t - mobTry[BOSS_SLOT] < 3000)){
       if (!bm){ mobTry[BOSS_SLOT] = t; const d = newMobData(1, bid); if (d) net.mobSpawn(zoneId, BOSS_SLOT, null, d); }
-      else if (!(bm.hp > 0) && now - (bm.deadAt||0) > BOSS_RESPAWN){ mobTry[BOSS_SLOT] = t; const d = newMobData(bm.gen + 1, bid); if (d) net.mobSpawn(zoneId, BOSS_SLOT, bm.gen, d); }
+      else if ((!(bm.hp > 0) && now - (bm.deadAt||0) > BOSS_RESPAWN) || (bm.hp > 0 && bm.id === bid && bm.max < MONSTERS[bid].hp)){ mobTry[BOSS_SLOT] = t; const d = newMobData(bm.gen + 1, bid); if (d) net.mobSpawn(zoneId, BOSS_SLOT, bm.gen, d); } // 예전 크기 보스는 새 크기로
     }
   }
   const chase = owner ? [{x:pos.x, y:pos.y, ok:!talking && !darkDown && t > wakeGuardUntil}, ...[...others.values()].filter(o=>o.z===zoneId && !o.down).map(o=>({x:o.x, y:o.y, ok:true}))] : [];
@@ -2622,7 +2622,7 @@ function drawMob(d, mob, t){
   if (m.boss){ const a = .28 + Math.sin(t/260)*.1, g = c.createRadialGradient(x, y-30, 4, x, y-30, 70); g.addColorStop(0, `rgba(255,214,90,${a})`); g.addColorStop(1, 'rgba(255,214,90,0)'); c.save(); c.fillStyle = g; c.beginPath(); c.arc(x, y-30, 70, 0, 7); c.fill(); c.restore(); }
   c.save(); c.fillStyle='rgba(0,0,0,.14)'; c.beginPath(); c.ellipse(x,y+1,14*s,4*s,0,0,7); c.fill(); c.restore();
   if (!(mob.hurt > 0 && Math.floor(t/60)%2)){ c.save(); c.translate(x, y-bob); c.scale(s, s); try { ART[mob.id](d, t/1000); } catch(e){} c.restore(); }
-  if (m.boss){ const w = 90, by = y - 50*s - 8; c.fillStyle='rgba(0,0,0,.35)'; c.fillRect(x-w/2, by, w, 7); c.fillStyle='#ff5a88'; c.fillRect(x-w/2, by, w*Math.max(0,mob.hp)/mob.max, 7); tag(c, `${m.name} ${Math.max(0, Math.ceil(mob.hp))}/${mob.max}`, x, by - 10, '#ffd23f'); return; }
+  if (m.boss){ const w = 90, by = y - 50*s - 8; c.fillStyle='rgba(0,0,0,.35)'; c.fillRect(x-w/2, by, w, 7); c.fillStyle='#ff5a88'; c.fillRect(x-w/2, by, w*Math.max(0,mob.hp)/mob.max, 7); tag(c, `${m.name} ${Math.max(0, Math.ceil(mob.hp)).toLocaleString()}/${mob.max.toLocaleString()}`, x, by - 10, '#ffd23f'); return; }
   if (mob.hp < mob.max){ c.fillStyle='rgba(0,0,0,.25)'; c.fillRect(x-14, y-52*s, 28, 4); c.fillStyle='#ff5a88'; c.fillRect(x-14, y-52*s, 28*Math.max(0,mob.hp)/mob.max, 4); }
 }
 function drawFx(c, t){
