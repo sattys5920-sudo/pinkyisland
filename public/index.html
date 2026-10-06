@@ -1698,13 +1698,13 @@ function pickLine(arr, key){
   if (arr.length > 1 && lastPick[key] === i) i = (i+1) % arr.length;
   lastPick[key] = i; return fillName(arr[i]);
 }
-// 하루에 하트 1 개(호감도 50)까지만 올라요 → ♥10까지 최소 10 일. 넘친 마음은 모아 뒀다가 다음 날부터 이어져요
+// 하루에 하트 1 개(호감도 50)까지만 올라요 → ♥10까지 최소 10 일. 넘친 건 사라져요 (내일은 내일 또)
 const DAY_PTS = 50;
 function addPts(n, v){
   const r = relOf(n.id), before = heartsOf(r.pts);
-  if (r.ptsDay !== today()){ r.ptsDay = today(); r.dayPts = 0; const take = Math.min(r.bank||0, DAY_PTS, 500 - r.pts); if (take > 0){ r.pts += take; r.dayPts = take; r.bank -= take; } }
-  if (v > 0){ const room = Math.max(0, DAY_PTS - (r.dayPts||0)), add = Math.min(v, room); r.dayPts = (r.dayPts||0) + add; r.bank = Math.min(500, (r.bank||0) + v - add); v = add;
-    if (add < (arguments[1]||0) && r.capToast !== today()){ r.capToast = today(); setTimeout(()=>toast(`오늘은 ${n.name}와(과) 이만큼 친해졌어요 · 남은 마음은 내일 이어져요`), 1200); } }
+  if (r.ptsDay !== today()){ r.ptsDay = today(); r.dayPts = 0; } delete r.bank;
+  if (v > 0){ const room = Math.max(0, DAY_PTS - (r.dayPts||0)), add = Math.min(v, room); r.dayPts = (r.dayPts||0) + add; v = add;
+    if (add < (arguments[1]||0) && r.capToast !== today()){ r.capToast = today(); setTimeout(()=>toast(`오늘은 ${n.name}와(과) 충분히 친해졌어요 · 내일 또 만나요`), 1200); } }
   r.pts = Math.max(0, Math.min(500, r.pts + v));
   const after = heartsOf(r.pts); if (after !== before) syncStats();
   return [4,7,10].filter(h => before < h && after >= h && !r['ev'+h]);
