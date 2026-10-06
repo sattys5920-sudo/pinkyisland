@@ -661,7 +661,7 @@ const TUT = [
   ['마을 광장 모모 가게에서 [물건 팔기]로 아무거나 팔아요', ()=>stats().sold > 0, 100],
   ['마을 광장 단단 카페에서 [요리하기]로 요리를 하나 만들어요', ()=>stats().dishesCooked > 0, 150],
   ['아무 주민에게나 [선물하기]로 선물을 줘요', ()=>stats().giftsGiven > 0, 100],
-  ['주민의 부탁(📜)을 하나 받아요', ()=>Object.keys(qState().active).length > 0 || qState().done.length > 0, 100],
+  ['주민의 부탁을 하나 받아요', ()=>Object.keys(qState().active).length > 0 || qState().done.length > 0, 100],
   ['박물관 언덕 올리에게 물고기나 광석을 기증해요', ()=>museumTotal() > 0, 150],
   ['마을 광장 몽실 옷가게에서 옷을 갈아입어요', ()=>stats().outfitChanged > 0, 100],
   ['공방 거리 보리 공방에서 동그란 TV를 만들어요 (5,000 G + 돌멩이 5)', ()=>TV_ID && (invCount('furn:'+TV_ID) > 0 || hasTV()), 300],
@@ -1202,7 +1202,8 @@ function firebaseNet(){
     adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ['snowmen/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
     sessionClaim: sid => { const r = F.ref(db, 'sessions/'+uid); F.set(r, sid).catch(()=>{}); F.onValue(r, s=>{ const v = s.val(); if (v && v !== sid) onKicked(); }); },
     presence: p => F.set(meRef, p),
-    presenceOff: () => F.onDisconnect(meRef).cancel().catch(()=>{}), // 밀려난 창은 닫혀도 지금 창의 접속 표시를 지우지 않게
+    presenceOff: () => F.onDisconnect(meRef).cancel().catch(()=>{}),
+    presenceLeave: async () => { await F.onDisconnect(meRef).cancel().catch(()=>{}); await F.remove(meRef).catch(()=>{}); }, // 밀려난 창은 닫혀도 지금 창의 접속 표시를 지우지 않게
     sendChat: t => F.push(F.ref(db, 'chat'), {uid, nick:me.nick, t, z:zoneId, at:F.serverTimestamp()}),
     // 이 장소의 대화 최근 100 줄만 받아요
     chatZone: (z, cb) => F.onValue(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z), F.limitToLast(CHAT_KEEP)), s=>cb(s.val()||{}), ()=>{}),
@@ -1262,7 +1263,7 @@ const pwPad = pw => pw + '·pinky'; // Firebase 최소 6 자 규칙을 맞추기
 const AUTH_MSG = {
   'auth/operation-not-allowed': 'Firebase 콘솔 > Authentication > 로그인 방법에서 "이메일/비밀번호"를 켜 주세요.',
   'auth/email-already-in-use': '이미 있는 아이디예요. 로그인하거나 다른 아이디를 골라 주세요.',
-  'auth/invalid-credential': '아이디 또는 비밀번호가 맞지 않아요.', 'auth/wrong-password': '비밀번호가 맞지 않아요.', 'auth/user-not-found': '없는 아이디예요. 먼저 가입해 주세요.',
+  'auth/invalid-credential': '아이디 또는 비밀번호가 맞지 않아요.', 'auth/wrong-password': '비밀번호가 맞지 않아요.', 'auth/user-not-found': '없는 아이디예요.',
   'auth/too-many-requests': '너무 여러 번 시도했어요. 잠시 뒤 다시 해 주세요.', 'auth/network-request-failed': '인터넷 연결을 확인해 주세요.',
 };
 function showLogin(auth, mode='login'){
@@ -1375,7 +1376,7 @@ function bgmStop(){ if (bgmAudio) bgmAudio.pause(); if (bgmTimer){ clearInterval
 // 브라우저는 처음 화면을 누르기 전엔 소리를 못 내요. 첫 터치·키 입력 때 시작해요
 for (const ev of ['pointerdown','keydown']) addEventListener(ev, ()=>{ if (me && !admin && !bgmStarted) bgmStart(); }, {passive:true});
 document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='hidden') bgmStop(); else if (bgmStarted && bgmOn()) bgmStart(); });
-async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); if (saveTimer) await flushSave(); try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); }
+async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); if (saveTimer) await flushSave(); try { if (net && net.presenceLeave) await net.presenceLeave(); } catch(e){} try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); } // 로그아웃 전에 접속 표시를 지워요 (나간 뒤엔 권한이 없어서 못 지워요)
 // 글꼴이 다 내려받히기 전에 그린 캔버스(지형·스프라이트)는 기본 글꼴로 굳어 버려요. 먼저 기다리고, 늦게 오면 캐시를 지워 다시 그려요.
 const fontReady = (async()=>{ try { await Promise.race([document.fonts.load('700 20px "Dongle"', '핑키 디저트 아일랜드 가나다 ABC 123'), new Promise(r=>setTimeout(r, 3000))]); } catch(e){} })();
 if (document.fonts) document.fonts.addEventListener('loadingdone', ()=>{ staticSig = ''; spriteCache.clear(); });
@@ -2308,7 +2309,7 @@ function loadStats(){
   if (me.staDay !== today()){ me.staDay = today(); playerSta = maxSta(); }
 }
 function updateStats(dt, t){
-  if (t - lastHurt > 8000 && playerHp < maxHp()) playerHp = Math.min(maxHp(), playerHp + 1.5*dt);
+  if (!darkDown && t - lastHurt > 8000 && playerHp < maxHp()) playerHp = Math.min(maxHp(), playerHp + 1.5*dt);
   if (playerSta < maxSta()) playerSta = Math.min(maxSta(), playerSta + dt/12); // 1 분에 5 씩
   if (t > dayChkT){ dayChkT = t + 5000; if (me.staDay !== today()){ me.staDay = today(); playerSta = maxSta(); toast('새 날이 밝았어요 · 기력이 가득 찼어요'); } }
 }
@@ -2771,7 +2772,7 @@ function houseTap(w){
   if (!invCount('furn:'+decorating)) { decorating = null; renderDecor(); return null; }
   const max = HOUSE_LV[myHouse().lv-1].max;
   if (list.length >= max){ toast(`지금 집에는 가구를 ${max} 개까지 놓을 수 있어요. 보리 공방에서 집을 늘려요`); return stay; }
-  invAdd('furn:'+decorating, -1); me.furn = [...list, {id:decorating, x:Math.round(w.x), y:Math.round(w.y)}]; saveMe();
+  invAdd('furn:'+decorating, -1); me.furn = [...list, {id:decorating, x:Math.round(w.x), y:Math.round(w.y)}]; saveMe(); renderHud();
   toast(`${FURN[decorating].name}을(를) 놓았어요 (${me.furn.length}/${max})`);
   if (!invCount('furn:'+decorating)) decorating = null;
   renderDecor();
@@ -3652,7 +3653,9 @@ function bossClaimCheck(){
   if (me.bossClaim !== today() && (me.bossHit||0) === today()){ me.bossClaim = today(); me.inv.gold += 3000; gainExp(300); stat('bossKills'); invAdd('loot:m16', 1); addPts(NPC.kongi, 30); saveMe(true); renderHud(); say('먼지 여왕을 물리쳤어요!', '섬 주민들이 힘을 모아 먼지 여왕을 쓰러뜨렸어요! 함께 싸운 보상으로 3,000 G와 여왕의 리본을 받았어요.', [], '내일 다시 나타나요'); }
 }
 function bossAlive(){ return zoneId==='deepforest' && boss && boss.gen===today() && boss.hp > 0; }
+let bossResetT = 0;
 function updateBoss(dt, t){
+  if (boss && boss.gen < today() && t > bossResetT){ bossResetT = t + 10000; net.bossReset && net.bossReset(today(), BOSS.max); } // 자정이 지나면 켜 둔 채로도 새 여왕
   if (zoneId!=='deepforest' || !boss) return;
   if (boss.gen===today() && boss.hp <= 0){
     bossClaimCheck();
@@ -3882,13 +3885,13 @@ function drawDarkBoss(d, npc, r, x, y, t){
   c.save(); if (darkHurtT > 0 && Math.floor(t/60)%2) c.globalAlpha = .55; drawCritter(c, x, y, n.look || {kind:n.sp.kind, fur:n.sp.fur}, t/1000, true, 2.4, Math.cos(t/1000) < 0); c.restore();
   const w = 180; c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(x-w/2, y-178, w, 10); c.fillStyle = rage ? '#ff3b6b' : '#b58cff'; c.fillRect(x-w/2, y-178, w*Math.max(0, r.hp)/r.max, 10);
   c.font = 'bold 19px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(`깨어난 ${n.name} ${Math.max(0, Math.ceil(r.hp)).toLocaleString()}/${r.max.toLocaleString()}`, x, y-184);
-  for (const sl of darkSlams){ const a = Math.min(1, (t - sl.at) / (DARK_BOSS.slamWarn*1000)); c.save(); c.globalAlpha = .25 + a*.35; c.fillStyle = '#ff2d55'; c.beginPath(); c.ellipse(sl.x, sl.y, sl.r*a, sl.r*a*.6, 0, 0, 7); c.fill(); c.globalAlpha = .9; c.strokeStyle = '#ff2d55'; c.lineWidth = 2; c.beginPath(); c.ellipse(sl.x, sl.y, sl.r, sl.r*.6, 0, 0, 7); c.stroke(); c.restore(); }
+  for (const sl of darkSlams){ const a = Math.max(0, Math.min(1, (t - sl.at) / (DARK_BOSS.slamWarn*1000))); if (!a) continue; c.save(); c.globalAlpha = .25 + a*.35; c.fillStyle = '#ff2d55'; c.beginPath(); c.ellipse(sl.x, sl.y, sl.r*a, sl.r*a*.6, 0, 0, 7); c.fill(); c.globalAlpha = .9; c.strokeStyle = '#ff2d55'; c.lineWidth = 2; c.beginPath(); c.ellipse(sl.x, sl.y, sl.r, sl.r*.6, 0, 0, 7); c.stroke(); c.restore(); }
 }
 function darkSwing(cx, cy, vx, vy, t){
   const z = Z(); if (!z.dark) return; const r = roomOf(z.dark); if (!darkBossUp(r)) return;
   const [bx, by] = darkBossPos(r); if (Math.hypot(bx-cx, by-cy) > 110) return;
   const dmg = swordAtk(); darkPending += dmg; darkHurtT = .2; fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
-  me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.att|0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
+  me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.start||0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
 }
 function darkHurt(n, t){ if (darkGuard > 0) return; playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0) darkRespawn(); }
 function updateDark(dt, t){
@@ -3896,6 +3899,8 @@ function updateDark(dt, t){
   const z = Z(); if (!z.dark) return; const npc = z.dark, r = roomOf(npc);
   darkGuard -= dt; darkHurtT -= dt;
   if (darkOn() && npc !== darkToday() && !r.clear) return darkLeave('이 방의 문이 닫혔어요');
+  if (!r.start && !r.clear && darkGuard < 0) return darkLeave('방이 처음으로 돌아갔어요. 다시 들어가면 새로 시작해요.'); // 관리자가 방을 되돌렸어요
+  if (r.clear && darkDown) darkStandUp();
   if (r.start && !r.clear && darkNow() > r.start + DARK_LIMIT_MS){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? {att:(cur.att|0)+1} : undefined); return darkLeave('2 시간이 지났어요.... 방이 처음으로 돌아갔어요. 다시 들어가면 새로 시작해요.'); }
   if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
     net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; const hp = Math.max(0, cur.hp - dmg); return {...cur, hp, ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
@@ -3905,15 +3910,15 @@ function updateDark(dt, t){
   const [bx, by] = darkBossPos(r), rage = r.hp < r.max/2, k = rage ? 1.3 : 1;
   darkTouchCd -= dt;
   if (Math.hypot(pos.x-bx, pos.y-by) < 80 && darkTouchCd <= 0 && $('npcPanel').hidden){ darkTouchCd = 1.1; pushPlayer(pos.x-bx, pos.y-by, 40); darkHurt(Math.round(DARK_BOSS.touch*k), t); }
-  if (t - darkSlamT > DARK_BOSS.slamGap*1000/(rage ? 1.6 : 1)){ darkSlamT = t; darkSlams.push({x:pos.x, y:pos.y, r:DARK_BOSS.slamR*(rage ? 1.15 : 1), at:t});
+  if (t - darkSlamT > DARK_BOSS.slamGap*1000/(rage ? 1.6 : 1) && Math.hypot(pos.x-bx, pos.y-by) < 480){ darkSlamT = t; // 보스 근처에 있을 때만 내려찍어요 darkSlams.push({x:pos.x, y:pos.y, r:DARK_BOSS.slamR*(rage ? 1.15 : 1), at:t});
     if (rage) for (let i = 0; i < 2; i++) darkSlams.push({x:pos.x + (Math.random()-.5)*260, y:pos.y + (Math.random()-.5)*160, r:DARK_BOSS.slamR, at:t + 200}); }
   darkSlams = darkSlams.filter(sl => { if (t - sl.at < DARK_BOSS.slamWarn*1000) return true; if (((pos.x-sl.x)/sl.r)**2 + ((pos.y-sl.y)/(sl.r*.6))**2 < 1) darkHurt(Math.round(DARK_BOSS.slam*k), t); fx.push({x:sl.x, y:sl.y-10, text:'쾅', t, color:'#ff2d55'}); return false; });
 }
 // 보스를 쓰러뜨린 도전에서 한 번이라도 때렸으면 보상 (어디에 있든)
 function darkClaim(npc){
   const r = roomOf(npc); if (!r.clear) return; me.darkDone = me.darkDone || {};
-  if (me.darkDone[npc] || (me.darkHit || {})[npc] !== `${npc}:${r.att|0}`) return;
-  me.darkDone[npc] = r.clear.at || 1; me.inv.gold += DARK_REWARD.gold; gainExp(DARK_REWARD.exp); saveMe(true); renderHud();
+  if (me.darkDone[npc] === r.start || (me.darkHit || {})[npc] !== `${npc}:${r.start||0}`) return; // 도전(시작 시각)마다 한 번
+  me.darkDone[npc] = r.start; me.inv.gold += DARK_REWARD.gold; gainExp(DARK_REWARD.exp); saveMe(true); renderHud();
   say(`${NPC[npc].name}을(를) 다시 꿰맸어요!`, `깨어난 ${NPC[npc].name}이(가) 쓰러지고, 방에 불이 조용히 켜졌어요. 함께 싸운 모두가 보상을 받았어요.`, [], `${DARK_REWARD.gold.toLocaleString()} G · 경험치 +${DARK_REWARD.exp}`);
 }
 // 위쪽 할 일 칸: 방 안에서는 남은 시간 · 푼 문제 · 보스 체력
@@ -4065,7 +4070,7 @@ function itemDesc(k){
   const food = foodOf(k), g = rarityOf(k);
   if (g) desc = `희귀도 ${RARE_STAR(g)} ${RARE_NAME[g]} · ` + desc;
   if (food) desc += ` · 먹으면 체력 +${food.hp} · 기력 +${food.sta}`; else if (cat==='crop') desc += ' · 꽃은 먹을 수 없어요 (선물용)';
-  if (cat==='fish'){ const p = parseFish(id), d = (me.dex||{})[p.id]; desc = `${'★'.repeat(p.st)}${'☆'.repeat(3-p.st)} · ` + desc + (d ? ` · 최고 기록 ${d.best} cm` : ''); }
+  if (cat==='fish'){ const p = parseFish(id), d = (me.dex||{})[p.id]; desc = desc + (d ? ` · 최고 기록 ${d.best} cm` : ''); }
   if (cat==='ore') desc = `희귀도 ${TIER_STAR(ORES[id].tier)} · ` + desc;
   if (cat==='loot') desc = `${MONSTERS[id].name}의 전리품 · ` + desc;
   if (cat==='seed') desc = `다 크는 데 ${fmtMin(CROPS[id].min)} · ` + desc;
@@ -4401,7 +4406,9 @@ function placeTop(){
 }
 addEventListener('resize', ()=>setTimeout(placeTop, 60));
 let lastT = performance.now(), lastFade = -1;
-function frame(t){
+// 한 장면에서 오류가 나도 게임이 멈추지 않게: 오류가 나면 다음 장면을 다시 예약해요
+function frame(t){ let ok = false; try { frameBody(t); ok = true; } catch(e){ console.error(e); } if (!ok) requestAnimationFrame(frame); }
+function frameBody(t){
   const dt = Math.min(.05, (t-lastT)/1000); lastT = t;
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,110); c.scale(1.45,1.45); CH.figure(d, L, dir, t/1000, true, L.expr); c.restore(); } } }
   if ((me || admin) && !obStep){
@@ -4453,7 +4460,9 @@ let admLook = null; // 주민 캐릭터·옷·집 보기 (null 닫힘 / '' 열�
 let adminLetterData = {}, admPost = false, admDrafts = {}; // 주민·오투모에게 온 편지 (관리자가 답장)
 let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
 let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
-function onWorld(w){ const was = darkOn(); world = w || {}; if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('다크 모드가 끝나 방에서 나왔어요'); if (darkOn() && !admin) say('섬이 어두워졌어요', '어딘가에서 실이 끊어지는 소리가 들려요.... 오늘 문이 열린 주민의 집을 찾아가 봐요.'); } }
+let reloadSeen; // 관리자 [전원 새로고침]: 처음 본 값에서 바뀌면 저장하고 새로고침해요
+function onWorld(w){ const was = darkOn(); world = w || {};
+  if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('다크 모드가 끝나 방에서 나왔어요'); if (darkOn() && !admin) say('섬이 어두워졌어요', '어딘가에서 실이 끊어지는 소리가 들려요.... 오늘 문이 열린 주민의 집을 찾아가 봐요.'); } }
 const kstClock = () => new Date(Date.now() + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
 const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : z && z.startsWith('dark:') ? `${NPC[z.slice(5)]?.name || ''}의 방 (다크)` : (ZONES[z]?.name || '집터');
 function enterAdmin(){
@@ -4483,7 +4492,7 @@ function renderAdmin(){
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>`).join('')}</div>` : ''}
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
-      <div class="adm-sec"><b>데이터 관리</b><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
+      <div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
     </div>${admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
   const npl = box.querySelector('.adm-post-list'); if (npl) npl.scrollTop = postScroll;
@@ -4644,9 +4653,10 @@ function adminClick(e){
   else if (b.dataset.f){ admSide = false; cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
   else if (b.dataset.a==='dkprev' || b.dataset.a==='dknext'){ Promise.resolve(net.setWorld({darkShift:(world.darkShift|0) + (b.dataset.a==='dknext' ? 1 : -1)})).catch(()=>toast('방을 옮기지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.rv){ net.reviveSend(b.dataset.rv, '관리자').then(()=>toast('깨웠어요')); }
+  else if (b.dataset.a==='reloadall'){ if (confirm('지금 접속한 사람 모두의 게임을 새로고침할까요? 진행 상황은 저장한 뒤 새로고침돼요.')) Promise.resolve(net.setWorld({reloadAt:Date.now() + serverOffset})).then(()=>toast('전원 새로고침을 보냈어요')).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.a==='dkreset'){ const npc = darkToday(); if (npc && confirm(`${NPC[npc].name}의 방을 처음 상태로 되돌릴까요? 푼 문제·시간·보스 체력이 모두 지워져요.`)) net.darkWipe(npc); }
   else if (b.dataset.a==='dkview'){ const npc = darkToday(); if (npc){ admSide = false; cam.follow = null; cam.zone = 'dark:'+npc; enterZone('dark:'+npc, null, DARK_ROOM.W/2, DARK_ROOM.H/2); renderAdmin(); } }
-  else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) (v && net.darkWipe ? net.darkWipe() : Promise.resolve()).then(()=>net.setWorld({dark:v, darkAt:Date.now(), darkShift:0})).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
+  else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) Promise.resolve(net.setWorld({dark:v, darkAt:Date.now() + serverOffset, darkShift:0})).then(()=>v && net.darkWipe ? net.darkWipe() : null).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
   else if (b.dataset.a==='logout'){ if (confirm('관리자 페이지에서 나갈까요?')) logout(); }
 }
 // 카메라: 따라가는 사람이 있으면 그 사람을, 없으면 고른 구역 전체를 한눈에

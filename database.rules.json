@@ -124,8 +124,8 @@
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$npc": {
-        ".write": "auth != null && $npc.matches(/^[a-z]{2,12}$/)",
-        ".validate": "!newData.exists() || ((!newData.child('start').exists() || newData.child('start').isNumber()) && (!newData.child('hp').exists() || newData.child('hp').isNumber()))"
+        ".write": "auth != null && $npc.matches(/^[a-z]{2,12}$/) && newData.exists()",
+        ".validate": "(!newData.child('start').exists() || newData.child('start').isNumber()) && (!data.child('start').exists() || newData.child('start').val() === data.child('start').val() || (data.child('start').exists() && now > data.child('start').val() + 7200000 && !data.child('clear').exists())) && (newData.child('att').val() === data.child('att').val() || (data.child('start').exists() && now > data.child('start').val() + 7200000 && !data.child('clear').exists())) && (!data.child('clear').exists() || newData.child('clear').exists()) && (!newData.child('clear').exists() || data.child('clear').exists() || newData.child('hp').val() === 0) && (!newData.child('hp').exists() || (newData.child('hp').isNumber() && newData.child('hp').val() >= 0 && ((data.child('hp').exists() && newData.child('hp').val() <= data.child('hp').val()) || (!data.child('hp').exists() && newData.child('hp').val() === 60000))))"
       }
     },
     "snowmen": {
@@ -147,9 +147,9 @@
     "boss": {
       ".read": "auth != null",
       ".write": "auth != null",
-      ".validate": "newData.hasChildren(['hp','max','gen']) && newData.child('gen').isNumber() && newData.child('max').isNumber() && (!data.exists() || newData.child('gen').val() >= data.child('gen').val())",
+      ".validate": "newData.hasChildren(['hp','max','gen']) && newData.child('gen').isNumber() && newData.child('max').val() === 3000 && newData.child('gen').val() * 86400000 <= now + 32400000 && (!data.exists() || newData.child('gen').val() > data.child('gen').val() || (newData.child('gen').val() === data.child('gen').val() && newData.child('hp').val() <= data.child('hp').val() && data.child('hp').val() - newData.child('hp').val() <= 1500))",
       "hp": {
-        ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+        ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3000"
       }
     },
     "market": {
@@ -170,6 +170,9 @@
         ".validate": "newData.isNumber()"
       },
       "darkShift": {
+        ".validate": "newData.isNumber()"
+      },
+      "reloadAt": {
         ".validate": "newData.isNumber()"
       },
       "$other": {
