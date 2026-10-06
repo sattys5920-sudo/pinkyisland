@@ -2250,12 +2250,13 @@ function rollOre(zid){
   const total = list.reduce((a,[,o])=>a+w(o),0);
   let r = Math.random()*total; for (const [id,o] of list){ if ((r -= w(o)) < 0) return id; } return list[0][0];
 }
-const hourKey = () => Math.floor(Date.now()/300000); // 바위는 5 분마다 다시 생겨요
+const hourKey = () => Math.floor(Date.now()/300000); // 채집물은 5 분마다 다시 돋아요
+const rockKey = () => Math.floor(Date.now()/120000); // 바위는 2 분마다 다시 생겨요
 // 바위는 사람마다 따로예요: 내가 캐도 친구 화면의 바위는 그대로 있어요
 function rocksHere(){
   const mz = MINE_ZONES[zoneId]; if (!mz) return [];
   const m = me ? (me.mined = me.mined || {})[zoneId] : null;
-  const done = m && m.h === hourKey() ? m.done.split(',') : [];
+  const done = m && m.h === rockKey() ? m.done.split(',') : [];
   return mz.spots.map(([x,y],i)=>({i, x, y})).filter(r=>!done.includes(String(r.i)));
 }
 const rockHits = {};
@@ -2269,7 +2270,7 @@ function mineRock(r){
   const id = rollOre(zoneId), o = ORES[id], n = o.tier===1 ? 1 + Math.floor(Math.random()*3) : 1;
   invAdd('ore:'+id, n); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200); stat('oreMined', n); questEvent('mine', 'ore:'+id, n); gainExp(o.tier*2*n);
   me.mined = me.mined || {}; const m = me.mined[zoneId];
-  me.mined[zoneId] = {h:hourKey(), done: (m && m.h===hourKey() ? m.done+',' : '') + r.i};
+  me.mined[zoneId] = {h:rockKey(), done: (m && m.h===rockKey() ? m.done+',' : '') + r.i};
   me.odex = me.odex || {}; const first = !me.odex[id]; me.odex[id] = (me.odex[id]||0) + n;
   saveMe(); renderHud();
   if (o.tier >= 3){ withIcon('ore:'+id); say('채굴', `${o.name}을(를) 캤어요! ${TIER_STAR(o.tier)}`, [], `희귀도 ${o.tier} · ${o.price} G${first?' · 처음 캔 광석!':''} · 광석 도감 ${Object.keys(me.odex).length}/40`); }
