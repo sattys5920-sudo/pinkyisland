@@ -81,7 +81,11 @@ img.bi{width:34px;height:34px;display:block;pointer-events:none}
 .dm-ava{position:relative;width:42px;height:42px;flex:none}.dm-ava img{width:42px;height:42px;border-radius:50%;object-fit:cover;background:#ffeaf2;box-shadow:0 0 0 2px #fff}.dm-ava .dm-dot{position:absolute;right:-1px;bottom:-1px;margin:0;border:2px solid #fff}
 .dm-day{align-self:center;font-size:13px;color:var(--soft);background:#fff;border-radius:10px;padding:0 10px}
 .dm-in{flex:none;display:flex;gap:6px}.dm-in input{flex:1;min-width:0;font:inherit;font-size:18px;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fff;color:var(--ink)}
-body:not(.chat-open) #chatrow,body:not(.chat-open) #emorow{display:none} /* 채팅은 [채팅] 버튼을 누를 때만 열려요 (평소엔 화면을 가리지 않게) */
+body:not(.chat-open) #chatrow,body:not(.chat-open) #emorow,body:not(.chat-open) #chatHist{display:none}
+body.chat-open #log{display:none}
+#chatHist{pointer-events:auto;max-height:min(38vh,320px);overflow-y:auto;background:rgba(255,255,255,.9);border-radius:14px;padding:6px 8px;box-shadow:0 2px 8px rgba(80,40,60,.12);display:flex;flex-direction:column;gap:3px;font-size:15px;overscroll-behavior:contain}
+#chatHist p{margin:0;line-height:1.35;word-break:break-all}#chatHist p b{color:#c2457a;margin-right:6px}#chatHist p.me b{color:#7a5cc9}#chatHist time{color:#b9a0ac;font-size:11px;margin-left:6px}#chatHist p.sys{color:#9b7d8b;font-size:13px}
+body.typing #chatHist{max-height:min(22vh,160px)} /* 채팅은 [채팅] 버튼을 누를 때만 열려요 (평소엔 화면을 가리지 않게) */
 #emorow{display:flex;gap:6px;pointer-events:auto}
 #log p{background:rgba(255,255,255,.72);border-radius:10px;padding:2px 10px;align-self:flex-start;max-width:100%;text-shadow:none}
 #chatin{flex:1;min-width:0;font:700 20px "Dongle",sans-serif;border:2px solid var(--line);border-radius:12px;padding:6px 10px;background:#fffffff0;color:var(--ink)}
@@ -373,6 +377,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 <div id="bar" class="pill" hidden></div>
 <div id="chatbox" hidden>
   <div id="log" aria-live="polite"></div>
+  <div id="chatHist" aria-label="이 장소의 대화 기록"></div>
   <div id="emorow" hidden><button class="emo" data-e="👋" aria-label="손 흔들기">👋</button><button class="emo" data-e="❤️" aria-label="하트">❤️</button><button class="emo" data-e="✨" aria-label="반짝">✨</button><button class="emo" data-e="😢" aria-label="눈물">😢</button></div>
   <div id="chatrow">
     <input id="chatin" maxlength="80" placeholder="채팅하기" autocomplete="off">
@@ -815,7 +820,7 @@ function enterZone(id, from, x, y){
   else if (from==='e'){ pos.x = z.W-M-40; pos.y = z.H/2; }
   rebuildObstacles(); fadeT = performance.now();
   if (blocked(pos.x, pos.y)){ const [fx_, fy_] = freeSpot(pos.x, pos.y); pos.x = fx_; pos.y = fy_; } // 예전 자리가 막혀 있거나 구역 밖이면 가까운 빈자리로
-  if (me){ renderDecor(); me.zone = id.startsWith('house:') ? 'home' : id; me.zx = Math.round(pos.x); me.zy = Math.round(pos.y); saveMe(); renderHud(); if (!$('mapPanel').hidden) renderMap(); }
+  if (me){ chatZone(); renderDecor(); me.zone = id.startsWith('house:') ? 'home' : id; me.zx = Math.round(pos.x); me.zy = Math.round(pos.y); saveMe(); renderHud(); if (!$('mapPanel').hidden) renderMap(); }
   toast(`${z.name}`);
 }
 
@@ -1093,6 +1098,26 @@ function onOnline(raw){
   firstOnline = false;
   if (me) renderHud();
 }
+// ===== 채팅: 같은 장소에 있는 사람끼리만 보여요. 장소마다 최근 100 줄을 남기고, [채팅]을 열면 지난 대화가 보여요 =====
+const CHAT_KEEP = 100;
+let chatHist = [], chatSeen = new Set(), chatUnsub = null, chatZoneId = null;
+function chatZone(){
+  if (!net || !me || admin || chatZoneId===zoneId) return;
+  chatZoneId = zoneId; if (chatUnsub) chatUnsub(); chatSeen = null; chatHist = []; renderChatHist();
+  chatUnsub = net.chatZone(zoneId, v=>{
+    const list = Object.entries(v).filter(([,m])=>m && typeof m.t==='string' && m.t && m.z===chatZoneId).sort(([a],[b])=>a<b ? -1 : 1);
+    const first = !chatSeen; if (first) chatSeen = new Set();
+    for (const [k,m] of list) if (!chatSeen.has(k)){ chatSeen.add(k); if (!first || Date.now() - (m.at||0) < 60000) onChat(m); }
+    chatHist = list.map(([,m])=>m); renderChatHist();
+  });
+}
+function renderChatHist(){
+  const el = $('chatHist'); if (!el) return;
+  const stick = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  el.innerHTML = chatHist.length ? chatHist.map(m=>{ const d = new Date((m.at||0) + 9*3600000); return `<p${m.uid===uid ? ' class="me"' : ''}><b>${esc(String(m.nick||'누군가').slice(0,8))}</b>${esc(m.t.slice(0,80))}<time>${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}</time></p>`; }).join('')
+    : `<p class="sys">${esc(Z().name || '여기')}에서 나눈 대화가 아직 없어요</p>`;
+  if (stick || !el.dataset.init){ el.scrollTop = el.scrollHeight; el.dataset.init = 1; }
+}
 function onChat(m){
   if (!m || typeof m.t!=='string' || !m.t) return;
   const t = m.t.slice(0,80), age = Math.max(0, Date.now() - (m.at||Date.now()));
@@ -1114,8 +1139,10 @@ function soloNet(){
     adminRemove: async id => { delete st.players[id]; onPlayers(structuredClone(st.players)); },
     sessionClaim: () => {},
     presence: async () => {},
-    sendChat: async t => { const m = {uid, nick:me.nick, t, z:zoneId, at:Date.now()}; st.chat = {...(st.chat||{}), ['c'+Date.now()+Math.random()]: m}; onChat(m); st.chatCb && st.chatCb(st.chat); },
+    sendChat: async t => { const m = {uid, nick:me.nick, t, z:zoneId, at:Date.now()}; st.chat = {...(st.chat||{}), ['c'+Date.now()+String(Math.random()).slice(2,6)]: m}; st.zoneCb && st.zoneCb(Object.fromEntries(Object.entries(st.chat).filter(([,v])=>v.z===st.zone).slice(-CHAT_KEEP))); st.chatCb && st.chatCb(st.chat); },
     chatLog: cb => { st.chatCb = cb; cb(st.chat||{}); },
+    chatZone: (z, cb) => { st.zone = z; st.zoneCb = cb; cb(Object.fromEntries(Object.entries(st.chat||{}).filter(([,v])=>v.z===z).slice(-CHAT_KEEP))); return ()=>{ st.zoneCb = null; }; },
+    chatTrim: async () => {},
     wipeAll: async withChat => { st.players = {}; st.roofs = {}; st.market = {}; if (withChat){ st.chat = {}; st.chatCb && st.chatCb({}); } onPlayers({}); onRoofs({}); onMarket({}); },
     contestSubmit: async (w, size) => { contestBoard = [{nick:me.nick, size}]; },
     mailSend: async () => { throw new Error('solo'); },
@@ -1158,13 +1185,16 @@ function firebaseNet(){
     sessionClaim: sid => { const r = F.ref(db, 'sessions/'+uid); F.set(r, sid).catch(()=>{}); F.onValue(r, s=>{ const v = s.val(); if (v && v !== sid) onKicked(); }); },
     presence: p => F.set(meRef, p),
     sendChat: t => F.push(F.ref(db, 'chat'), {uid, nick:me.nick, t, z:zoneId, at:F.serverTimestamp()}),
+    // 이 장소의 대화 최근 100 줄만 받아요
+    chatZone: (z, cb) => F.onValue(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z), F.limitToLast(CHAT_KEEP)), s=>cb(s.val()||{}), ()=>{}),
+    // 장소마다 100 줄만 남기고 오래된 줄은 지워요
+    chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
     wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
       F.onValue(F.ref(db, 'online'), s=>onOnline(s.val()));
-      F.onChildAdded(F.query(F.ref(db, 'chat'), F.limitToLast(15)), s=>onChat(s.val()));
       F.onValue(F.ref(db, 'contest/'+weekKey()), s=>{ contestBoard = Object.values(s.val()||{}).filter(r=>r && typeof r.size==='number').sort((a,b)=>b.size-a.size); });
       F.onChildAdded(F.ref(db, 'mail/'+uid), s=>onMail(s.val(), ()=>F.remove(s.ref).catch(()=>{})));
       F.onValue(F.ref(db, '.info/serverTimeOffset'), s=>{ serverOffset = s.val() || 0; });
@@ -3815,6 +3845,7 @@ addEventListener('resize', resize); if (window.visualViewport) visualViewport.ad
 function keyboardLayout(){
   const vv = window.visualViewport, box = $('chatbox'), on = document.activeElement?.id==='chatin' && vv;
   document.body.classList.toggle('typing', !!on);
+  { const h = $('chatHist'); if (h && document.body.classList.contains('chat-open')) h.scrollTop = h.scrollHeight; } // 대화 기록은 늘 맨 아래(최근)부터
   if (on){
     if (vv.offsetTop) scrollTo(0, 0);
     box.style.bottom = 'auto'; box.style.top = Math.max(0, vv.offsetTop + vv.height - box.offsetHeight) + 'px'; // 보이는 화면 맨 아래 = 키패드 바로 위
@@ -3824,7 +3855,7 @@ if (window.visualViewport){ visualViewport.addEventListener('resize', keyboardLa
 $('chatin').addEventListener('focus', ()=>{ setTimeout(keyboardLayout, 50); setTimeout(keyboardLayout, 350); });
 $('chatin').addEventListener('blur', ()=>{ setTimeout(keyboardLayout, 50); setTimeout(resize, 350); }); addEventListener('orientationchange', ()=>setTimeout(resize, 200)); resize();
 const typing = () => document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
-function openChat(){ document.body.classList.add('chat-open'); insetT = 0; $('chatin').focus(); }
+function openChat(){ document.body.classList.add('chat-open'); insetT = 0; $('chatin').focus(); const h = $('chatHist'); if (h){ h.scrollTop = h.scrollHeight; setTimeout(()=>{ h.scrollTop = h.scrollHeight; }, 60); setTimeout(()=>{ h.scrollTop = h.scrollHeight; }, 400); } }
 $('chatin').addEventListener('blur', ()=>setTimeout(()=>{ if (!typing() && !$('chatin').value.trim()) { document.body.classList.remove('chat-open'); $('emorow').hidden = true; insetT = 0; } }, 150));
 addEventListener('keydown', e=>{
   if (!me || obStep) return;
@@ -3847,7 +3878,7 @@ document.addEventListener('dblclick', e=>e.preventDefault(), {passive:false});
 function sendChat(){
   const inp = $('chatin'), t = inp.value.trim(); inp.value = ''; inp.blur();
   if (!t) return;
-  net.sendChat(t).catch(()=>toast('채팅을 보내지 못했어요.')); stat('chatSent');
+  const z = zoneId; net.sendChat(t).then(()=>net.chatTrim(z)).catch(()=>toast('채팅을 보내지 못했어요.')); stat('chatSent');
 }
 document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow').hidden = true; emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); setExpr({'👋':'happy','❤️':'wink','✨':'sparkle','😢':'sad'}[b.dataset.e] || 'cat', 3000); stat('emotesSent'); });
 
