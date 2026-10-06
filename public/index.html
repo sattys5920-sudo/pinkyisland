@@ -1381,6 +1381,8 @@ for (const ev of ['pointerdown','keydown']) addEventListener(ev, ()=>{ if (me &&
 document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='hidden') bgmStop(); else if (bgmStarted && bgmOn()) bgmStart(); });
 // ===== 주크박스: 집의 주크박스를 누르면 곡을 골라 사운드클라우드 작은 플레이어로 들어요. 듣는 동안 배경 음악은 쉬어요 =====
 const JUKE_SONGS = [
+  {name:'새벽 1 시의 오투모', url:'https://on.soundcloud.com/0L4dg77ZCSTfEjmYww'},
+  {name:'오전 10 시의 오투모', url:'https://on.soundcloud.com/bLqkOAGpq60pJad1Ma'},
   {name:'오후 6 시의 오투모', url:'https://on.soundcloud.com/BbjZBXtK7fBJds7N13'},
 ];
 var jukeOn = null; // 집 밖으로 나가면 꺼져요 (enterZone)
