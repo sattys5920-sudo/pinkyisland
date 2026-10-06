@@ -159,6 +159,30 @@ img.tic{width:26px;height:26px;vertical-align:middle;margin-right:4px}
 #talkIcon{float:right;width:72px;height:72px;margin:-6px -4px 0 8px}
 .bag-sec{display:flex;flex-direction:column;gap:4px}
 .bag-sec b{font-size:18px;color:var(--soft);padding:0 4px}
+.inv-tabs,.inv-grid,.inv-foot,.inv-detail{flex:none}
+.inv-tabs{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px;margin:0 -2px}
+.inv-tabs::-webkit-scrollbar{display:none}
+.itab{flex:none;border:0;border-radius:999px;background:#fff;padding:3px 12px;font-size:17px;color:var(--soft);box-shadow:inset 0 -2px 0 #f6e6ec}
+.itab.on{background:var(--pink);color:var(--ink);box-shadow:inset 0 -2px 0 #f2c3d3}
+.inv-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;background:#f6dfe8;border-radius:14px;padding:6px}
+.slot{position:relative;aspect-ratio:1;border:0;border-radius:10px;background:#fffafc;padding:0;display:grid;place-items:center;box-shadow:inset 0 -2px 0 #f3dbe5;min-width:0}
+.slot.empty{background:rgba(255,255,255,.45);box-shadow:none;border:1.5px dashed #efcfdb}
+.slot img.ic{width:78%;height:78%;margin:0;pointer-events:none}
+.slot i{position:absolute;right:3px;bottom:1px;font-style:normal;font-size:15px;line-height:1;color:var(--ink);text-shadow:0 0 3px #fff,0 0 3px #fff}
+.slot s{position:absolute;left:3px;top:2px;text-decoration:none;font-size:11px;line-height:1;color:#e8a400}
+.slot s.sd{color:#6aa84f}
+.slot.on{box-shadow:0 0 0 2.5px var(--pinkd);background:#fff}
+.slot.full i{color:#e48fac}
+.inv-foot{display:flex;justify-content:space-between;align-items:center;font-size:15px;color:var(--soft);margin:4px 2px}
+.inv-foot .pg{display:flex;align-items:center;gap:8px}
+.inv-foot .mini:disabled{opacity:.4}
+.inv-detail{background:#fff;border-radius:14px;padding:8px 10px;min-height:44px}
+.idt{display:flex;gap:10px;align-items:flex-start}
+.idt img.big{width:52px;height:52px;flex:none}
+.idt b{display:block;font-size:20px;font-weight:normal}
+.idt small{display:block;font-size:15px;color:var(--soft);line-height:1.3}
+.idt p{margin:4px 0 0;font-size:15px;line-height:1.35;color:var(--ink);opacity:.85}
+.idt-acts{display:flex;gap:6px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap}
 .bag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px}
 .tile{position:relative;border:0;background:#fff;border-radius:12px;padding:4px 2px 2px;display:flex;flex-direction:column;align-items:center;box-shadow:inset 0 -2px 0 #f6e6ec;min-height:58px}
 .tile img.ic{width:44px;height:44px;margin:0}
@@ -1489,9 +1513,12 @@ function npcActions(n){
 function giftList(){
   return ['dish','crop','fish','ore','loot','seed'].flatMap(cat=>itemsOf(cat).map(([k,n])=>[k, itemName(k), n]));
 }
+const giftState = {tab:'all', page:0, sel:null};
 function giftMenu(n){
-  const acts = giftList().map(([k,name,c])=>[`${name} (${c})`, ()=>giveGift(n,k)]);
-  say(title(n), '무엇을 선물할까요? 하루에 한 번 줄 수 있어요.', acts);
+  giftState.sel = null;
+  const draw = ()=>{ keepScroll(()=>openPanel(`${n.name}에게 선물하기`, `<p class="mnote" style="margin:0 2px">하루에 한 번 줄 수 있어요. 좋아하는 걸 주면 호감도가 많이 올라요.</p>${invGrid(['crop','dish','fish','ore','loot','seed'], giftState)}`));
+    invBind(giftState, draw, (el,k)=>detailBox(el, k, [[`${n.name}에게 주기`, ()=>{ $('npcPanel').hidden = true; giveGift(n, k); }]]), '줄 물건을 골라요.'); };
+  draw();
 }
 function giveGift(n, item){
   const r = relOf(n.id);
@@ -2737,17 +2764,21 @@ function contestPanel(){
 }
 
 // ===== 친구에게 선물 보내기 =====
+const sendState = {tab:'all', page:0, sel:null};
 function sendMenu(){
-  const items = ['dish','crop','fish','ore','loot','seed','furn'].flatMap(cat=>itemsOf(cat));
+  if (!Object.keys(players).some(id=>id!==uid)) return toast('아직 섬에 다른 주민이 없어요');
+  const draw = ()=>{ keepScroll(()=>openPanel('친구에게 선물 보내기', invGrid(['crop','dish','fish','ore','loot','seed','furn'], sendState)));
+    invBind(sendState, draw, (el,k)=>detailBox(el, k, [['보낼 친구 고르기', ()=>sendTo(k)]]), '보낼 물건을 골라요.'); };
+  draw();
+}
+function sendTo(k){
   const friends = Object.entries(players).filter(([id])=>id!==uid);
   if (!friends.length) return toast('아직 섬에 다른 주민이 없어요');
-  if (!items.length) return toast('보낼 물건이 없어요');
-  say('선물 보내기', '무엇을 보낼까요?', items.slice(0,24).map(([k,n])=>[`${itemName(k)} (${n})`, ()=>{
-    say('선물 보내기', `${itemName(k)}을(를) 누구에게 보낼까요?`, friends.map(([id,p])=>[p.nick, async ()=>{
-      if (!invCount(k)) return closeTalk();
-      try { await net.mailSend(id, k); invAdd(k, -1); saveMe(); renderHud(); closeTalk(); toast(`${p.nick} 님에게 ${itemName(k)}을(를) 보냈어요`); }
-      catch(e){ toast('보내지 못했어요. 잠시 뒤 다시 해 봐요'); }
-    }]), '', false, true);
+  $('npcPanel').hidden = true;
+  say('선물 보내기', `${itemName(k)}을(를) 누구에게 보낼까요?`, friends.map(([id,p])=>[p.nick, async ()=>{
+    if (!invCount(k)) return closeTalk();
+    try { await net.mailSend(id, k); invAdd(k, -1); saveMe(); renderHud(); closeTalk(); toast(`${p.nick} 님에게 ${itemName(k)}을(를) 보냈어요`); }
+    catch(e){ toast('보내지 못했어요. 잠시 뒤 다시 해 봐요'); }
   }]), '', false, true);
 }
 function onMail(m, remove){
@@ -3149,32 +3180,67 @@ let talkIconNext = null;
 const withIcon = key => { talkIconNext = key; };
 
 // 가방: 아이콘 칸
-function showBag(){
-  const cats = [['dish','요리'],['crop','작물'],['fish','물고기'],['ore','광석'],['loot','전리품'],['seed','씨앗'],['furn','가구']];
-  const grid = cats.map(([cat,label])=>{ const it = itemsOf(cat); if (!it.length) return '';
-    return `<div class="bag-sec"><b>${label}</b><div class="bag-grid">${it.map(([k,n])=>`<button class="tile${n>=STACK_MAX?' full':''}" data-k="${k}" title="${esc(itemName(k))}${n>=STACK_MAX?' · 가득 참':''}">${iconImg(k)}<i>${n}</i>${cat==='fish' ? `<s>${'★'.repeat(parseFish(k.slice(5)).st)}</s>` : cat==='seed' ? '<s>씨앗</s>' : ''}</button>`).join('')}</div></div>`; }).join('');
-  const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
-  openPanel(`가방 · 💰 ${me.inv.gold} G · ❤️ ${Math.ceil(playerHp)}/${maxHp()} · ⚡ ${Math.floor(playerSta)}/${maxSta()}`,
-    `<div class="np"><span class="np-name">도구 <small>${tools}</small></span></div>${grid || '<p class="mnote">가방이 비어 있어요.</p>'}
-     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">친구에게 선물 보내기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷장</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`);
-  $('bgCloset').onclick = clothesPanel; $('bgQuest').onclick = questLog; $('bgAch').onclick = achPanel;
-  $('bgMarket').onclick = marketPanel; $('bgPrice').onclick = pricePanel; $('bgStock').onclick = tvPanel;
-  $('npcPanel').querySelectorAll('.tile').forEach(b=>b.onclick = ()=>itemInfo(b.dataset.k));
-  $('dxF').onclick = showDex; $('dxO').onclick = oreDex; $('dxM').onclick = monDex;
-  $('bgSend').onclick = ()=>{ $('npcPanel').hidden = true; sendMenu(); };
+// ===== 가방: 6 × 5 칸 격자 (분류 탭 · 빈칸 · 쪽 넘기기). 주민 선물·친구 선물도 같은 창을 써요 =====
+const INV_TABS = [['all','전체'],['crop','작물'],['dish','요리'],['fish','물고기'],['ore','광석'],['loot','전리품'],['seed','씨앗'],['furn','가구']];
+const INV_COLS = 6, INV_PAGE = INV_COLS*5;
+const bagState = {tab:'all', page:0, sel:null};
+function invGrid(cats, st){
+  const tabs = INV_TABS.filter(([k])=>k==='all' || cats.includes(k));
+  if (!tabs.some(([k])=>k===st.tab)) st.tab = 'all';
+  const list = (st.tab==='all' ? cats : [st.tab]).flatMap(c=>itemsOf(c));
+  const pages = Math.max(1, Math.ceil(list.length/INV_PAGE)); st.page = Math.max(0, Math.min(st.page, pages-1));
+  if (st.sel && !(invCount(st.sel) > 0)) st.sel = null;
+  const slice = list.slice(st.page*INV_PAGE, (st.page+1)*INV_PAGE);
+  const cells = Array.from({length:INV_PAGE}, (_,i)=>{ const it = slice[i]; if (!it) return '<div class="slot empty"></div>'; const [k,n] = it, cat = k.split(':')[0];
+    const tag = cat==='fish' ? `<s>${'★'.repeat(parseFish(k.slice(5)).st)}</s>` : cat==='seed' ? '<s class="sd">씨앗</s>' : '';
+    return `<button class="slot${st.sel===k ? ' on' : ''}${n>=STACK_MAX ? ' full' : ''}" data-k="${k}" aria-label="${esc(itemName(k))} ${n} 개">${iconImg(k)}<i>${n}</i>${tag}</button>`; }).join('');
+  return `<div class="inv-tabs">${tabs.map(([k,l])=>`<button class="itab${st.tab===k ? ' on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>
+    <div class="inv-grid">${cells}</div>
+    <div class="inv-foot"><span>${list.length} 종 · ${list.reduce((a,[,n])=>a+n,0)} 개</span>${pages > 1 ? `<span class="pg"><button class="mini" data-pg="-1" ${st.page ? '' : 'disabled'}>‹</button>${st.page+1} / ${pages}<button class="mini" data-pg="1" ${st.page < pages-1 ? '' : 'disabled'}>›</button></span>` : ''}</div>
+    <div class="inv-detail" id="invDetail"></div>`;
 }
-function itemInfo(k){
-  const [cat, id] = k.split(':'), acts = [];
+// 칸·탭·쪽 버튼을 연결해요. detail(el, k) 가 고른 칸의 설명과 버튼을 채워요
+function invBind(st, rerender, detail, empty){
+  const p = $('npcPanel');
+  p.querySelectorAll('.itab').forEach(b=>b.onclick = ()=>{ st.tab = b.dataset.tab; st.page = 0; st.sel = null; rerender(); });
+  p.querySelectorAll('[data-pg]').forEach(b=>b.onclick = ()=>{ st.page += +b.dataset.pg; rerender(); });
+  p.querySelectorAll('.slot[data-k]').forEach(b=>b.onclick = ()=>{ st.sel = st.sel===b.dataset.k ? null : b.dataset.k; st.jump = !!st.sel; rerender(); });
+  const el = $('invDetail'); if (st.sel){ detail(el, st.sel); if (st.jump){ st.jump = false; el.scrollIntoView({block:'nearest', behavior:'smooth'}); } } else el.innerHTML = `<p class="mnote" style="margin:0">${empty}</p>`;
+}
+function keepScroll(fn){ const p = $('npcPanel'), y = p.hidden ? 0 : p.scrollTop; fn(); p.scrollTop = y; }
+function itemDesc(k){
+  const [cat, id] = k.split(':');
   let desc = `${invCount(k)}/${STACK_MAX} 개 · 팔면 1 개 ${itemPrice(k)} G`;
-  const lore = loreOf(cat==='fish' ? parseFish(id).id : id); if (lore) desc = lore.desc + '\n' + desc;
-  const food = foodOf(k); if (food){ desc += ` · 먹으면 체력 +${food.hp} · 기력 +${food.sta}`; acts.push(['먹기', ()=>{ eat(k); if (invCount(k) > 0) itemInfo(k); else { closeTalk(); showBag(); } }]); }
+  const food = foodOf(k); if (food) desc += ` · 먹으면 체력 +${food.hp} · 기력 +${food.sta}`;
   if (cat==='fish'){ const p = parseFish(id), d = (me.dex||{})[p.id]; desc = `${'★'.repeat(p.st)}${'☆'.repeat(3-p.st)} · ` + desc + (d ? ` · 최고 기록 ${d.best} cm` : ''); }
   if (cat==='ore') desc = `희귀도 ${TIER_STAR(ORES[id].tier)} · ` + desc;
   if (cat==='loot') desc = `${MONSTERS[id].name}의 전리품 · ` + desc;
   if (cat==='seed') desc = `다 크는 데 ${fmtMin(CROPS[id].min)} · ` + desc;
-  acts.push(['가방으로', showBag]);
-  withIcon(k); say(itemName(k), desc, acts, '', true);
+  const lore = loreOf(cat==='fish' ? parseFish(id).id : id);
+  return {desc, lore: lore ? lore.desc : ''};
 }
+function detailBox(el, k, buttons){
+  const {desc, lore} = itemDesc(k);
+  el.innerHTML = `<div class="idt">${iconImg(k,'big')}<div><b>${esc(itemName(k))}</b><small>${esc(desc)}</small>${lore ? `<p>${esc(lore)}</p>` : ''}</div></div>${buttons.length ? `<div class="idt-acts">${buttons.map(([l],i)=>`<button class="btn" data-a="${i}">${l}</button>`).join('')}</div>` : ''}`;
+  el.querySelectorAll('[data-a]').forEach(b=>b.onclick = buttons[+b.dataset.a][1]);
+}
+function showBag(sel){
+  if (typeof sel==='string'){ bagState.sel = sel; const c = sel.split(':')[0]; if (bagState.tab!=='all' && bagState.tab!==c) bagState.tab = c; }
+  const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
+  const cats = ['crop','dish','fish','ore','loot','seed','furn'];
+  keepScroll(()=>openPanel('가방',
+    `<div class="np"><span class="np-name">💰 ${me.inv.gold} G <small>· 체력 ${Math.ceil(playerHp)}/${maxHp()} · 기력 ${Math.floor(playerSta)}/${maxSta()}</small></span><span class="np-day" style="grid-column:1/-1;text-align:left">도구: ${tools}</span></div>${invGrid(cats, bagState)}
+     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">친구에게 선물 보내기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷장</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`));
+  invBind(bagState, ()=>showBag(), (el,k)=>{ const acts = [];
+    if (foodOf(k)) acts.push(['먹기', ()=>{ eat(k); showBag(); }]);
+    if (Object.keys(players).some(id=>id!==uid)) acts.push(['친구에게 보내기', ()=>sendTo(k)]);
+    detailBox(el, k, acts); }, '칸을 누르면 자세히 볼 수 있어요.');
+  $('bgCloset').onclick = clothesPanel; $('bgQuest').onclick = questLog; $('bgAch').onclick = achPanel;
+  $('bgMarket').onclick = marketPanel; $('bgPrice').onclick = pricePanel; $('bgStock').onclick = tvPanel;
+  $('dxF').onclick = showDex; $('dxO').onclick = oreDex; $('dxM').onclick = monDex;
+  $('bgSend').onclick = ()=>sendMenu();
+}
+function itemInfo(k){ showBag(k); }
 function dexGridBind(entries){ $('npcPanel').querySelectorAll('.tile[data-aid]').forEach(t=>t.onclick = ()=>{ const e = entries.find(x=>x.aid===t.dataset.aid); dexInfo(e.aid, e.got, e.name); }); }
 function dexGrid(title, entries){
   openPanel(title, `<div class="bag-grid dex">${entries.map(e=>`<div class="tile ${e.got?'':'unknown'}" data-aid="${e.aid}" data-got="${e.got?1:0}" title="${esc(e.name)}"><img class="ic" src="${iconURL(e.aid, 96, !e.got)}" alt=""><em>${e.got ? esc(e.name) : '???'}</em>${e.sub ? `<s>${e.sub}</s>` : ''}</div>`).join('')}</div>`);  dexGridBind(entries);
