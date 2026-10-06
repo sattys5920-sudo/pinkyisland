@@ -1063,7 +1063,7 @@ async function flushSave(){
   if (admin || !me || kicked) return;
   if (saving){ saveAgain=true; return; }
   saving=true; lastSaved = saveSig();
-  me.hp = Math.max(1, Math.round(playerHp)); me.sta = Math.round(playerSta);
+  me.hp = Math.max(1, Math.round(playerHp)); me.sta = Math.round(playerSta); me.staAt = Date.now() + serverOffset;
   try { await net.savePlayer(toDB(me)); }
   catch(e){ lastSaved = null; toast('저장하지 못했어요. 인터넷 연결을 확인해 주세요. 잠시 뒤 다시 저장할게요.'); if (!saveTimer) saveTimer = setTimeout(flushSave, 5000); }
   saving=false;
@@ -2310,12 +2310,12 @@ function useSta(kind){
 function loadStats(){
   playerHp = Math.min(maxHp(), typeof me.hp==='number' && me.hp > 0 ? me.hp : maxHp());
   playerSta = Math.min(maxSta(), typeof me.sta==='number' ? me.sta : maxSta());
-  if (me.staDay !== today()){ me.staDay = today(); playerSta = maxSta(); }
+  // 날짜와 상관없이: 꺼 둔 동안에도 1 분에 5 씩 찬 걸로 쳐요
+  if (typeof me.staAt === 'number') playerSta = Math.min(maxSta(), playerSta + Math.max(0, (Date.now() + serverOffset - me.staAt) / 60000) * 5);
 }
 function updateStats(dt, t){
   if (!darkDown && t - lastHurt > 8000 && playerHp < maxHp()) playerHp = Math.min(maxHp(), playerHp + 1.5*dt);
   if (playerSta < maxSta()) playerSta = Math.min(maxSta(), playerSta + dt/12); // 1 분에 5 씩
-  if (t > dayChkT){ dayChkT = t + 5000; if (me.staDay !== today()){ me.staDay = today(); playerSta = maxSta(); toast('새 날이 밝았어요 · 기력이 가득 찼어요'); } }
 }
 // 먹으면 차는 양: 비싼 것일수록 많이. 요리는 체력·기력 모두, 작물은 기력 위주
 // ===== 먹을거리: 값이 비쌀수록, 희귀할수록 많이 차요. 종류마다 체력·기력 비율이 달라요 =====
