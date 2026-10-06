@@ -739,6 +739,8 @@ function rebuildObstacles(){
     if (p.kind==='logs') o.rects.push({x:p.x-60, y:p.y-30, w:120, h:40});
   }
   if (zoneId==='home') for (const p of Object.values(players)) if (p.lot!=null){ const L=LOTS[p.lot]; o.rects.push({x:L.x-54,y:L.y-106,w:108,h:108}); }
+  // 남의 울타리(빈 집터 포함)는 못 들어가요. 내 울타리만 드나들 수 있어요
+  if (zoneId==='home') LOTS.forEach((L,i)=>{ if (me && me.lot===i) return; if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return; o.rects.push({x:L.x-FENCE.w/2, y:L.y+FENCE.top-6, w:FENCE.w, h:FENCE.h+6}); });
   Object.assign(obstacles, o);
 }
 function inCorridor(x, y){
@@ -3502,8 +3504,9 @@ function step(dt){
   vx/=len; vy/=len;
   pos.dir = Math.abs(vx) > Math.abs(vy) ? (vx>0?'right':'left') : (vy>0?'down':'up');
   const ox = pos.x, oy = pos.y, nx = pos.x + vx*SPEED*dt, ny = pos.y + vy*SPEED*dt;
-  if (!blocked(nx, pos.y)) pos.x = nx;
-  if (!blocked(pos.x, ny)) pos.y = ny;
+  const stuck = blocked(pos.x, pos.y); // 이미 막힌 곳에 서 있으면(새 울타리가 생긴 자리 등) 빠져나갈 수 있게
+  if (stuck || !blocked(nx, pos.y)) pos.x = nx;
+  if (stuck || !blocked(pos.x, ny)) pos.y = ny;
   walked += Math.hypot(pos.x-ox, pos.y-oy); if (walked > 500){ stats().distanceWalked = (stats().distanceWalked||0) + Math.round(walked); walked = 0; checkAchievements(); }
   checkExit();
   if (target && Math.hypot(pos.x-ox, pos.y-oy) < SPEED*dt*.2){ stuckT += dt; if (stuckT>.35){ const tg = target; target = null; stuckT = 0; if (tg.act && Math.hypot(pos.x-tg.x, pos.y-tg.y) < 64) tg.act(); } } else stuckT = 0;
