@@ -416,6 +416,7 @@ import { UI, EMOJI_UI } from './art/ui.js';
 import { FURN_ALL, FURN_DRAW } from './art/furniture.js';
 import { PET_SPECIES, PET_DRAW } from './art/pets.js';
 import { FORAGE, FORAGE_DRAW, SPOT_OF, SPOT_NAME, SPOT_DRAW } from './forage.js';
+import { JUKE_SONGS, jukeEngine } from './jukebox.js';
 import { DARK_ORDER, DARK_LIMIT_MS, DARK_ROOM, DARK_BOSS, DARK_REWARD, DARK_ROOMS, placeholderPuzzles } from './dark.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
@@ -1381,10 +1382,15 @@ function bgmStop(){ if (bgmAudio) bgmAudio.pause(); if (bgmTimer){ clearInterval
 // 브라우저는 처음 화면을 누르기 전엔 소리를 못 내요. 첫 터치·키 입력 때 시작해요
 for (const ev of ['pointerdown','keydown']) addEventListener(ev, ()=>{ if (me && !admin && !bgmStarted) bgmStart(); }, {passive:true});
 document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='hidden') bgmStop(); else if (bgmStarted && bgmOn()) bgmStart(); });
-// ===== 주크박스: 섬에서 만든 노래를 고를 수 있게 준비 중이에요 =====
-var jukeOn = null;
-function jukeStop(){ jukeOn = null; }
-function jukePanel(){ toast('주크박스에 넣을 섬 노래를 준비하고 있어요'); }
+// ===== 주크박스: 집의 주크박스를 누르면 섬 노래(jukebox.js) 중 하나를 골라 무한 반복. 듣는 동안 배경 음악은 쉬고, 집 밖으로 나가면 꺼져요 =====
+var jukeOn = null; const juke = jukeEngine(BGM_VOL);
+function jukeStop(){ if (!jukeOn) return; juke.stop(); jukeOn = null; if (bgmStarted && bgmOn()) bgmStart(); }
+function jukePlay(s){ bgmStop(); jukeOn = s; juke.play(s); }
+function jukePanel(){
+  openPanel('🎵 주크박스', JUKE_SONGS.map((s,i)=>`<div class="np"><span class="np-name">${esc(s.name)}${jukeOn===s ? ' <small>나오는 중</small>' : ''}</span><button class="mini" data-jk="${i}">${jukeOn===s ? '끄기' : '틀기'}</button></div>`).join(''));
+  $('npcPanel').querySelectorAll('button[data-jk]').forEach(b=>b.onclick = ()=>{ const s = JUKE_SONGS[+b.dataset.jk]; if (jukeOn===s) jukeStop(); else jukePlay(s); jukePanel(); });
+}
+document.addEventListener('visibilitychange', ()=>{ if (!jukeOn) return; if (document.visibilityState==='hidden') juke.pause(); else juke.resume(); });
 async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); if (saveTimer) await flushSave(); try { if (net && net.presenceLeave) await net.presenceLeave(); } catch(e){} try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); } // 로그아웃 전에 접속 표시를 지워요 (나간 뒤엔 권한이 없어서 못 지워요)
 // 글꼴이 다 내려받히기 전에 그린 캔버스(지형·스프라이트)는 기본 글꼴로 굳어 버려요. 먼저 기다리고, 늦게 오면 캐시를 지워 다시 그려요.
 const fontReady = (async()=>{ try { await Promise.race([document.fonts.load('700 20px "Dongle"', '핑키 디저트 아일랜드 가나다 ABC 123'), new Promise(r=>setTimeout(r, 3000))]); } catch(e){} })();
