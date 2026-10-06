@@ -415,6 +415,7 @@ import { SITUATIONS } from './situations.js';
 import { UI, EMOJI_UI } from './art/ui.js';
 import { FURN_ALL, FURN_DRAW } from './art/furniture.js';
 import { PET_SPECIES, PET_DRAW } from './art/pets.js';
+import { FORAGE, FORAGE_DRAW, SPOT_OF, SPOT_NAME, SPOT_DRAW } from './forage.js';
 import { DARK_ORDER, DARK_LIMIT_MS, DARK_ROOM, DARK_BOSS, DARK_REWARD, DARK_ROOMS, placeholderPuzzles } from './dark.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
@@ -781,6 +782,7 @@ function rebuildObstacles(){
   Object.assign(obstacles, o);
   if (!z.lamps && z.theme!=='room' && z.theme!=='cave'){ placeLamps(z); staticSig = ''; }
   for (const l of (z.lamps||[])) obstacles.circles.push({x:l.x, y:l.y, r:8});
+  if (!z.fspots && FORAGE_ZONES.has(zoneId)) z.fspots = buildForageSpots(z); // 채집 자리는 가로등까지 놓은 다음에
 }
 function inCorridor(x, y){
   const z = Z(), ex = z.exits;
@@ -1741,7 +1743,7 @@ function npcActions(n){
   return acts;
 }
 function giftList(){
-  return ['dish','crop','fish','ore','loot','seed'].flatMap(cat=>itemsOf(cat).map(([k,n])=>[k, itemName(k), n]));
+  return ['dish','crop','forage','fish','ore','loot','seed'].flatMap(cat=>itemsOf(cat).map(([k,n])=>[k, itemName(k), n]));
 }
 const giftState = {tab:'all', page:0, sel:null};
 function giftMenu(n){
@@ -2139,7 +2141,7 @@ function showFishBag(){
 
 // ===== 가방 =====
 // 아이템 키: 'crop:c01' 작물, 'seed:c01' 씨앗, 'fish:f01_3' 물고기(별 3), 'ore:o01' 광석, 'loot:m01' 전리품
-const CATS = {seed:'seeds', crop:'crops', fish:'fish', ore:'ores', loot:'loot', dish:'dishes', furn:'furn', wear:'wear', umb:'umbrellas', wall:'walls', floor:'floors'};
+const CATS = {seed:'seeds', crop:'crops', fish:'fish', ore:'ores', loot:'loot', forage:'forage', dish:'dishes', furn:'furn', wear:'wear', umb:'umbrellas', wall:'walls', floor:'floors'};
 function bagOf(cat){ me.inv[CATS[cat]] = me.inv[CATS[cat]] || {}; return me.inv[CATS[cat]]; }
 function invCount(key){ const [cat, id] = key.split(':'); return bagOf(cat)[id] || 0; }
 // 가방: 같은 물건은 한 칸에 겹쳐 쌓여요. 한 칸 최대 500 개 — 넘치는 만큼은 버려지고 알려 줘요
@@ -2161,6 +2163,7 @@ function itemName(key){
   if (cat==='loot') return MONSTERS[id]?.drop || '전리품';
   if (cat==='dish') return DISHES[id]?.name || '요리';
   if (cat==='furn') return FURN[id]?.name || '가구';
+  if (cat==='forage') return FG[id]?.name || '채집물';
   if (cat==='wear'){ const [wid, c] = id.split(/[~#]/), it = CH.ITEM(wid); return (it?.name || '옷') + (+c ? ` (${+c+1} 번 색)` : ''); }
   if (cat==='umb') return (UMB[id]?.name || '') + ' 우산';
   if (cat==='wall') return (WALLS[id]?.name || '') + ' 벽지';
@@ -2176,6 +2179,7 @@ function itemPrice(key){
   if (cat==='loot') return MONSTERS[id]?.dropPrice || 0;
   if (cat==='dish') return DISHES[id] ? dishPrice(id) : 0;
   if (cat==='furn') return FURN[id] ? Math.round(FURN[id].gold/2) : 0;
+  if (cat==='forage') return FG[id]?.price || 0;
   if (cat==='wear') return Math.round((CH.ITEM(id.split(/[~#]/)[0])?.price || 0)/2);
   if (cat==='umb') return Math.round((UMB[id]?.price || 0)/2);
   if (cat==='wall' || cat==='floor') return Math.round(((cat==='wall' ? WALLS : FLOORS)[id]?.price || 0)/2);
@@ -2296,7 +2300,7 @@ const lvOf = () => Math.max(1, Math.min(LV_MAX, (me && me.lv) || 1));
 const maxHp = () => 100 + (lvOf()-1)*10, maxSta = () => 100 + (lvOf()-1)*10;
 const expNeed = lv => Math.round(40 + lv*30 + 3*lv*lv); // 뒤로 갈수록 점점 어려워져요 (Lv1→2: 73, Lv10→11: 640, Lv30→31: 3,640, Lv49→50: 8,713)
 // 기력: 일할 때마다 조금씩 써요. 천천히 차오르고, 날이 바뀌면 가득, 먹으면 바로 차요
-const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10, snow:2};
+const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10, snow:2, forage:1};
 let playerSta = 100, tiredToastT = 0, dayChkT = 0;
 function useSta(kind){
   const c = STA_COST[kind] || 1;
@@ -2319,20 +2323,22 @@ function updateStats(dt, t){
 const RARE_NAME = ['', '흔함', '보통', '고급', '희귀', '전설'], RARE_MULT = [0, 1, 1.1, 1.25, 1.45, 1.7];
 const RARE_STAR = g => '◆'.repeat(g) + '◇'.repeat(5-g); // 광석 희귀도와 같은 ◆ 표시
 // 작물 모양별 성격: 열매·곡물은 기력 쪽, 잎채소는 체력 쪽, 뿌리채소는 고르게
-const FOOD_TILT = {fruit:[.4, .9], tall:[.3, 1], leaf:[.85, .45], root:[.65, .65], fish:[.95, .4], dishFish:[1.3, .85], dishSweet:[.85, 1.3]};
+const FOOD_TILT = {'버섯':[.85, .55], '열매':[.4, .9], '견과':[.65, .65], '허브':[.5, .75], '바닷가':[.8, .5], fruit:[.4, .9], tall:[.3, 1], leaf:[.85, .45], root:[.65, .65], fish:[.95, .4], dishFish:[1.3, .85], dishSweet:[.85, 1.3]};
 function rarityOf(k){
   const [cat, id] = k.split(':');
   if (cat==='crop'){ const m = CROPS[id]?.min || 0; return m <= 15 ? 1 : m <= 60 ? 2 : m <= 150 ? 3 : m <= 300 ? 4 : 5; }
   if (cat==='fish'){ const {f, st} = parseFish(id); if (!f) return 1; const w = f.weight, g = w >= 22 ? 1 : w >= 14 ? 2 : w >= 8 ? 3 : w >= 4 ? 4 : 5; return Math.min(5, g + (st===3 ? 1 : 0)); }
+  if (cat==='forage') return FG[id]?.rare || 1;
   if (cat==='dish'){ const d = DISHES[id]; if (!d) return 1; return Math.max(...d.need.map(([nk])=>nk==='fish:*' ? 3 : rarityOf(nk))); }
   return 0;
 }
 function foodOf(k){
   const [cat, id] = k.split(':');
   if (cat==='crop' && CROPS[id]?.shape==='flower') return null; // 꽃은 선물용이라 못 먹어요
-  if (!['crop','fish','dish'].includes(cat)) return null;
+  if (cat==='forage' && !FORAGE_EAT.has(id)) return null; // 꽃·조개·깃털 같은 건 못 먹어요
+  if (!['crop','fish','dish','forage'].includes(cat)) return null;
   const g = rarityOf(k), base = (6 + 4*Math.sqrt(itemPrice(k))) * RARE_MULT[g];
-  const tilt = cat==='crop' ? FOOD_TILT[CROPS[id]?.shape] || FOOD_TILT.root : cat==='fish' ? FOOD_TILT.fish : FOOD_TILT[DISHES[id]?.need.some(([nk])=>nk==='fish:*') ? 'dishFish' : 'dishSweet'];
+  const tilt = cat==='forage' ? (FOOD_TILT[FG[id]?.kind] || FOOD_TILT.root) : cat==='crop' ? FOOD_TILT[CROPS[id]?.shape] || FOOD_TILT.root : cat==='fish' ? FOOD_TILT.fish : FOOD_TILT[DISHES[id]?.need.some(([nk])=>nk==='fish:*') ? 'dishFish' : 'dishSweet'];
   const cap = cat==='dish' ? 600 : 300;
   return {hp: Math.max(3, Math.min(cap, Math.round(base*tilt[0]))), sta: Math.max(3, Math.min(cap, Math.round(base*tilt[1]))), g};
 }
@@ -2640,6 +2646,10 @@ const DISH_LIST = [
   ['솜사탕', [['crop:c29',2]], 40], ['황금딸기 파르페', [['crop:c30',1],['crop:c12',2],['crop:c25',1]], 100],
   ['생선구이', [['fish:*',1]], 35], ['피시 앤드 칩스', [['fish:*',1],['crop:c07',2]], 50],
   ['해물 토마토 파스타', [['fish:*',2],['crop:c01',1]], 60], ['물고기 초밥', [['fish:*',3],['crop:c04',1]], 70],
+  // 채집 요리
+  ['버섯 수프', [['forage:g01',2],['crop:c08',1]], 40], ['산딸기 잼', [['forage:g09',3]], 35],
+  ['허브차', [['forage:g24',1],['forage:g25',1]], 30], ['도토리묵', [['forage:g17',3]], 40],
+  ['미역국', [['forage:g38',2]], 35], ['솜사탕 버섯 파르페', [['forage:g04',1],['crop:c12',2]], 70],
 ];
 const DISHES = Object.fromEntries(DISH_LIST.map((d,i)=>['d'+String(i+1).padStart(2,'0'), {name:d[0], need:d[1], heal:d[2]}]));
 function anyFishKeys(){ return itemsOf('fish').sort((a,b)=>fishPrice(a[0].slice(5))-fishPrice(b[0].slice(5))); }
@@ -3364,14 +3374,15 @@ function onMail(m, remove){
 // ===== 경제: 판매처 · 오늘의 시세 · 거래소 =====
 // 판매처: 모모는 뭐든 사 주고, 전문 상인은 자기 분야를 더 비싸게 사 줘요. 친한 친구(♥7)가 되면 +10%
 const BUYERS = {
-  momo:{cats:['crop','fish','ore','loot','dish','furn'], bonus:{}, line:'뭐든 가져와요~ 다 사 줄게요!'},
+  bami:{cats:['forage'], bonus:{forage:1.25}, line:'들꽃이랑 열매, 버섯은 내가 제일 잘 알아. 비싸게 사 줄게.'},
+  momo:{cats:['crop','forage','fish','ore','loot','dish','furn'], bonus:{}, line:'뭐든 가져와요~ 다 사 줄게요!'},
   hana:{cats:['crop'], bonus:{crop:1.25}, line:'작물이면 내가 제일 비싸게 사 줄게!'},
   pengpeng:{cats:['fish'], bonus:{fish:1.25}, line:'펭! 물고기라면 제일 비싸게 사 줄게!'},
   dodo:{cats:['ore'], bonus:{ore:1.25}, line:'광석이라면 내가 제값 쳐 주지.'},
   kongi:{cats:['loot'], bonus:{loot:1.25}, line:'충성! 전리품은 경비대가 비싸게 사겠습니다!'},
   dandan:{cats:['dish','crop'], bonus:{dish:1.25, crop:1.05}, line:'요리라면 우리 카페에서 사 갈게요.'},
 };
-const SELL_CATS = {crop:'작물', fish:'물고기', ore:'광석', loot:'전리품', dish:'요리', furn:'가구'};
+const SELL_CATS = {crop:'작물', forage:'채집물', fish:'물고기', ore:'광석', loot:'전리품', dish:'요리', furn:'가구'};
 const baseKey = key => { const [cat, id] = key.split(':'); return cat==='fish' ? 'fish:'+parseFish(id).id : key; };
 // 오늘의 인기 품목: 작물·물고기·광석에서 하나씩, 오늘은 2 배 값
 function hotToday(){
@@ -3426,7 +3437,7 @@ function pricePanel(){
 const MARKET_FEE = .05, MARKET_MAX = 5;
 let market = {};
 // 거래할 수 있는 아이템 키인지 (옷·우산·벽지·바닥도 거래돼요)
-function itemKeyOk(k){ const m = /^(dish|crop|fish|ore|loot|seed|furn|wear|umb|wall|floor):([A-Za-z0-9_~]{2,12})$/.exec(k || ''); if (!m) return false; const [, cat, id] = m;
+function itemKeyOk(k){ const m = /^(dish|crop|forage|fish|ore|loot|seed|furn|wear|umb|wall|floor):([A-Za-z0-9_~]{2,12})$/.exec(k || ''); if (!m) return false; const [, cat, id] = m;
   if (cat==='wear'){ const [w, c] = id.split(/[~#]/); return !!slotOfWear(w) && (c===undefined || /^[1-4]$/.test(c)); }
   if (cat==='umb') return !!UMB[id]; if (cat==='wall') return !!WALLS[id]; if (cat==='floor') return !!FLOORS[id]; return /^[a-z0-9_]{2,8}$/.test(id); }
 const validListing = l => l && typeof l.item==='string' && itemKeyOk(l.item) && l.n>=1 && l.n<=99 && l.price>=1 && typeof l.uid==='string';
@@ -3467,7 +3478,7 @@ const listState = {tab:'all', page:0, sel:null};
 const marketFull = () => Object.values(market).filter(l=>l.uid===uid && !l.buyer).length >= MARKET_MAX;
 function marketAdd(){
   if (marketFull()) return toast(`한 번에 ${MARKET_MAX} 개까지 올릴 수 있어요`);
-  const draw = ()=>{ keepScroll(()=>openPanel('거래소에 올리기', `<p class="mnote" style="margin:0 2px">올린 물건은 거래 게시판에 걸리고, 누가 사 가면 수수료 ${Math.round(MARKET_FEE*100)}%를 뺀 골드가 들어와요.</p>${invGrid(['crop','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'], listState)}`));
+  const draw = ()=>{ keepScroll(()=>openPanel('거래소에 올리기', `<p class="mnote" style="margin:0 2px">올린 물건은 거래 게시판에 걸리고, 누가 사 가면 수수료 ${Math.round(MARKET_FEE*100)}%를 뺀 골드가 들어와요.</p>${invGrid(['crop','forage','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'], listState)}`));
     invBind(listState, draw, (el,k)=>detailBox(el, k, [['이 물건 올리기', ()=>marketList(k)]]), '올릴 물건을 골라요.'); };
   draw();
 }
@@ -3722,6 +3733,71 @@ async function updateNow(){ try { if (me && !admin && !kicked && typeof flushSav
 setInterval(()=>{ if (updReady && !document.hidden && (Date.now() - lastInput > 20000 || Date.now() - updReady > 180000)) updateNow(); }, 10000);
 setInterval(checkVersion, 120000); checkVersion();
 document.addEventListener('visibilitychange', ()=>{ if (document.hidden) return; if (updReady) updateNow(); else checkVersion(); });
+// ===== 채집: 구역마다 수풀·버섯 그루터기·풀숲·모래 웅덩이·낙엽 더미가 놓여 있고, 5 분마다 다시 돋아요 (사람마다 따로) =====
+const FG = Object.fromEntries(FORAGE.map(f=>[f.id, f]));
+const FORAGE_ZONES = new Set(FORAGE.map(f=>f.zone));
+const FORAGE_EAT = new Set(FORAGE.filter(f=>(f.kind==='버섯' && !['g03','g07'].includes(f.id)) || (f.kind==='열매' && f.id!=='g16') || f.kind==='견과' || (f.kind==='허브' && !['g21','g22'].includes(f.id)) || f.id==='g38').map(f=>f.id));
+const FORAGE_W = [0, 60, 30, 14, 5, 1.5];
+// 주민이 좋아하는 채집물 (선물)
+const FORAGE_TASTE = {hana:{liked:['forage:g09','forage:g29']}, momo:{liked:['forage:g13','forage:g15']}, dodo:{loved:['forage:g48'], liked:['forage:g07']}, toto:{liked:['forage:g17','forage:g46']}, bori:{liked:['forage:g47','forage:g19']}, mongsil:{liked:['forage:g31','forage:g30']}, tori:{loved:['forage:g17'], liked:['forage:g18','forage:g19']}, olly:{loved:['forage:g48'], liked:['forage:g50','forage:g42']}, pengpeng:{loved:['forage:g43'], liked:['forage:g39','forage:g37']}, dandan:{loved:['forage:g08'], liked:['forage:g04','forage:g24']}, kongi:{liked:['forage:g45','forage:g22']}, bami:{loved:['forage:g35'], liked:['forage:g29','forage:g33','forage:g34']}};
+for (const n of NPCS){ const t = FORAGE_TASTE[n.id]; if (!t) continue; for (const k of ['loved','liked']) if (t[k]) n.tastes[k] = [...(n.tastes[k]||[]), ...t[k]]; }
+const forageIcons = {};
+function forageIcon(id){ if (forageIcons[id]) return forageIcons[id]; const f = FG[id], cv = document.createElement('canvas'); cv.width = cv.height = 96; const c = cv.getContext('2d'); c.translate(48, 50); c.scale(1.45, 1.45); try { FORAGE_DRAW[f.draw](c, f.col); } catch(e){} return forageIcons[id] = cv.toDataURL(); }
+const fgHour = () => { const d = new Date(Date.now() + serverOffset + 9*3600000); return d.getUTCHours() + d.getUTCMinutes()/60; };
+const tmOk = tm => { if (!tm) return true; const h = fgHour(); return tm === 'day' ? h >= 7 && h < 17 : h >= 19 || h < 5; };
+const fwOk = wx => !wx || wxNow()[2] === wx;
+// 자리: 구역마다 정해진 곳 (길·건물·나무·바위·가로등을 피해서, 서로 떨어지게)
+function buildForageSpots(z){
+  const items = FORAGE.filter(f=>f.zone === zoneId), types = [...new Set(items.map(f=>SPOT_OF[f.kind]))];
+  const n = Math.min(8, 3 + Math.ceil(items.length/2)), rng = seeded(hash('fspot:' + zoneId)), out = [];
+  const cx = z.W/2, cy = z.H/2, ex = z.exits || {}, rocks = (MINE_ZONES[zoneId]?.spots || []), npcs = NPCS.filter(p=>p.zone===zoneId);
+  for (let tries = 0; out.length < n && tries < 600; tries++){
+    const x = M + 50 + rng()*(z.W - 2*M - 100), y = M + 60 + rng()*(z.H - 2*M - 100);
+    if (blocked(x, y) || blocked(x, y-20) || blocked(x-20, y) || blocked(x+20, y)) continue;
+    if (((ex.n || ex.s) && Math.abs(x-cx) < 60) || ((ex.w || ex.e) && Math.abs(y-cy) < 60)) continue; // 길 위는 피해요
+    if (out.some(s=>Math.hypot(s.x-x, s.y-y) < 150)) continue;
+    if ([[cx+110, M+50], [cx+110, z.H-M-10], [M+80, cy-50], [z.W-M-80, cy-50]].some(([sx,sy])=>Math.hypot(sx-x, sy-y) < 100)) continue; // 표지판 옆도 피해요
+    if (rocks.some(([rx,ry])=>Math.hypot(rx-x, ry-y) < 90) || npcs.some(p=>Math.hypot(p.homeX-x, p.homeY-y) < 110) || (z.trees||[]).some(([tx,ty])=>Math.hypot(tx-x, ty+22-y) < 60) || (z.lamps||[]).some(l=>Math.hypot(l.x-x, l.y-y) < 70)) continue;
+    out.push({i:out.length, x:Math.round(x), y:Math.round(y), type:types[out.length % types.length]});
+  }
+  return out;
+}
+function forageDone(){ const m = me && (me.foraged = me.foraged || {})[zoneId]; return m && m.h === hourKey() ? String(m.done).split(',') : []; }
+// 이번 5 분에 그 자리에서 나올 것 (날씨·시간이 맞는 것 중 희귀도 가중치로, 모두에게 같게)
+function forageItemAt(s){
+  const list = FORAGE.filter(f=>f.zone === zoneId && SPOT_OF[f.kind] === s.type && fwOk(f.wx) && tmOk(f.tm)); if (!list.length) return null;
+  const rng = seeded(hash(`fg:${zoneId}:${s.i}:${hourKey()}`)), tot = list.reduce((a,f)=>a+FORAGE_W[f.rare], 0); let r = rng()*tot;
+  for (const f of list){ if ((r -= FORAGE_W[f.rare]) < 0) return f; } return list[0];
+}
+const forageSpots = () => (Z().fspots || []);
+function forageEntities(d, t){
+  if (!me || admin || !FORAGE_ZONES.has(zoneId)) return [];
+  const done = forageDone();
+  return forageSpots().map(s=>{ const ready = !done.includes(String(s.i)) && !!forageItemAt(s);
+    return {y:s.y, draw:()=>{ const c = d.ctx; c.save(); c.translate(s.x, s.y); c.fillStyle = 'rgba(40,30,20,.12)'; c.beginPath(); c.ellipse(0, 2, 24, 6, 0, 0, 7); c.fill(); SPOT_DRAW[s.type](c, ready, t); c.restore();
+      if (ready){ const a = .5 + Math.sin(t/300 + s.i)*.5; c.save(); c.globalAlpha = a; c.fillStyle = '#fff7c2'; c.beginPath(); for (let k=0;k<8;k++){ const r = k%2 ? 2 : 6, an = k*Math.PI/4; c.lineTo(s.x + 16 + Math.cos(an)*r, s.y - 34 + Math.sin(an)*r); } c.fill(); c.restore(); } }, label:()=>{}}; });
+}
+function forageTap(w){ if (!FORAGE_ZONES.has(zoneId)) return null; for (const s of forageSpots()) if (Math.abs(w.x-s.x) < 30 && w.y > s.y-40 && w.y < s.y+10) return {x:s.x, y:s.y+26, act:()=>forageAt(s)}; return null; }
+function forageNear(){ let best = null, bd = 56; for (const s of forageSpots()){ const d = Math.hypot(pos.x-s.x, pos.y-s.y-14); if (d < bd){ bd = d; best = s; } } return best; }
+function forageAt(s){
+  if (forageDone().includes(String(s.i))) return toast(`${SPOT_NAME[s.type]}은(는) 비어 있어요 · 조금 뒤에 다시 돋아요`);
+  const f = forageItemAt(s); if (!f) return toast(`${SPOT_NAME[s.type]}에 지금은 아무것도 없어요 · 날씨나 시간이 바뀌면 돋아나요`);
+  const key = 'forage:' + f.id; if (invRoom(key) < 1) return toast(`가방에 ${f.name}을(를) 더 넣을 자리가 없어요`);
+  if (!useSta('forage')) return;
+  invAdd(key, 1); me.foraged = me.foraged || {}; const m = me.foraged[zoneId]; me.foraged[zoneId] = {h:hourKey(), done:(m && m.h === hourKey() ? m.done + ',' : '') + s.i};
+  me.gdex = me.gdex || {}; const first = !me.gdex[f.id]; me.gdex[f.id] = (me.gdex[f.id]||0) + 1;
+  stat('foraged'); gainExp(f.rare*2); setExpr(f.rare >= 4 ? 'sparkle' : 'happy', 1500); saveMe(); renderHud();
+  fx.push({x:s.x, y:s.y-40, text:'+1', t:performance.now(), color:'#ffffff'});
+  toast(`${f.name}을(를) 주웠어요${first ? ' · 처음 찾은 채집물!' : ''}${f.rare >= 4 ? ' · ' + '◆'.repeat(f.rare) : ''}`, key);
+}
+function forageDex(){
+  const got = me.gdex || {};
+  openPanel(`채집 도감 · ${Object.keys(got).length}/${FORAGE.length}`, `<p class="mnote" style="margin:0 2px 6px">섬 곳곳의 덤불·그루터기·풀숲·모래 웅덩이·낙엽 더미에서 주워요. 날씨와 시간에 따라 나오는 게 달라요.</p><div class="bag-grid">${FORAGE.map(f=>{ const has = got[f.id];
+    return `<button class="tile" data-f="${f.id}" ${has ? '' : 'style="opacity:.55"'}>${has ? `<img class="ic" src="${forageIcon(f.id)}" alt="">` : '<span style="font-size:30px;line-height:44px">?</span>'}<em>${has ? esc(f.name) : '???'}</em><s>${has ? '◆'.repeat(f.rare) : esc(ZONES[f.zone]?.name || '')}</s></button>`; }).join('')}</div>`);
+  $('npcPanel').querySelectorAll('[data-f]').forEach(b=>b.onclick = ()=>{ const f = FG[b.dataset.f], has = got[f.id];
+    const when = [f.wx ? WX[f.wx][0] : '', f.tm ? (f.tm==='day' ? '낮' : '밤') : ''].filter(Boolean).join(' · ') || '언제나';
+    if (has) withIcon('forage:'+f.id); say(has ? f.name : '아직 못 찾았어요', has ? `${f.desc}\n${ZONES[f.zone]?.name} · ${when} · ${f.price} G · 지금까지 ${has} 개` : `${ZONES[f.zone]?.name}의 ${SPOT_NAME[SPOT_OF[f.kind]]}에서 · ${when}`); });
+}
 // ===== 다크 모드: 주민 12 명의 집 = 방탈출 =====
 // 관리자가 다크 모드를 켜면 하루에 한 방씩 열려요 (DARK_ORDER). 여러 명이 같은 방에 들어가 문제 15 개를 같이 풀고,
 // 다 풀면 그 주민이 아주 강한 보스로 깨어나요. 첫 입장부터 2 시간 안에 못 끝내면 방이 처음으로 돌아가요.
@@ -3980,7 +4056,7 @@ function artIdOf(key){
   if (cat==='fish') return parseFish(id).id;
   if (cat==='dish') return 'dish:'+id;
   if (cat==='furn') return 'furn:'+id;
-  if (cat==='wear' || cat==='umb' || cat==='wall' || cat==='floor') return key;
+  if (cat==='wear' || cat==='umb' || cat==='wall' || cat==='floor' || cat==='forage') return key;
   return id; // seed·crop → c00, ore → o00, loot → m00
 }
 function drawArt(d, aid, t=0){
@@ -3989,7 +4065,7 @@ function drawArt(d, aid, t=0){
     const ds = DISHES[aid.slice(5)]; const main = ds ? ds.need[0][0] : '';
     d.ell(0,10,20,7,'#ffffff'); d.ell(0,8,15,4.5,'#f3eef6');
     const c = d.ctx; c.save(); c.translate(0,-2); c.scale(.62,.62);
-    if (main.startsWith('crop:')) ART[main.slice(5)]?.(d, t); else ART.f17?.(d, t);
+    if (main.startsWith('crop:')) ART[main.slice(5)]?.(d, t); else if (main.startsWith('forage:') && FG[main.slice(7)]) FORAGE_DRAW[FG[main.slice(7)].draw](c, FG[main.slice(7)].col); else ART.f17?.(d, t);
     c.restore();
     if (ds && ds.need.length > 1){ c.save(); c.translate(12,-6); c.scale(.32,.32); const k2 = ds.need[1][0]; if (k2.startsWith('crop:')) ART[k2.slice(5)]?.(d, t); else ART.f02?.(d, t); c.restore(); }
     d.dot(-9,-12,2,'#ffffff',.8); return;
@@ -4013,6 +4089,7 @@ function specialIcon(key){
   const [cat, id] = String(key).split(':');
   if (cat==='wear'){ const [wid, c] = id.split(/[~#]/), slot = slotOfWear(wid); if (!slot) return ''; return wearPreview(tryOn({...me.look, top:'', bottom:'', set:'', hat:'none', acc:'none', shoes:''}, slot, wid, +c||0)); }
   if (cat==='umb') return UMB[id] ? umbIcon(id+':'+Math.max(0, Math.min(UMB_COLS.length-1, me.umbCol|0))) : '';
+  if (cat==='forage' && FG[id]) return forageIcon(id);
   if (cat==='wall' && WALLS[id]) return swatchURL('wall', id);
   if (cat==='floor' && FLOORS[id]) return swatchURL('floor', id);
   return '';
@@ -4037,7 +4114,7 @@ const withIcon = key => { talkIconNext = key; };
 
 // 가방: 아이콘 칸
 // ===== 가방: 6 × 5 칸 격자 (분류 탭 · 빈칸 · 쪽 넘기기). 주민 선물·친구 선물도 같은 창을 써요 =====
-const INV_TABS = [['all','전체'],['crop','작물'],['dish','요리'],['fish','물고기'],['ore','광석'],['loot','전리품'],['seed','씨앗'],['wear','옷'],['umb','우산'],['furn','가구'],['wall','벽지'],['floor','바닥']];
+const INV_TABS = [['all','전체'],['crop','작물'],['forage','채집'],['dish','요리'],['fish','물고기'],['ore','광석'],['loot','전리품'],['seed','씨앗'],['wear','옷'],['umb','우산'],['furn','가구'],['wall','벽지'],['floor','바닥']];
 const INV_COLS = 6, INV_PAGE = INV_COLS*5;
 const bagState = {tab:'all', page:0, sel:null};
 function invGrid(cats, st){
@@ -4085,10 +4162,10 @@ function detailBox(el, k, buttons){
 function showBag(sel){
   if (typeof sel==='string'){ bagState.sel = sel; const c = sel.split(':')[0]; if (bagState.tab!=='all' && bagState.tab!==c) bagState.tab = c; }
   const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
-  const cats = ['crop','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'];
+  const cats = ['crop','forage','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'];
   keepScroll(()=>openPanel('가방',
     `<div class="np"><span class="np-name">💰 ${me.inv.gold} G <small>· 체력 ${Math.ceil(playerHp)}/${maxHp()} · 기력 ${Math.floor(playerSta)}/${maxSta()}</small></span><span class="np-day" style="grid-column:1/-1;text-align:left">도구: ${tools}</span></div>${wornRow()}${invGrid(cats, bagState)}
-     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">거래소에 올리기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`));
+     <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxG">채집 도감 ${Object.keys(me.gdex||{}).length}/${FORAGE.length}</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/30</button><button class="mini" id="bgSend">거래소에 올리기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`));
   invBind(bagState, ()=>showBag(), (el,k)=>{ const acts = [];
     if (foodOf(k)) acts.push(['먹기', ()=>{ eat(k); showBag(); }]);
     const kc = k.split(':')[0];
@@ -4101,7 +4178,7 @@ function showBag(sel){
   bindWornRow(()=>showBag());
   $('bgCloset').onclick = ()=>{ bagState.tab = 'wear'; bagState.page = 0; showBag(); }; $('bgQuest').onclick = questLog; $('bgAch').onclick = achPanel;
   $('bgMarket').onclick = marketPanel; $('bgPrice').onclick = pricePanel; $('bgStock').onclick = tvPanel;
-  $('dxF').onclick = showDex; $('dxO').onclick = oreDex; $('dxM').onclick = monDex;
+  $('dxF').onclick = showDex; $('dxG').onclick = forageDex; $('dxO').onclick = oreDex; $('dxM').onclick = monDex;
   $('bgSend').onclick = marketAdd;
 }
 function itemInfo(k){ showBag(k); }
@@ -4178,6 +4255,7 @@ document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow
 
 function toWorld(cx, cy){ return { x: view.cx + cx/view.zoom, y: view.cy + cy/view.zoom }; }
 function hitTarget(w){
+  { const ft = forageTap(w); if (ft) return ft; }
   { const mb = mailboxTap(w); if (mb) return mb; }
   for (const [id, o] of others) if (o.down && o.z === zoneId && Math.abs(w.x-o.x) < 40 && Math.abs(w.y-(o.y-10)) < 34) return {x:o.x + 30, y:o.y + 10, act:()=>{ darkRevive = {id, uid:o.uid, at:performance.now()}; toast(`${o.nick} 님을 ${downWords().helping}.... 곁에 있어 줘요`); }};
   const pt = petTap(w); if (pt) return pt;
@@ -4207,6 +4285,7 @@ cv.addEventListener('pointerdown', e=>{
 function interactNear(){
   let best = null, bd = 1e9;
   if (zoneId.startsWith('dark:')){ const pz = darkNear(); if (pz) return darkPuzzlePanel(pz); }
+  { const fs = forageNear(); if (fs) return forageAt(fs); }
   for (const n of NPCS){ if (n.zone!==zoneId || !npcVisible(n)) continue; const d = Math.hypot(pos.x-n.x, pos.y-n.y); if (d<64 && d<bd){ bd=d; best=()=>talkTo(n); } }
   if (zoneId==='home' && me.lot!=null) slotsOf(me.lot, me.plots).forEach((s,i)=>{ const d = Math.hypot(pos.x-s.x, pos.y-s.y-10); if (d<48 && d<bd){ bd=d; best=()=>useSlot(i); } });
   if (best) best(); else toast('가까이에 할 수 있는 게 없어요');
@@ -4435,6 +4514,7 @@ function frameBody(t){
     const ents = [
       ...darkEntities(d, t),
       ...mailboxEntities(d, t),
+      ...forageEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-80); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
