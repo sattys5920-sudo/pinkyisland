@@ -611,7 +611,20 @@ const ZONES = {
   ], trees:[[260,220],[1340,220]]},
   cave:      {name:'의문의 동굴', theme:'cave', W:1600, H:1100, grid:[1,4], places:[
     {kind:'crystals'},
-    {kind:'sign', x:800, y:640, text:'의문의 동굴 · 희귀 광석과 강한 몬스터'},
+    {kind:'sign', x:800, y:640, text:'의문의 동굴 · 희귀 광석과 강한 몬스터 · 아래로 내려가면 지하'},
+  ], trees:[]},
+  // 동굴 지하: 아래(남쪽)로 내려갈수록 어둡고, 광석은 귀하고, 몬스터는 세요
+  cave1:     {name:'동굴 지하 1층', theme:'cave', depth:1, W:1600, H:1100, grid:[1,5], places:[
+    {kind:'crystals'},
+    {kind:'sign', x:800, y:640, text:'지하 1층 · 더 내려갈수록 더 위험해요'},
+  ], trees:[]},
+  cave2:     {name:'동굴 지하 2층', theme:'cave', depth:2, W:1600, H:1100, grid:[1,6], places:[
+    {kind:'crystals'},
+    {kind:'sign', x:800, y:640, text:'지하 2층 · 혼자 오지 마세요'},
+  ], trees:[]},
+  cave3:     {name:'동굴 지하 3층', theme:'cave', depth:3, W:1600, H:1100, grid:[1,7], places:[
+    {kind:'crystals'},
+    {kind:'sign', x:800, y:640, text:'지하 3층 · 고대룡이 잠든 곳'},
   ], trees:[]},
 };
 { const at = {}; for (const [id,z] of Object.entries(ZONES)) at[z.grid] = id;
@@ -823,7 +836,7 @@ function enterZone(id, from, x, y){
   if (!zoneOk(id)) id = 'home';
   decorating = null;
   if (me){ const v = (me.visited||'home').split(',').filter(Boolean); const zid = id.includes(':') ? id.split(':')[0] : id; if (!v.includes(zid)){ v.push(zid); me.visited = v.join(','); syncStats(); } }
-  zoneId = id; const z = Z(); target = null; staticSig = ''; if (jukeOn && z.house !== uid) jukeStop();
+  zoneId = id; const z = Z(); target = null; staticSig = ''; if (jukeOn && z.house !== uid) jukeStop(); if (z.depth && me && !admin) setTimeout(()=>toast(`${z.name} · 추천 레벨 ${[0,15,25,35][z.depth]} 이상 · 여럿이 같이 와요`), 900);
   if (x!=null){ pos.x = x; pos.y = y; }
   else if (from==='n'){ pos.x = z.W/2; pos.y = M+40; }
   else if (from==='s'){ pos.x = z.W/2; pos.y = z.H-M-30; }
@@ -1975,7 +1988,7 @@ function renderNpcPanel(){
 }
 // ===== 섬 지도 (미니맵) =====
 // 구역 칸을 실제 배치 그대로 그리고, 집·연못·나무·주민·친구·나를 점으로 보여 줘요. 가 본 구역은 눌러서 바로 갈 수 있어요 (기력 10)
-const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', minegate:'광산 입구', cave:'의문의 동굴'};
+const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', minegate:'광산 입구', cave:'의문의 동굴', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층'};
 let mapSel = null, mapGeo = null, mapDrawT = 0;
 const visitedZones = () => (me.visited||'home').split(',');
 function renderMap(){
@@ -2180,6 +2193,13 @@ function drawFishing(ctx, t){
   ctx.restore();
 }
 // 입질 느낌표: 이름표·칭호·밤·날씨보다 위에, 머리 위 높이 그려서 가려지지 않게
+// 동굴 지하: 깊을수록 어두워지고 내 주변만 밝아요
+function drawDepth(ctx){
+  const z = Z(), dp = z.depth|0; if (!dp || admin) return;
+  const k = view.dpr*view.zoom, px = (pos.x - view.cx)*k, py = (pos.y - 30 - view.cy)*k, a = [0, .35, .5, .62][dp] || .62, R = (260 - dp*30)*k;
+  const g = ctx.createRadialGradient(px, py, R*.35, px, py, R); g.addColorStop(0, 'rgba(12,6,20,0)'); g.addColorStop(1, `rgba(12,6,20,${a})`);
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height); ctx.restore();
+}
 function drawBite(ctx, t){
   if (!fishing) return;
   if (fishing.phase==='bite'){ const s = 1 + Math.sin(t/60)*.12; ctx.save(); ctx.translate(pos.x, pos.y-108); ctx.scale(s,s); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,0,13,0,7); ctx.fill(); ctx.fillStyle='#ff3b6b'; ctx.font='bold 27px "Dongle",sans-serif'; ctx.textAlign='center'; ctx.fillText('!', 0, 7); ctx.restore(); }
@@ -2279,6 +2299,9 @@ const MINE_ZONES = { // 구역마다 나오는 희귀도와 바위 자리
   minegate: {tiers:[1,2], sea:false, spots:[[300,420],[420,600],[260,700],[1180,400],[1330,660],[1180,760],[700,300],[960,300]]},
   cave:     {tiers:[1,2,3,4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800],[700,860],[940,860],[640,420],[980,420]]},
   seacave:  {tiers:[1,2,3,4], sea:true, spots:[[300,300],[420,760],[700,860],[1300,760],[1350,300],[600,300]]},
+  cave1:    {tiers:[2,3,4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800],[700,860],[940,860],[640,420],[980,420]]},
+  cave2:    {tiers:[3,4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800],[700,860],[940,860]]},
+  cave3:    {tiers:[4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800]]},
 };
 for (const mz of Object.values(MINE_ZONES)) mz.spots = mz.spots.map(([x,y])=>[zk(x), zk(y)]);
 function rollOre(zid){
@@ -2352,9 +2375,16 @@ const MONSTER_LIST = [
   ['갑옷 게','seacave',240,24,45,'#c9504f','crab','갑옷 집게',70,10], ['유령 해마','seacave',200,27,85,'#9fd9e8','ghost','해마 지느러미',72,9], ['산호 골렘','seacave',320,25,30,'#ff9fb8','golem','산호 심장',90,7],
   ['흑요석 골렘','cave',380,32,32,'#3a3346','golem','흑요석 조각',110,8], ['불꽃 박쥐','cave',260,34,120,'#ff7a2f','bat','불꽃 날개',105,9], ['수정 거미','cave',300,36,80,'#b9a6ff','dust','수정 거미줄',120,7],
   ['별자리 늑대','starhill',260,26,95,'#4a4f7a','dust','별빛 송곳니',80,8], ['혜성 나비','starhill',200,24,110,'#ffd0a0','bug','혜성 가루',70,9], ['달토끼 기사','starhill',320,30,70,'#e8ecff','dust','달토끼 방패',100,6],
+  // 동굴 지하 1~3층 (아래로 갈수록 세요)
+  ['동굴 트롤','cave1',450,38,50,'#8a8f7a','golem','트롤의 이빨',130,10], ['맹독 지네','cave1',400,40,95,'#6aa84f','bug','지네 독침',140,10], ['그림자 광부 대장','cave1',500,42,70,'#2f2f3a','ghost','대장의 곡괭이',155,8], ['수정 골렘','cave1',550,36,35,'#b9a6ff','golem','빛나는 수정핵',160,8],
+  ['어둠 슬라임','cave2',700,48,55,'#3b2f5a','slime','어둠 젤리',210,10], ['마그마 도마뱀','cave2',800,52,85,'#ff5a2f','dust','마그마 비늘',230,9], ['해골 광부','cave2',900,55,60,'#e8e3d0','ghost','낡은 광부 뼈',250,8], ['심연 박쥐','cave2',650,50,130,'#4b3a6f','bat','심연의 날개',220,9],
+  ['고대 수호석상','cave3',1200,65,30,'#8f8899','golem','석상의 눈',380,8], ['불꽃 정령','cave3',1000,70,100,'#ff7a2f','ghost','정령의 불씨',360,9], ['심층 그림자','cave3',1100,75,90,'#1f1b2a','ghost','심층의 조각',400,8], ['용암 거북','cave3',1400,62,30,'#c94f2f','golem','용암 등껍질',420,7],
+  // 지하 보스
+  ['수정 거인','cave1',120000,90,35,'#b9a6ff','golem','거인의 수정 심장',12000,0,15000], ['어둠 여왕 거미','cave2',150000,100,60,'#3b2f5a','dust','여왕의 어둠 실',15000,0,18000],
+  ['심층의 고대룡','cave3',200000,120,45,'#c94f2f','golem','고대룡의 비늘',25000,0,25000],
 ];
 const MONSTERS = Object.fromEntries(MONSTER_LIST.map((m,i)=>['m'+String(i+1).padStart(2,'0'), {name:m[0], zone:m[1], hp:m[2], atk:m[3], speed:m[4], color:m[5], shape:m[6], drop:m[7], dropPrice:m[8], weight:m[9], gold:m[10]||0, boss:!!m[10], strong:!!m[10] || i >= 35}]));
-const COMBAT_ZONES = {forest:6, deepforest:7, seacave:5, cave:7, starhill:5}; // 구역마다 한 번에 나오는 몬스터 수 (보스 빼고)
+const COMBAT_ZONES = {forest:6, deepforest:7, seacave:5, cave:7, starhill:5, cave1:7, cave2:7, cave3:6}; // 구역마다 한 번에 나오는 몬스터 수 (보스 빼고)
 // ===== 체력·기력·레벨 =====
 // 레벨이 오를 때마다 최대 체력·최대 기력이 10 씩 늘어요. 경험치는 퀘스트·몬스터·이야기·채집·낚시·채굴에서 받아요
 const LV_MAX = 50;
@@ -4367,7 +4397,7 @@ function oreDex(){
   dexGrid(`광석 도감 ${Object.keys(me.odex||{}).length}/40`, Object.entries(ORES).map(([id,o])=>({aid:id, got:!!(me.odex||{})[id], name:o.name, sub: (me.odex||{})[id] ? TIER_STAR(o.tier) : zn(o)})));
 }
 function monDex(){
-  const zn = {forest:'먼지 숲', deepforest:'깊은 숲', seacave:'해식 동굴', cave:'의문의 동굴', starhill:'별빛 언덕 밤'};
+  const zn = {forest:'먼지 숲', deepforest:'깊은 숲', seacave:'해식 동굴', cave:'의문의 동굴', starhill:'별빛 언덕 밤', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층'};
   dexGrid(`몬스터 도감 ${Object.keys(me.mdex||{}).length}/${Object.keys(MONSTERS).length}`, Object.entries(MONSTERS).map(([id,m])=>({aid:id, got:!!(me.mdex||{})[id], name:m.name, sub: (me.mdex||{})[id] ? `체력 ${m.hp} · 공격 ${m.atk}` : zn[m.zone]})));
 }
 
@@ -4698,7 +4728,7 @@ function frameBody(t){
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
     for (const e of ents) e.label();
-    drawNight(ctx, t); drawDarkFx(ctx, t); drawWeather(ctx, t); drawBite(ctx, t);
+    drawNight(ctx, t); drawDepth(ctx); drawDarkFx(ctx, t); drawWeather(ctx, t); drawBite(ctx, t);
     const fo = Math.max(0, 1 - (t - fadeT)/450); if (fo !== lastFade){ lastFade = fo; $('fade').style.opacity = fo; }
   }
   requestAnimationFrame(frame);

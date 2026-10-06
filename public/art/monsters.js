@@ -87,3 +87,12 @@ Object.assign(ART_PART, {
   m45: elite('m25', '#2b2440', -34), m46: elite('m24', '#ff7a2f', -28), m47: elite('m23', '#b9a6ff', -30),
   m48: elite('m13', '#ffd84f', -30), m49: elite('m30', '#ffb35a', -34), m50: elite('m08', '#d9e3ff', -30),
 });
+// ===== 동굴 지하 1~3층 몬스터와 보스 =====
+Object.assign(ART_PART, {
+  m51: elite('m25', '#6f7a5a', -34), m52: elite('m05', '#3f7a2f', -24), m53: elite('m27', '#ffd23f', -36), m54: elite('m25', '#e0d6ff', -34),
+  m55: elite('m18', '#1f1830', -26), m56: elite('m26', '#ffb02f', -23), m57: elite('m27', '#f3efe0', -36), m58: elite('m24', '#2b1f40', -28),
+  m59: elite('m20', '#ffd23f', -34, 1.2), m60: elite('m29', '#ff4f2f', -34), m61: elite('m15', '#b58cff', -32), m62: elite('m26', '#5a2a1a', -23, 1.2),
+});
+ART_PART.m63 = (d, t = 0) => { ART_PART.m54(d, t); bossCrown(d, -42, '#e0d6ff'); };  // 수정 거인
+ART_PART.m64 = (d, t = 0) => { ART_PART.m55(d, t); bossCrown(d, -34, '#b58cff'); };  // 어둠 여왕 거미
+ART_PART.m65 = (d, t = 0) => { ART_PART.m62(d, t); bossCrown(d, -32, '#ffd23f'); };  // 심층의 고대룡
