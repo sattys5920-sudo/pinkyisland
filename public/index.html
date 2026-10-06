@@ -1406,7 +1406,7 @@ function jukePlay(i){
   const s = JUKE_SONGS[i]; if (!s) return; jukeStop(true); jukeOn = s; bgmStop();
   const d = document.createElement('div'); d.id = 'juke';
   d.innerHTML = `<iframe title="${esc(s.name)}" width="100%" height="20" scrolling="no" frameborder="no" allow="autoplay" src="${jukeSrc(s.url)}"></iframe><button id="jukeX" aria-label="끄기">✕</button>`;
-  if (admin) d.style.zIndex = 35; document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop();
+  if (admin){ d.style.zIndex = 35; d.style.top = 'auto'; d.style.bottom = 'calc(env(safe-area-inset-bottom,0px) + 70px)'; /* 관리자: 메뉴 버튼을 가리지 않게 아래쪽에 */ } document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop();
   $('npcPanel').hidden = true;
 }
 function jukeStop(quiet){ const d = $('juke'); if (d) d.remove(); const was = jukeOn; jukeOn = null; if (was && !quiet){ if (bgmStarted && bgmOn()) bgmStart(); toast('주크박스를 껐어요'); } }
@@ -4607,12 +4607,12 @@ function renderAdmin(){
     <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span><button data-a="side" class="adm-btn adm-menu ${admSide ? 'on' : ''}">메뉴${adminInbox().some(x=>!x.l.replied) ? ' ●' : ''}</button><button data-a="logout" class="adm-btn">로그아웃</button></div>
     <div class="adm-zones">${Object.keys(ZONES).map(z=>`<button data-z="${z}" class="adm-zone ${zoneId===z && !cam.follow ? 'on' : ''}">${esc(ZONES[z].name)}<i>${count[z]||0}</i></button>`).join('')}</div>
     <div class="adm-side">
+      <div class="adm-sec"><b>🎵 주크박스 시험 듣기</b><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">${JUKE_SONGS.map((s,i)=>`<button data-jt="${i}" class="adm-btn" style="font-size:15px;padding:6px 4px">▶ ${esc(s.name.replace('의 오투모', ''))}</button>`).join('')}</div></div>
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>`).join('')}</div>` : ''}
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
-      <div class="adm-sec"><b>주크박스 시험 듣기</b>${JUKE_SONGS.map((s,i)=>`<button data-jt="${i}" class="adm-btn">▶ ${esc(s.name)}</button>`).join('')}</div>
       <div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
     </div>${admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
