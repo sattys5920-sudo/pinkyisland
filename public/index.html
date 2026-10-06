@@ -641,6 +641,7 @@ const TUT = [
   ['공방 거리 보리 공방에서 동그란 TV를 만들어요 (5,000 G + 돌멩이 5)', ()=>TV_ID && (invCount('furn:'+TV_ID) > 0 || hasTV()), 300],
   ['집에서 [꾸미기]로 TV를 놓아요', ()=>hasTV(), 100],
   ['집 TV를 눌러 핑키 홈쇼핑을 구경해요 (별사탕은 오후 1 시 · 밤 10 시 방송 때 사고팔아요)', ()=>stats().candyBought > 0 || !!me.tvSeen, 200],
+  ['공방 거리 반려동물 보호소 건물을 눌러 펫을 입양하고 이름을 지어 줘요', ()=>myPets().length > 0, 300],
 ];
 const TUT_START = QUESTS.length; QUESTS.push(...TUT.map(t=>t[0]), '튜토리얼 완료! 주민들과 친해지고 섬 이야기를 모아 봐요');
 const TUT_DONE = QUESTS.length - 1;
@@ -3869,12 +3870,19 @@ function adminCam(){
 // ===== 반려동물 보호소 · 펫 =====
 // 보호소(공방 거리)에서 입양해요. 펫은 집에서 돌아다니고, 밥을 주고 쓰다듬으면 친해져요. '산책'을 켜면 밖에서도 따라다녀요.
 const PET = Object.fromEntries(PET_SPECIES.map(([id, name, cols])=>[id, {name, cols}]));
-const PET_MAX = 3, PET_FOOD_PRICE = 30;
+const PET_MAX = 3;
+// 펫 밥 3 가지: 보호소에서 사요. 비쌀수록 배가 많이 차고 더 친해져요
+const PET_FOODS = {p1:{name:'기본 사료', price:300, full:35, love:1, icon:'🥣'}, p2:{name:'말랑 간식', price:1200, full:60, love:3, icon:'🍪'}, p3:{name:'특별 케이크', price:4000, full:100, love:8, icon:'🎂'}};
+const petFoodCount = k => { me.inv.pfood = me.inv.pfood || {}; if (me.inv.petFood){ me.inv.pfood.p1 = (me.inv.pfood.p1||0) + me.inv.petFood; me.inv.petFood = 0; } return me.inv.pfood[k]||0; };
+// 배고픔이 줄어드는 길은 여러 가지예요: 집에서 쉬면 1 시간에 3, 산책하며 걸으면 걸은 만큼(400 걸음에 1), 놀아 주면 10
+const PET_HOME_RATE = 3, PET_WALK_STEP = 400, PET_PLAY_COST = 10;
 const petsOf = owner => { const p = owner===uid ? me : players[owner]; const l = p && p.pets ? (Array.isArray(p.pets) ? p.pets : Object.values(p.pets)) : []; return l.filter(x=>x && PET[x.sp]); };
 const myPets = () => { if (!me) return []; me.pets = petsOf(uid); return me.pets; };
-const fullness = pt => Math.max(0, Math.min(100, Math.round(100 - (Date.now() - (pt.fedAt||0)) / 3600000 * 5))); // 한 시간에 5 씩 줄어요 (20 시간이면 배고파요)
+function petFull(pt){ if (pt.full==null){ pt.full = Math.max(0, 100 - (Date.now() - (pt.fedAt||0)) / 3600000 * 5); pt.fullAt = Date.now(); } return pt; }
+const fullness = pt => { petFull(pt); return Math.max(0, Math.min(100, Math.round(pt.full - (Date.now() - (pt.fullAt||Date.now())) / 3600000 * PET_HOME_RATE))); };
+function petSpend(pt, n){ const f = fullness(pt); pt.full = Math.max(0, f - n); pt.fullAt = Date.now(); }
 const loveLv = pt => Math.min(10, Math.floor((pt.love||0) / 10));
-const petMood = pt => { const f = fullness(pt); return f < 25 ? '배고파요' : f < 60 ? '간식이 먹고 싶어요' : (pt.love||0) >= 60 ? '아주 행복해요' : '기분 좋아요'; };
+const petMood = pt => { const f = fullness(pt); return f < 15 ? '너무 배고파서 기운이 없어요' : f < 35 ? '배고파요' : f < 60 ? '밥이 먹고 싶어요' : (pt.love||0) >= 60 ? '아주 행복해요' : '기분 좋아요'; };
 const walkingPet = () => me && myPets().find(p=>p.walk);
 const petCol = pt => PET[pt.sp].cols[Math.max(0, Math.min(2, pt.col|0))];
 const petIconCache = new Map();
@@ -3886,13 +3894,17 @@ function petHomePos(owner, i){
   const a = pick(r0), b = pick(r), k = Math.min(1, (Date.now() % 9000) / 3000);
   return {x: a.x + (b.x-a.x)*k, y: a.y + (b.y-a.y)*k, walk: k < 1, flip: b.x < a.x};
 }
-let petFollow = null; // 산책 중인 내 펫의 위치
+let petFollow = null, petWalked = 0, petHungryT = 0; // 산책 중인 내 펫의 위치, 걸은 거리
+// 배고픈 펫이 있으면 가끔 알려 줘요
+function petHungerCheck(t){ if (!me || t < petHungryT) return; petHungryT = t + 300000; const h = myPets().filter(p=>fullness(p) < 35); if (h.length) addLog(`🐾 ${h.map(p=>p.name).join(', ')}이(가) 배고파해요. 집에 가서 밥을 주세요 (밥은 공방 거리 보호소)`, true); }
 const othersPets = new Map();
 function updatePets(dt){
+  petHungerCheck(performance.now());
   const wp = walkingPet();
   if (!wp || Z().house){ petFollow = null; } else {
     const gx = pos.x - 26, gy = pos.y + 4; if (!petFollow || Math.hypot(petFollow.x-gx, petFollow.y-gy) > 300) petFollow = {x:gx, y:gy, walk:false, flip:false};
-    const dx = gx-petFollow.x, dy = gy-petFollow.y, dd = Math.hypot(dx, dy); petFollow.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); petFollow.x += dx/dd*sp; petFollow.y += dy/dd*sp; petFollow.flip = dx < 0; }
+    const dx = gx-petFollow.x, dy = gy-petFollow.y, dd = Math.hypot(dx, dy); petFollow.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); petFollow.x += dx/dd*sp; petFollow.y += dy/dd*sp; petFollow.flip = dx < 0;
+      petWalked += sp; if (petWalked >= PET_WALK_STEP){ petWalked = 0; petSpend(wp, 1); saveMe(); if (fullness(wp) < 15){ wp.walk = false; saveMe(); toast(`${wp.name}이(가) 배고파서 집으로 돌아갔어요. 밥을 챙겨 주세요`); } } }
   }
   for (const [id,o] of others){ if (!o.pet || o.z!==zoneId){ othersPets.delete(id); continue; } let f = othersPets.get(id); const gx = o.x - 26, gy = o.y + 4;
     if (!f || Math.hypot(f.x-gx, f.y-gy) > 300) f = {x:gx, y:gy}; const dx = gx-f.x, dy = gy-f.y, dd = Math.hypot(dx,dy); f.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); f.x += dx/dd*sp; f.y += dy/dd*sp; f.flip = dx < 0; } othersPets.set(id, f); }
@@ -3915,14 +3927,14 @@ function petTap(w){
   return null;
 }
 function shelterPanel(){
-  const pets = myPets(), food = me.inv.petFood||0;
+  const pets = myPets();
   const cards = PET_SPECIES.map(([id, name])=>`<button class="tile" data-sp="${id}"><img class="ic" src="${petIcon(id, 0)}" alt=""><em>${name}</em><s style="color:var(--soft);text-decoration:none">입양하기</s></button>`).join('');
   openPanel(`반려동물 보호소 · ${me.inv.gold} G`,
     `<p class="mnote" style="margin-top:0">주인을 기다리는 친구들이에요. 입양은 무료이고, 한 사람이 ${PET_MAX} 마리까지 키울 수 있어요. 데려간 친구는 집에서 지내요.</p>` +
-    `<div class="np"><span class="np-name">펫 간식 <small>가진 간식 ${food} 개 · 한 번 주면 배가 불러요</small></span><span class="np-place" id="buyFood">${PET_FOOD_PRICE} G에 사기</span></div>` +
-    (pets.length ? `<p class="mnote">우리 집 친구 ${pets.length}/${PET_MAX}: ${pets.map(p=>`${esc(p.name)}(${PET[p.sp].name})`).join(', ')}</p>` : '') +
+    `<div class="bag-sec"><b>펫 밥 가게</b>${Object.entries(PET_FOODS).map(([k,f])=>`<button class="np" data-food="${k}"><span class="np-name">${f.icon} ${f.name} <small>배부름 +${f.full} · 친밀도 +${f.love} · 가진 것 ${petFoodCount(k)} 개</small></span><span class="np-place">${f.price.toLocaleString()} G</span></button>`).join('')}</div>` +
+    (pets.length ? `<p class="mnote">우리 집 친구 ${pets.length}/${PET_MAX}: ${pets.map(p=>`${esc(p.name)}(${PET[p.sp].name} · 배부름 ${fullness(p)})`).join(', ')}</p>` : '') +
     `<div class="bag-grid">${cards}</div>`);
-  $('buyFood').onclick = ()=>{ if (me.inv.gold < PET_FOOD_PRICE) return toast('돈이 모자라요'); me.inv.gold -= PET_FOOD_PRICE; me.inv.petFood = (me.inv.petFood||0) + 1; saveMe(); renderHud(); shelterPanel(); toast('펫 간식을 샀어요'); };
+  $('npcPanel').querySelectorAll('[data-food]').forEach(b=>b.onclick = ()=>{ const k = b.dataset.food, f = PET_FOODS[k]; if (me.inv.gold < f.price) return toast('돈이 모자라요'); me.inv.gold -= f.price; petFoodCount(k); me.inv.pfood[k] = (me.inv.pfood[k]||0) + 1; saveMe(); renderHud(); keepScroll(shelterPanel); toast(`${f.name}을(를) 샀어요`); });
   $('npcPanel').querySelectorAll('.tile[data-sp]').forEach(b=>b.onclick = ()=>adoptPanel(b.dataset.sp));
 }
 function adoptPanel(sp, col=0){
@@ -3935,19 +3947,25 @@ function adoptPanel(sp, col=0){
   $('adBack').onclick = shelterPanel;
   $('npcPanel').querySelectorAll('.tile[data-c]').forEach(b=>b.onclick = ()=>{ const nm = $('petName').value; adoptPanel(sp, +b.dataset.c); $('petName').value = nm; });
   $('adGo').onclick = ()=>{ const name = $('petName').value.trim(); if (!name) return toast('이름을 지어 주세요');
-    const pets = myPets(); pets.push({sp, col, name:name.slice(0,8), fedAt:Date.now(), love:0, petAt:0, born:Date.now(), walk:false}); me.pets = pets; stat('petsAdopted');
-    saveMe(); renderHud(); $('npcPanel').hidden = true; say('반려동물 보호소', `${name}(${P.name})이(가) 우리 집 식구가 됐어요! 집에 가면 만날 수 있어요. 펫 간식을 챙겨 주세요.`); };
+    const pets = myPets(); pets.push({sp, col, name:name.slice(0,8), fedAt:Date.now(), full:80, fullAt:Date.now(), love:0, petAt:0, born:Date.now(), walk:false}); me.pets = pets; stat('petsAdopted');
+    saveMe(); renderHud(); $('npcPanel').hidden = true; say('반려동물 보호소', `${name}(${P.name})이(가) 우리 집 식구가 됐어요! 집에 가면 만날 수 있어요. 배고파하면 보호소에서 산 밥을 주세요.`); setTimeout(tutCheck); };
 }
 function petPanel(pt){
-  const f = fullness(pt), lv = loveLv(pt), food = me.inv.petFood||0;
-  openPanel(`${esc(pt.name)} · ${PET[pt.sp].name}`, `<div class="np" style="grid-template-columns:auto 1fr;align-items:center"><img class="ic" src="${petIcon(pt.sp, pt.col)}" alt="" style="width:64px;height:64px"><span class="np-name">${petMood(pt)} <small>배부름 ${f}/100 · 친밀도 ${'♥'.repeat(lv) || '♡'} (${pt.love||0})</small></span></div>` +
-    `<button class="np" data-id="feed"><span class="np-name">간식 주기 <small>가진 간식 ${food} 개</small></span></button>` +
+  const f = fullness(pt), lv = loveLv(pt);
+  openPanel(`${esc(pt.name)} · ${PET[pt.sp].name}`, `<div class="np" style="grid-template-columns:auto 1fr;align-items:center"><img class="ic" src="${petIcon(pt.sp, pt.col)}" alt="" style="width:64px;height:64px"><span class="np-name">${petMood(pt)} <small>배부름 ${f}/100 · 친밀도 ${'♥'.repeat(lv) || '♡'} (${pt.love||0})</small></span></div>
+    <p class="mnote" style="margin:0 2px">배는 집에서 쉴 때(1 시간에 ${PET_HOME_RATE}), 산책하며 걸을 때, 놀아 줄 때 줄어요.</p>` +
+    Object.entries(PET_FOODS).map(([k,fd])=>`<button class="np" data-id="feed" data-k="${k}"><span class="np-name">${fd.icon} ${fd.name} 주기 <small>배부름 +${fd.full} · 친밀도 +${fd.love} · 가진 것 ${petFoodCount(k)} 개</small></span></button>`).join('') +
+    `<button class="np" data-id="play"><span class="np-name">놀아 주기 <small>친밀도 +2 · 배부름 −${PET_PLAY_COST} (배가 고프면 못 놀아요)</small></span></button>` +
     `<button class="np" data-id="pat"><span class="np-name">쓰다듬기 <small>한 시간에 한 번 친해져요</small></span></button>` +
-    `<button class="np" data-id="walk"><span class="np-name">${pt.walk ? '산책 그만하기' : '산책 데리고 다니기'} <small>${pt.walk ? '지금 밖에서 따라다녀요' : '켜면 밖에서 나를 따라다녀요 (한 마리만)'}</small></span></button>`,
+    `<button class="np" data-id="walk"><span class="np-name">${pt.walk ? '산책 그만하기' : '산책 데리고 다니기'} <small>${pt.walk ? '지금 밖에서 따라다녀요 · 걸으면 배가 고파져요' : '켜면 밖에서 나를 따라다녀요 (한 마리만)'}</small></span></button>` +
+    `<button class="np" data-id="name"><span class="np-name">이름 바꾸기 <small>지금 이름: ${esc(pt.name)}</small></span></button>`,
     b=>{ const id = b.dataset.id;
-      if (id==='feed'){ if (!food) return toast('펫 간식이 없어요. 보호소에서 살 수 있어요'); if (f >= 95) return toast(`${pt.name}은(는) 배불러요`); me.inv.petFood = food - 1; if (f < 60) pt.love = (pt.love||0) + 3; pt.fedAt = Date.now(); saveMe(); toast(`${pt.name}이(가) 맛있게 먹었어요`); }
+      if (id==='feed'){ const k = b.dataset.k, fd = PET_FOODS[k]; if (!petFoodCount(k)) return toast(`${fd.name}이(가) 없어요. 공방 거리 보호소에서 살 수 있어요`); if (fullness(pt) >= 95) return toast(`${pt.name}은(는) 배불러요`);
+        me.inv.pfood[k]--; pt.full = Math.min(100, fullness(pt) + fd.full); pt.fullAt = Date.now(); pt.fedAt = Date.now(); pt.love = (pt.love||0) + fd.love; stat('petFed'); saveMe(); toast(`${pt.name}이(가) ${fd.name}을(를) 맛있게 먹었어요`); }
+      if (id==='play'){ if (fullness(pt) < 15 + PET_PLAY_COST) return toast(`${pt.name}이(가) 배고파서 놀 기운이 없어요`); if (Date.now() - (pt.playAt||0) < 600000) return toast(`${pt.name}이(가) 조금 쉬고 싶대요 (10 분 뒤에 다시)`); pt.playAt = Date.now(); petSpend(pt, PET_PLAY_COST); pt.love = (pt.love||0) + 2; saveMe(); toast(`${pt.name}이(가) 신나게 뛰어놀았어요`); }
       if (id==='pat'){ if (Date.now() - (pt.petAt||0) < 3600000){ toast(`${pt.name}이(가) 좋아해요`); return; } pt.petAt = Date.now(); pt.love = (pt.love||0) + 2; saveMe(); toast(`${pt.name}이(가) 꼬리를 흔들어요`); }
-      if (id==='walk'){ const on = !pt.walk; for (const p of myPets()) p.walk = false; pt.walk = on; saveMe(); toast(on ? `${pt.name}이(가) 산책을 따라가요` : `${pt.name}은(는) 집에서 쉬어요`); }
+      if (id==='walk'){ const on = !pt.walk; if (on && fullness(pt) < 15) return toast(`${pt.name}이(가) 배고파서 나가기 싫대요. 밥을 먼저 주세요`); for (const p of myPets()) p.walk = false; pt.walk = on; saveMe(); toast(on ? `${pt.name}이(가) 산책을 따라가요` : `${pt.name}은(는) 집에서 쉬어요`); }
+      if (id==='name'){ const nm = prompt('새 이름 (8 글자까지)', pt.name); if (nm && nm.trim()){ pt.name = nm.trim().slice(0,8); saveMe(); toast(`이제 '${pt.name}'(이)라고 불러요`); } }
       petPanel(pt); });
 }
 function talkBubble(key, x, y, t){
