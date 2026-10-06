@@ -2245,12 +2245,27 @@ function updateStats(dt, t){
   if (t > dayChkT){ dayChkT = t + 5000; if (me.staDay !== today()){ me.staDay = today(); playerSta = maxSta(); toast('새 날이 밝았어요 · 기력이 가득 찼어요'); } }
 }
 // 먹으면 차는 양: 비싼 것일수록 많이. 요리는 체력·기력 모두, 작물은 기력 위주
-const foodVal = k => Math.max(8, Math.round(6 + 4*Math.sqrt(itemPrice(k))));
+// ===== 먹을거리: 값이 비쌀수록, 희귀할수록 많이 차요. 종류마다 체력·기력 비율이 달라요 =====
+// 희귀도 5 단계: 작물은 자라는 시간, 물고기는 잘 안 잡히는 정도(+★★★), 요리는 재료 중 가장 귀한 것
+const RARE_NAME = ['', '흔함', '보통', '고급', '희귀', '전설'], RARE_MULT = [0, 1, 1.1, 1.25, 1.45, 1.7];
+const RARE_STAR = g => '◆'.repeat(g) + '◇'.repeat(5-g); // 광석 희귀도와 같은 ◆ 표시
+// 작물 모양별 성격: 열매·곡물은 기력 쪽, 잎채소는 체력 쪽, 뿌리채소는 고르게
+const FOOD_TILT = {fruit:[.4, .9], tall:[.3, 1], leaf:[.85, .45], root:[.65, .65], fish:[.95, .4], dishFish:[1.3, .85], dishSweet:[.85, 1.3]};
+function rarityOf(k){
+  const [cat, id] = k.split(':');
+  if (cat==='crop'){ const m = CROPS[id]?.min || 0; return m <= 15 ? 1 : m <= 60 ? 2 : m <= 150 ? 3 : m <= 300 ? 4 : 5; }
+  if (cat==='fish'){ const {f, st} = parseFish(id); if (!f) return 1; const w = f.weight, g = w >= 22 ? 1 : w >= 14 ? 2 : w >= 8 ? 3 : w >= 4 ? 4 : 5; return Math.min(5, g + (st===3 ? 1 : 0)); }
+  if (cat==='dish'){ const d = DISHES[id]; if (!d) return 1; return Math.max(...d.need.map(([nk])=>nk==='fish:*' ? 3 : rarityOf(nk))); }
+  return 0;
+}
 function foodOf(k){
-  const cat = k.split(':')[0];
-  if (cat==='dish'){ const v = Math.min(300, Math.round(foodVal(k)*1.5)); return {hp:v, sta:v}; }
-  if (cat==='crop'){ const v = Math.min(200, foodVal(k)); return {hp:Math.round(v/2), sta:v}; }
-  return null;
+  const [cat, id] = k.split(':');
+  if (cat==='crop' && CROPS[id]?.shape==='flower') return null; // 꽃은 선물용이라 못 먹어요
+  if (!['crop','fish','dish'].includes(cat)) return null;
+  const g = rarityOf(k), base = (6 + 4*Math.sqrt(itemPrice(k))) * RARE_MULT[g];
+  const tilt = cat==='crop' ? FOOD_TILT[CROPS[id]?.shape] || FOOD_TILT.root : cat==='fish' ? FOOD_TILT.fish : FOOD_TILT[DISHES[id]?.need.some(([nk])=>nk==='fish:*') ? 'dishFish' : 'dishSweet'];
+  const cap = cat==='dish' ? 600 : 300;
+  return {hp: Math.max(3, Math.min(cap, Math.round(base*tilt[0]))), sta: Math.max(3, Math.min(cap, Math.round(base*tilt[1]))), g};
 }
 function eat(k){
   const f = foodOf(k); if (!f || invCount(k) < 1) return;
@@ -2569,7 +2584,7 @@ function cook(id){
 function cookPanel(){
   openPanel(`단단의 요리 · 만든 요리 ${me.cooked||0} 개`, Object.entries(DISHES).map(([id,d])=>{
     const need = d.need.map(([k,n])=>`${k==='fish:*' ? '물고기' : itemName(k)} ${n}`).join(' + ');
-    return `<button class="np" data-id="${id}" ${canCook(id)?'':'style="opacity:.55"'}><span class="np-name">${iconImg('dish:'+id)}${d.name} <small>${need}</small></span><span class="np-place">${canCook(id)?'만들기':'재료 부족'}</span><span class="np-day">체력·기력 +${foodOf('dish:'+id).hp} · ${dishPrice(id)} G</span></button>`;
+    return `<button class="np" data-id="${id}" ${canCook(id)?'':'style="opacity:.55"'}><span class="np-name">${iconImg('dish:'+id)}${d.name} <small>${need}</small></span><span class="np-place">${canCook(id)?'만들기':'재료 부족'}</span><span class="np-day">${RARE_NAME[rarityOf('dish:'+id)]} · 체력 +${foodOf('dish:'+id).hp} · 기력 +${foodOf('dish:'+id).sta} · ${dishPrice(id)} G</span></button>`;
   }).join(''), b=>cook(b.dataset.id));
 }
 function eatDish(id){ eat('dish:'+id); }
@@ -3657,7 +3672,9 @@ function keepScroll(fn){ const p = $('npcPanel'), y = p.hidden ? 0 : p.scrollTop
 function itemDesc(k){
   const [cat, id] = k.split(':');
   let desc = `${invCount(k)}/${STACK_MAX} 개 · 팔면 1 개 ${itemPrice(k)} G`;
-  const food = foodOf(k); if (food) desc += ` · 먹으면 체력 +${food.hp} · 기력 +${food.sta}`;
+  const food = foodOf(k), g = rarityOf(k);
+  if (g) desc = `희귀도 ${RARE_STAR(g)} ${RARE_NAME[g]} · ` + desc;
+  if (food) desc += ` · 먹으면 체력 +${food.hp} · 기력 +${food.sta}`; else if (cat==='crop') desc += ' · 꽃은 먹을 수 없어요 (선물용)';
   if (cat==='fish'){ const p = parseFish(id), d = (me.dex||{})[p.id]; desc = `${'★'.repeat(p.st)}${'☆'.repeat(3-p.st)} · ` + desc + (d ? ` · 최고 기록 ${d.best} cm` : ''); }
   if (cat==='ore') desc = `희귀도 ${TIER_STAR(ORES[id].tier)} · ` + desc;
   if (cat==='loot') desc = `${MONSTERS[id].name}의 전리품 · ` + desc;
