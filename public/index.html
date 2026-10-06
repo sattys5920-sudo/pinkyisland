@@ -1415,14 +1415,22 @@ function jukePlay(i){
   const s = JUKE_SONGS[i]; if (!s) return; jukeStop(true); jukeOn = s; bgmStop();
   const d = document.createElement('div'); d.id = 'juke';
   d.innerHTML = `<iframe title="${esc(s.name)}" width="100%" height="${jukeH}" scrolling="no" frameborder="no" allow="autoplay" src="${jukeSrc(s.url)}"></iframe><a href="${esc(s.url)}" target="_blank" rel="noopener" aria-label="사운드클라우드에서 열기" style="flex:none;font-size:13px;text-decoration:none;color:#e0457b;padding:0 2px">↗</a><button id="jukeX" aria-label="끄기">✕</button>`;
-  if (admin){ d.style.zIndex = 35; d.style.top = 'auto'; d.style.bottom = 'calc(env(safe-area-inset-bottom,0px) + 70px)'; /* 관리자: 메뉴 버튼을 가리지 않게 아래쪽에 */ } document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop();
+  if (admin){ d.style.zIndex = 35; d.style.top = 'auto'; d.style.bottom = 'calc(env(safe-area-inset-bottom,0px) + 70px)'; /* 관리자: 메뉴 버튼을 가리지 않게 아래쪽에 */ } document.body.appendChild(d); $('jukeX').onclick = ()=>jukeStop(); jukeLoop(d.querySelector('iframe'));
   $('npcPanel').hidden = true;
+}
+// 사운드클라우드 플레이어에는 반복 설정이 없어서, 위젯 API로 곡이 끝나면 처음부터 다시 틀어요 (무한 반복)
+let jukeApi = null;
+function jukeLoop(ifr){
+  const go = () => { try { if (!ifr.isConnected) return; const w = window.SC.Widget(ifr); w.bind(window.SC.Widget.Events.FINISH, ()=>{ if (!ifr.isConnected) return; w.seekTo(0); w.play(); }); } catch(e){} };
+  if (window.SC && window.SC.Widget) return go();
+  jukeApi = jukeApi || new Promise((res, rej)=>{ const sc = document.createElement('script'); sc.src = 'https://w.soundcloud.com/player/api.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+  jukeApi.then(go, ()=>{ jukeApi = null; });
 }
 function jukeStop(quiet){ const d = $('juke'); if (d) d.remove(); const was = jukeOn; jukeOn = null; if (was && !quiet){ if (bgmStarted && bgmOn()) bgmStart(); toast('주크박스를 껐어요'); } }
 function jukePanel(){
   openPanel('🎵 주크박스', JUKE_SONGS.map((s,i)=>`<div class="np"><span class="np-name">${esc(s.name)}${jukeOn===s ? ' <small>지금 나오는 중</small>' : ''}</span><button class="mini" data-jk="${i}">${jukeOn===s ? '처음부터' : '틀기'}</button></div>`).join('') +
     (jukeOn ? '<button class="btn ghost" id="jkOff" style="width:100%;margin-top:6px">주크박스 끄기</button>' : '') +
-    '<p class="mnote">사운드클라우드 플레이어로 나와요. 저절로 안 나오면 플레이어의 ▶ 를 눌러요. 집 안에서만 나와요. 듣는 동안 섬 배경 음악은 쉬고, ✕ 로 끄거나 집 밖으로 나가면 꺼지고 배경 음악이 다시 나와요.</p>');
+    '<p class="mnote">사운드클라우드 플레이어로 나와요. 저절로 안 나오면 플레이어의 ▶ 를 눌러요. 집 안에서만 나와요. 곡은 끝나면 처음부터 계속 반복돼요. 듣는 동안 섬 배경 음악은 쉬고, ✕ 로 끄거나 집 밖으로 나가면 꺼지고 배경 음악이 다시 나와요.</p>');
   $('npcPanel').querySelectorAll('button[data-jk]').forEach(b=>b.onclick = ()=>jukePlay(+b.dataset.jk));
   if ($('jkOff')) $('jkOff').onclick = ()=>{ jukeStop(); $('npcPanel').hidden = true; };
 }
