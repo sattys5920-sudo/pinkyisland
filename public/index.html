@@ -1417,6 +1417,29 @@ if (!configured) solo = true; // 모듈 끝의 디버그 API(__pinky)가 바로 
   });
 })();
 
+// ===== 거울: 내 집 거울을 누르면 처음 캐릭터 만들 때처럼 피부·머리 모양·머리 색·표정을 바꿔요 (무료, 옷은 옷장에서) =====
+let mirrorDraft = null;
+function mirrorPanel(){
+  if (!me || !me.look) return;
+  mirrorDraft = {skin:me.look.skin, hair:me.look.hair, hairColor:me.look.hairColor, expr:me.look.expr || 'dot'};
+  const D = mirrorDraft;
+  const rows = [['skin','피부색',CH.SKINS,true], ['hair','머리 모양 (남)',CH.HAIR_M.map(k=>[k, CH.HAIR[k].label])], ['hair','머리 모양 (여)',CH.HAIR_F.map(k=>[k, CH.HAIR[k].label])], ['hairColor','머리 색',CH.HAIR_COLORS,true], ['expr','표정',CH.EXPRS]]
+    .map(([k, label, vals, color])=>`<div class="row"><b>${label}</b><div class="opts">${vals.map(v=>{ const [val, name] = Array.isArray(v) ? v : [v, v];
+      return color ? `<button class="sw" style="background:${val}" data-mk="${k}" data-mv="${val}" aria-pressed="${D[k]===val}" aria-label="${label}"></button>` : `<button data-mk="${k}" data-mv="${val}" aria-pressed="${D[k]===val}">${name}</button>`; }).join('')}</div></div>`).join('');
+  openPanel('🪞 거울', `<div class="prev" style="flex:none;height:150px;aspect-ratio:auto;border-radius:16px;overflow:hidden;position:sticky;top:-14px;z-index:2;box-shadow:0 4px 10px rgba(90,40,64,.12)"><canvas id="mirPrev"></canvas></div><div class="ctrls" style="flex:none">${rows}</div>
+    <div style="display:flex;gap:6px;margin-top:4px"><button class="btn ghost" id="mirBack" style="flex:1">원래대로</button><button class="btn" id="mirSave" style="flex:1">이대로 바꾸기</button></div>`);
+  const P = $('npcPanel'), cv = $('mirPrev');
+  const draw = () => { const r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio||1); cv.width = r.width*dpr; cv.height = r.height*dpr;
+    const c = cv.getContext('2d'), k = cv.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle = '#fffafb'; c.fillRect(0,0,240,cv.height/k); const d = CH.mattePainter(c);
+    const L = {...me.look, ...D}, fy = Math.min(cv.height/k - 8, 140); d.ell(120, fy-2, 100, 8, '#f6dcd3', {flat:true, noShadow:true});
+    for (const [px, dir] of [[60,'down'],[120,'right'],[180,'up']]){ c.save(); c.translate(px, fy); c.scale(1.5, 1.5); CH.figure(d, L, dir, 0, false, L.expr); c.restore(); } };
+  draw();
+  P.querySelector('.ctrls').onclick = e=>{ const b = e.target.closest('button[data-mk]'); if (!b) return; D[b.dataset.mk] = b.dataset.mv;
+    P.querySelectorAll(`button[data-mk="${b.dataset.mk}"]`).forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.mv === b.dataset.mv))); draw(); };
+  $('mirBack').onclick = ()=>mirrorPanel();
+  $('mirSave').onclick = ()=>{ me.look = {...me.look, skin:D.skin, hair:D.hair, hairColor:D.hairColor, expr:D.expr}; saveMe(); $('npcPanel').hidden = true; toast('거울 앞에서 새 모습이 됐어요'); };
+}
+
 // ===== 온보딩 =====
 let obStep = null, pick = {roof:null, lot:null}, nickVal = '';
 const obc = $('obc');
@@ -2778,7 +2801,8 @@ let movingFurn = -1;
 function houseTap(w){
   const z = Z(); if (!z.house || z.house!==uid) return null;
   if (!decorating){ const tv = furnOf(uid).find(f=>f.id===TV_ID && Math.abs(f.x-w.x)<40 && w.y>f.y-80 && w.y<f.y+14); if (tv) return {x:tv.x, y:tv.y+34, act:tvPanel};
-    const jb = furnOf(uid).find(f=>FURN[f.id]?.shape==='jukebox' && Math.abs(f.x-w.x)<34 && w.y>f.y-76 && w.y<f.y+10); return jb ? {x:jb.x, y:jb.y+34, act:jukePanel} : null; }
+    const jb = furnOf(uid).find(f=>FURN[f.id]?.shape==='jukebox' && Math.abs(f.x-w.x)<34 && w.y>f.y-76 && w.y<f.y+10); if (jb) return {x:jb.x, y:jb.y+34, act:jukePanel};
+    const mr = furnOf(uid).find(f=>FURN[f.id]?.shape==='mirror' && Math.abs(f.x-w.x)<24 && w.y>f.y-78 && w.y<f.y+10); return mr ? {x:mr.x, y:mr.y+34, act:mirrorPanel} : null; }
   const stay = {x:pos.x, y:pos.y, act:null, mark:performance.now()}, list = furnOf(uid);
   const hit = () => list.findIndex(f=>Math.abs(f.x-w.x)<38 && w.y>f.y-70 && w.y<f.y+12);
   const onFloor = w.y >= 250 && w.y <= z.H-70 && w.x >= 80 && w.x <= z.W-80;
