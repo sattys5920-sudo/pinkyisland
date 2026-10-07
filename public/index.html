@@ -1040,6 +1040,7 @@ let uid = null, solo = false, net = null;
 let admin = false; // 관리자 코드로 들어온 CCTV 모드: 캐릭터 없이 섬 전체를 지켜봐요
 // 관리자가 '오투모'로 섬에 들어가 걸어 다닐 수 있어요: 다른 사람에게도 보이고, 기절한 사람 곁에 2 초 있으면 깨워 줘요
 let admWalk = false, admRevive = null, admPresSig = '', admPresT = 0;
+const OTUMO_NAME = '오투모 the god';
 const OTUMO_LOOK = {skin:'#f9d3b8', hair:'short', hairColor:'#3a3a4a', top:'t01', bottom:'b01', set:'', hat:'robot', acc:'none', shoes:'sh01', expr:'happy', cc:{}};
 const ADMIN_EMAIL = 'pinky-admin@pinkyisland.app'; // 아이디 규칙(영어·숫자·_)으로는 만들 수 없는 주소라 일반 가입과 겹치지 않아요
 let players = {};        // uid -> 플레이어 문서
@@ -1130,16 +1131,16 @@ function onOnline(raw){
     if (id===uid || !s || typeof s.x!=='number' || !s.look) continue;
     seen.add(id);
     let o = others.get(id);
-    if (!o){ o = {x:s.x, y:s.y, emoAt:s.emoAt}; others.set(id, o); if (!firstOnline) addLog(`${String(s.nick||'누군가').slice(0,8)} 님이 섬에 왔어요`, true); }
+    if (!o){ o = {x:s.x, y:s.y, emoAt:s.emoAt}; others.set(id, o); if (!firstOnline && !s.adm) addLog(`${String(s.nick||'누군가').slice(0,8)} 님이 섬에 왔어요`, true); }
     if (s.emoAt && s.emoAt!==o.emoAt){ o.emoAt = s.emoAt; if (s.emo && Date.now()-s.emoAt < 5000) bubbles.set(id+'-emo', {text:String(s.emo).slice(0,4), at:performance.now()}); }
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz;
-    Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', nick:String(s.nick||'').slice(0,8), uid:id});
+    Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
   }
-  for (const [id,o] of [...others]) if (!seen.has(id)){ others.delete(id); addLog(`${o.nick} 님이 집에 갔어요`, true); }
+  for (const [id,o] of [...others]) if (!seen.has(id)){ others.delete(id); if (!o.adm) addLog(`${o.nick} 님이 집에 갔어요`, true); } // 오투모는 조용히 나가요
   firstOnline = false;
   if (me) renderHud();
 }
@@ -4461,7 +4462,7 @@ function darkRespawn(){
 }
 function darkStandUp(by){
   if (!darkDown) return; darkDown = null; playerHp = Math.round(maxHp()*.5); darkGuard = 3; wakeGuardUntil = performance.now() + 5000; renderHud();
-  flushSave(); closeTalk(); toast(by ? `${String(by).slice(0,8)} 님이 ${downWords().helped}! ${zoneId.startsWith('dark:') ? '다시 싸워요' : '조심해서 다녀요'}` : '다시 일어났어요');
+  flushSave(); closeTalk(); toast(by ? `${String(by).slice(0,12)} 님이 ${downWords().helped}! ${zoneId.startsWith('dark:') ? '다시 싸워요' : '조심해서 다녀요'}` : '다시 일어났어요');
 }
 function drawDowned(c, x, y, look, t, key){
   c.save(); c.translate(x, y-6); c.rotate(-Math.PI/2); c.globalAlpha = .7; drawPlayer(c, 14, 18, look, 'down', 0, false, 1, 'dot'); c.restore();
@@ -5446,7 +5447,7 @@ function adminClick(e){
 // ----- 오투모로 걸어 다니기 -----
 // 오투모 이름은 발 밑, 머리 위엔 체력 1 천만 막대와 '관리자' 칭호
 function otumoLabel(c, x, y){
-  tag(c, '오투모', x, y + 22, '#7fb8ff');
+  tag(c, OTUMO_NAME, x, y + 22, '#7fb8ff');
   const w = 54, bx = x - w/2, by = y - 72;
   c.save(); c.fillStyle = 'rgba(40,30,50,.55)'; c.beginPath(); c.roundRect(bx - 1, by - 1, w + 2, 9, 4.5); c.fill();
   const g = c.createLinearGradient(bx, 0, bx + w, 0); g.addColorStop(0, '#7fe3a0'); g.addColorStop(1, '#3fbf7a'); c.fillStyle = g; c.beginPath(); c.roundRect(bx, by, w, 7, 3.5); c.fill();
@@ -5476,9 +5477,9 @@ function admWalkTick(t){
   if (admRevive){ const o = others.get(admRevive.id);
     if (!o || !o.down) admRevive = null;
     else if (o.z !== zoneId || Math.hypot(pos.x-o.x, pos.y-o.y) > 80){ admRevive = null; toast('깨우기가 끊겼어요'); }
-    else if (t - admRevive.at > ADM_REVIVE_MS){ const nick = o.nick; net.reviveSend(admRevive.uid, '오투모').then(()=>toast(`${nick} 님을 깨웠어요`)).catch(()=>toast('깨우지 못했어요')); admRevive = null; } }
+    else if (t - admRevive.at > ADM_REVIVE_MS){ const nick = o.nick; net.reviveSend(admRevive.uid, OTUMO_NAME).then(()=>toast(`${nick} 님을 깨웠어요`)).catch(()=>toast('깨우지 못했어요')); admRevive = null; } }
   if (!net || !net.presence) return;
-  const p = {adm:1, z:zoneId, nick:'오투모', look:OTUMO_LOOK, roof:0, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, ex:'happy', ti:'관리자', emo:'', emoAt:0};
+  const p = {adm:1, z:zoneId, nick:OTUMO_NAME, look:OTUMO_LOOK, roof:0, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, ex:'happy', ti:'관리자', emo:'', emoAt:0};
   const sig = JSON.stringify(p);
   if (sig === admPresSig || t - admPresT < (pos.moving ? 250 : 120)) return;
   admPresSig = sig; admPresT = t; net.presence(p).catch(()=>{});
