@@ -345,6 +345,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 .adm-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;white-space:normal}.adm-card{display:flex;gap:10px;background:rgba(255,255,255,.07);border-radius:14px;padding:8px}.adm-face{display:grid;justify-items:center;align-content:start;width:104px;flex:none;text-align:center}.adm-face img{width:104px;height:104px;background:rgba(255,240,246,.92);border-radius:12px}.adm-face b{font-size:19px;margin-top:2px}.adm-face small{font-size:13px;opacity:.85}.adm-face i.on{color:#7dff9a;font-style:normal}.adm-info{min-width:0;display:grid;gap:6px;align-content:start;font-size:15px}.adm-info ul{list-style:none;margin:0;padding:0;display:grid;gap:1px}.adm-info li small{display:inline-block;width:52px;opacity:.65;font-size:12px}.adm-info li em{opacity:.7;font-style:normal;font-size:12px}.adm-house{display:flex;gap:4px;align-items:flex-start}.adm-house img{width:34px;height:34px;border-radius:8px;flex:none}.adm-house div{display:grid;gap:1px;margin-left:4px}.adm-house small{font-size:12px;opacity:.8}.adm-info .adm-btn{justify-self:start}
 @media (max-width:640px){.adm-cards{grid-template-columns:1fr}}
 .adm-tbl{position:absolute;left:50%;top:66px;transform:translateX(-50%);width:min(1120px,calc(100% - 20px));max-height:calc(100% - 80px);background:rgba(28,22,30,.94);border-radius:16px;padding:8px 12px 10px;pointer-events:auto;display:flex;flex-direction:column;gap:6px;z-index:2}
+.ring-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.ring-cell{display:flex;flex-direction:column;align-items:center;width:66px;padding:4px 2px;border-radius:12px;border:2px solid #f3d3e2;background:#fff;font:inherit;font-size:14px;color:#a06a84}.ring-cell img{width:52px;height:52px}.ring-cell.on{border-color:#ff7fb0;background:#fff0f6;color:#e0457b}.ring-cell em{font-style:normal}
 .adm-mob{display:flex;flex-wrap:wrap;gap:2px 8px;text-align:left;font-size:15px}.adm-mob b{font-size:16px}.adm-mob .fight{color:#e0457b}
 .adm-face img.adm-rtag{display:block;width:140px;height:auto;aspect-ratio:auto;margin:-2px auto 2px;background:none;border:0;border-radius:0;box-shadow:none;object-fit:contain}
 .adm-grant{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;padding:8px 10px;border-radius:12px;background:rgba(255,159,196,.14);font-size:15px}.adm-grant b{font-size:18px}.adm-grant input,.adm-grant select{font:inherit;padding:3px 6px;border-radius:8px;border:1px solid #e3c6d6;background:#fff}.adm-grant input[type=number]{width:70px}td small.cdl{display:block;font-size:11px;opacity:.75;line-height:1.2}
@@ -2682,6 +2683,19 @@ function weaponPanel(){
       me.inv.weapon = id; syncStats(); saveMe(); renderHud(); weaponPanel(); });
 }
 function ringFxText(f){ return [f.dr ? `받는 피해 -${Math.round(f.dr*100)}%` : '', f.bossDr ? `보스 탄막 -${Math.round(f.bossDr*100)}%` : '', f.regen ? `체력 회복 ${f.regen}배` : '', f.noSlow ? '느려짐 무시' : '', f.sta ? `최대 기력 +${f.sta}` : '', f.kb ? '밀려남 절반' : '', f.shield ? `${f.shield}초마다 한 번 막기` : '', f.phoenix ? '하루 한 번 기절 즉시 30%로 일어남' : ''].filter(Boolean).join(' · '); }
+// 반지는 하나만 껴요. 새로 끼면 끼던 반지는 가방(가진 반지)으로 돌아가고, 새 반지의 효과·이름표만 적용돼요
+function ringEquip(id){
+  const r = RINGS[id]; if (!r || !(me.inv.rings||[]).includes(id)) return;
+  const prev = me.inv.ring;
+  if (prev === id){ me.inv.ring = null; toast(`${r.name}을(를) 빼서 가방에 넣었어요`); }
+  else { me.inv.ring = id; toast(prev && RINGS[prev] ? `${RINGS[prev].name}은(는) 가방에 넣고 ${r.name}을(를) 꼈어요 · 최대 체력 +${r.hp}` : `${r.name}을(를) 꼈어요 · 최대 체력 +${r.hp}`); }
+  playerHp = Math.min(playerHp, maxHp()); playerSta = Math.min(playerSta, maxSta()); syncStats(); saveMe(); renderHud();
+}
+function ringRow(){
+  const own = me.inv.rings || []; if (!own.length) return '';
+  const on = me.inv.ring, cell = id => `<button class="ring-cell${id===on ? ' on' : ''}" data-rg="${id}" title="${esc(RINGS[id].name)}"><img src="${ringIconURL(id)}" alt=""><em>${id===on ? '끼는 중' : '끼기'}</em></button>`;
+  return `<div class="np" style="display:block"><span class="np-name">💍 반지 <small>${on && RINGS[on] ? `${esc(RINGS[on].name)} · 최대 체력 +${RINGS[on].hp}${ringFxText(RINGS[on].fx) ? ' · ' + ringFxText(RINGS[on].fx) : ''}` : '끼고 있는 반지 없음'} · 하나만 낄 수 있어요</small></span><div class="ring-row">${own.filter(id=>RINGS[id]).map(cell).join('')}</div></div>`;
+}
 function ringPanel(){
   const own = me.inv.rings || [];
   openPanel(`보리의 반지 공방 · 💰 ${me.inv.gold.toLocaleString()} G`, `<p class="mnote" style="margin-top:0">반지는 하나만 낄 수 있어요. 최대 체력이 늘고 몸을 지켜 줘요. 만든 반지는 되팔 수 없어요.</p>` +
@@ -2691,10 +2705,10 @@ function ringPanel(){
     b=>{ const id = b.dataset.id, r = RINGS[id];
       if (!own.includes(id)){
         if (me.inv.gold < r.gold || r.need.some(([k,n])=>invCount(k) < n)) return toast('재료나 돈이 모자라요');
-        me.inv.gold -= r.gold; for (const [k,n] of r.need) invAdd(k, -n); me.inv.rings = [...own, id]; me.inv.ring = id; toast(`${r.name}을(를) 만들어 꼈어요! 최대 체력 +${r.hp}`);
-      } else if (me.inv.ring === id){ me.inv.ring = null; toast(`${r.name}을(를) 뺐어요`); }
-      else { me.inv.ring = id; toast(`${r.name}을(를) 꼈어요 · 최대 체력 +${r.hp}`); }
-      playerHp = Math.min(playerHp, maxHp()); playerSta = Math.min(playerSta, maxSta()); syncStats(); saveMe(); renderHud(); ringPanel(); });
+        me.inv.gold -= r.gold; for (const [k,n] of r.need) invAdd(k, -n); const prev = RINGS[me.inv.ring]; me.inv.rings = [...own, id]; me.inv.ring = id; toast(`${r.name}을(를) 만들어 꼈어요! 최대 체력 +${r.hp}${prev ? ` · 끼던 ${prev.name}은(는) 가방에 넣었어요` : ''}`);
+        playerHp = Math.min(playerHp, maxHp()); syncStats(); saveMe(); renderHud();
+      } else ringEquip(id);
+      ringPanel(); });
 }
 const DIRV = {left:[-1,0], right:[1,0], up:[0,-1], down:[0,1]};
 let swingAt = -1e9, swingDir = 'down', lunge = 0;
@@ -4635,6 +4649,7 @@ function showBag(sel){
   const cats = ['crop','forage','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'];
   keepScroll(()=>openPanel('가방',
     `<div class="np"><span class="np-name">💰 ${me.inv.gold} G <small>· 체력 ${Math.ceil(playerHp)}/${maxHp()} · 기력 ${Math.floor(playerSta)}/${maxSta()}</small></span><span class="np-day" style="grid-column:1/-1;text-align:left">도구: ${tools}</span></div>${wornRow()}${invGrid(cats, bagState)}
+     ${ringRow()}
      <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxG">채집 도감 ${Object.keys(me.gdex||{}).length}/${FORAGE.length}</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/${Object.keys(MONSTERS).length}</button><button class="mini" id="bgSend">거래소에 올리기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`));
   invBind(bagState, ()=>showBag(), (el,k)=>{ const acts = [];
     if (foodOf(k)) acts.push(['먹기', ()=>{ eat(k); showBag(); }]);
@@ -4646,6 +4661,7 @@ function showBag(sel){
     acts.push(['거래소에 올리기', ()=>marketList(k)]);
     detailBox(el, k, acts); }, '칸을 누르면 자세히 볼 수 있어요.');
   bindWornRow(()=>showBag());
+  $('npcPanel').querySelectorAll('[data-rg]').forEach(b=>b.onclick = ()=>{ ringEquip(b.dataset.rg); showBag(); });
   $('bgCloset').onclick = ()=>{ bagState.tab = 'wear'; bagState.page = 0; showBag(); }; $('bgQuest').onclick = questLog; $('bgAch').onclick = achPanel;
   $('bgMarket').onclick = marketPanel; $('bgPrice').onclick = pricePanel; $('bgStock').onclick = tvPanel;
   $('dxF').onclick = showDex; $('dxG').onclick = forageDex; $('dxO').onclick = oreDex; $('dxM').onclick = monDex;
