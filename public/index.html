@@ -3855,7 +3855,10 @@ function buyerBonus(n, key){
   const by = BUYERS[n.id], cat = key.split(':')[0];
   return (by?.bonus[cat] || 1) + (heartsN(n) >= 7 ? .1 : 0);
 }
-function unitPrice(key, n, extra=0){ return Math.max(1, Math.round(itemPrice(key) * marketMul(key) * glut(key, extra) * (n ? buyerBonus(n, key) : 1))); }
+// 주민에게 팔 때 값 올림: 직접 캐고·잡고·키우고·만든 것만 1.5 배 (가구는 산 값의 절반 그대로 — 사서 되팔아 남기지 않게)
+const SELL_BOOST = {crop:1.5, forage:1.5, fish:1.5, ore:1.5, loot:1.5, dish:1.5};
+const sellBase = key => itemPrice(key) * (SELL_BOOST[key.split(':')[0]] || 1);
+function unitPrice(key, n, extra=0){ return Math.max(1, Math.round(sellBase(key) * marketMul(key) * glut(key, extra) * (n ? buyerBonus(n, key) : 1))); }
 function sellTotal(key, cnt, n){ let s = 0; for (let i=0;i<cnt;i++) s += unitPrice(key, n, i); return s; }
 function sellItem(key, cnt, n){
   cnt = Math.min(cnt, invCount(key)); if (cnt <= 0) return 0;
@@ -4694,7 +4697,7 @@ function invBind(st, rerender, detail, empty){
 function keepScroll(fn){ const p = $('npcPanel'), y = p.hidden ? 0 : p.scrollTop; fn(); p.scrollTop = y; }
 function itemDesc(k){
   const [cat, id] = k.split(':');
-  let desc = `${invCount(k)}/${STACK_MAX} 개 · ` + (SELL_CATS[cat] ? `팔면 1 개 ${itemPrice(k)} G` : '주민은 안 사요 · 거래소에서 사고팔아요');
+  let desc = `${invCount(k)}/${STACK_MAX} 개 · ` + (SELL_CATS[cat] ? `팔면 1 개 ${Math.round(sellBase(k))} G` : '주민은 안 사요 · 거래소에서 사고팔아요');
   const food = foodOf(k), g = rarityOf(k);
   if (g) desc = `희귀도 ${RARE_STAR(g)} ${RARE_NAME[g]} · ` + desc;
   if (food) desc += ` · 먹으면 체력 +${food.hp} · 기력 +${food.sta}`; else if (cat==='crop') desc += ' · 꽃은 먹을 수 없어요 (선물용)';
