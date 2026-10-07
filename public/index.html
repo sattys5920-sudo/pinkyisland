@@ -628,7 +628,11 @@ const ZONES = {
   ], trees:[]},
   cave3:     {name:'동굴 지하 3층', theme:'cave', depth:3, W:1600, H:1100, grid:[1,7], places:[
     {kind:'crystals'},
-    {kind:'sign', x:800, y:640, text:'지하 3층 · 고대룡이 잠든 곳'},
+    {kind:'sign', x:800, y:640, text:'지하 3층 · 거미 여왕의 둥지'},
+  ], trees:[]},
+  cave4:     {name:'동굴 지하 4층', theme:'cave', depth:4, W:1600, H:1100, grid:[1,8], places:[
+    {kind:'crystals'},
+    {kind:'sign', x:800, y:640, text:'지하 4층 · 고대룡이 잠든 곳'},
   ], trees:[]},
 };
 { const at = {}; for (const [id,z] of Object.entries(ZONES)) at[z.grid] = id;
@@ -840,7 +844,7 @@ function enterZone(id, from, x, y){
   if (!zoneOk(id)) id = 'home';
   decorating = null;
   if (me){ const v = (me.visited||'home').split(',').filter(Boolean); const zid = id.includes(':') ? id.split(':')[0] : id; if (!v.includes(zid)){ v.push(zid); me.visited = v.join(','); syncStats(); } }
-  zoneId = id; const z = Z(); target = null; staticSig = ''; if (jukeOn && z.house !== uid) jukeStop(); if (z.depth && me && !admin) setTimeout(()=>toast(`${z.name} · 추천 레벨 ${[0,15,25,35][z.depth]} 이상 · 여럿이 같이 와요`), 900);
+  zoneId = id; const z = Z(); target = null; staticSig = ''; if (jukeOn && z.house !== uid) jukeStop(); if (z.depth && me && !admin) setTimeout(()=>toast(`${z.name} · 추천 레벨 ${[0,15,25,35,45][z.depth]} 이상 · 여럿이 같이 와요`), 900);
   if (x!=null){ pos.x = x; pos.y = y; }
   else if (from==='n'){ pos.x = z.W/2; pos.y = M+40; }
   else if (from==='s'){ pos.x = z.W/2; pos.y = z.H-M-30; }
@@ -2020,7 +2024,7 @@ function renderNpcPanel(){
 }
 // ===== 섬 지도 (미니맵) =====
 // 구역 칸을 실제 배치 그대로 그리고, 집·연못·나무·주민·친구·나를 점으로 보여 줘요. 가 본 구역은 눌러서 바로 갈 수 있어요 (기력 10)
-const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', minegate:'광산 입구', cave:'의문의 동굴', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층'};
+const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', minegate:'광산 입구', cave:'의문의 동굴', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층', cave4:'지하 4층'};
 let mapSel = null, mapGeo = null, mapDrawT = 0;
 const visitedZones = () => (me.visited||'home').split(',');
 function renderMap(){
@@ -2228,7 +2232,7 @@ function drawFishing(ctx, t){
 // 동굴 지하: 깊을수록 어두워지고 내 주변만 밝아요
 function drawDepth(ctx){
   const z = Z(), dp = z.depth|0; if (!dp || admin) return;
-  const k = view.dpr*view.zoom, px = (pos.x - view.cx)*k, py = (pos.y - 30 - view.cy)*k, a = [0, .35, .5, .62][dp] || .62, R = (260 - dp*30)*k;
+  const k = view.dpr*view.zoom, px = (pos.x - view.cx)*k, py = (pos.y - 30 - view.cy)*k, a = [0, .35, .5, .62, .7][dp] || .7, R = (260 - dp*30)*k;
   const g = ctx.createRadialGradient(px, py, R*.35, px, py, R); g.addColorStop(0, 'rgba(12,6,20,0)'); g.addColorStop(1, `rgba(12,6,20,${a})`);
   ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height); ctx.restore();
 }
@@ -2362,6 +2366,7 @@ const MINE_ZONES = { // 구역마다 나오는 희귀도와 바위 자리
   cave1:    {tiers:[2,3,4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800],[700,860],[940,860],[640,420],[980,420]]},
   cave2:    {tiers:[3,4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800],[700,860],[940,860]]},
   cave3:    {tiers:[4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800]]},
+  cave4:    {tiers:[4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800]]},
 };
 for (const mz of Object.values(MINE_ZONES)) mz.spots = mz.spots.map(([x,y])=>[zk(x), zk(y)]);
 function rollOre(zid){
@@ -2427,7 +2432,7 @@ const MONSTER_LIST = [
   ['별똥 유령','starhill',90,16,80,'#fff6b0','ghost','별가루',36,10], ['달빛 나방','starhill',70,14,100,'#d9e3ff','bug','달빛 비늘',30,12],
   // 구역 보스: 다 같이 잡는 큰 몬스터 (구역마다 하나, 쓰러지면 1 시간 뒤 다시). 마지막 값은 함께 잡은 사람마다 받는 골드
   ['먼지 뭉치 대왕','forest',10000,30,40,'#bdb5c9','dust','대왕의 솜 왕관',1500,0,2000], ['가시 덤불 거인','deepforest',25000,45,45,'#4f8f46','plant','거인의 가시 심',3000,0,4000],
-  ['심연의 크라켄','seacave',40000,55,50,'#6f4fb5','slime','크라켄의 진주',4500,0,6000], ['용암 군주','cave',100000,80,35,'#ff6b3b','slime','군주의 용암 핵',10000,0,12000],
+  ['심연의 크라켄','seacave',40000,55,50,'#6f4fb5','slime','크라켄의 진주',4500,0,6000], ['용암 군주','cave1',100000,80,35,'#ff6b3b','slime','군주의 용암 핵',10000,0,12000],
   ['별고래 유령','starhill',60000,65,55,'#fff6b0','ghost','별고래의 꼬리별',6000,0,8000],
   // 강한 몬스터: 구역마다 세 종씩 (다 같이 잡기 좋은 체력)
   ['먼지 멧돼지','forest',90,12,70,'#8a7a6a','dust','멧돼지 엄니',28,12], ['성난 털뭉치','forest',110,14,55,'#d9a6a6','dust','뭉친 털실',32,10], ['먼지 회오리','forest',130,15,90,'#c9d6f0','dust','회오리 솜',38,8],
@@ -2440,11 +2445,11 @@ const MONSTER_LIST = [
   ['어둠 슬라임','cave2',700,48,55,'#3b2f5a','slime','어둠 젤리',210,10], ['마그마 도마뱀','cave2',800,52,85,'#ff5a2f','dust','마그마 비늘',230,9], ['해골 광부','cave2',900,55,60,'#e8e3d0','ghost','낡은 광부 뼈',250,8], ['심연 박쥐','cave2',650,50,130,'#4b3a6f','bat','심연의 날개',220,9],
   ['고대 수호석상','cave3',1200,65,30,'#8f8899','golem','석상의 눈',380,8], ['불꽃 정령','cave3',1000,70,100,'#ff7a2f','ghost','정령의 불씨',360,9], ['심층 그림자','cave3',1100,75,90,'#1f1b2a','ghost','심층의 조각',400,8], ['용암 거북','cave3',1400,62,30,'#c94f2f','golem','용암 등껍질',420,7],
   // 지하 보스
-  ['수정 거인','cave1',120000,90,35,'#b9a6ff','golem','거인의 수정 심장',12000,0,15000], ['어둠 여왕 거미','cave2',150000,100,60,'#3b2f5a','dust','여왕의 어둠 실',15000,0,18000],
-  ['심층의 고대룡','cave3',200000,120,45,'#c94f2f','golem','고대룡의 비늘',25000,0,25000],
+  ['수정 거인','cave2',120000,90,35,'#b9a6ff','golem','거인의 수정 심장',12000,0,15000], ['어둠 여왕 거미','cave3',150000,100,60,'#3b2f5a','dust','여왕의 어둠 실',15000,0,18000],
+  ['심층의 고대룡','cave4',200000,120,45,'#c94f2f','golem','고대룡의 비늘',25000,0,25000],
 ];
 const MONSTERS = Object.fromEntries(MONSTER_LIST.map((m,i)=>['m'+String(i+1).padStart(2,'0'), {name:m[0], zone:m[1], hp:m[2], atk:m[3], speed:m[4], color:m[5], shape:m[6], drop:m[7], dropPrice:m[8], weight:m[9], gold:m[10]||0, boss:!!m[10], strong:!!m[10] || i >= 35}]));
-const COMBAT_ZONES = {forest:6, deepforest:7, seacave:5, cave:7, starhill:5, cave1:7, cave2:7, cave3:6}; // 구역마다 한 번에 나오는 몬스터 수 (보스 빼고)
+const COMBAT_ZONES = {forest:6, deepforest:7, seacave:5, cave:7, starhill:5, cave1:7, cave2:7, cave3:6, cave4:6}; // 구역마다 한 번에 나오는 몬스터 수 (보스 빼고)
 // ===== 체력·기력·레벨 =====
 // 레벨이 오를 때마다 최대 체력·최대 기력이 10 씩 늘어요. 경험치는 퀘스트·몬스터·이야기·채집·낚시·채굴에서 받아요
 const LV_MAX = 50;
@@ -2547,14 +2552,15 @@ function updateBars(){
 let mobs = [], playerHp = 100, lastHurt = 0, lastSwing = 0;
 const fx = []; // 떠오르는 숫자
 function rollMonster(){
-  const list = Object.entries(MONSTERS).filter(([,m])=>m.zone===zoneId && m.weight > 0);
+  const zz = {cave4:'cave3'}[zoneId] || zoneId; // 지하 4층은 3층 몬스터가 나와요
+  const list = Object.entries(MONSTERS).filter(([,m])=>m.zone===zz && m.weight > 0);
   const total = list.reduce((a,[,m])=>a+m.weight,0);
   let r = Math.random()*total; for (const [id,m] of list){ if ((r-=m.weight) < 0) return id; } return list[0][0];
 }
 // ===== 몬스터: 같은 구역에 있는 사람 모두가 같은 몬스터를 봐요 (mobs/<구역>/<칸>) =====
 // 구역에 있는 사람 중 한 명(아이디가 가장 앞선 사람)이 몬스터를 움직이고 자리를 알려 줘요. 체력은 다 같이 깎고,
 // 쓰러뜨리면 한 대라도 친 사람 모두가 보상을 받아요. 쓰러진 자리는 MOB_RESPAWN 뒤에 새 몬스터가 나와요.
-const MOB_RESPAWN = 10000, BOSS_RESPAWN = 3600000, BOSS_SLOT = '90'; // 보스는 1 시간
+const MOB_RESPAWN = 10000, BOSS_RESPAWN = 3600000, BOSS_SLOT = '91'; // 보스 자리 (보스 위치를 옮기면서 90 → 91 로 바꿨어요. 예전 90 자리는 무시해요) // 보스는 1 시간
 const MOB_HEAL_IDLE = 60000, MOB_HEAL_STEP = .05; // 1 분 동안 아무도 안 때리면 5 초마다 최대 체력의 5% 회복
 const ZONE_BOSS = Object.fromEntries(Object.entries(MONSTERS).filter(([,m])=>m.boss).map(([id,m])=>[m.zone, id]));
 let mobMap = {}, mobSub = null, mobSubZone = null, mobLoaded = false, mobPosAt = 0, mobTry = {};
@@ -2578,7 +2584,7 @@ function onMobs(zone, v){
   if (zone !== zoneId || zone !== mobSubZone) return; v = v || {};
   const next = {};
   for (const [slot, d] of Object.entries(v)){
-    if (!d || !MONSTERS[d.id]) continue;
+    if (!d || !MONSTERS[d.id] || slot === '90') continue;
     let mob = mobMap[slot];
     if (!mob || mob.gen !== d.gen){ if (mobLoaded && MONSTERS[d.id].boss && d.hp > 0) setTimeout(()=>toast(`⚠ ${MONSTERS[d.id].name}이(가) 나타났어요! 다 같이 잡아요`), 300); mob = {slot, x:d.x, y:d.y, cd:0, wander:0, wx:d.x, wy:d.y, hurt:0}; }
     if (mob.gen === d.gen && d.hp > mob.hp && mob.hp > 0 && mobLoaded) fx.push({x:mob.x, y:mob.y - (MONSTERS[d.id].boss ? 170 : 60), text:'+' + Math.round(d.hp - mob.hp).toLocaleString() + ' 회복', t:performance.now(), color:'#59c27a'});
@@ -2782,8 +2788,8 @@ function wakeAtHome(){
 // 체력이 절반 아래면 빨라지고 패턴이 하나 늘어요
 const BOSS_PAT = {
   forest:['ring', 'spiral', '+aimed3'], deepforest:['fan', 'spike', '+ringGap'], seacave:['aimed3', 'tentacle', '+ring'],
-  cave:['rain', 'ringGap', '+fan'], starhill:['spiral', 'meteor', 'dive', '+ring'], cave1:['bounce', 'aimed3', '+spike'],
-  cave2:['web', 'brood', '+fan'], cave3:['breath', 'fire3', '+meteorAll'],
+  starhill:['spiral', 'meteor', 'dive', '+ring'], cave1:['rain', 'ringGap', '+fan'], cave2:['bounce', 'aimed3', '+spike'],
+  cave3:['web', 'brood', '+fan'], cave4:['breath', 'fire3', '+meteorAll'],
 };
 let bShots = [], bWarns = [], bQ = [], bBooms = [], bFxZone = '', bPat = {}, playerSlowUntil = 0, bAtkSeen = '';
 // 공격 알림 받기: 같은 시각에 시작하도록 줄 세워요
@@ -4687,7 +4693,7 @@ function oreDex(){
   dexGrid(`광석 도감 ${Object.keys(me.odex||{}).length}/40`, Object.entries(ORES).map(([id,o])=>({aid:id, got:!!(me.odex||{})[id], name:o.name, sub: (me.odex||{})[id] ? TIER_STAR(o.tier) : zn(o)})));
 }
 function monDex(){
-  const zn = {forest:'먼지 숲', deepforest:'깊은 숲', seacave:'해식 동굴', cave:'의문의 동굴', starhill:'별빛 언덕 밤', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층'};
+  const zn = {forest:'먼지 숲', deepforest:'깊은 숲', seacave:'해식 동굴', cave:'의문의 동굴', starhill:'별빛 언덕 밤', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층', cave4:'지하 4층'};
   dexGrid(`몬스터 도감 ${Object.keys(me.mdex||{}).length}/${Object.keys(MONSTERS).length}`, Object.entries(MONSTERS).map(([id,m])=>({aid:id, got:!!(me.mdex||{})[id], name:m.name, sub: (me.mdex||{})[id] ? `체력 ${m.hp} · 공격 ${m.atk}` : zn[m.zone]})));
 }
 
@@ -5141,7 +5147,7 @@ let admMobOn = false;
 function adminMobWatch(){ if (solo || !net.mobsZone || admMobOn) return; admMobOn = true; for (const z of Object.keys(COMBAT_ZONES)) net.mobsZone(z, v=>{ admMobAll[z] = v || {}; const t = performance.now(); if (t - admMobT > 2000){ admMobT = t; renderAdmin(); } }); }
 function adminMobSec(){
   const now = mobNow(), rows = Object.keys(COMBAT_ZONES).map(z=>{ const v = admMobAll[z] || {}, list = Object.entries(v).filter(([,d])=>d && MONSTERS[d.id]);
-    const alive = list.filter(([sl,d])=>sl !== BOSS_SLOT && d.hp > 0).length, bd = v[BOSS_SLOT], bm = bd && MONSTERS[bd.id];
+    const alive = list.filter(([sl,d])=>sl !== BOSS_SLOT && sl !== '90' && d.hp > 0).length, bd = v[BOSS_SLOT], bm = bd && MONSTERS[bd.id];
     const fighters = new Set(); for (const [,d] of list) if (d.hp > 0) for (const id of Object.keys(d.hits||{})) fighters.add(players[id]?.nick || '?');
     const boss = !bm ? '' : bd.hp > 0 ? `${bm.name} ${Math.round(bd.hp/(bd.max||bm.hp)*100)}%` : `${bm.name} 다시 나오기까지 ${Math.max(0, Math.ceil((BOSS_RESPAWN - (now - (bd.deadAt||0)))/60000))}분`;
     return `<button data-z="${z}" class="adm-btn adm-mob"><b>${esc(ZONES[z]?.name || z)}</b> <span>몬스터 ${alive}/${COMBAT_ZONES[z]}</span>${boss ? `<span>👑 ${esc(boss)}</span>` : ''}${fighters.size ? `<span class="fight">⚔ ${esc([...fighters].slice(0,4).join(', '))}${fighters.size > 4 ? ` 외 ${fighters.size-4}` : ''}</span>` : ''}</button>`; }).join('');
