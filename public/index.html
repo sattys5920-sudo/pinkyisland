@@ -63,6 +63,11 @@ img.bi{width:34px;height:34px;display:block;pointer-events:none}
 #bar div{width:46px;height:46px;border-radius:12px;background:#fff;display:grid;place-items:center;position:relative;font-size:32px;box-shadow:inset 0 -2px 0 #f6e6ec}
 #bar div.off{opacity:.28;filter:grayscale(1)}
 #bar span{position:absolute;right:3px;bottom:0;font-size:16px;color:var(--ink)}
+#bar .qk{background:#fff6fa;box-shadow:inset 0 0 0 2px #ffd3e4,inset 0 -2px 0 #f6e6ec;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#bar .qk i{position:absolute;left:4px;top:0;font-size:12px;font-style:normal;color:#e09ab6;line-height:1.1}
+#bar .qk.empty{background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 2px #f0bfd2;font-size:24px;color:#e09ab6}
+#bar .qk:active{transform:scale(.9)}
+#bar .sep{width:2px;background:#f3cfe0;box-shadow:none;border-radius:2px;margin:6px 1px}
 #chatbox{position:fixed;left:calc(env(safe-area-inset-left,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 72px);width:min(320px,calc(100vw - 20px));z-index:5;display:flex;flex-direction:column;gap:6px;pointer-events:none}
 #log{display:flex;flex-direction:column;gap:4px;font-size:19px;text-shadow:0 1px 0 #fff,0 0 4px #fff}
 #log p{margin:0;transition:opacity 1s}
@@ -1607,11 +1612,9 @@ function renderHud(){
   if (!$('stats')){ const st = document.createElement('div'); st.id = 'stats'; st.innerHTML = `<b id="lvTag"></b><div class="sb hp" id="hpBar"><s></s><em></em></div><div class="sb st" id="staBar"><s></s><em></em></div><div class="xb" id="expBar"><s></s><em></em></div>`; $('hud').after(st); }
   $('stats').hidden = false; barSig = ''; updateBars(); placeTop();
   $('quest').hidden = me.quest >= TUT_DONE; $('quest').innerHTML = `<b>할 일${me.quest >= TUT_START ? ` · 섬 생활 첫걸음 ${me.quest - TUT_START + 1}/${TUT.length}` : ''}</b>${QUESTS[Math.min(me.quest, TUT_DONE)]}`; setTimeout(tutCheck);
-  const it = [['can','물뿌리개',me.inv.can],['rod','낚싯대',me.inv.rod],['pick','곡괭이',me.inv.pick],['sword',me.inv.sword ? `${weapon().name} (공격력 ${weapon().atk})` : '검',me.inv.sword]];
   $('swingBtn').hidden = !me.inv.sword; snowBtnUpdate(); darkHud();
   if (darkDown && !zoneId.startsWith('dark:')){ $('quest').hidden = false; $('quest').innerHTML = '<b style="color:#ff4f87">기절했어요</b>친구가 다가와 눌러 주면 일어나요 · 잠깐 쉬어요'; }
-  $('bar').innerHTML = it.map(([e,n,c])=>`<div class="${c?'':'off'}" title="${n}" aria-label="${n}${c?'':' 없음'}">${ui(e,'bi')}</div>`).join('') + `<div id="bagBtn" title="가방" aria-label="가방" style="cursor:pointer">${ui('bag','bi')}</div>`;
-  $('bagBtn').onclick = showBag;
+  renderQuick();
   if (!$('npcPanel').hidden && $('npcPanel').dataset.kind==='npc') renderNpcPanel();
 }
 const wxClockText = () => { const d = new Date(Date.now() + serverOffset + 9*3600000), w = wxNow(); return `${w[1]} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; };
@@ -2286,6 +2289,7 @@ function invAdd(key, n=1){
   const [cat, id] = key.split(':'); const b = bagOf(cat); const cur = b[id]||0; let next = cur + n;
   if (next > STACK_MAX){ const over = next - STACK_MAX; next = STACK_MAX; const now = performance.now(); if (now - stackToastT > 1500){ stackToastT = now; toast(`${itemName(key)}은(는) 500 개까지만 쌓여요. ${over} 개는 가방에 못 넣었어요`); } }
   b[id] = next; if (b[id] <= 0) delete b[id];
+  if (me?.quick && me.quick.includes(key)) queueMicrotask(quickCounts);
   return next - cur;
 }
 const invRoom = key => STACK_MAX - invCount(key);
@@ -2527,6 +2531,50 @@ function eat(k){
   playerHp = Math.min(maxHp(), playerHp + f.hp); playerSta = Math.min(maxSta(), playerSta + f.sta);
   setExpr('happy', 1500); saveMe(); renderHud();
   toast(`${itemName(k)}을(를) 먹었어요 · 체력 +${Math.round(playerHp-h0)} · 기력 +${Math.round(playerSta-s0)}`, k);
+}
+
+// 퀵슬롯: 하단 막대에 음식 3 칸. 누르면 바로 먹고, 꾹 누르면 바꾸거나 비워요 (PC 는 숫자 1·2·3)
+const QUICK_N = 3;
+const quickKeys = () => { const a = String(me?.quick || '').split('|'); return Array.from({length:QUICK_N}, (_,i)=>a[i] || ''); };
+function quickSet(i, k){ const a = quickKeys(); a[i] = k || ''; me.quick = a.join('|'); saveMe(); renderQuick(); }
+function renderQuick(){
+  const bar = $('bar'); if (!bar || !me || admin) return;
+  bar.innerHTML = quickKeys().map((k,i)=> k
+    ? `<div class="qk ${invCount(k) ? '' : 'off'}" data-qk="${i}" title="${esc(itemName(k))}" aria-label="퀵 ${i+1} · ${esc(itemName(k))} ${invCount(k)} 개"><i>${i+1}</i>${iconImg(k,'bi')}<span>${invCount(k)}</span></div>`
+    : `<div class="qk empty" data-qk="${i}" aria-label="빈 퀵슬롯 ${i+1}">+</div>`).join('')
+    + `<div class="sep"></div><div id="bagBtn" title="가방" aria-label="가방" style="cursor:pointer">${ui('bag','bi')}</div>`;
+  $('bagBtn').onclick = showBag;
+  bar.querySelectorAll('[data-qk]').forEach(el=>{ const i = +el.dataset.qk; let held = 0, long = false;
+    el.onpointerdown = ()=>{ long = false; clearTimeout(held); held = setTimeout(()=>{ long = true; quickPick(i); }, 500); };
+    el.onpointerup = el.onpointerleave = el.onpointercancel = ()=>clearTimeout(held);
+    el.oncontextmenu = e=>e.preventDefault();
+    el.onclick = ()=>{ if (!long) quickUse(i); }; });
+}
+// 가방이 바뀌면 개수만 살짝 고쳐요 (누르는 중에 칸을 다시 만들지 않게)
+function quickCounts(){ const bar = $('bar'); if (!bar || !me) return; quickKeys().forEach((k,i)=>{ const el = bar.querySelector(`[data-qk="${i}"]`); if (!k || !el) return; const n = invCount(k), sp = el.querySelector('span'); if (sp) sp.textContent = n; el.classList.toggle('off', !n); }); }
+function quickUse(i){
+  const k = quickKeys()[i];
+  if (!k) return quickPick(i);
+  if (darkDown) return toast('기절해서 먹을 수 없어요');
+  if (invCount(k) < 1) return toast(`${itemName(k)}이(가) 다 떨어졌어요 · 칸을 꾹 누르면 바꿀 수 있어요`, k);
+  if (playerHp >= maxHp() && playerSta >= maxSta()) return toast('체력도 기력도 꽉 차 있어요 · 아껴 둘게요', k); // 잘못 눌러서 버리지 않게
+  eat(k);
+}
+function quickFoods(){ return ['dish','crop','fish','forage'].flatMap(itemsOf).filter(([k])=>foodOf(k)).sort((a,b)=>{ const fa = foodOf(a[0]), fb = foodOf(b[0]); return (fb.hp+fb.sta) - (fa.hp+fa.sta); }); }
+function quickPick(i){
+  const cur = quickKeys()[i], list = quickFoods();
+  openPanel(`퀵 ${i+1} 번 칸에 넣을 음식`, `<p class="mnote" style="margin-top:0">가방에 있는 먹을 것만 보여요. 칸을 누르면 바로 먹고, 꾹 누르면 여기로 와요.</p>`
+    + (cur ? `<button class="np" data-id="-"><span class="np-name">${iconImg(cur)} ${esc(itemName(cur))} <small>지금 넣어 둔 것</small></span><span class="np-place">칸 비우기</span></button>` : '')
+    + (list.length ? list.map(([k,n])=>{ const f = foodOf(k); return `<button class="np" data-id="${esc(k)}"><span class="np-name">${iconImg(k)} ${esc(itemName(k))} <small>${n} 개</small></span><span class="np-place">체력 +${f.hp} · 기력 +${f.sta}</span></button>`; }).join('') : '<p class="mnote">먹을 게 없어요. 요리하거나 수확해 봐요.</p>'),
+    b=>{ const k = b.dataset.id; quickSet(i, k === '-' ? '' : k); $('npcPanel').hidden = true; toast(k === '-' ? `퀵 ${i+1} 번 칸을 비웠어요` : `퀵 ${i+1} 번 칸에 ${itemName(k)}을(를) 넣었어요`, k === '-' ? undefined : k); });
+}
+// 가방에서 [퀵슬롯에 넣기]: 빈 칸이 있으면 거기, 없으면 바꿀 칸을 골라요
+function quickAssign(k){
+  const a = quickKeys(), at = a.indexOf(k);
+  if (at >= 0) return toast(`이미 퀵 ${at+1} 번 칸에 있어요`, k);
+  const e = a.indexOf(''); if (e >= 0){ quickSet(e, k); return toast(`퀵 ${e+1} 번 칸에 넣었어요`, k); }
+  return openPanel('어느 칸과 바꿀까요?', a.map((q,i)=>`<button class="np" data-id="${i}"><span class="np-name">${iconImg(q)} 퀵 ${i+1} 번 · ${esc(itemName(q))}</span><span class="np-place">이 칸에 넣기</span></button>`).join(''),
+    b=>{ const i = +b.dataset.id; quickSet(i, k); $('npcPanel').hidden = true; toast(`퀵 ${i+1} 번 칸에 ${itemName(k)}을(를) 넣었어요`, k); }), true;
 }
 function gainExp(n){
   if (!me || !(n > 0)) return;
@@ -4663,7 +4711,7 @@ function showBag(sel){
      ${ringRow()}
      <div class="np" style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" id="dxF">물고기 도감 ${Object.keys(me.dex||{}).length}/50</button><button class="mini" id="dxO">광석 도감 ${Object.keys(me.odex||{}).length}/40</button><button class="mini" id="dxG">채집 도감 ${Object.keys(me.gdex||{}).length}/${FORAGE.length}</button><button class="mini" id="dxM">몬스터 도감 ${Object.keys(me.mdex||{}).length}/${Object.keys(MONSTERS).length}</button><button class="mini" id="bgSend">거래소에 올리기</button><button class="mini" id="bgMarket">거래소</button><button class="mini" id="bgPrice">오늘의 시세</button><button class="mini" id="bgStock">📺 홈쇼핑</button><button class="mini" id="bgCloset">옷</button><button class="mini" id="bgQuest">퀘스트</button><button class="mini" id="bgAch">업적</button></div>`));
   invBind(bagState, ()=>showBag(), (el,k)=>{ const acts = [];
-    if (foodOf(k)) acts.push(['먹기', ()=>{ eat(k); showBag(); }]);
+    if (foodOf(k)) acts.push(['먹기', ()=>{ eat(k); showBag(); }], ['퀵슬롯에 넣기', ()=>{ if (!quickAssign(k)) showBag(); }]);
     const kc = k.split(':')[0];
     if (kc==='wear') acts.push(['입기', ()=>{ wearItem(k); showBag(); }]);
     if (kc==='umb') acts.push(['우산으로 쓰기', ()=>{ useUmb(k); showBag(); }]);
@@ -4731,6 +4779,7 @@ addEventListener('keydown', e=>{
   if (e.key==='Escape'){ closeTalk(); $('chatin').blur(); return; }
   if (typing()) return;
   if (darkDown) return;
+  if (/^[1-9]$/.test(e.key) && +e.key <= QUICK_N && !e.repeat){ e.preventDefault(); quickUse(+e.key - 1); return; }
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase()==='f' || e.key.toLowerCase()==='j'){ e.preventDefault(); swing(); return; }
   if (e.key===' '||e.key.toLowerCase()==='e'){ e.preventDefault(); if (!fishTap()){ if (me.inv.sword && nearFoe()) swing(); else interactNear(); } }
