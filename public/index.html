@@ -1814,7 +1814,7 @@ function npcActions(n){
   if (n.id==='dandan') acts.push(['요리하기', cookPanel]);
   if (n.id!=='momo' && BUYERS[n.id]) acts.push(['물건 팔기', ()=>sellPanel(n)]);
   if (n.id==='tori') acts.push(['오늘의 심부름', errandPanel], [`우체국 편지함${unreadLetters() ? ' ('+unreadLetters()+')' : ''}`, ()=>postPanel()]);
-  if (n.id==='bori') acts.push(['공방 (텃밭·가구)', workshopPanel], ['집 늘리기·인테리어', housePanel]);
+  if (n.id==='bori') acts.push(['공방 (텃밭·가구)', workshopPanel], ['반지 공방', ringPanel], ['집 늘리기·인테리어', housePanel]);
   if (n.id==='mongsil') acts.push(['옷가게 · 갈아입기', clothesPanel], ['우산 가게', umbPanel]);
   if (n.id==='kongi' && me.inv.sword) acts.push(['경비대 무기고', weaponPanel]);
   if (n.id==='olly') acts.push(['박물관 기증', museumPanel]);
@@ -2444,7 +2444,26 @@ const COMBAT_ZONES = {forest:6, deepforest:7, seacave:5, cave:7, starhill:5, cav
 // 레벨이 오를 때마다 최대 체력·최대 기력이 10 씩 늘어요. 경험치는 퀘스트·몬스터·이야기·채집·낚시·채굴에서 받아요
 const LV_MAX = 50;
 const lvOf = () => Math.max(1, Math.min(LV_MAX, (me && me.lv) || 1));
-const maxHp = () => 100 + (lvOf()-1)*10, maxSta = () => 100 + (lvOf()-1)*10;
+// 반지: 보리 공방에서 만들고 하나만 껴요. 최대 체력을 올리고 막는 힘을 더해 줘요 (되팔 수 없어요)
+// [id, 이름, 최대 체력, 골드, 재료, 효과, 색] · 효과: dr 받는 피해 감소, bossDr 보스 탄막 추가 감소, regen 회복 배수, noSlow 느려짐 무시, sta 최대 기력, kb 밀려남 배수, shield 보호막 주기(초), phoenix 하루 한 번 바로 일어남
+const RING_LIST = [
+  ['r01','솜털 반지',50,30000,[['ore:o03',5]],{},'#f3e6f0'],
+  ['r02','단단 조약돌 반지',80,50000,[['ore:o11',5]],{dr:.03},'#b9c2cc'],
+  ['r03','이슬 반지',100,80000,[['ore:o12',3]],{regen:1.5},'#bfe8ff'],
+  ['r04','산호 반지',130,110000,[['ore:o35',2]],{noSlow:1},'#ff9faf'],
+  ['r05','별사탕 반지',160,150000,[['ore:o21',5]],{sta:50},'#ffd23f'],
+  ['r06','수호 고리',200,200000,[['ore:o30',3],['ore:o21',3]],{dr:.08},'#ff4f6f'],
+  ['r07','은달 반지',250,270000,[['ore:o36',2]],{kb:.5},'#dfe8ff'],
+  ['r08','꽃잎 방패 반지',300,350000,[['ore:o36',3],['ore:o38',2]],{shield:20},'#ffb3d9'],
+  ['r09','불사조 깃털 반지',400,450000,[['ore:o38',1],['ore:o30',3]],{phoenix:1},'#ff7a2f'],
+  ['r10','별고래의 맹세',500,600000,[['loot:m35',1],['ore:o38',2]],{dr:.12, bossDr:.2},'#d9c9ff'],
+];
+const RINGS = Object.fromEntries(RING_LIST.map(r=>[r[0], {name:r[1], hp:r[2], gold:r[3], need:r[4], fx:r[5], color:r[6]}]));
+const ring = () => (me && RINGS[me.inv?.ring]) || null, ringFx = () => ring()?.fx || {};
+let ringShieldAt = 0;
+function ringDmg(d, boss){ const f = ringFx(), t = performance.now(); if (f.shield && t - ringShieldAt > f.shield*1000){ ringShieldAt = t; fx.push({x:pos.x, y:pos.y-70, text:'보호막!', t, color:'#ffb3d9'}); return 0; } return Math.max(1, Math.round(d * (1 - (f.dr||0) - (boss ? (f.bossDr||0) : 0)))); }
+const ringKb = n => n * (ringFx().kb || 1);
+const maxHp = () => 100 + (lvOf()-1)*10 + (ring()?.hp || 0), maxSta = () => 100 + (lvOf()-1)*10 + (ringFx().sta || 0);
 const expNeed = lv => Math.round(40 + lv*30 + 3*lv*lv); // 뒤로 갈수록 점점 어려워져요 (Lv1→2: 73, Lv10→11: 640, Lv30→31: 3,640, Lv49→50: 8,713)
 // 기력: 일할 때마다 조금씩 써요. 천천히 차오르고, 날이 바뀌면 가득, 먹으면 바로 차요
 const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10, snow:2, forage:1};
@@ -2463,7 +2482,7 @@ function loadStats(){
   if (typeof me.staAt === 'number') playerSta = Math.min(maxSta(), playerSta + Math.max(0, (Date.now() + serverOffset - me.staAt) / 60000) * 5);
 }
 function updateStats(dt, t){
-  if (!darkDown && t - lastHurt > 8000 && playerHp < maxHp()) playerHp = Math.min(maxHp(), playerHp + 1.5*dt);
+  if (!darkDown && t - lastHurt > 8000 && playerHp < maxHp()) playerHp = Math.min(maxHp(), playerHp + 1.5*dt*(ringFx().regen || 1));
   if (playerSta < maxSta()) playerSta = Math.min(maxSta(), playerSta + dt/12); // 1 분에 5 씩
 }
 // 먹으면 차는 양: 비싼 것일수록 많이. 요리는 체력·기력 모두, 작물은 기력 위주
@@ -2618,8 +2637,8 @@ function updateMobs(dt, t){
       if (l > 220){ mob.x = mob.tx; mob.y = mob.ty; } else if (l > 1){ const k = Math.min(1, dt*6); mob.x += dx*k; mob.y += dy*k; }
     }
     if (d < (m.boss ? 52 : 30) && mob.cd <= 0 && !talking && !darkDown && t > wakeGuardUntil){
-      mob.cd = m.boss ? 1.6 : 1.2; playerHp -= m.atk; lastHurt = t; pushPlayer(pos.x-mob.x, pos.y-mob.y, 18); setExpr('surprised', 1200);
-      fx.push({x:pos.x, y:pos.y-50, text:'-'+m.atk, t, color:'#ff3b6b'});
+      mob.cd = m.boss ? 1.6 : 1.2; const dm = ringDmg(m.atk, false); playerHp -= dm; lastHurt = t; pushPlayer(pos.x-mob.x, pos.y-mob.y, ringKb(18)); setExpr('surprised', 1200);
+      if (dm) fx.push({x:pos.x, y:pos.y-50, text:'-'+dm, t, color:'#ff3b6b'});
       if (playerHp <= 0) return faint();
     }
   }
@@ -2653,6 +2672,21 @@ function weaponPanel(){
         me.inv.weapons = [...own, id]; toast(`${w.name}을(를) 만들었어요!`);
       } else toast(`${w.name}을(를) 들었어요 · 공격력 ${w.atk}`);
       me.inv.weapon = id; syncStats(); saveMe(); renderHud(); weaponPanel(); });
+}
+function ringFxText(f){ return [f.dr ? `받는 피해 -${Math.round(f.dr*100)}%` : '', f.bossDr ? `보스 탄막 -${Math.round(f.bossDr*100)}%` : '', f.regen ? `체력 회복 ${f.regen}배` : '', f.noSlow ? '느려짐 무시' : '', f.sta ? `최대 기력 +${f.sta}` : '', f.kb ? '밀려남 절반' : '', f.shield ? `${f.shield}초마다 한 번 막기` : '', f.phoenix ? '하루 한 번 기절 즉시 30%로 일어남' : ''].filter(Boolean).join(' · '); }
+function ringPanel(){
+  const own = me.inv.rings || [];
+  openPanel(`보리의 반지 공방 · 💰 ${me.inv.gold.toLocaleString()} G`, `<p class="mnote" style="margin-top:0">반지는 하나만 낄 수 있어요. 최대 체력이 늘고 몸을 지켜 줘요. 만든 반지는 되팔 수 없어요.</p>` +
+    RING_LIST.map(([id,name,hp,gold,need,f])=>{ const has = own.includes(id), on = me.inv.ring === id;
+      const cost = [gold.toLocaleString()+' G', ...need.map(([k,n])=>`${itemName(k)} ${invCount(k)}/${n}`)].join(' · ');
+      return `<button class="np" data-id="${id}"><span class="np-name">💍 ${name} <small>최대 체력 +${hp}</small></span><span class="np-place">${on ? '끼는 중 (누르면 빼기)' : has ? '끼기' : '만들기'}</span><span class="np-day">${ringFxText(f) || '추가 효과 없음'}${has ? '' : ' · ' + cost}</span></button>`; }).join(''),
+    b=>{ const id = b.dataset.id, r = RINGS[id];
+      if (!own.includes(id)){
+        if (me.inv.gold < r.gold || r.need.some(([k,n])=>invCount(k) < n)) return toast('재료나 돈이 모자라요');
+        me.inv.gold -= r.gold; for (const [k,n] of r.need) invAdd(k, -n); me.inv.rings = [...own, id]; me.inv.ring = id; toast(`${r.name}을(를) 만들어 꼈어요! 최대 체력 +${r.hp}`);
+      } else if (me.inv.ring === id){ me.inv.ring = null; toast(`${r.name}을(를) 뺐어요`); }
+      else { me.inv.ring = id; toast(`${r.name}을(를) 꼈어요 · 최대 체력 +${r.hp}`); }
+      playerHp = Math.min(playerHp, maxHp()); playerSta = Math.min(playerSta, maxSta()); syncStats(); saveMe(); renderHud(); ringPanel(); });
 }
 const DIRV = {left:[-1,0], right:[1,0], up:[0,-1], down:[0,1]};
 let swingAt = -1e9, swingDir = 'down', lunge = 0;
@@ -2707,7 +2741,9 @@ function hitMob(mob, t, vx, vy){
   const id = mob.id; // 체력은 다 같이: 서버에서 깎고, 쓰러지면 친 사람 모두에게 보상 (onMobs)
   net.mobHit(zoneId, mob.slot, mob.gen, dmg).then(r=>{ if (r && r.killed && (id==='m28' || MONSTERS[id].boss) && net.sendChat) net.sendChat(`(${MONSTERS[id].name}을(를) 물리쳤다!)`).catch(()=>{}); }).catch(()=>{});
 }
-function faint(){ return darkRespawn(); }
+function faint(){ // 불사조 깃털 반지: 하루 한 번은 쓰러지자마자 일어나요 (다크 방 안에서는 안 돼요)
+  if (ringFx().phoenix && me.phoenixDay !== today() && !zoneId.startsWith('dark:')){ me.phoenixDay = today(); playerHp = Math.round(maxHp()*.3); wakeGuardUntil = performance.now() + 3000; fx.push({x:pos.x, y:pos.y-70, text:'불사조!', t:performance.now(), color:'#ff7a2f'}); toast('불사조 깃털 반지가 빛나며 다시 일어났어요 (오늘은 한 번만)'); saveMe(); renderHud(); return; }
+  return darkRespawn(); }
 // 아무도 깨워 주지 않을 때: 집 앞에서 깨어나요 (일반 모드)
 function wakeAtHome(){
   darkDown = null; playerHp = maxHp(); mobs = []; renderHud();
@@ -2727,7 +2763,7 @@ let bShots = [], bWarns = [], bQ = [], bBooms = [], bFxZone = '', bPat = {}, pla
 function onBossAtk(zone, a){ if (!a || zone !== zoneId || !BOSS_PAT[zone] || !MONSTERS[a.id]) return; const key = a.at + '|' + a.k; if (key === bAtkSeen) return; bAtkSeen = key; const delay = a.at - mobNow(); if (delay < -700) return; bQ.push({at:performance.now() + Math.max(0, delay), fn:t => bossFire(a, t)}); }
 function bfxHurt(dmg, fx_, fy, t){
   if (!$('talk').hidden || darkDown || t < wakeGuardUntil) return;
-  playerHp -= dmg; lastHurt = t; pushPlayer(pos.x-fx_, pos.y-fy, 14); setExpr('surprised', 1000);
+  dmg = ringDmg(dmg, true); if (!dmg) return; playerHp -= dmg; lastHurt = t; pushPlayer(pos.x-fx_, pos.y-fy, ringKb(14)); setExpr('surprised', 1000);
   fx.push({x:pos.x, y:pos.y-50, text:'-'+dmg, t, color:'#ff3b6b'});
   if (playerHp <= 0){ bShots = []; bWarns = []; bQ = []; faint(); }
 }
@@ -2777,7 +2813,7 @@ function updateBossFx(dt, t){
     if (s.bounce > 0){ if (s.x < 0 || s.x > z.W){ s.vx *= -1; s.bounce--; } if (s.y < 0 || s.y > z.H){ s.vy *= -1; s.bounce--; } }
     if (s.life <= 0 || s.x < -40 || s.y < -40 || s.x > z.W+40 || s.y > z.H+40){ bShots.splice(i, 1); continue; }
     if ([...others.values()].some(o => o.z === zoneId && !o.down && Math.hypot(s.x-o.x, s.y-(o.y-20)) < s.r + 13)){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); continue; } // 다른 사람에게 맞은 탄도 똑같이 사라져요
-    if (Math.hypot(s.x-pos.x, s.y-(pos.y-20)) < s.r + 13){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); if (s.kind === 'web' && $('talk').hidden && !darkDown){ playerSlowUntil = t + 2000; toast('거미줄에 걸려 느려졌어요'); } bfxHurt(s.dmg, s.x - s.vx, s.y - s.vy, t); }
+    if (Math.hypot(s.x-pos.x, s.y-(pos.y-20)) < s.r + 13){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); if (s.kind === 'web' && $('talk').hidden && !darkDown && !ringFx().noSlow){ playerSlowUntil = t + 2000; toast('거미줄에 걸려 느려졌어요'); } bfxHurt(s.dmg, s.x - s.vx, s.y - s.vy, t); }
   }
   for (let i = bWarns.length-1; i >= 0; i--){ const w = bWarns[i]; if (t < w.t1) continue; bWarns.splice(i, 1);
     let hit = false;
@@ -4037,7 +4073,7 @@ function updateBoss(dt, t){
   const d = Math.hypot(pos.x-BOSS.x, pos.y-BOSS.y);
   bossCd -= dt;
   bossHurt -= dt;
-  if (d < 70 && bossCd <= 0 && $('talk').hidden && !darkDown && t > wakeGuardUntil){ bossCd = 1.6; playerHp -= BOSS.atk; lastHurt = t; pushPlayer(pos.x-BOSS.x, pos.y-BOSS.y, 30); setExpr('surprised', 1200); fx.push({x:pos.x, y:pos.y-50, text:'-'+BOSS.atk, t, color:'#ff3b6b'}); if (playerHp <= 0) return faint(); }
+  if (d < 70 && bossCd <= 0 && $('talk').hidden && !darkDown && t > wakeGuardUntil){ bossCd = 1.6; const dm = ringDmg(BOSS.atk, false); playerHp -= dm; lastHurt = t; pushPlayer(pos.x-BOSS.x, pos.y-BOSS.y, ringKb(30)); setExpr('surprised', 1200); if (dm) fx.push({x:pos.x, y:pos.y-50, text:'-'+dm, t, color:'#ff3b6b'}); if (playerHp <= 0) return faint(); }
   if (bossPending && t - bossFlushT > 1000){ bossFlushT = t; const p = bossPending; bossPending = 0; net.bossHit && net.bossHit(p); }
 }
 function drawBoss(d, t){
@@ -4392,7 +4428,7 @@ function darkSwing(cx, cy, vx, vy, t){
   const dmg = swordAtk(); darkPending += dmg; darkHurtT = .2; fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
   me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.start||0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
 }
-function darkHurt(n, t){ if (darkGuard > 0) return; playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0) darkRespawn(); }
+function darkHurt(n, t){ if (darkGuard > 0) return; n = ringDmg(n, false); if (!n) return; playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0) darkRespawn(); }
 function updateDark(dt, t){
   if (t > darkHudT){ darkHudT = t + 1000; if (zoneId.startsWith('dark:')) darkHud(); }
   const z = Z(); if (!z.dark) return; const npc = z.dark, r = roomOf(npc);
