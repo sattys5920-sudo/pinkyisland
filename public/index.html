@@ -4082,9 +4082,34 @@ function darkDoorLabel(c, npc, t){
   const [x, y] = darkDoorOf(npc), st = darkDoorState(npc), n = NPC[npc];
   tag(c, `${n.name}의 집 · ${{open:'열림', clear:'꿰매짐', locked:'잠김', missed:'닫힘'}[st]}`, x, y-80, st === 'open' ? '#ff4f87' : null);
 }
+// ----- 다크 모드: 주민이 서 있던 자리에 남은 물건 -----
+const xs = (c, x, y, r=2.2) => { c.moveTo(x-r, y-r); c.lineTo(x+r, y+r); c.moveTo(x+r, y-r); c.lineTo(x-r, y+r); }; // 검은 실 꿰맴 자국
+const shd = (d, x, y, rx, ry, a) => { const c = d.ctx; c.save(); c.globalAlpha = a; c.fillStyle = '#1a1020'; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, 7); c.fill(); c.restore(); };
+const RELICS = {
+  hana:{name:'흙 묻은 밀짚모자', line:'모자 옆의 새싹이 시들어 있어요. 아무도 물을 주지 않았나 봐요.', draw:(d, x, y)=>{ d.ell(x, y-4, 17, 6, '#c9a35a'); d.ell(x, y-9, 9, 6, '#d8b46a'); d.line(c=>{ c.moveTo(x-8, y-7); c.lineTo(x+8, y-7); }, '#7a4a3a', 2); d.dot(x-10, y-3, 2.5, '#6b5340'); d.dot(x+6, y-2, 2, '#6b5340'); d.line(c=>{ c.moveTo(x+20, y); c.quadraticCurveTo(x+22, y-8, x+27, y-9); }, '#8a8a5a', 1.4); d.ell(x+27, y-9, 3, 1.6, '#8f8660'); d.line(c=>xs(c, x-3, y-10), '#1a1020', 1.1); }},
+  momo:{name:'한 조각 잘린 케이크', line:'촛불이 꺼져 있어요. 잘려 나간 한 조각은 어디에도 없어요.', draw:(d, x, y)=>{ d.ell(x, y, 19, 5, '#e8e0ea'); d.shape(()=>{ const c = d.ctx; c.beginPath(); c.moveTo(x, y-12); c.arc(x, y-12, 15, -Math.PI*.15, Math.PI*1.35); c.closePath(); }, '#f2c7d6', [x, y-12, 15]); d.rr(x-14, y-15, 28, 13, 5, '#f6d8e2'); d.rr(x-14, y-17, 28, 5, 3, '#fff3f6'); d.rr(x-1, y-30, 3, 13, 1, '#e9e0ff'); d.line(c=>{ c.moveTo(x+.5, y-30); c.quadraticCurveTo(x+4, y-36, x+1, y-42); }, 'rgba(60,50,70,.6)', 1); d.line(c=>{ xs(c, x-7, y-9); xs(c, x+7, y-9); }, '#1a1020', 1); }},
+  dodo:{name:'불 꺼진 광부 헬멧', line:'헬멧 램프를 켜 보려 했지만 깜빡이지도 않아요.', draw:(d, x, y)=>{ shd(d, x, y, 17, 5, .25); d.shape(()=>{ const c = d.ctx; c.beginPath(); c.arc(x, y-3, 14, Math.PI, 0); c.closePath(); }, '#b8a24a', [x, y-8, 14]); d.ell(x, y-3, 16, 3.5, '#9a8640'); d.circle(x, y-12, 4.2, '#5a5560'); d.dot(x-1.2, y-13.2, 1.3, '#8a8590'); d.line(c=>{ c.moveTo(x+6, y-14); c.lineTo(x+10, y-6); }, '#1a1020', 1); d.line(c=>{ xs(c, x-7, y-7, 1.8); }, '#1a1020', 1); }},
+  toto:{name:'금이 간 동그란 안경', line:'촌장님 안경이에요. 한쪽 알에 금이 가 있어요.', draw:(d, x, y)=>{ shd(d, x, y, 18, 4, .2); const c = d.ctx; c.save(); c.lineWidth = 2.2; c.strokeStyle = '#5a4a3a'; c.fillStyle = 'rgba(200,220,235,.35)'; for (const ox of [-8, 8]){ c.beginPath(); c.ellipse(x+ox, y-4, 6.5, 5.5, 0, 0, 7); c.fill(); c.stroke(); } c.beginPath(); c.moveTo(x-1.5, y-5); c.quadraticCurveTo(x, y-7, x+1.5, y-5); c.stroke(); c.lineWidth = .9; c.strokeStyle = '#2a2030'; c.beginPath(); c.moveTo(x+4, y-8); c.lineTo(x+8, y-4); c.lineTo(x+6, y-1); c.moveTo(x+8, y-4); c.lineTo(x+12, y-5); c.stroke(); c.restore(); }},
+  bori:{name:'손잡이가 부러진 망치', line:'보리가 매일 쓰던 망치예요. 손잡이가 두 동강 났어요.', draw:(d, x, y)=>{ shd(d, x, y, 20, 4.5, .22); d.rr(x-14, y-9, 13, 9, 2, '#6e6a72'); d.rr(x-2, y-6, 11, 4, 2, '#9a6a44'); d.rr(x+12, y-4, 11, 4, 2, '#9a6a44'); d.line(c=>{ c.moveTo(x+9, y-6); c.lineTo(x+11, y-3); c.lineTo(x+9, y-2); }, '#4a2e20', 1); d.line(c=>xs(c, x-8, y-5, 1.8), '#1a1020', 1); }},
+  mongsil:{name:'엉킨 실타래와 바늘', line:'실이 끝도 없이 엉켜 있어요. 바늘은 아직 꽂혀 있어요.', draw:(d, x, y)=>{ shd(d, x, y, 15, 4, .22); d.circle(x, y-9, 9, '#b9a7c9'); const c = d.ctx; c.save(); c.strokeStyle = '#7a6890'; c.lineWidth = .8; for (let i=0;i<6;i++){ c.beginPath(); c.ellipse(x, y-9, 9, 3+i, i*.5, 0, 7); c.stroke(); } c.strokeStyle = '#1a1020'; c.lineWidth = 1; c.beginPath(); c.moveTo(x+8, y-6); c.bezierCurveTo(x+18, y-2, x+12, y+4, x+24, y+1); c.stroke(); c.strokeStyle = '#d8d8e0'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x-4, y-20); c.lineTo(x+5, y-4); c.stroke(); c.restore(); }},
+  tori:{name:'뜯기지 않은 편지', line:'받는 사람 칸이 비어 있어요. 누구한테 보내려던 걸까요.', draw:(d, x, y)=>{ shd(d, x, y, 16, 4, .2); d.rr(x-13, y-15, 26, 16, 2, '#efe6d8'); d.line(c=>{ c.moveTo(x-13, y-15); c.lineTo(x, y-6); c.lineTo(x+13, y-15); }, '#b8a890', 1); d.circle(x, y-7, 3, '#8a2a3a'); d.line(c=>{ xs(c, x-8, y-3, 1.6); xs(c, x+8, y-3, 1.6); }, '#1a1020', .9); }},
+  olly:{name:'멈춘 회중시계', line:'바늘이 3시 17분에 멈춰 있어요.', draw:(d, x, y)=>{ shd(d, x, y, 14, 4, .22); d.line(c=>{ c.moveTo(x, y-20); c.quadraticCurveTo(x+14, y-26, x+18, y-2); }, '#b89a4a', 1.2); d.circle(x, y-10, 10, '#c9a84f'); d.circle(x, y-10, 7.6, '#f4efe2'); d.line(c=>{ c.moveTo(x, y-10); c.lineTo(x+4.5, y-9); c.moveTo(x, y-10); c.lineTo(x+2.6, y-4.5); }, '#2a2030', 1.1); d.line(c=>{ c.moveTo(x-5, y-15); c.lineTo(x-1, y-11); c.lineTo(x-4, y-7); }, 'rgba(40,30,50,.6)', .7); }},
+  pengpeng:{name:'깨진 랜턴', line:'유리가 깨져 있어요. 등대 불은 오늘 밤 켜지지 않을 거예요.', draw:(d, x, y)=>{ shd(d, x, y, 13, 4, .22); d.rr(x-8, y-20, 16, 19, 3, 'rgba(180,200,210,.45)'); d.rr(x-9, y-3, 18, 4, 2, '#4a4e58'); d.rr(x-7, y-23, 14, 4, 2, '#4a4e58'); d.line(c=>{ c.moveTo(x-4, y-27); c.quadraticCurveTo(x, y-32, x+4, y-27); }, '#4a4e58', 1.4); d.line(c=>{ c.moveTo(x-3, y-18); c.lineTo(x+1, y-12); c.lineTo(x-2, y-6); c.moveTo(x+1, y-12); c.lineTo(x+6, y-10); }, '#2a2030', .8); d.dot(x+13, y-1, 1.5, '#b8c8d0'); d.dot(x+17, y+1, 1, '#b8c8d0'); }},
+  dandan:{name:'식은 커피잔', line:'김 대신 검은 실 한 가닥이 올라와 있어요.', draw:(d, x, y, t)=>{ d.ell(x, y, 15, 4.5, '#e2dce6'); d.rr(x-8, y-13, 16, 12, 4, '#f2eef4'); d.line(c=>{ c.arc(x+10, y-7, 3.6, -1.4, 1.4); }, '#d8d2dc', 2); d.ell(x, y-12.5, 7, 2, '#3a2a24'); d.line(c=>{ const w = Math.sin(t/700)*3; c.moveTo(x, y-13); c.bezierCurveTo(x+w, y-20, x-w, y-26, x+w*.6, y-34); }, '#1a1020', 1); }},
+  kongi:{name:'떨어진 경비대 배지', line:'콩이의 배지예요. 늘 가슴에 반짝이던 건데.', draw:(d, x, y)=>{ shd(d, x, y, 12, 3.5, .22); d.shape(()=>{ const c = d.ctx; c.beginPath(); c.moveTo(x, y-16); c.lineTo(x+9, y-11); c.lineTo(x+7, y-2); c.lineTo(x, y+1); c.lineTo(x-7, y-2); c.lineTo(x-9, y-11); c.closePath(); }, '#a89a5a', [x, y-8, 9]); d.circle(x, y-8, 3.4, '#5361b3'); d.line(c=>{ c.moveTo(x+3, y-15); c.lineTo(x+1, y-9); c.lineTo(x+4, y-4); }, '#2a2030', .8); d.line(c=>xs(c, x-4, y-4, 1.5), '#1a1020', .9); }},
+  bami:{name:'꽃잎이 다 떨어진 꽃다발', line:'줄기만 남았어요. 떨어진 꽃잎은 회색이에요.', draw:(d, x, y)=>{ shd(d, x, y, 16, 4, .2); d.line(c=>{ c.moveTo(x-2, y-2); c.lineTo(x-6, y-22); c.moveTo(x, y-2); c.lineTo(x+1, y-24); c.moveTo(x+2, y-2); c.lineTo(x+7, y-20); }, '#6a7a5a', 1.5); d.shape(()=>{ const c = d.ctx; c.beginPath(); c.moveTo(x-7, y-12); c.lineTo(x+7, y-12); c.lineTo(x+3, y); c.lineTo(x-3, y); c.closePath(); }, '#c9b8c4', [x, y-6, 7]); d.line(c=>{ c.moveTo(x-7, y-12); c.lineTo(x+7, y-12); }, '#1a1020', 1); for (const [px, py] of [[-12,1],[10,2],[15,-1],[-16,-1]]) d.ell(x+px, y+py, 2.6, 1.3, '#8a8290'); }},
+};
+const relicPos = n => [Math.round(n.homeX), Math.round(n.homeY)];
+function relicsHere(){ return darkOn() && !Z().dark && !Z().house ? NPCS.filter(n => n.zone === zoneId && RELICS[n.id] && !npcVisible(n)) : []; }
+function drawRelic(d, n, t){
+  const [x, y] = relicPos(n), c = d.ctx, ph = ((t/1000) + n.id.length*1.7) % 9;
+  c.save(); c.translate(x, y); c.scale(1.6, 1.6); RELICS[n.id].draw(d, 0, 0, t); c.restore();
+  if (ph < .14){ c.save(); c.globalAlpha = .28 + Math.random()*.2; c.translate((Math.random()-.5)*8, 0); drawCritter(c, x, y, n.look||{kind:n.sp.kind, fur:n.sp.fur}, t/1000, false, 1, !!n.flip); c.restore(); } // 한 프레임씩 주인의 모습이 비쳐요
+}
 function darkEntities(d, t){
   const out = [];
   if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (NPC[npc]?.zone === zoneId){ const [, y] = darkDoorOf(npc); out.push({y, draw:()=>drawDarkDoor(d, npc, t), label:()=>darkDoorLabel(d.ctx, npc, t)}); }
+  for (const n of relicsHere()) out.push({y:n.homeY, draw:()=>drawRelic(d, n, t), label:()=>{}});
   const z = Z(); if (!z.dark) return out;
   const r = roomOf(z.dark);
   for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawFurn(d, {id:pz.furn}, pz.x, pz.y), label:()=>darkObjLabel(d, pz, r, t)});
@@ -4124,6 +4149,7 @@ function drawDarkFx(c, t){
 // ----- 들어가기 · 나가기 -----
 function darkTap(w){
   if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (NPC[npc]?.zone === zoneId){ const [x, y] = darkDoorOf(npc); if (Math.abs(w.x-x) < 30 && w.y > y-80 && w.y < y+8) return {x, y:y+30, act:()=>darkEnter(npc)}; }
+  for (const n of relicsHere()){ const [x, y] = relicPos(n); if (Math.abs(w.x-x) < 36 && w.y > y-52 && w.y < y+12) return {x, y:y+34, act:()=>say(RELICS[n.id].name, RELICS[n.id].line)}; }
   const z = Z(); if (!z.dark) return null;
   for (const pz of darkPuzzles(z.dark)) if (Math.abs(w.x-pz.x) < 34 && w.y > pz.y-80 && w.y < pz.y+12) return {x:pz.x, y:pz.y+34, act:()=>darkPuzzlePanel(pz)};
   return null;
