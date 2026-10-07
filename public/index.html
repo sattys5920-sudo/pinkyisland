@@ -345,6 +345,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 .adm-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;white-space:normal}.adm-card{display:flex;gap:10px;background:rgba(255,255,255,.07);border-radius:14px;padding:8px}.adm-face{display:grid;justify-items:center;align-content:start;width:104px;flex:none;text-align:center}.adm-face img{width:104px;height:104px;background:rgba(255,240,246,.92);border-radius:12px}.adm-face b{font-size:19px;margin-top:2px}.adm-face small{font-size:13px;opacity:.85}.adm-face i.on{color:#7dff9a;font-style:normal}.adm-info{min-width:0;display:grid;gap:6px;align-content:start;font-size:15px}.adm-info ul{list-style:none;margin:0;padding:0;display:grid;gap:1px}.adm-info li small{display:inline-block;width:52px;opacity:.65;font-size:12px}.adm-info li em{opacity:.7;font-style:normal;font-size:12px}.adm-house{display:flex;gap:4px;align-items:flex-start}.adm-house img{width:34px;height:34px;border-radius:8px;flex:none}.adm-house div{display:grid;gap:1px;margin-left:4px}.adm-house small{font-size:12px;opacity:.8}.adm-info .adm-btn{justify-self:start}
 @media (max-width:640px){.adm-cards{grid-template-columns:1fr}}
 .adm-tbl{position:absolute;left:50%;top:66px;transform:translateX(-50%);width:min(1120px,calc(100% - 20px));max-height:calc(100% - 80px);background:rgba(28,22,30,.94);border-radius:16px;padding:8px 12px 10px;pointer-events:auto;display:flex;flex-direction:column;gap:6px;z-index:2}
+.adm-grant{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;padding:8px 10px;border-radius:12px;background:rgba(255,159,196,.14);font-size:15px}.adm-grant b{font-size:18px}.adm-grant input,.adm-grant select{font:inherit;padding:3px 6px;border-radius:8px;border:1px solid #e3c6d6;background:#fff}.adm-grant input[type=number]{width:70px}td small.cdl{display:block;font-size:11px;opacity:.75;line-height:1.2}
 .adm-tbl-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.adm-tbl-head b{font-size:24px}.adm-tbl-head small{opacity:.75;font-size:17px;margin-right:auto}
 .adm-tbl-scroll{overflow:auto}.adm-tbl table{border-collapse:separate;border-spacing:3px;font-size:18px;white-space:nowrap}
 .adm-tbl th{position:sticky;top:0;background:#1c161e;font-weight:400;opacity:.85;padding:2px 6px}.adm-tbl th:first-child,.adm-tbl td:first-child{position:sticky;left:0;background:#1c161e;text-align:left;z-index:1}
@@ -1171,6 +1172,8 @@ function soloNet(){
     museumGive: async (cat, id) => { const c = museum[cat] || (museum[cat] = {}); if (c[id]) return false; c[id] = {uid, nick:me.nick, at:Date.now()}; onMuseum(museum); return true; },
     darkTx: async (npc, fn) => { const st_ = soloNet.dark || (soloNet.dark = {}); const r = fn(st_[npc] ? structuredClone(st_[npc]) : null); if (r !== undefined){ if (r === null) delete st_[npc]; else st_[npc] = r; } onDarkRooms(structuredClone(st_)); return r !== undefined; },
     reviveSend: async (id, by) => { if (id === uid) onRevive({by, at:darkNow()}); },
+    grantDel: async () => {},
+    adminGrant: async (id, d) => { if (id === uid) onGrants({['g'+Date.now()]:d}); },
     reviveClear: async () => {},
     darkWipe: async npc => { const st_ = soloNet.dark || (soloNet.dark = {}); if (npc) delete st_[npc]; else for (const k in st_) delete st_[k]; onDarkRooms(structuredClone(st_)); },
     adminRemove: async id => { delete st.players[id]; onPlayers(structuredClone(st.players)); },
@@ -1227,6 +1230,8 @@ function firebaseNet(){
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
     reviveSend: (id, by) => F.set(F.ref(db, 'revive/'+id), {by:String(by).slice(0,12), at:F.serverTimestamp()}),
     reviveClear: () => F.remove(F.ref(db, 'revive/'+uid)).catch(()=>{}),
+    grantDel: id => F.remove(F.ref(db, 'grants/'+uid+'/'+id)).catch(()=>{}),
+    adminGrant: (id, d) => F.push(F.ref(db, 'grants/'+id), {...d, at:F.serverTimestamp()}),
     // 입주한 뒤 남아 있는 내 옛 선점(다른 지붕·집터)을 풀어 줘요
     cleanupClaims: async (roof, lot) => { for (const [kind, mine] of [['roofs', roof], ['lots', lot]]){ try { const v = (await F.get(F.ref(db, kind))).val() || {}; for (const [k,c] of Object.entries(v)) if (c && c.uid===uid && +k !== mine) await F.remove(F.ref(db, kind+'/'+k)).catch(()=>{}); } catch(e){} } },
     adminCapPts: (ups) => F.update(F.ref(db), ups),
@@ -1259,6 +1264,7 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'museum'), s=>onMuseum(s.val()), ()=>{});
       F.onValue(F.ref(db, 'darkRooms'), s=>onDarkRooms(s.val()), ()=>{});
       F.onValue(F.ref(db, 'revive/'+uid), s=>onRevive(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'grants/'+uid), s=>onGrants(s.val()), ()=>{});
       F.onValue(F.ref(db, 'lettersOut/'+uid), s=>onLettersOut(s.val()), ()=>{});
       F.onValue(F.ref(db, 'market'), s=>onMarket(s.val()));
       F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
@@ -1578,7 +1584,7 @@ function enterGame(doc){
   const L = LOTS[me.lot]; pos.dir = 'down';
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
   else enterZone('home', null, L.x, L.y + 18);
-  loadStats(); if (darkDown) playerHp = 0; tutorialFix(); refundStocks(); renderHud();
+  loadStats(); if (darkDown) playerHp = 0; tutorialFix(); refundStocks(); renderHud(); setTimeout(applyGrants, 1500);
   if (!solo){ net.cleanupClaims(me.roof, me.lot); net.sessionClaim(Math.random().toString(36).slice(2) + Date.now().toString(36)); }
   addLog(`${me.nick} 님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
   if (solo) addLog('혼자 보기 모드예요.', true);
@@ -3855,6 +3861,26 @@ function candyPrice(slot){
 const hasTV = () => !!TV_ID && (me.furn||[]).some(f=>f.id===TV_ID);
 // 내 별사탕: 산 방송부터 3 일 뒤 같은 시각 방송까지 팔 수 있고, 그 방송이 끝나면 녹아요. 산 묶음마다 따로 세고, 팔 때는 먼저 산 것부터
 const candyMeltName = until => { const d = new Date(slotTime(until) + 9*3600000); return `${d.getUTCMonth()+1}월 ${d.getUTCDate()}일 ${slotName(until)}`; };
+// 별사탕 기록: 사고·팔고·녹고·받은 것 (최근 30 개, 관리자 표에서 볼 수 있어요)
+function candyLog(k, n, p, until){ me.candyLog = [...(me.candyLog||[]), {t:Date.now() + serverOffset, k, n, p:p||0, u:until ?? null}].slice(-30); }
+// 관리자가 준 별사탕: grants/<내 uid> 에 쌓이면 한 번만 받아요 (받은 표시를 먼저 저장하고 지워요)
+let grantsPending = null;
+function onGrants(v){ grantsPending = v || {}; applyGrants(); }
+async function applyGrants(){
+  if (!me || admin || !grantsPending) return; const got = me.grantGot || (me.grantGot = {}), done = [];
+  for (const [id, g] of Object.entries(grantsPending)){
+    if (!g || got[id]){ done.push(id); continue; }
+    if (g.k === 'candy' && g.n > 0 && typeof g.until === 'number'){
+      if (g.until >= lastSlot()){ const c = me.candy && Array.isArray(me.candy.lots) ? me.candy : {lots:[]}, same = c.lots.find(l=>l.until===g.until);
+        if (same) same.n += g.n; else c.lots.push({n:g.n, cost:0, until:g.until}); me.candy = c; candyLog('grant', g.n, 0, g.until);
+        setTimeout(()=>say('핑키 홈쇼핑', `관리자에게서 별사탕 ${g.n} 개를 받았어요!`, [], `${candyMeltName(g.until)} 방송까지 팔 수 있어요`), 800); }
+    }
+    got[id] = Date.now(); done.push(id);
+  }
+  grantsPending = null; if (!done.length) return;
+  const keep = Object.entries(got).sort((a,b)=>b[1]-a[1]).slice(0, 60); me.grantGot = Object.fromEntries(keep);
+  try { await flushSave(); } catch(e){} for (const id of done) net.grantDel && net.grantDel(id);
+}
 function myCandy(){
   let c = me.candy; if (!c) return null;
   if (!Array.isArray(c.lots)){ // 예전 저장(판 단위): 산 방송을 모르니 그 판 마지막 방송에 샀다고 보고 3 일
@@ -3862,7 +3888,7 @@ function myCandy(){
     c = me.candy = c.n > 0 && typeof c.cycle === 'number' && lastSlot() <= until ? {lots:[{n:c.n, cost:c.cost||0, until}]} : null; saveMe(); if (!c) return null;
   }
   const now = lastSlot(), melted = c.lots.filter(l=>now > l.until).reduce((a,l)=>a+l.n, 0);
-  if (melted){ c.lots = c.lots.filter(l=>now <= l.until); toast(`별사탕 ${melted} 개가 녹아 버렸어요.... 다음엔 산 지 3 일 안에 팔아요`); saveMe(); }
+  if (melted){ c.lots.filter(l=>now > l.until).forEach(l=>candyLog('melt', l.n, 0, l.until)); c.lots = c.lots.filter(l=>now <= l.until); toast(`별사탕 ${melted} 개가 녹아 버렸어요.... 다음엔 산 지 3 일 안에 팔아요`); saveMe(); }
   c.lots = c.lots.filter(l=>l.n > 0).sort((a,b)=>a.until-b.until);
   if (!c.lots.length){ me.candy = null; return null; }
   return {lots:c.lots, n:c.lots.reduce((a,l)=>a+l.n, 0), cost:c.lots.reduce((a,l)=>a+l.cost, 0), until:c.lots[0].until};
@@ -3873,13 +3899,13 @@ function candyTrade(n){
   if (n > 0){
     n = Math.min(n, CANDY_MAX - (c ? c.n : 0), Math.floor(me.inv.gold / p)); if (n <= 0) return toast(c && c.n >= CANDY_MAX ? `별사탕은 ${CANDY_MAX} 개까지 가질 수 있어요` : '골드가 모자라요');
     me.inv.gold -= p*n; const lots = c ? c.lots : [], until = live.slot + CANDY_PER, same = lots.find(l=>l.until===until);
-    if (same){ same.n += n; same.cost += p*n; } else lots.push({n, cost:p*n, until}); me.candy = {lots}; stat('candyBought', n);
+    if (same){ same.n += n; same.cost += p*n; } else lots.push({n, cost:p*n, until}); me.candy = {lots}; stat('candyBought', n); candyLog('buy', n, p, until);
     toast(`별사탕 ${n} 개를 샀어요 · -${p*n} G`); questEvent('candyBuy', 'candy', n);
   } else {
     if (!c) return; n = Math.min(-n, c.n); const got = p*n; let left = n, base = 0;
     for (const l of c.lots){ if (!left) break; const k = Math.min(left, l.n), b = Math.round(l.cost * k / l.n); l.cost -= b; l.n -= k; left -= k; base += b; } // 먼저 산 것부터
     me.candy = c.lots.some(l=>l.n > 0) ? {lots:c.lots.filter(l=>l.n > 0)} : null;
-    me.inv.gold += got; me.earned = (me.earned||0) + got; if (got > base) stat('stockProfit', got - base); syncStats();
+    me.inv.gold += got; me.earned = (me.earned||0) + got; if (got > base) stat('stockProfit', got - base); syncStats(); candyLog('sell', n, p);
     toast(`별사탕 ${n} 개를 팔았어요 · +${got} G (${got-base >= 0 ? '+' : ''}${got-base} G)`); questEvent('candySell', 'candy', n);
   }
   saveMe(); renderHud(); tvPanel();
@@ -4948,7 +4974,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -5056,18 +5082,38 @@ async function adminKick(id){
   try { await net.adminRemove(id, p.roof, p.lot); admTbl = ''; toast(`${p.nick} 님을 내보냈어요. 자리가 하나 비었어요.`); } catch(e){ toast('내보내지 못했어요. 관리자 권한을 확인해 주세요.'); }
   renderAdmin();
 }
+// 관리자 별사탕 지급: 받을 사람 · 개수 · 언제 방송까지 팔 수 있는지 (그 방송이 끝나면 녹아요)
+const admGr = {grWho:'*', grN:'10', grDay:'', grSl:'1'};
+function grantForm(regs){
+  if (!admGr.grDay){ const d = new Date((kstParts().day + 3) * 86400000); admGr.grDay = d.toISOString().slice(0, 10); }
+  const opt = (v, t) => `<option value="${esc(v)}"${admGr.grWho === v ? ' selected' : ''}>${esc(t)}</option>`;
+  return `<div class="adm-grant"><b>별사탕 지급</b> <select id="grWho">${opt('*', '모두에게')}${regs.map(([id,p])=>opt(id, p.nick)).join('')}</select>
+    <input id="grN" type="number" min="1" max="500" value="${esc(admGr.grN)}"> 개 · <input id="grDay" type="date" value="${esc(admGr.grDay)}">
+    <select id="grSl"><option value="0"${admGr.grSl==='0' ? ' selected' : ''}>오후 1 시</option><option value="1"${admGr.grSl==='1' ? ' selected' : ''}>밤 10 시</option></select> 방송까지
+    <button data-a="grant" class="adm-btn">지급</button></div>`;
+}
+async function adminGrantGo(regs){
+  const n = Math.floor(Number(admGr.grN)), day = Math.floor(Date.parse(admGr.grDay + 'T00:00:00Z') / 86400000), until = day*2 + (admGr.grSl === '0' ? 0 : 1);
+  if (!(n > 0 && n <= 500)) return toast('개수는 1~500 개로 넣어 주세요');
+  if (!(until >= lastSlot())) return toast('기한이 이미 지났어요. 앞으로의 방송을 골라 주세요');
+  const who = admGr.grWho === '*' ? regs.map(([id])=>id) : [admGr.grWho];
+  try { await Promise.all(who.map(id => net.adminGrant(id, {k:'candy', n, until}))); toast(`별사탕 ${n} 개를 ${admGr.grWho === '*' ? '모두' : (players[admGr.grWho]?.nick || '') + ' 님'}에게 보냈어요 · ${candyMeltName(until)} 방송까지`); }
+  catch(e){ toast('보내지 못했어요. 관리자 권한을 확인해 주세요'); }
+}
 function adminTable(regs){
   const d = today(), cs = lastSlot(), cp = candyPrice(showLive()?.slot ?? cs);
-  const stk = p => { const c = p.candy; if (!c) return []; const lots = Array.isArray(c.lots) ? c.lots.filter(l=>l && l.n > 0 && cs <= l.until) : (c.n > 0 && c.cycle === cycleOf(cs) ? [c] : []); const n = lots.reduce((a,l)=>a+l.n, 0); return n ? [{n, cost:lots.reduce((a,l)=>a+(l.cost||0), 0), val:cp*n}] : []; };
+  const lotsOf = p => { const c = p.candy; if (!c) return []; const L = Array.isArray(c.lots) ? c.lots : (c.n > 0 && typeof c.cycle === 'number' ? [{n:c.n, cost:c.cost||0, until:(c.cycle + 1)*CANDY_PER - 1 + CANDY_PER}] : []); return L.filter(l=>l && l.n > 0 && cs <= l.until).sort((a,b)=>a.until-b.until); }; // 예전 저장도 게임과 같은 규칙으로 (그 판 끝 + 3 일)
+  const stk = p => { const lots = lotsOf(p), n = lots.reduce((a,l)=>a+l.n, 0); return n ? [{n, cost:lots.reduce((a,l)=>a+(l.cost||0), 0), val:cp*n, lots}] : []; };
   const sv = p => stk(p).reduce((a,x)=>a + x.val, 0), total = p => (p.inv?.gold||0) + sv(p);
   const rows = [...regs].sort(([,a],[,b])=>total(b) - total(a));
   const stCell = p => { const l = stk(p); if (!l.length) return `<td class="g" title="${esc(p.nick)} · 별사탕 없음">-</td>`;
     const v = sv(p), c = l.reduce((a,x)=>a + x.cost, 0), pl = v - c;
-    const t = `${esc(p.nick)} 별사탕 ` + l.map(x=>`${x.n}개 (평균 ${Math.round(x.cost/x.n).toLocaleString()} → 최근 방송 ${cp.toLocaleString()} G)`).join('') + ` · 손익 ${pl>=0?'+':''}${pl.toLocaleString()} G`;
-    return `<td class="g ${pl>0 ? 'up' : pl<0 ? 'dn' : ''}" title="${t}">${v.toLocaleString()} G<small>${pl>=0?'+':''}${pl.toLocaleString()}</small></td>`; };
+    const lots = l[0].lots, logs = (p.candyLog||[]).slice(-6).reverse().map(g=>`${kstTime(g.t).slice(5,16)} ${{buy:'샀어요', sell:'팔았어요', melt:'녹았어요', grant:'받았어요'}[g.k]||g.k} ${g.n}개${g.p ? ' @'+g.p : ''}`).join(' / ');
+    const t = `${esc(p.nick)} 별사탕 ` + l.map(x=>`${x.n}개 (평균 ${Math.round(x.cost/x.n).toLocaleString()} → 최근 방송 ${cp.toLocaleString()} G)`).join('') + ` · 손익 ${pl>=0?'+':''}${pl.toLocaleString()} G · 기한: ` + lots.map(x=>`${x.n}개 ${candyMeltName(x.until)}까지`).join(', ') + (logs ? ` · 최근 기록: ${esc(logs)}` : '');
+    return `<td class="g ${pl>0 ? 'up' : pl<0 ? 'dn' : ''}" title="${t}">${v.toLocaleString()} G<small>${pl>=0?'+':''}${pl.toLocaleString()}</small><small class="cdl">${lots.map(x=>`${x.n}개 ~${candyMeltName(x.until).replace('월 ', '/').replace('일 ', ' ').replace(' 시', '시')}`).join('<br>')}</small></td>`; };
   const cell = (p, n) => { const r = (p.rel||{})[n.id] || {}, h = heartsOf(r.pts), ev = [4,7,10].filter(k=>r['ev'+k]).map(k=>'♥'+k).join(' ');
     return `<td class="t${tierOf(h)}" title="${esc(p.nick)} → ${esc(n.name)} · ${TIERS[tierOf(h)]} · 호감도 ${r.pts||0}/500 · 본 이야기 ${ev || '없음'}${r.talkDay===d ? ' · 오늘 대화함' : ''}">${h}${r.talkDay===d ? '<em></em>' : ''}</td>`; };
-  return `<div class="adm-tbl"><div class="adm-tbl-head"><b>자금 · 별사탕 · 호감도</b><small>총자산 = 자금 + 별사탕(최근 방송 값) · 별사탕 아래 작은 숫자 = 손익 · 숫자 = 하트 (0~10) · 색 = 관계 단계 (아는 사이 → 괜찮은 사람 → 친한 친구 → 소중한 짝) · 초록 점 = 오늘 대화함 · 칸을 누르면 자세히</small>${admTbl && players[admTbl] ? `<button data-a="kick" data-u="${admTbl}" class="adm-btn warn">${esc(players[admTbl].nick)} 님 내보내기</button>` : ''}<button data-a="tclose" class="adm-btn">닫기</button></div>
+  return `<div class="adm-tbl">${grantForm(regs)}<div class="adm-tbl-head"><b>자금 · 별사탕 · 호감도</b><small>총자산 = 자금 + 별사탕(최근 방송 값) · 별사탕 아래 작은 숫자 = 손익 · 숫자 = 하트 (0~10) · 색 = 관계 단계 (아는 사이 → 괜찮은 사람 → 친한 친구 → 소중한 짝) · 초록 점 = 오늘 대화함 · 칸을 누르면 자세히</small>${admTbl && players[admTbl] ? `<button data-a="kick" data-u="${admTbl}" class="adm-btn warn">${esc(players[admTbl].nick)} 님 내보내기</button>` : ''}<button data-a="tclose" class="adm-btn">닫기</button></div>
     <div class="adm-tbl-scroll"><table><thead><tr><th>닉네임</th><th>총자산</th><th>자금</th><th>별사탕</th>${NPCS.map(n=>`<th>${esc(n.name)}</th>`).join('')}<th>♥ 합계</th></tr></thead><tbody>${rows.map(([id,p])=>`<tr class="${admTbl===id ? 'sel' : ''}"><td>${esc(p.nick)}</td><td class="g"><b>${total(p).toLocaleString()} G</b></td><td class="g">${Number(p.inv?.gold||0).toLocaleString()} G</td>${stCell(p)}${NPCS.map(n=>cell(p, n)).join('')}<td>${NPCS.reduce((a,n)=>a + heartsOf(((p.rel||{})[n.id]||{}).pts), 0)}</td></tr>`).join('') || `<tr><td colspan="${NPCS.length+5}">아직 주민이 없어요</td></tr>`}</tbody></table></div></div>`;
 }
 // 주민·오투모에게 온 편지: 답장 안 한 것 먼저, 최신 순. 답장은 그 주민(또는 오투모) 이름으로 보내져요
@@ -5114,6 +5160,7 @@ function adminClick(e){
   if (b.dataset.a==='lclose'){ admLook = null; return renderAdmin(); }
   if (b.dataset.hz){ const id = b.dataset.hz, HL = HOUSE_LV[houseOf(players[id]).lv-1]; admLook = null; admSide = false; cam.follow = null; cam.zone = 'house:'+id; enterZone('house:'+id, null, HL.W/2, HL.H/2); toast(`${players[id]?.nick || ''} 님 집 안을 보고 있어요`); return renderAdmin(); }
   if (/^(table|chat|dm|post|side|wipe)$/.test(b.dataset.a || '')) admLook = null;
+  if (b.dataset.a==='grant') return adminGrantGo(Object.entries(players).filter(([,p])=>p && p.nick));
   if (b.dataset.a==='table'){ admDm = null; admPost = false; admTbl = admTbl===null ? '' : null; admChat = null; admWipe = false; admScroll = [0, 0]; return renderAdmin(); }
   if (b.dataset.a==='chat'){ admDm = null; admPost = false; admChat = admChat===null ? '' : null; admTbl = null; admWipe = false; admChatScroll = null; return renderAdmin(); }
   if (b.dataset.a==='cclose'){ admChat = null; return renderAdmin(); }

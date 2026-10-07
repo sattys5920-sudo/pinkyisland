@@ -145,6 +145,15 @@
         ".validate": "newData.hasChildren(['z', 'x', 'y', 'b']) && newData.child('z').isString() && newData.child('z').val().length <= 24 && newData.child('x').isNumber() && newData.child('y').isNumber() && newData.child('b').isNumber() && (!newData.child('nick').exists() || (newData.child('nick').isString() && newData.child('nick').val().length <= 16)) && (!newData.child('hat').exists() || (newData.child('hat').isString() && newData.child('hat').val().length <= 8))"
       }
     },
+    "grants": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'pinky-admin@pinkyisland.app')",
+        "$gid": {
+          ".write": "auth != null && (auth.token.email === 'pinky-admin@pinkyisland.app' || (auth.uid === $uid && !newData.exists()))",
+          ".validate": "!newData.exists() || (newData.child('k').val() === 'candy' && newData.child('n').isNumber() && newData.child('n').val() > 0 && newData.child('n').val() <= 500 && newData.child('until').isNumber())"
+        }
+      }
+    },
     "mobs": {
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
