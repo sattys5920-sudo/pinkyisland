@@ -792,7 +792,7 @@ function rebuildObstacles(){
   // 남의 울타리(빈 집터 포함)는 못 들어가요. 내 울타리만 드나들 수 있어요
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (me && me.lot===i) return; if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return; o.rects.push({x:L.x-FENCE.w/2, y:L.y+FENCE.top-6, w:FENCE.w, h:FENCE.h+6}); });
   if (z.dark) for (const pz of darkPuzzles(z.dark)) o.circles.push({x:pz.x, y:pz.y-4, r:26});
-  if (darkOn() && !z.dark && !z.house) for (const npc of DARK_ORDER) if (NPC[npc]?.zone===zoneId){ if (darkBldg(npc)) continue; const [dx, dy] = darkDoorOf(npc); o.rects.push({x:dx-26, y:dy-70, w:52, h:72}); }
+  if (darkOn() && !z.dark && !z.house) for (const npc of DARK_ORDER) if (darkDoorZone(npc)===zoneId){ const b = darkBldg(npc), [dx, dy] = darkDoorOf(npc); if (b && b.hidden) o.rects.push({x:dx-52, y:dy-70, w:104, h:72}); else if (!b) o.rects.push({x:dx-26, y:dy-70, w:52, h:72}); }
   Object.assign(obstacles, o);
   if (!z.lamps && z.theme!=='room' && z.theme!=='cave'){ placeLamps(z); staticSig = ''; }
   for (const l of (z.lamps||[])) obstacles.circles.push({x:l.x, y:l.y, r:8});
@@ -822,7 +822,7 @@ function checkExit(){
   let side = null;
   if (ex.n && pos.y < 30) side = 'n'; else if (ex.s && pos.y > z.H-30) side = 's';
   else if (ex.w && pos.x < 30) side = 'w'; else if (ex.e && pos.x > z.W-30) side = 'e';
-  if (side && z.dark){ const [dx, dy] = darkDoorOf(z.dark); return enterZone(NPC[z.dark].zone, null, dx, dy + 44); }
+  if (side && z.dark){ const [dx, dy] = darkDoorOf(z.dark); return enterZone(darkDoorZone(z.dark), null, dx, dy + 44); }
   if (side && z.house){ const p = z.house===uid ? me : players[z.house], L = LOTS[(p && p.lot!=null) ? p.lot : me.lot]; return enterZone('home', null, L.x, L.y + 24); }
   if (side) enterZone(ex[side], {n:'s', s:'n', w:'e', e:'w'}[side]);
 }
@@ -844,7 +844,7 @@ function enterZone(id, from, x, y){
   else if (from==='e'){ pos.x = z.W-M-40; pos.y = z.H/2; }
   rebuildObstacles(); fadeT = performance.now();
   if (blocked(pos.x, pos.y)){ const [fx_, fy_] = freeSpot(pos.x, pos.y); pos.x = fx_; pos.y = fy_; } // 예전 자리가 막혀 있거나 구역 밖이면 가까운 빈자리로
-  if (me){ chatZone(); renderDecor(); me.zone = id.startsWith('house:') ? 'home' : id.startsWith('dark:') ? (NPC[id.slice(5)]?.zone || 'village') : id; me.zx = Math.round(id.startsWith('dark:') ? darkDoorOf(id.slice(5))[0] : pos.x); me.zy = Math.round(id.startsWith('dark:') ? darkDoorOf(id.slice(5))[1] + 40 : pos.y); saveMe(); renderHud(); if (!$('mapPanel').hidden) renderMap(); }
+  if (me){ chatZone(); renderDecor(); me.zone = id.startsWith('house:') ? 'home' : id.startsWith('dark:') ? (darkDoorZone(id.slice(5)) || 'village') : id; me.zx = Math.round(id.startsWith('dark:') ? darkDoorOf(id.slice(5))[0] : pos.x); me.zy = Math.round(id.startsWith('dark:') ? darkDoorOf(id.slice(5))[1] + 40 : pos.y); saveMe(); renderHud(); if (!$('mapPanel').hidden) renderMap(); }
   toast(`${z.name}`);
 }
 
@@ -4059,7 +4059,18 @@ const darkBossUp = r => r && r.hp > 0 && !r.clear;
 const npcVisible = n => !(darkOn() && !roomOf(n.id).clear); // 다크 모드: 주민들은 모두 사라져요 (방이 꿰매진 주민만 돌아와요)
 // 가게 건물이 있는 주민은 그 건물 문이 꿰매진 문이 돼요 (없는 주민은 자리 옆에 문만 서 있어요)
 const darkBldgCache = {};
-function darkBldg(npc){ if (npc in darkBldgCache) return darkBldgCache[npc]; const n = NPC[npc]; return darkBldgCache[npc] = (ZONES[n.zone]?.places || []).find(p => p.kind === 'house' && p.label && p.label.startsWith(n.name + ' ')) || null; }
+// 건물이 없는 주민의 숨겨진 집: 다크 모드에서만 지도에 나타나요 (콩이의 집이 마지막)
+const DARK_HIDE = {hana:{zone:'pond', x:zk(1250), y:zk(990)}, toto:{zone:'starhill', x:zk(430), y:zk(1000)}, dodo:{zone:'cave1', x:zk(1360), y:zk(600)}, kongi:{zone:'deepforest', x:zk(150), y:zk(430)}};
+const darkDoorZone = npc => DARK_HIDE[npc]?.zone || NPC[npc]?.zone;
+function darkBldg(npc){ if (npc in darkBldgCache) return darkBldgCache[npc]; const n = NPC[npc]; if (DARK_HIDE[npc]) return darkBldgCache[npc] = {...DARK_HIDE[npc], hidden:true};
+  return darkBldgCache[npc] = (ZONES[n.zone]?.places || []).find(p => (p.kind === 'house' && p.label && p.label.startsWith(n.name + ' ')) || (npc === 'pengpeng' && p.kind === 'lighthouse')) || null; }
+function drawHiddenHouse(d, x, y, t){ // 검게 바랜 오두막: 내려앉은 지붕, 꿰매진 창, 굴뚝에서 실이 피어올라요
+  const c = d.ctx; shd(d, x, y+3, 58, 10, .3);
+  d.rr(x-50, y-66, 100, 66, 8, '#5a4c62'); d.shape(()=>{ c.beginPath(); c.moveTo(x-62, y-60); c.lineTo(x-8, y-112); c.lineTo(x+4, y-100); c.lineTo(x+62, y-62); c.closePath(); }, '#33263c', [x, y-82, 40]);
+  d.rr(x+24, y-112, 12, 30, 2, '#3e3046'); d.line(k=>{ const w = Math.sin(t/800)*4; k.moveTo(x+30, y-112); k.bezierCurveTo(x+30+w, y-124, x+30-w, y-136, x+34+w, y-150); }, '#1a1020', 1.2);
+  for (const wx of [-32, 32]){ d.rr(x+wx-10, y-50, 20, 18, 3, '#1f1626'); d.line(k=>{ for (const yy of [-46, -38]){ k.moveTo(x+wx-7, yy+y-3); k.lineTo(x+wx+7, yy+y+3); k.moveTo(x+wx+7, yy+y-3); k.lineTo(x+wx-7, yy+y+3); } }, '#9a86a8', 1); }
+  d.stitch(k=>{ k.moveTo(x-48, y-62); k.lineTo(x+48, y-62); }, '#9a86a8');
+}
 function darkDoorOf(npc){ const b = darkBldg(npc); if (b) return [b.x, b.y]; const n = NPC[npc]; return [Math.round(n.homeX + 64), Math.round(n.homeY - 6)]; }
 const darkZoneCache = {};
 function darkZone(npc){
@@ -4075,6 +4086,7 @@ function onDarkRooms(v){
 function darkDoorState(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(); if (roomOf(npc).clear) return 'clear'; if (i === di) return 'open'; return i < di ? 'missed' : 'locked'; }
 function drawDarkDoor(d, npc, t){
   const c = d.ctx, [x, y] = darkDoorOf(npc), st = darkDoorState(npc), glow = st === 'open' ? .55 + Math.sin(t/300)*.25 : 0;
+  if (darkBldg(npc)?.hidden) drawHiddenHouse(d, x, y, t);
   if (darkBldg(npc)){ // 건물 문: 원래 문 위에 덮어요
     if (glow){ c.save(); c.globalAlpha = glow; const g = c.createRadialGradient(x, y-18, 4, x, y-18, 46); g.addColorStop(0, 'rgba(255,60,110,.8)'); g.addColorStop(1, 'rgba(255,60,110,0)'); c.fillStyle = g; c.fillRect(x-46, y-64, 92, 92); c.restore(); }
     d.rr(x-13, y-38, 26, 38, 10, st === 'clear' ? '#8a7f96' : '#3b2a44'); d.rr(x-9, y-33, 18, 33, 8, st === 'open' ? '#5a1f3a' : st === 'clear' ? '#b8aec4' : '#22162a');
@@ -4092,7 +4104,8 @@ function drawDarkDoor(d, npc, t){
 }
 function darkDoorLabel(c, npc, t){
   const [x, y] = darkDoorOf(npc), st = darkDoorState(npc), n = NPC[npc];
-  tag(c, `${n.name}의 집 · ${{open:'열림', clear:'꿰매짐', locked:'잠김', missed:'닫힘'}[st]}`, x, darkBldg(npc) ? y-142 : y-80, st === 'open' ? '#ff4f87' : null);
+  if (darkBldg(npc)?.hidden && Math.hypot(pos.x-x, pos.y-y) > 260) return; // 숨겨진 집은 가까이 가야 이름이 보여요
+  tag(c, `${n.name}의 집 · ${{open:'열림', clear:'꿰매짐', locked:'잠김', missed:'닫힘'}[st]}`, x, y - ({lighthouse:215}[darkBldg(npc)?.kind] || (darkBldg(npc)?.hidden ? 160 : darkBldg(npc) ? 142 : 80)), st === 'open' ? '#ff4f87' : null);
 }
 // ----- 다크 모드: 주민이 서 있던 자리에 남은 물건 -----
 const xs = (c, x, y, r=2.2) => { c.moveTo(x-r, y-r); c.lineTo(x+r, y+r); c.moveTo(x+r, y-r); c.lineTo(x-r, y+r); }; // 검은 실 꿰맴 자국
@@ -4124,7 +4137,7 @@ function drawRelic(d, n, t){
 }
 function darkEntities(d, t){
   const out = [];
-  if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (NPC[npc]?.zone === zoneId){ const [, y] = darkDoorOf(npc); out.push({y, draw:()=>drawDarkDoor(d, npc, t), label:()=>darkDoorLabel(d.ctx, npc, t)}); }
+  if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (darkDoorZone(npc) === zoneId){ const [, y] = darkDoorOf(npc); out.push({y, draw:()=>drawDarkDoor(d, npc, t), label:()=>darkDoorLabel(d.ctx, npc, t)}); }
   for (const n of relicsHere()) out.push({y:n.homeY, draw:()=>drawRelic(d, n, t), label:()=>{}});
   const z = Z(); if (!z.dark) return out;
   const r = roomOf(z.dark);
@@ -4164,7 +4177,7 @@ function drawDarkFx(c, t){
 }
 // ----- 들어가기 · 나가기 -----
 function darkTap(w){
-  if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (NPC[npc]?.zone === zoneId){ const [x, y] = darkDoorOf(npc); if (Math.abs(w.x-x) < 30 && w.y > y-80 && w.y < y+8) return {x, y:y+30, act:()=>darkEnter(npc)}; }
+  if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (darkDoorZone(npc) === zoneId){ const [x, y] = darkDoorOf(npc); if (Math.abs(w.x-x) < 30 && w.y > y-80 && w.y < y+8) return {x, y:y+30, act:()=>darkEnter(npc)}; }
   for (const n of relicsHere()){ const [x, y] = relicPos(n); if (Math.abs(w.x-x) < 28 && w.y > y-38 && w.y < y+10) return {x, y:y+28, act:()=>relicLook(n)}; }
   const z = Z(); if (!z.dark) return null;
   for (const pz of darkPuzzles(z.dark)) if (Math.abs(w.x-pz.x) < 34 && w.y > pz.y-80 && w.y < pz.y+12) return {x:pz.x, y:pz.y+34, act:()=>darkPuzzlePanel(pz)};
@@ -4182,7 +4195,7 @@ async function darkEnter(npc){
   if (st === 'clear') toast('이미 꿰매진 방이에요. 조용해요');
   else say(`${n.name}의 방`, '불이 꺼진 방이에요. 빛나는 물음표가 있는 물건에 다가가 문제를 풀어요. 문제 15 개를 다 풀면.... 무언가 깨어나요. 2 시간 안에 끝내야 해요.');
 }
-function darkLeave(msg){ const z = Z(); if (!z.dark) return; if (darkDown){ darkDown = null; playerHp = maxHp(); } const [dx, dy] = darkDoorOf(z.dark); darkSlams = []; enterZone(NPC[z.dark].zone, null, dx, dy + 44); if (msg) say('다크 모드', msg); }
+function darkLeave(msg){ const z = Z(); if (!z.dark) return; if (darkDown){ darkDown = null; playerHp = maxHp(); } const [dx, dy] = darkDoorOf(z.dark); darkSlams = []; enterZone(darkDoorZone(z.dark), null, dx, dy + 44); if (msg) say('다크 모드', msg); }
 // 쓰러지면 그 자리에 누워 있어요. 다른 사람이 다가와 눌러 주거나(2 초) 관리자가 살려 주면 일어나요
 let darkDown = null, darkRevive = null; // darkDown: 쓰러진 시각 · darkRevive: 내가 살리는 중인 사람 {id, at}
 // 일반 모드는 순하게: '기절'·'깨우기', 다크 모드는 '쓰러짐'·'살리기'
