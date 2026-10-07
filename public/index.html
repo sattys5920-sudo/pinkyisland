@@ -1166,6 +1166,7 @@ function soloNet(){
     mobsZone: (z, cb) => { const M_ = soloNet.mobs || (soloNet.mobs = {}); soloNet.mobCb = [z, cb]; setTimeout(()=>cb(structuredClone(M_[z]||{}))); return ()=>{ soloNet.mobCb = null; }; },
     mobSpawn: async (z, sl, oldGen, d) => { const M_ = soloNet.mobs, c = (M_[z] = M_[z] || {}), cur = c[sl]; if (oldGen == null ? cur : (!cur || cur.gen !== oldGen || (cur.hp > 0 && !(cur.id === d.id && cur.max < d.max)))) return; c[sl] = d; soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); },
     mobHit: async (z, sl, gen, dmg) => { const c = (soloNet.mobs||{})[z] || {}, cur = c[sl]; if (!cur || cur.gen !== gen || !(cur.hp > 0)) return {committed:false}; cur.hp = Math.max(0, cur.hp - dmg); cur.hits = {...(cur.hits||{}), [uid]:true}; if (cur.hp <= 0) cur.deadAt = Date.now(); soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); return {committed:true, killed:cur.hp <= 0}; },
+    bossAtk: async (z, a) => onBossAtk(z, a),
     mobPos: async (z, up) => { const c = (soloNet.mobs||{})[z] || {}; for (const [k,v] of Object.entries(up)){ const [sl, f] = k.split('/'); if (c[sl]) c[sl][f] = v; } },
     museumGive: async (cat, id) => { const c = museum[cat] || (museum[cat] = {}); if (c[id]) return false; c[id] = {uid, nick:me.nick, at:Date.now()}; onMuseum(museum); return true; },
     darkTx: async (npc, fn) => { const st_ = soloNet.dark || (soloNet.dark = {}); const r = fn(st_[npc] ? structuredClone(st_[npc]) : null); if (r !== undefined){ if (r === null) delete st_[npc]; else st_[npc] = r; } onDarkRooms(structuredClone(st_)); return r !== undefined; },
@@ -1220,6 +1221,7 @@ function firebaseNet(){
     mobSpawn: async (z, sl, oldGen, d) => { try { await F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => (oldGen == null ? cur : (!cur || cur.gen !== oldGen || (cur.hp > 0 && !(cur.id === d.id && cur.max < d.max)))) ? undefined : d); } catch(e){} },
     mobHit: async (z, sl, gen, dmg) => { let killed = false; try { const r = await F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => { if (!cur || cur.gen !== gen || !(cur.hp > 0)) return; const hp = Math.max(0, cur.hp - dmg); killed = hp <= 0; return {...cur, hp, hits:{...(cur.hits||{}), [uid]:true}, ...(killed ? {deadAt: Date.now() + serverOffset} : {})}; }); return {committed:r.committed, killed:r.committed && killed}; } catch(e){ return {committed:false}; } },
     mobPos: (z, up) => F.update(F.ref(db, 'mobs/'+z), up).catch(()=>{}),
+    bossAtk: (z, a) => F.update(F.ref(db, 'mobs/'+z), {[BOSS_SLOT+'/atk']:a}).catch(()=>{}),
     museumGive: async (cat, id) => { try { const r = await F.runTransaction(F.ref(db, 'museum/'+cat+'/'+id), cur => cur ? undefined : {uid, nick:String(me.nick||'').slice(0,16), at:Date.now() + serverOffset}); return r.committed; } catch(e){ return false; } },
     darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
@@ -2543,6 +2545,7 @@ function onMobs(zone, v){
     if (!mob || mob.gen !== d.gen){ if (mobLoaded && MONSTERS[d.id].boss && d.hp > 0) setTimeout(()=>toast(`⚠ ${MONSTERS[d.id].name}이(가) 나타났어요! 다 같이 잡아요`), 300); mob = {slot, x:d.x, y:d.y, cd:0, wander:0, wx:d.x, wy:d.y, hurt:0}; }
     Object.assign(mob, {id:d.id, gen:d.gen, hp:d.hp, max:d.max, tx:d.x, ty:d.y, hx:d.hx ?? d.x, hy:d.hy ?? d.y, deadAt:d.deadAt||0, hits:d.hits||{}});
     next[slot] = mob;
+    if (slot === BOSS_SLOT && d.atk && d.hp > 0) onBossAtk(zone, d.atk);
     if (!(d.hp > 0) && mob.hits[uid]) mobReward(zone, slot, d);
   }
   mobMap = next; mobs = Object.values(mobMap).filter(m=>m.hp > 0); mobLoaded = true;
@@ -2700,26 +2703,29 @@ function wakeAtHome(){
   say('기절', '집에서 푹 쉬고 일어났어요. 몸이 가뿐해요!', [], '체력이 다시 가득 찼어요');
 }
 // ===== 보스 원거리·다중 공격 (일반 모드) =====
-// 예고(바닥 빨간 표시) → 발사. 탄은 각자 화면에서 나를 노려요. 체력이 절반 아래면 빨라지고 패턴이 하나 늘어요
+// 예고(바닥 빨간 표시) → 발사. 구역 주인이 공격을 정해 DB 로 알리면 모두 같은 시각·같은 씨앗으로 같은 탄막을 봐요
+// 체력이 절반 아래면 빨라지고 패턴이 하나 늘어요
 const BOSS_PAT = {
   forest:['ring', 'spiral', '+aimed3'], deepforest:['fan', 'spike', '+ringGap'], seacave:['aimed3', 'tentacle', '+ring'],
   cave:['rain', 'ringGap', '+fan'], starhill:['spiral', 'meteor', 'dive', '+ring'], cave1:['bounce', 'aimed3', '+spike'],
   cave2:['web', 'brood', '+fan'], cave3:['breath', 'fire3', '+meteorAll'],
 };
-let bShots = [], bWarns = [], bQ = [], bBooms = [], bFxZone = '', bPat = {}, playerSlowUntil = 0;
+let bShots = [], bWarns = [], bQ = [], bBooms = [], bFxZone = '', bPat = {}, playerSlowUntil = 0, bAtkSeen = '';
+// 공격 알림 받기: 같은 시각에 시작하도록 줄 세워요
+function onBossAtk(zone, a){ if (!a || zone !== zoneId || !BOSS_PAT[zone] || !MONSTERS[a.id]) return; const key = a.at + '|' + a.k; if (key === bAtkSeen) return; bAtkSeen = key; const delay = a.at - mobNow(); if (delay < -700) return; bQ.push({at:performance.now() + Math.max(0, delay), fn:t => bossFire(a, t)}); }
 function bfxHurt(dmg, fx_, fy, t){
   if (!$('talk').hidden || darkDown || t < wakeGuardUntil) return;
   playerHp -= dmg; lastHurt = t; pushPlayer(pos.x-fx_, pos.y-fy, 14); setExpr('surprised', 1000);
   fx.push({x:pos.x, y:pos.y-50, text:'-'+dmg, t, color:'#ff3b6b'});
   if (playerHp <= 0){ bShots = []; bWarns = []; bQ = []; faint(); }
 }
-function bossFire(mob, kind, t){
-  const m = MONSTERS[mob.id], bx = mob.x, by = mob.y - 30, col = m.color, atk = m.atk, aim = () => Math.atan2(pos.y-20-by, pos.x-bx);
-  const shot = (a, sp, o={}) => bShots.push({x:bx, y:by, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, r:o.r||9, dmg:o.dmg||Math.round(atk*.6), col:o.col||col, life:o.life||4.5, kind:o.kind||'', bounce:o.bounce|0, home:o.home|0});
-  const later = (ms, fn) => bQ.push({at:t+ms, fn});
+function bossFire(a, t){
+  const kind = a.k, m = MONSTERS[a.id], bx = a.x, by = a.y - 30, col = m.color, atk = m.atk, A0 = Math.atan2(a.ty-20-by, a.tx-bx), aim = () => A0, ptx = a.tx, pty = a.ty;
+  const shot = (a, sp, o={}) => bShots.push({x:bx, y:by, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, r:o.r||9, dmg:o.dmg||Math.round(atk*.6), col:o.col||col, life:o.life||4.5, kind:o.kind||'', bounce:o.bounce|0, home:o.home ? a.tu : ''});
+  const later = (ms, fn) => bQ.push({at:t+ms, fn:()=>fn()});
   const circle = (x, y, r, ms, o={}) => bWarns.push({k:'c', x, y, r, t0:t, t1:t+ms, dmg:o.dmg||atk, col:o.col||'#ff3b6b'});
-  const line = (a, len, w, ms, o={}) => bWarns.push({k:'l', x:bx, y:mob.y, a, len, w, t0:t, t1:t+ms, dmg:o.dmg||Math.round(atk*1.2), col:o.col||'#ff3b6b'});
-  const R = Math.random;
+  const line = (an, len, w, ms, o={}) => bWarns.push({k:'l', x:bx, y:a.y, a:an, len, w, t0:t, t1:t+ms, dmg:o.dmg||Math.round(atk*1.2), col:o.col||'#ff3b6b'});
+  const R = seeded(a.s|0);
   switch (kind){
     case 'ring': { const o = R()*6; for (let i=0;i<12;i++) shot(o + i*Math.PI/6, 170); later(450, ()=>{ for (let i=0;i<12;i++) shot(o + (i+.5)*Math.PI/6, 170); }); break; }
     case 'ringGap': { const g = aim() + Math.PI + (R()-.5)*2, n = 28; for (let i=0;i<n;i++){ const a = i*Math.PI*2/n, d = Math.abs(Math.atan2(Math.sin(a-g), Math.cos(a-g))); if (d > .42) shot(a, 150, {r:10}); } break; }
@@ -2727,12 +2733,12 @@ function bossFire(mob, kind, t){
     case 'aimed3': { for (let i=0;i<3;i++) later(i*190, ()=>shot(aim(), 250, {r:10})); break; }
     case 'fire3': { for (let i=0;i<3;i++) later(i*220, ()=>{ const a = aim(); shot(a, 270, {r:15, dmg:Math.round(atk*.9), col:'#ff7a2f'}); shot(a-.25, 230, {r:9, col:'#ffb04f'}); shot(a+.25, 230, {r:9, col:'#ffb04f'}); }); break; }
     case 'fan': { const a0 = aim(); for (let i=-3;i<=3;i++) shot(a0 + i*.2, 210); later(380, ()=>{ const a1 = aim(); for (let i=-3;i<=2;i++) shot(a1 + (i+.5)*.2, 210); }); break; }
-    case 'spike': { const a0 = aim(); line(a0, 560, 30, 900, {col:'#7fd06a'}); later(420, ()=>line(a0 + (R()<.5?-.35:.35), 560, 30, 900, {col:'#7fd06a'})); break; }
+    case 'spike': { const a0 = aim(), sd = R()<.5?-.35:.35; line(a0, 560, 30, 900, {col:'#7fd06a'}); later(420, ()=>line(a0 + sd, 560, 30, 900, {col:'#7fd06a'})); break; }
     case 'dive': { line(aim(), 640, 46, 1000, {col:'#ffe26a', dmg:Math.round(atk*1.4)}); break; }
-    case 'tentacle': { circle(pos.x, pos.y, 50, 1000); for (let i=0;i<3;i++){ const a = R()*6.28, d = 70 + R()*90; circle(pos.x + Math.cos(a)*d, pos.y + Math.sin(a)*d, 50, 1150 + i*120); } break; }
-    case 'rain': { for (let i=0;i<7;i++) later(i*160, ()=>{ const a = R()*6.28, d = i===0 ? 0 : 40 + R()*170; circle(pos.x + Math.cos(a)*d, pos.y + Math.sin(a)*d, 44, 950, {col:'#ff6b3b'}); }); break; }
-    case 'meteor': { for (let i=0;i<5;i++) later(i*220, ()=>circle(pos.x + (R()-.5)*60, pos.y + (R()-.5)*60, 46, 950, {col:'#ffe26a'})); break; }
-    case 'meteorAll': { const cx = pos.x, cy = pos.y, safe = Math.floor(R()*8); let k = 0; for (let i=-1;i<=1;i++) for (let j=-1;j<=1;j++){ if (i===0 && j===0){ circle(cx, cy, 56, 1100, {col:'#ff7a2f'}); continue; } if (k++ === safe) continue; circle(cx + i*110, cy + j*110, 56, 1100, {col:'#ff7a2f'}); } break; }
+    case 'tentacle': { circle(ptx, pty, 50, 1000); for (let i=0;i<3;i++){ const an = R()*6.28, d = 70 + R()*90; circle(ptx + Math.cos(an)*d, pty + Math.sin(an)*d, 50, 1150 + i*120); } break; }
+    case 'rain': { for (let i=0;i<7;i++){ const an = R()*6.28, d = i===0 ? 0 : 40 + R()*170; later(i*160, ()=>circle(ptx + Math.cos(an)*d, pty + Math.sin(an)*d, 44, 950, {col:'#ff6b3b'})); } break; }
+    case 'meteor': { for (let i=0;i<5;i++){ const ox = (R()-.5)*60, oy = (R()-.5)*60; later(i*220, ()=>circle(ptx + ox, pty + oy, 46, 950, {col:'#ffe26a'})); } break; }
+    case 'meteorAll': { const cx = ptx, cy = pty, safe = Math.floor(R()*8); let k = 0; for (let i=-1;i<=1;i++) for (let j=-1;j<=1;j++){ if (i===0 && j===0){ circle(cx, cy, 56, 1100, {col:'#ff7a2f'}); continue; } if (k++ === safe) continue; circle(cx + i*110, cy + j*110, 56, 1100, {col:'#ff7a2f'}); } break; }
     case 'bounce': { const o = R()*6; for (let i=0;i<10;i++) shot(o + i*Math.PI/5, 190, {bounce:2, r:10, life:6}); break; }
     case 'web': { const a0 = aim(); for (let i=-1;i<=1;i++) shot(a0 + i*.3, 200, {kind:'web', r:12, col:'#f2eef8', dmg:Math.round(atk*.4)}); break; }
     case 'brood': { for (let i=0;i<4;i++){ const a = aim() + (i-1.5)*.8; shot(a, 115, {kind:'spider', home:1, r:10, life:5, col:'#2a2238'}); } break; }
@@ -2744,16 +2750,21 @@ function updateBossFx(dt, t){
   if (admin) return;
   const pats = BOSS_PAT[zoneId], boss = pats && mobs.find(mb => mb.slot === BOSS_SLOT && MONSTERS[mb.id]?.boss && mb.hp > 0);
   if (boss){ const m = MONSTERS[boss.id], st = bPat[zoneId] || (bPat[zoneId] = {next:t + 2000, i:0}), d = Math.hypot(pos.x-boss.x, pos.y-boss.y), rage = boss.hp < (boss.max || m.hp)*.5;
-    if (d > 640 || darkDown) st.next = Math.max(st.next, t + 1200);
-    else if (t >= st.next){ const list = pats.filter(k => !k.startsWith('+')).concat(rage ? pats.filter(k => k.startsWith('+')).map(k => k.slice(1)) : []); bossFire(boss, list[st.i++ % list.length], t); st.next = t + (rage ? 1300 : 2000) + Math.random()*400; } }
+    if (t >= st.next && mobOwner()){ // 구역 주인만 정해요: 가장 가까운 사람을 노려요
+      let tg = null, best = 640; const cand = [[uid, pos.x, pos.y, !darkDown], ...[...others.entries()].filter(([,o])=>o.z===zoneId && !o.down).map(([k,o])=>[o.uid||k, o.x, o.y, true])];
+      for (const c of cand) if (c[3]){ const dd = Math.hypot(c[1]-boss.x, c[2]-boss.y); if (dd < best){ best = dd; tg = c; } }
+      const list = pats.filter(k => !k.startsWith('+')).concat(rage ? pats.filter(k => k.startsWith('+')).map(k => k.slice(1)) : []);
+      st.next = t + (rage ? 1300 : 2000) + Math.random()*400;
+      if (tg){ const at = {k:list[st.i++ % list.length], id:boss.id, at:mobNow() + 300, x:Math.round(boss.x), y:Math.round(boss.y), tx:Math.round(tg[1]), ty:Math.round(tg[2]), tu:String(tg[0]), s:(Math.random()*1e9)|0}; net.bossAtk(zoneId, at); } } }
   else bQ = [];
-  for (let i = bQ.length-1; i >= 0; i--) if (t >= bQ[i].at){ const q = bQ[i]; bQ.splice(i, 1); if (boss) q.fn(); }
+  bQ.sort((p, q) => p.at - q.at); while (bQ.length && t >= bQ[0].at){ const q = bQ.shift(); if (boss) q.fn(t); }
   const z = Z();
   for (let i = bShots.length-1; i >= 0; i--){ const s = bShots[i];
-    if (s.home){ const want = Math.atan2(pos.y-20-s.y, pos.x-s.x), cur = Math.atan2(s.vy, s.vx), sp = Math.hypot(s.vx, s.vy); let da = Math.atan2(Math.sin(want-cur), Math.cos(want-cur)); da = Math.max(-2.2*dt, Math.min(2.2*dt, da)); s.vx = Math.cos(cur+da)*sp; s.vy = Math.sin(cur+da)*sp; }
+    if (s.home){ const o = s.home === uid ? pos : others.get(s.home) || [...others.values()].find(q => q.uid === s.home); if (!o){ s.home = ''; continue; } const want = Math.atan2(o.y-20-s.y, o.x-s.x), cur = Math.atan2(s.vy, s.vx), sp = Math.hypot(s.vx, s.vy); let da = Math.atan2(Math.sin(want-cur), Math.cos(want-cur)); da = Math.max(-2.2*dt, Math.min(2.2*dt, da)); s.vx = Math.cos(cur+da)*sp; s.vy = Math.sin(cur+da)*sp; }
     s.x += s.vx*dt; s.y += s.vy*dt; s.life -= dt;
     if (s.bounce > 0){ if (s.x < 0 || s.x > z.W){ s.vx *= -1; s.bounce--; } if (s.y < 0 || s.y > z.H){ s.vy *= -1; s.bounce--; } }
     if (s.life <= 0 || s.x < -40 || s.y < -40 || s.x > z.W+40 || s.y > z.H+40){ bShots.splice(i, 1); continue; }
+    if ([...others.values()].some(o => o.z === zoneId && !o.down && Math.hypot(s.x-o.x, s.y-(o.y-20)) < s.r + 13)){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); continue; } // 다른 사람에게 맞은 탄도 똑같이 사라져요
     if (Math.hypot(s.x-pos.x, s.y-(pos.y-20)) < s.r + 13){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); if (s.kind === 'web' && $('talk').hidden && !darkDown){ playerSlowUntil = t + 2000; toast('거미줄에 걸려 느려졌어요'); } bfxHurt(s.dmg, s.x - s.vx, s.y - s.vy, t); }
   }
   for (let i = bWarns.length-1; i >= 0; i--){ const w = bWarns[i]; if (t < w.t1) continue; bWarns.splice(i, 1);
