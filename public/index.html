@@ -335,7 +335,15 @@ body.typing #chatin{background:#fff}
 #goal .gl-ic{width:20px;height:20px}#goal .gl-s{display:flex;justify-content:space-between;font-size:13px;color:#9a6f84}
 .gl-bar{height:8px;border-radius:4px;background:#f6dce7;overflow:hidden;margin:4px 0 2px}.gl-bar s{display:block;height:100%;background:linear-gradient(90deg,#ff9fc4,#ff6f9a);border-radius:4px}
 #goal .gl-c{display:none}
-@media (max-width:640px){ /* 폰: 위쪽이 답답하지 않게 얇은 한 줄 (누르면 자세히) */
+@media (max-width:640px){ /* 폰: 위쪽 정보·체력·목표를 틈 없이 한 장의 얇은 카드로 → 걸어 다닐 화면이 넓어져요 */
+  #hud{padding:3px 12px!important;font-size:15px!important;border-radius:14px 14px 0 0!important;box-shadow:none!important;background:#fff8fa!important}
+  #hud img.ui{width:18px;height:18px}
+  #stats{border-radius:0;box-shadow:none;padding:1px 10px 4px;background:#fff8fa;grid-template-rows:auto 3px;gap:2px 6px}
+  #stats .sb{height:13px}#stats .sb em{font-size:12px;line-height:13px}#stats #lvTag{font-size:13px;padding:0 6px}
+  body:not(.has-goal) #stats{border-radius:0 0 14px 14px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
+  #goal{border-radius:0 0 14px 14px!important;background:#fff8fa!important;border-top:1px dashed #f3d6e2}
+}
+@media (max-width:640px){
   #goal{display:flex;align-items:center;gap:8px;padding:3px 10px;border-radius:12px}
   #goal .gl-t{flex:none;gap:4px}#goal .gl-t b,#goal .gl-w,#goal .gl-t i,#goal .gl-s{display:none}#goal .gl-c{display:inline;font-size:14px}
   #goal .gl-ic{width:18px;height:18px}#goal .gl-bar{flex:1;margin:0;height:7px}
@@ -5178,16 +5186,19 @@ function measureInsets(){
 // 정보바 → 상태 막대 → (폰) 할 일 줄을 겹치지 않게 차례로 쌓아요
 function placeTop(){
   const hud = $('hud'), st = $('stats'), q = $('quest'); if (!hud || hud.hidden || !st) return;
-  st.style.top = (hud.getBoundingClientRect().bottom + 4) + 'px';
-  const phone = matchMedia('(max-width:640px)').matches, sb = st.getBoundingClientRect().bottom;
-  q.style.top = phone ? (sb + 4) + 'px' : '';
+  const phone = matchMedia('(max-width:640px)').matches;
+  st.style.top = (hud.getBoundingClientRect().bottom + (phone ? 0 : 4)) + 'px'; // 폰: 정보·체력·목표를 틈 없이 한 장으로
+  const sb = st.getBoundingClientRect().bottom, glOn = $('goal') && !$('goal').hidden;
+  if (phone && glOn) $('goal').style.top = sb + 'px';
+  const topB = phone && glOn ? $('goal').getBoundingClientRect().bottom : sb;
+  q.style.top = phone ? (topB + 4) + 'px' : '';
   // 오늘의 섬 목표: 폰은 할 일 아래(없으면 체력 막대 아래), PC 는 오른쪽 할 일 아래
   const gl = $('goal'); let gb = 0;
   if (gl && !gl.hidden){ const qb = shown(q) ? q.getBoundingClientRect().bottom : 0;
-    if (phone){ gl.style.top = (Math.max(sb, qb) + 4) + 'px'; gl.style.left = '10px'; gl.style.right = '10px'; gl.style.width = ''; }
+    if (phone){ gl.style.top = sb + 'px'; gl.style.left = '10px'; gl.style.right = '10px'; gl.style.width = ''; }
     else { gl.style.top = ((qb || 10) + (qb ? 8 : 0)) + 'px'; gl.style.right = '10px'; gl.style.left = 'auto'; gl.style.width = '260px'; }
     gb = phone ? gl.getBoundingClientRect().bottom : 0; }
-  $('toast').style.top = (Math.max(sb, phone && shown(q) ? q.getBoundingClientRect().bottom : 0, gb) + 8) + 'px';
+  $('toast').style.top = (Math.max(topB, phone && shown(q) ? q.getBoundingClientRect().bottom : 0, gb) + 8) + 'px';
   insetT = 0;
 }
 addEventListener('resize', ()=>setTimeout(placeTop, 60));
@@ -5748,7 +5759,7 @@ function renderGoal(){
   let el = $('goal'); if (admin || !me){ if (el) el.hidden = true; return; }
   if (!el){ el = document.createElement('div'); el.id = 'goal'; el.className = 'pill'; document.body.appendChild(el); el.onclick = goalPanel; }
   const g = goalOf(today()), sum = goalSum(goalData), mine = Number(goalData[uid]) || 0, done = sum >= g.n, rk = goalRank().findIndex(([id]) => id === uid);
-  el.hidden = false; el.classList.toggle('done', done);
+  el.hidden = false; el.classList.toggle('done', done); document.body.classList.add('has-goal');
   el.innerHTML = `<div class="gl-t">${iconImg(g.icon, 'gl-ic')}<b>오늘의 섬 목표</b><span class="gl-w">${esc(g.what)} ${g.n} ${g.unit} ${g.verb}</span><span class="gl-c">${done ? '✅ ' : ''}${esc(g.what)} ${Math.min(sum, 99999)}/${g.n}</span><i>${done ? '달성!' : goalLeft()}</i></div><div class="gl-bar"><s style="width:${Math.min(100, sum / g.n * 100)}%"></s></div><div class="gl-s"><span>${Math.min(sum, 99999)}/${g.n} · ${Math.floor(sum / g.n * 100)}%</span><span>${done ? (mine ? `보상 ${GOAL_REWARD.toLocaleString()} G 받음` : '내일 다시 도전해요') : `내 기여 ${mine}${rk >= 0 ? ` (${rk + 1}등)` : ''}`}</span></div>`;
   placeTop();
 }
