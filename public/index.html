@@ -2699,6 +2699,89 @@ function wakeAtHome(){
   const L = LOTS[me.lot]; setTimeout(flushSave, 300); enterZone('home', null, L.x, L.y + 18);
   say('기절', '집에서 푹 쉬고 일어났어요. 몸이 가뿐해요!', [], '체력이 다시 가득 찼어요');
 }
+// ===== 보스 원거리·다중 공격 (일반 모드) =====
+// 예고(바닥 빨간 표시) → 발사. 탄은 각자 화면에서 나를 노려요. 체력이 절반 아래면 빨라지고 패턴이 하나 늘어요
+const BOSS_PAT = {
+  forest:['ring', 'spiral', '+aimed3'], deepforest:['fan', 'spike', '+ringGap'], seacave:['aimed3', 'tentacle', '+ring'],
+  cave:['rain', 'ringGap', '+fan'], starhill:['spiral', 'meteor', 'dive', '+ring'], cave1:['bounce', 'aimed3', '+spike'],
+  cave2:['web', 'brood', '+fan'], cave3:['breath', 'fire3', '+meteorAll'],
+};
+let bShots = [], bWarns = [], bQ = [], bBooms = [], bFxZone = '', bPat = {}, playerSlowUntil = 0;
+function bfxHurt(dmg, fx_, fy, t){
+  if (!$('talk').hidden || darkDown || t < wakeGuardUntil) return;
+  playerHp -= dmg; lastHurt = t; pushPlayer(pos.x-fx_, pos.y-fy, 14); setExpr('surprised', 1000);
+  fx.push({x:pos.x, y:pos.y-50, text:'-'+dmg, t, color:'#ff3b6b'});
+  if (playerHp <= 0){ bShots = []; bWarns = []; bQ = []; faint(); }
+}
+function bossFire(mob, kind, t){
+  const m = MONSTERS[mob.id], bx = mob.x, by = mob.y - 30, col = m.color, atk = m.atk, aim = () => Math.atan2(pos.y-20-by, pos.x-bx);
+  const shot = (a, sp, o={}) => bShots.push({x:bx, y:by, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, r:o.r||9, dmg:o.dmg||Math.round(atk*.6), col:o.col||col, life:o.life||4.5, kind:o.kind||'', bounce:o.bounce|0, home:o.home|0});
+  const later = (ms, fn) => bQ.push({at:t+ms, fn});
+  const circle = (x, y, r, ms, o={}) => bWarns.push({k:'c', x, y, r, t0:t, t1:t+ms, dmg:o.dmg||atk, col:o.col||'#ff3b6b'});
+  const line = (a, len, w, ms, o={}) => bWarns.push({k:'l', x:bx, y:mob.y, a, len, w, t0:t, t1:t+ms, dmg:o.dmg||Math.round(atk*1.2), col:o.col||'#ff3b6b'});
+  const R = Math.random;
+  switch (kind){
+    case 'ring': { const o = R()*6; for (let i=0;i<12;i++) shot(o + i*Math.PI/6, 170); later(450, ()=>{ for (let i=0;i<12;i++) shot(o + (i+.5)*Math.PI/6, 170); }); break; }
+    case 'ringGap': { const g = aim() + Math.PI + (R()-.5)*2, n = 28; for (let i=0;i<n;i++){ const a = i*Math.PI*2/n, d = Math.abs(Math.atan2(Math.sin(a-g), Math.cos(a-g))); if (d > .42) shot(a, 150, {r:10}); } break; }
+    case 'spiral': { for (let i=0;i<22;i++) later(i*75, ()=>{ const a = i*.52; shot(a, 175); shot(a+Math.PI, 175); }); break; }
+    case 'aimed3': { for (let i=0;i<3;i++) later(i*190, ()=>shot(aim(), 250, {r:10})); break; }
+    case 'fire3': { for (let i=0;i<3;i++) later(i*220, ()=>{ const a = aim(); shot(a, 270, {r:15, dmg:Math.round(atk*.9), col:'#ff7a2f'}); shot(a-.25, 230, {r:9, col:'#ffb04f'}); shot(a+.25, 230, {r:9, col:'#ffb04f'}); }); break; }
+    case 'fan': { const a0 = aim(); for (let i=-3;i<=3;i++) shot(a0 + i*.2, 210); later(380, ()=>{ const a1 = aim(); for (let i=-3;i<=2;i++) shot(a1 + (i+.5)*.2, 210); }); break; }
+    case 'spike': { const a0 = aim(); line(a0, 560, 30, 900, {col:'#7fd06a'}); later(420, ()=>line(a0 + (R()<.5?-.35:.35), 560, 30, 900, {col:'#7fd06a'})); break; }
+    case 'dive': { line(aim(), 640, 46, 1000, {col:'#ffe26a', dmg:Math.round(atk*1.4)}); break; }
+    case 'tentacle': { circle(pos.x, pos.y, 50, 1000); for (let i=0;i<3;i++){ const a = R()*6.28, d = 70 + R()*90; circle(pos.x + Math.cos(a)*d, pos.y + Math.sin(a)*d, 50, 1150 + i*120); } break; }
+    case 'rain': { for (let i=0;i<7;i++) later(i*160, ()=>{ const a = R()*6.28, d = i===0 ? 0 : 40 + R()*170; circle(pos.x + Math.cos(a)*d, pos.y + Math.sin(a)*d, 44, 950, {col:'#ff6b3b'}); }); break; }
+    case 'meteor': { for (let i=0;i<5;i++) later(i*220, ()=>circle(pos.x + (R()-.5)*60, pos.y + (R()-.5)*60, 46, 950, {col:'#ffe26a'})); break; }
+    case 'meteorAll': { const cx = pos.x, cy = pos.y, safe = Math.floor(R()*8); let k = 0; for (let i=-1;i<=1;i++) for (let j=-1;j<=1;j++){ if (i===0 && j===0){ circle(cx, cy, 56, 1100, {col:'#ff7a2f'}); continue; } if (k++ === safe) continue; circle(cx + i*110, cy + j*110, 56, 1100, {col:'#ff7a2f'}); } break; }
+    case 'bounce': { const o = R()*6; for (let i=0;i<10;i++) shot(o + i*Math.PI/5, 190, {bounce:2, r:10, life:6}); break; }
+    case 'web': { const a0 = aim(); for (let i=-1;i<=1;i++) shot(a0 + i*.3, 200, {kind:'web', r:12, col:'#f2eef8', dmg:Math.round(atk*.4)}); break; }
+    case 'brood': { for (let i=0;i<4;i++){ const a = aim() + (i-1.5)*.8; shot(a, 115, {kind:'spider', home:1, r:10, life:5, col:'#2a2238'}); } break; }
+    case 'breath': { const a0 = aim(), dir = R()<.5 ? 1 : -1; for (let i=0;i<20;i++) later(150 + i*60, ()=>shot(a0 + dir*(-.75 + i*.075), 245, {r:12, col: i%2 ? '#ff7a2f' : '#ffb04f'})); break; }
+  }
+}
+function updateBossFx(dt, t){
+  if (bFxZone !== zoneId){ bFxZone = zoneId; bShots = []; bWarns = []; bQ = []; bBooms = []; }
+  if (admin) return;
+  const pats = BOSS_PAT[zoneId], boss = pats && mobs.find(mb => mb.slot === BOSS_SLOT && MONSTERS[mb.id]?.boss && mb.hp > 0);
+  if (boss){ const m = MONSTERS[boss.id], st = bPat[zoneId] || (bPat[zoneId] = {next:t + 2000, i:0}), d = Math.hypot(pos.x-boss.x, pos.y-boss.y), rage = boss.hp < (boss.max || m.hp)*.5;
+    if (d > 640 || darkDown) st.next = Math.max(st.next, t + 1200);
+    else if (t >= st.next){ const list = pats.filter(k => !k.startsWith('+')).concat(rage ? pats.filter(k => k.startsWith('+')).map(k => k.slice(1)) : []); bossFire(boss, list[st.i++ % list.length], t); st.next = t + (rage ? 1300 : 2000) + Math.random()*400; } }
+  else bQ = [];
+  for (let i = bQ.length-1; i >= 0; i--) if (t >= bQ[i].at){ const q = bQ[i]; bQ.splice(i, 1); if (boss) q.fn(); }
+  const z = Z();
+  for (let i = bShots.length-1; i >= 0; i--){ const s = bShots[i];
+    if (s.home){ const want = Math.atan2(pos.y-20-s.y, pos.x-s.x), cur = Math.atan2(s.vy, s.vx), sp = Math.hypot(s.vx, s.vy); let da = Math.atan2(Math.sin(want-cur), Math.cos(want-cur)); da = Math.max(-2.2*dt, Math.min(2.2*dt, da)); s.vx = Math.cos(cur+da)*sp; s.vy = Math.sin(cur+da)*sp; }
+    s.x += s.vx*dt; s.y += s.vy*dt; s.life -= dt;
+    if (s.bounce > 0){ if (s.x < 0 || s.x > z.W){ s.vx *= -1; s.bounce--; } if (s.y < 0 || s.y > z.H){ s.vy *= -1; s.bounce--; } }
+    if (s.life <= 0 || s.x < -40 || s.y < -40 || s.x > z.W+40 || s.y > z.H+40){ bShots.splice(i, 1); continue; }
+    if (Math.hypot(s.x-pos.x, s.y-(pos.y-20)) < s.r + 13){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); if (s.kind === 'web' && $('talk').hidden && !darkDown){ playerSlowUntil = t + 2000; toast('거미줄에 걸려 느려졌어요'); } bfxHurt(s.dmg, s.x - s.vx, s.y - s.vy, t); }
+  }
+  for (let i = bWarns.length-1; i >= 0; i--){ const w = bWarns[i]; if (t < w.t1) continue; bWarns.splice(i, 1);
+    let hit = false;
+    if (w.k === 'c'){ hit = Math.hypot(pos.x-w.x, pos.y-w.y) < w.r + 8; bBooms.push({x:w.x, y:w.y, r:w.r*1.2, col:w.col, t}); }
+    else { const dx = pos.x-w.x, dy = pos.y-w.y, ux = Math.cos(w.a), uy = Math.sin(w.a), along = dx*ux + dy*uy, side = Math.abs(-dx*uy + dy*ux); hit = along > -10 && along < w.len && side < w.w/2 + 8; for (let k=1;k<=6;k++) bBooms.push({x:w.x + ux*w.len*k/6, y:w.y + uy*w.len*k/6, r:w.w*.8, col:w.col, t:t + k*25}); }
+    if (hit) bfxHurt(w.dmg, w.x, w.y, t);
+  }
+  bBooms = bBooms.filter(b => t - b.t < 380);
+}
+function drawBossFx(c, t){
+  if (!bWarns.length && !bShots.length && !bBooms.length) return;
+  c.save();
+  for (const w of bWarns){ const k = Math.max(0, Math.min(1, (t - w.t0)/(w.t1 - w.t0))), blink = .5 + .5*Math.sin(t/60);
+    c.fillStyle = w.col; c.strokeStyle = w.col; c.lineWidth = 2.5;
+    if (w.k === 'c'){ c.globalAlpha = .16 + .1*blink; c.beginPath(); c.ellipse(w.x, w.y, w.r, w.r*.6, 0, 0, 7); c.fill(); c.globalAlpha = .9; c.stroke(); c.globalAlpha = .38; c.beginPath(); c.ellipse(w.x, w.y, w.r*k, w.r*.6*k, 0, 0, 7); c.fill(); }
+    else { c.save(); c.translate(w.x, w.y); c.rotate(w.a); c.globalAlpha = .14 + .1*blink; c.fillRect(0, -w.w/2, w.len, w.w); c.globalAlpha = .9; c.strokeRect(0, -w.w/2, w.len, w.w); c.globalAlpha = .38; c.fillRect(0, -w.w/2, w.len*k, w.w); c.restore(); }
+  }
+  c.globalAlpha = 1;
+  for (const s of bShots){
+    if (s.kind === 'web'){ c.strokeStyle = '#f2eef8'; c.lineWidth = 1.4; c.beginPath(); for (let i=0;i<4;i++){ const a = i*Math.PI/4 + t/300; c.moveTo(s.x + Math.cos(a)*s.r, s.y + Math.sin(a)*s.r); c.lineTo(s.x - Math.cos(a)*s.r, s.y - Math.sin(a)*s.r); } c.stroke(); c.beginPath(); c.arc(s.x, s.y, s.r*.6, 0, 7); c.stroke(); continue; }
+    if (s.kind === 'spider'){ c.strokeStyle = '#1a1020'; c.lineWidth = 1.5; c.beginPath(); for (let i=0;i<4;i++){ const w = Math.sin(t/60 + i)*2; c.moveTo(s.x-4, s.y-3+i*2); c.lineTo(s.x-12, s.y-6+i*4+w); c.moveTo(s.x+4, s.y-3+i*2); c.lineTo(s.x+12, s.y-6+i*4-w); } c.stroke(); c.fillStyle = s.col; c.beginPath(); c.arc(s.x, s.y, 7, 0, 7); c.fill(); c.fillStyle = '#ff3b6b'; c.fillRect(s.x-3, s.y-3, 2, 2); c.fillRect(s.x+1, s.y-3, 2, 2); continue; }
+    const g = c.createRadialGradient(s.x, s.y, 1, s.x, s.y, s.r*1.9); g.addColorStop(0, '#fff'); g.addColorStop(.35, s.col); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.beginPath(); c.arc(s.x, s.y, s.r*1.9, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(40,10,30,.55)'; c.lineWidth = 1.5; c.beginPath(); c.arc(s.x, s.y, s.r, 0, 7); c.stroke();
+  }
+  for (const b of bBooms){ const k = (t - b.t)/380; if (k < 0) continue; c.globalAlpha = .55*(1-k); c.fillStyle = b.col; c.beginPath(); c.arc(b.x, b.y, b.r*(.6 + k*.7), 0, 7); c.fill(); }
+  c.restore();
+}
 function drawMob(d, mob, t){
   const m = MONSTERS[mob.id], c = d.ctx, x = mob.x, y = mob.y, s = m.boss ? 2.1 : .9 + Math.min(1, m.hp/200)*.35, bob = Math.sin(t/180 + x)*1.5;
   if (m.boss){ const a = .28 + Math.sin(t/260)*.1, g = c.createRadialGradient(x, y-30, 4, x, y-30, 70); g.addColorStop(0, `rgba(255,214,90,${a})`); g.addColorStop(1, 'rgba(255,214,90,0)'); c.save(); c.fillStyle = g; c.beginPath(); c.arc(x, y-30, 70, 0, 7); c.fill(); c.restore(); }
@@ -4609,7 +4692,7 @@ function step(dt){
   if (!len) return;
   vx/=len; vy/=len;
   pos.dir = Math.abs(vx) > Math.abs(vy) ? (vx>0?'right':'left') : (vy>0?'down':'up');
-  const ox = pos.x, oy = pos.y, nx = pos.x + vx*SPEED*dt, ny = pos.y + vy*SPEED*dt;
+  const ox = pos.x, oy = pos.y, spd = SPEED * (performance.now() < playerSlowUntil ? .5 : 1), nx = pos.x + vx*spd*dt, ny = pos.y + vy*spd*dt;
   const stuck = blocked(pos.x, pos.y); // 이미 막힌 곳에 서 있으면(새 울타리가 생긴 자리 등) 빠져나갈 수 있게
   if (stuck || !blocked(nx, pos.y)) pos.x = nx;
   if (stuck || !blocked(pos.x, ny)) pos.y = ny;
@@ -4791,7 +4874,7 @@ function frameBody(t){
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
     if (admin){ moveOthers(dt); adminCam(); }
-    else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
+    else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
     const z = view.zoom, vw = view.w/z, vh = view.h/z;
@@ -4825,7 +4908,7 @@ function frameBody(t){
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
     for (const e of ents) e.label();
-    drawNight(ctx, t); drawDepth(ctx); drawDarkFx(ctx, t); drawWeather(ctx, t); drawBite(ctx, t); drawGlitch(ctx, t);
+    drawBossFx(ctx, t); drawNight(ctx, t); drawDepth(ctx); drawDarkFx(ctx, t); drawWeather(ctx, t); drawBite(ctx, t); drawGlitch(ctx, t);
     const fo = Math.max(0, 1 - (t - fadeT)/450); if (fo !== lastFade){ lastFade = fo; $('fade').style.opacity = fo; }
   }
   requestAnimationFrame(frame);
