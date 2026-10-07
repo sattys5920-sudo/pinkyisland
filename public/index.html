@@ -323,6 +323,7 @@ body.typing #chatin{background:#fff}
 /* 관리자 CCTV */
 #adminUi{position:fixed;inset:0;pointer-events:none;z-index:30;font-size:20px;color:#f4eef2}
 #adminUi button{pointer-events:auto;font:inherit;cursor:pointer}
+#adminUi .adm-walk{background:#3d6fd8;color:#fff;border-color:#7fb8ff} #adminUi .adm-walk.warn{background:#c2456b}
 .adm-top{position:absolute;left:10px;right:10px;top:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:rgba(28,22,30,.78);border-radius:16px;padding:6px 12px;pointer-events:auto}
 .adm-top b{font-size:24px}.adm-clock{font-variant-numeric:tabular-nums;opacity:.85}.adm-view{opacity:.85;margin-right:auto}
 .rec{color:#ff5a6e;font-weight:700;animation:recb 1.2s steps(2) infinite}@keyframes recb{50%{opacity:.25}}
@@ -1036,6 +1037,9 @@ for (const v of NPC_LOOKS){ const a = NPC_A1[v.name]; if (!a) continue; const [k
 // ===== 상태 =====
 let uid = null, solo = false, net = null;
 let admin = false; // 관리자 코드로 들어온 CCTV 모드: 캐릭터 없이 섬 전체를 지켜봐요
+// 관리자가 '오투모'로 섬에 들어가 걸어 다닐 수 있어요: 다른 사람에게도 보이고, 기절한 사람 곁에 2 초 있으면 깨워 줘요
+let admWalk = false, admRevive = null, admPresSig = '', admPresT = 0;
+const OTUMO_LOOK = {skin:'#f9d3b8', hair:'short', hairColor:'#3a3a4a', top:'t01', bottom:'b01', set:'', hat:'robot', acc:'none', shoes:'sh01', expr:'happy', cc:{}};
 const ADMIN_EMAIL = 'pinky-admin@pinkyisland.app'; // 아이디 규칙(영어·숫자·_)으로는 만들 수 없는 주소라 일반 가입과 겹치지 않아요
 let players = {};        // uid -> 플레이어 문서
 let claims = {};         // 'roof-3' -> {uid,nick,at}
@@ -1130,7 +1134,7 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz;
-    Object.assign(o, {um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', nick:String(s.nick||'').slice(0,8), uid:id});
+    Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', nick:String(s.nick||'').slice(0,8), uid:id});
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
   }
@@ -1192,6 +1196,7 @@ function soloNet(){
     adminRemove: async id => { delete st.players[id]; onPlayers(structuredClone(st.players)); },
     sessionClaim: () => {},
     presence: async () => {},
+    presenceRemove: async () => {},
     presenceOff: async () => {},
     sendChat: async t => { const m = {uid, nick:me.nick, t, z:zoneId, at:Date.now()}; st.chat = {...(st.chat||{}), ['c'+Date.now()+String(Math.random()).slice(2,6)]: m}; st.zoneCb && st.zoneCb(Object.fromEntries(Object.entries(st.chat).filter(([,v])=>v.z===st.zone).slice(-CHAT_KEEP))); st.chatCb && st.chatCb(st.chat); },
     chatLog: cb => { st.chatCb = cb; cb(st.chat||{}); },
@@ -1252,6 +1257,7 @@ function firebaseNet(){
     adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ['snowmen/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
     sessionClaim: sid => { const r = F.ref(db, 'sessions/'+uid); F.set(r, sid).catch(()=>{}); F.onValue(r, s=>{ const v = s.val(); if (v && v !== sid) onKicked(); }); },
     presence: p => F.set(meRef, p),
+    presenceRemove: () => F.remove(meRef).catch(()=>{}),
     presenceOff: () => F.onDisconnect(meRef).cancel().catch(()=>{}),
     presenceLeave: async () => { await F.onDisconnect(meRef).cancel().catch(()=>{}); await F.remove(meRef).catch(()=>{}); }, // 밀려난 창은 닫혀도 지금 창의 접속 표시를 지우지 않게
     sendChat: t => F.push(F.ref(db, 'chat'), {uid, nick:me.nick, t, z:zoneId, at:F.serverTimestamp()}),
@@ -1607,7 +1613,7 @@ function enterGame(doc){
 }
 function renderHud(){
   if (admin) return renderAdmin();
-  const online = 1 + others.size;
+  const online = 1 + [...others.values()].filter(o=>!o.adm).length; // 오투모(관리자)는 인원에 안 세요
   $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold} G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span><span id="wxClock">${wxClockText()}</span>`;
   if (!$('stats')){ const st = document.createElement('div'); st.id = 'stats'; st.innerHTML = `<b id="lvTag"></b><div class="sb hp" id="hpBar"><s></s><em></em></div><div class="sb st" id="staBar"><s></s><em></em></div><div class="xb" id="expBar"><s></s><em></em></div>`; $('hud').after(st); }
   $('stats').hidden = false; barSig = ''; updateBars(); placeTop();
@@ -2686,7 +2692,7 @@ function updateMobs(dt, t){
   { const bid = ZONE_BOSS[zoneId], bm = mobMap[BOSS_SLOT]; // 예전 크기로 남아 있는 보스는 새 판 화면을 가진 누구든 새 크기로 바꿔요
     if (mobLoaded && bid && bm && bm.hp > 0 && bm.id === bid && bm.max < MONSTERS[bid].hp && !(mobTry.up && t - mobTry.up < 5000)){ mobTry.up = t; const d = newMobData(bm.gen + 1, bid); if (d) net.mobSpawn(zoneId, BOSS_SLOT, bm.gen, d); } }
   if (owner && mobLoaded && t - (mobTry.heal||0) > 5000){ mobTry.heal = t; for (const [sl, mb] of Object.entries(mobMap)) if (mb.hp > 0 && mb.hp < (mb.max||0) && now - (mb.lastHit||0) > MOB_HEAL_IDLE) net.mobHeal && net.mobHeal(zoneId, sl, mb.gen); } // 한동안 아무도 안 때리면 체력이 다시 차요
-  const chase = owner ? [{x:pos.x, y:pos.y, ok:!talking && !darkDown && t > wakeGuardUntil}, ...[...others.values()].filter(o=>o.z===zoneId && !o.down).map(o=>({x:o.x, y:o.y, ok:true}))] : [];
+  const chase = owner ? [{x:pos.x, y:pos.y, ok:!talking && !darkDown && t > wakeGuardUntil}, ...[...others.values()].filter(o=>o.z===zoneId && !o.down && !o.adm).map(o=>({x:o.x, y:o.y, ok:true}))] : [];
   for (const mob of mobs){
     const m = MONSTERS[mob.id], d = Math.hypot(pos.x-mob.x, pos.y-mob.y);
     mob.cd -= dt; mob.hurt -= dt;
@@ -2880,7 +2886,7 @@ function updateBossFx(dt, t){
   const pats = BOSS_PAT[zoneId], boss = pats && mobs.find(mb => mb.slot === BOSS_SLOT && MONSTERS[mb.id]?.boss && mb.hp > 0);
   if (boss){ const m = MONSTERS[boss.id], st = bPat[zoneId] || (bPat[zoneId] = {next:t + 2000, i:0}), d = Math.hypot(pos.x-boss.x, pos.y-boss.y), rage = boss.hp < (boss.max || m.hp)*.5;
     if (t >= st.next && !admin && mobOwner()){ // 구역 주인만 정해요: 가장 가까운 사람을 노려요
-      let tg = null, best = 640; const cand = [[uid, pos.x, pos.y, !darkDown], ...[...others.entries()].filter(([,o])=>o.z===zoneId && !o.down).map(([k,o])=>[o.uid||k, o.x, o.y, true])];
+      let tg = null, best = 640; const cand = [[uid, pos.x, pos.y, !darkDown], ...[...others.entries()].filter(([,o])=>o.z===zoneId && !o.down && !o.adm).map(([k,o])=>[o.uid||k, o.x, o.y, true])];
       for (const c of cand) if (c[3]){ const dd = Math.hypot(c[1]-boss.x, c[2]-boss.y); if (dd < best){ best = dd; tg = c; } }
       const list = pats.filter(k => !k.startsWith('+')).concat(rage ? pats.filter(k => k.startsWith('+')).map(k => k.slice(1)) : []);
       st.next = t + (rage ? 1300 : 2000) + Math.random()*400;
@@ -2893,7 +2899,7 @@ function updateBossFx(dt, t){
     s.x += s.vx*dt; s.y += s.vy*dt; s.life -= dt;
     if (s.bounce > 0){ if (s.x < 0 || s.x > z.W){ s.vx *= -1; s.bounce--; } if (s.y < 0 || s.y > z.H){ s.vy *= -1; s.bounce--; } }
     if (s.life <= 0 || s.x < -40 || s.y < -40 || s.x > z.W+40 || s.y > z.H+40){ bShots.splice(i, 1); continue; }
-    if ([...others.values()].some(o => o.z === zoneId && !o.down && Math.hypot(s.x-o.x, s.y-(o.y-20)) < s.r + 13)){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); continue; } // 다른 사람에게 맞은 탄도 똑같이 사라져요
+    if ([...others.values()].some(o => o.z === zoneId && !o.down && !o.adm && Math.hypot(s.x-o.x, s.y-(o.y-20)) < s.r + 13)){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); continue; } // 다른 사람에게 맞은 탄도 똑같이 사라져요
     if (Math.hypot(s.x-pos.x, s.y-(pos.y-20)) < s.r + 13){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); if (!admin && s.kind === 'web' && $('talk').hidden && !darkDown && !ringFx().noSlow){ playerSlowUntil = t + 2000; toast('거미줄에 걸려 느려졌어요'); } bfxHurt(s.dmg, s.x - s.vx, s.y - s.vy, t); }
   }
   for (let i = bWarns.length-1; i >= 0; i--){ const w = bWarns[i]; if (t < w.t1) continue; bWarns.splice(i, 1);
@@ -4772,6 +4778,7 @@ const typing = () => document.activeElement && ['INPUT','TEXTAREA','SELECT'].inc
 function openChat(){ document.body.classList.add('chat-open'); insetT = 0; $('chatin').focus(); const h = $('chatHist'); if (h){ h.scrollTop = h.scrollHeight; setTimeout(()=>{ h.scrollTop = h.scrollHeight; }, 60); setTimeout(()=>{ h.scrollTop = h.scrollHeight; }, 400); } }
 $('chatin').addEventListener('blur', ()=>setTimeout(()=>{ if (!typing() && !$('chatin').value.trim()) { document.body.classList.remove('chat-open'); $('emorow').hidden = true; insetT = 0; } }, 150));
 addEventListener('keydown', e=>{
+  if (admin){ const tg = document.activeElement?.tagName; if (admWalk && tg !== 'INPUT' && tg !== 'TEXTAREA' && tg !== 'SELECT'){ keys[e.key.toLowerCase()] = true; if (e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); admReviveNear(); } } return; }
   if (!me || obStep) return;
   if (dlg && !typing()){ if (e.key==='Enter' || e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); dlgTap(); } else if (e.key==='Escape' && dlg.waiting) dlgClose(); return; }
   if (typing() && document.activeElement.id !== 'chatin') return; // 편지·메신저 입력칸은 그 칸이 알아서
@@ -4818,6 +4825,7 @@ function hitTarget(w){
   return null;
 }
 cv.addEventListener('pointerdown', e=>{
+  if (admin && admWalk){ const w = toWorld(e.clientX, e.clientY); target = admReviveTarget(w) || {x:w.x, y:w.y, act:null, mark:performance.now()}; return; }
   if (!me || obStep) return;
   if (typing()) $('chatin').blur();
   // 폰에서 아래 시트가 열려 있으면, 바깥을 누르면 시트만 닫혀요
@@ -4862,7 +4870,7 @@ function step(dt){
   const stuck = blocked(pos.x, pos.y); // 이미 막힌 곳에 서 있으면(새 울타리가 생긴 자리 등) 빠져나갈 수 있게
   if (stuck || !blocked(nx, pos.y)) pos.x = nx;
   if (stuck || !blocked(pos.x, ny)) pos.y = ny;
-  walked += Math.hypot(pos.x-ox, pos.y-oy); if (walked > 500){ stats().distanceWalked = (stats().distanceWalked||0) + Math.round(walked); walked = 0; checkAchievements(); }
+  walked += Math.hypot(pos.x-ox, pos.y-oy); if (walked > 500 && me){ stats().distanceWalked = (stats().distanceWalked||0) + Math.round(walked); walked = 0; checkAchievements(); }
   checkExit();
   if (target && Math.hypot(pos.x-ox, pos.y-oy) < SPEED*dt*.2){ stuckT += dt; if (stuckT>.35){ const tg = target; target = null; stuckT = 0; if (tg.act && Math.hypot(pos.x-tg.x, pos.y-tg.y) < 64) tg.act(); } } else stuckT = 0;
 }
@@ -5138,7 +5146,7 @@ function frameBody(t){
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,110); c.scale(1.45,1.45); CH.figure(d, L, dir, t/1000, true, L.expr); c.restore(); } } }
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
-    if (admin){ moveOthers(dt); adminCam(); adminMobs(dt); updateBossFx(dt, t); }
+    if (admin){ moveOthers(dt); if (admWalk){ step(dt); admWalkTick(t); } else adminCam(); adminMobs(dt); updateBossFx(dt, t); }
     else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
@@ -5168,6 +5176,7 @@ function frameBody(t){
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
       ...snowmenHere().map(([,s])=>({y:s.y, draw:()=>drawSnowman(d, s, t), label:()=>{}})),
+      ...(admin && admWalk ? [{y:pos.y, draw:()=>drawPlayer(ctx,pos.x,pos.y,OTUMO_LOOK,pos.dir,t/1000,pos.moving,1,'happy'), label:()=>{ tag(ctx, '오투모', pos.x, pos.y+22, '#7fb8ff'); titleTag(ctx, '관리자', pos.x, pos.y-76); if (admRevive){ const k = Math.min(1, (t - admRevive.at)/ADM_REVIVE_MS); ctx.save(); ctx.strokeStyle = '#7fe3a0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pos.x, pos.y-90, 9, -Math.PI/2, -Math.PI/2 + k*6.283); ctx.stroke(); ctx.restore(); } }}] : []),
       ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (umbKey() && isRain() && snowOutside()) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving); }, label:()=>{ if (darkDown){ tag(ctx, `${me.nick} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } nameTag(ctx,me.nick,pos.x,pos.y+nameDy(me.inv?.ring),ROOFS[me.roof][1],me.inv?.ring,t); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-76); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
@@ -5220,21 +5229,21 @@ function renderAdmin(){
   const online = [...others.values()], onIds = new Set(online.map(o=>o.uid)), count = {};
   for (const o of online) count[o.z] = (count[o.z]||0) + 1;
   const regs = Object.entries(players).sort(([,a],[,b])=>String(a.nick).localeCompare(String(b.nick), 'ko'));
-  const watching = cam.follow ? `따라가는 중 · ${esc(others.get(cam.follow)?.nick || '')}` : `보는 곳 · ${esc(zoneName(zoneId))}`;
+  const watching = admWalk ? `오투모로 걷는 중 · ${esc(zoneName(zoneId))}` : cam.follow ? `따라가는 중 · ${esc(others.get(cam.follow)?.nick || '')}` : `보는 곳 · ${esc(zoneName(zoneId))}`;
   const wasTyping = document.activeElement && document.activeElement.id==='admWipeTxt'; // 다시 그려도 입력하던 칸은 그대로
   const typingRk = document.activeElement?.dataset?.rk, pl = box.querySelector('.adm-post-list'), postScroll = pl ? pl.scrollTop : 0;
   // 다시 그려도 스크롤 자리는 그대로: 스크롤된 칸을 클래스+순번으로 기억해 둬요
   const scrollKey = e => { const c = String(e.className||'').trim().split(/\s+/)[0] || e.tagName; return c + '#' + [...box.getElementsByClassName(c)].indexOf(e); };
   const kept = [box, ...box.querySelectorAll('*')].filter(e=>e.scrollTop || e.scrollLeft).map(e=>[e===box ? '' : scrollKey(e), e.scrollTop, e.scrollLeft]), pageY = window.scrollY;
   box.innerHTML = `
-    <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span><button data-a="side" class="adm-btn adm-menu ${admSide ? 'on' : ''}">메뉴${adminInbox().some(x=>!x.l.replied) ? ' ●' : ''}</button><button data-a="logout" class="adm-btn">로그아웃</button></div>
+    <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span>${admWalk ? '<button data-a="walkoff" class="adm-btn warn adm-walk">오투모 나가기</button>' : '<button data-a="walkon" class="adm-btn adm-walk">오투모로 들어가기</button>'}<button data-a="side" class="adm-btn adm-menu ${admSide ? 'on' : ''}">메뉴${adminInbox().some(x=>!x.l.replied) ? ' ●' : ''}</button><button data-a="logout" class="adm-btn">로그아웃</button></div>
     <div class="adm-zones">${Object.keys(ZONES).map(z=>`<button data-z="${z}" class="adm-zone ${zoneId===z && !cam.follow ? 'on' : ''}">${esc(ZONES[z].name)}<i>${count[z]||0}</i></button>`).join('')}</div>
     <div class="adm-side">
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
       ${adminMobSec()}
-      ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>`).join('')}</div>` : ''}
+      ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
       <div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
@@ -5421,6 +5430,7 @@ function adminClick(e){
   if (b.dataset.a==='tclose'){ admTbl = null; return renderAdmin(); }
   if (b.dataset.p){ admTbl = admTbl===b.dataset.p ? null : b.dataset.p; admChat = null; admWipe = false; return renderAdmin(); }
   if (b.dataset.z){ admSide = false; cam.follow = null; cam.zone = b.dataset.z; const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2); renderAdmin(); }
+  else if (b.dataset.f && admWalk){ const o = [...others.values()].find(q=>q.uid===b.dataset.f) || others.get(b.dataset.f); admSide = false; if (o){ enterZone(o.z, null, o.x + 40, o.y + 6); toast(`${o.nick} 님 옆으로 왔어요`); } renderAdmin(); }
   else if (b.dataset.f){ admSide = false; cam.follow = cam.follow===b.dataset.f ? null : b.dataset.f; renderAdmin(); }
   else if (b.dataset.a==='dkprev' || b.dataset.a==='dknext'){ Promise.resolve(net.setWorld({darkShift:(world.darkShift|0) + (b.dataset.a==='dknext' ? 1 : -1)})).catch(()=>toast('방을 옮기지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.rv){ net.reviveSend(b.dataset.rv, '관리자').then(()=>toast('깨웠어요')); }
@@ -5428,7 +5438,40 @@ function adminClick(e){
   else if (b.dataset.a==='dkreset'){ const npc = darkToday(); if (npc && confirm(`${NPC[npc].name}의 방을 처음 상태로 되돌릴까요? 푼 문제·시간·보스 체력이 모두 지워져요.`)) net.darkWipe(npc); }
   else if (b.dataset.a==='dkview'){ const npc = darkToday(); if (npc){ admSide = false; cam.follow = null; cam.zone = 'dark:'+npc; enterZone('dark:'+npc, null, DARK_ROOM.W/2, DARK_ROOM.H/2); renderAdmin(); } }
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) Promise.resolve(net.setWorld({dark:v, darkAt:Date.now() + serverOffset, darkShift:0})).then(()=>v && net.darkWipe ? net.darkWipe() : null).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
+  else if (b.dataset.a==='walkon') admWalkOn();
+  else if (b.dataset.a==='walkoff') admWalkOff();
   else if (b.dataset.a==='logout'){ if (confirm('관리자 페이지에서 나갈까요?')) logout(); }
+}
+// ----- 오투모로 걸어 다니기 -----
+const ADM_REVIVE_MS = 2000;
+function admWalkOn(){
+  if (admWalk) return; admWalk = true; admSide = false; cam.follow = null; target = null; admRevive = null; admPresSig = '';
+  const [x, y] = freeSpot(pos.x, pos.y); pos.x = x; pos.y = y; pos.dir = 'down'; view.zoom = view.base;
+  document.body.classList.add('admwalk'); toast('오투모로 섬에 들어왔어요 · 화면을 누르거나 방향키로 걸어요'); renderAdmin();
+}
+function admWalkOff(){
+  if (!admWalk) return; admWalk = false; target = null; admRevive = null; pos.moving = false;
+  net && net.presenceRemove && net.presenceRemove(); cam.zone = zoneId; document.body.classList.remove('admwalk');
+  toast('오투모가 섬에서 나갔어요 · 다시 CCTV 로 봐요'); renderAdmin();
+}
+// 기절한 사람을 누르면 곁으로 걸어가서 깨워요
+function admReviveTarget(w){
+  for (const [id, o] of others) if (o.down && o.z === zoneId && Math.abs(w.x-o.x) < 40 && Math.abs(w.y-(o.y-10)) < 34)
+    return {x:o.x + 30, y:o.y + 10, act:()=>admReviveStart(id)};
+  return null;
+}
+function admReviveStart(id){ const o = others.get(id); if (!o || !o.down) return; admRevive = {id, uid:o.uid || id, at:performance.now()}; toast(`${o.nick} 님을 깨우는 중.... 곁에 있어요`); }
+function admReviveNear(){ let best = null, bd = 80; for (const [id, o] of others){ if (!o.down || o.z !== zoneId) continue; const d = Math.hypot(pos.x-o.x, pos.y-o.y); if (d < bd){ bd = d; best = id; } } if (best) admReviveStart(best); else toast('가까이에 기절한 사람이 없어요'); }
+function admWalkTick(t){
+  if (admRevive){ const o = others.get(admRevive.id);
+    if (!o || !o.down) admRevive = null;
+    else if (o.z !== zoneId || Math.hypot(pos.x-o.x, pos.y-o.y) > 80){ admRevive = null; toast('깨우기가 끊겼어요'); }
+    else if (t - admRevive.at > ADM_REVIVE_MS){ const nick = o.nick; net.reviveSend(admRevive.uid, '오투모').then(()=>toast(`${nick} 님을 깨웠어요`)).catch(()=>toast('깨우지 못했어요')); admRevive = null; } }
+  if (!net || !net.presence) return;
+  const p = {adm:1, z:zoneId, nick:'오투모', look:OTUMO_LOOK, roof:0, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, ex:'happy', ti:'관리자', emo:'', emoAt:0};
+  const sig = JSON.stringify(p);
+  if (sig === admPresSig || t - admPresT < (pos.moving ? 250 : 120)) return;
+  admPresSig = sig; admPresT = t; net.presence(p).catch(()=>{});
 }
 // 카메라: 따라가는 사람이 있으면 그 사람을, 없으면 고른 구역 전체를 한눈에
 function adminCam(){
