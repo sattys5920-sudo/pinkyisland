@@ -1077,6 +1077,7 @@ async function flushSave(){
   if (admin || !me || kicked) return;
   if (saving){ saveAgain=true; return; }
   saving=true; lastSaved = saveSig();
+  me.downAt = darkDown && !zoneId.startsWith('dark:') ? darkDown : 0; // 기절한 채로 나가면 다시 들어와도 기절해 있어요
   me.hp = Math.max(1, Math.round(playerHp)); me.sta = Math.round(playerSta); me.staAt = Date.now() + serverOffset;
   try { await net.savePlayer(toDB(me)); }
   catch(e){ lastSaved = null; toast('저장하지 못했어요. 인터넷 연결을 확인해 주세요. 잠시 뒤 다시 저장할게요.'); if (!saveTimer) saveTimer = setTimeout(flushSave, 5000); }
@@ -1570,10 +1571,11 @@ function enterGame(doc){
   $('friendBtn').onclick = ()=>friendPanel();
   $('menuBtn').onclick = menuPanel;
   $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); swing(); });
+  if (me.downAt){ darkDown = me.downAt; downOffer = false; } // 기절한 채로 나갔다면 그대로 (자리 옮기며 저장하기 전에 먼저)
   const L = LOTS[me.lot]; pos.dir = 'down';
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
   else enterZone('home', null, L.x, L.y + 18);
-  loadStats(); tutorialFix(); refundStocks(); renderHud();
+  loadStats(); if (darkDown) playerHp = 0; tutorialFix(); refundStocks(); renderHud();
   if (!solo){ net.cleanupClaims(me.roof, me.lot); net.sessionClaim(Math.random().toString(36).slice(2) + Date.now().toString(36)); }
   addLog(`${me.nick} 님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
   if (solo) addLog('혼자 보기 모드예요.', true);
@@ -2694,7 +2696,7 @@ function faint(){ return darkRespawn(); }
 // 아무도 깨워 주지 않을 때: 집 앞에서 깨어나요 (일반 모드)
 function wakeAtHome(){
   darkDown = null; playerHp = maxHp(); mobs = []; renderHud();
-  const L = LOTS[me.lot]; enterZone('home', null, L.x, L.y + 18);
+  const L = LOTS[me.lot]; setTimeout(flushSave, 300); enterZone('home', null, L.x, L.y + 18);
   say('기절', '집에서 푹 쉬고 일어났어요. 몸이 가뿐해요!', [], '체력이 다시 가득 찼어요');
 }
 function drawMob(d, mob, t){
@@ -4175,11 +4177,11 @@ let downOffer = false, wakeGuardUntil = 0; // 깨어난 뒤 5 초는 몬스터�
 function darkRespawn(){
   if (darkDown) return;
   playerHp = 0; darkDown = darkNow(); downOffer = false; darkSlams = []; target = null; setExpr('sad', 3000);
-  toast(zoneId.startsWith('dark:') ? '쓰러졌어요.... 다른 사람이 살려 줄 때까지 기다려요' : '앗, 기운이 다 빠져서 기절했어요.... 친구가 와서 깨워 주면 일어나요'); renderHud();
+  toast(zoneId.startsWith('dark:') ? '쓰러졌어요.... 다른 사람이 살려 줄 때까지 기다려요' : '앗, 기운이 다 빠져서 기절했어요.... 친구가 와서 깨워 주면 일어나요'); renderHud(); if (!zoneId.startsWith('dark:') && !zoneId.startsWith('house:')){ me.zx = Math.round(pos.x); me.zy = Math.round(pos.y); } flushSave();
 }
 function darkStandUp(by){
   if (!darkDown) return; darkDown = null; playerHp = Math.round(maxHp()*.5); darkGuard = 3; wakeGuardUntil = performance.now() + 5000; renderHud();
-  closeTalk(); toast(by ? `${String(by).slice(0,8)} 님이 ${downWords().helped}! ${zoneId.startsWith('dark:') ? '다시 싸워요' : '조심해서 다녀요'}` : '다시 일어났어요');
+  flushSave(); closeTalk(); toast(by ? `${String(by).slice(0,8)} 님이 ${downWords().helped}! ${zoneId.startsWith('dark:') ? '다시 싸워요' : '조심해서 다녀요'}` : '다시 일어났어요');
 }
 function drawDowned(c, x, y, look, t, key){
   c.save(); c.translate(x, y-6); c.rotate(-Math.PI/2); c.globalAlpha = .7; drawPlayer(c, 14, 18, look, 'down', 0, false, 1, 'dot'); c.restore();
