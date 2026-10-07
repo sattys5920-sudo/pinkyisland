@@ -323,6 +323,13 @@ body.typing #chatin{background:#fff}
 /* 관리자 CCTV */
 #adminUi{position:fixed;inset:0;pointer-events:none;z-index:30;font-size:20px;color:#f4eef2}
 #adminUi button{pointer-events:auto;font:inherit;cursor:pointer}
+#mgBox{position:fixed;inset:0;z-index:70;background:rgba(60,30,50,.45);display:grid;place-items:center;padding:10px}
+#mgBox .mg-card{width:min(400px,100%);max-height:100%;overflow:auto;background:#fff8fb;border-radius:22px;border:3px solid #ffd3e4;box-shadow:0 6px 0 #f1c6d8;padding:10px 12px 12px;color:#5a3346}
+#mgBox .mg-top{display:flex;align-items:center;gap:8px;font-size:19px;margin-bottom:6px}#mgBox .mg-top small{margin-left:auto;color:#b07a92;font-size:14px}
+#mgBox canvas{width:100%;aspect-ratio:330/420;border-radius:16px;display:block;touch-action:none;-webkit-user-select:none;user-select:none}
+#mgBox .mg-foot{text-align:center;font-size:16px;line-height:1.35}#mgBox .mg-foot p{margin:6px 0}#mgBox .mg-k{font-size:14px;color:#9a6f84}#mgBox .mg-r{font-size:24px;color:#e0507a;font-weight:bold}
+#mgBox .btn{margin-top:4px}#mgBox .btn.ghost{background:#fff;color:#c0577f}
+@media (max-height:700px){#mgBox canvas{max-height:52vh;width:auto;margin:0 auto}}
 #goal{position:fixed;z-index:5;padding:6px 10px 5px;font-size:15px;cursor:pointer;line-height:1.2}
 #goal .gl-t{display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden}#goal .gl-t b{font-size:16px}#goal .gl-t span{overflow:hidden;text-overflow:ellipsis}#goal .gl-t i{margin-left:auto;font-style:normal;font-size:13px;color:#b07a92}
 #goal .gl-ic{width:20px;height:20px}#goal .gl-s{display:flex;justify-content:space-between;font-size:13px;color:#9a6f84}
@@ -1855,15 +1862,16 @@ function playEvents(n, list){
 function npcActions(n){
   const r = relOf(n.id), acts = [...questActions(n)];
   if ((r.seen || r.ev4)) acts.push(['지난 이야기', ()=>storyReplay(n)]);
-  if (n.id==='momo') acts.push(...sellActions(n));
-  if (n.id==='dandan') acts.push(['요리하기', cookPanel]);
+  if (n.id==='momo') acts.push(...sellActions(n), ['케이크 탑 쌓기 알바', ()=>mgOpen('stack')]);
+  if (n.id==='dandan') acts.push(['요리하기', cookPanel], ['커피 만들기 알바', ()=>mgOpen('coffee')]);
+  if (n.id==='hana') acts.push(['텃밭 벌레 잡기', ()=>mgOpen('bugs')]);
   if (n.id!=='momo' && BUYERS[n.id]) acts.push(['물건 팔기', ()=>sellPanel(n)]);
   if (n.id==='tori') acts.push(['오늘의 심부름', errandPanel], [`우체국 편지함${unreadLetters() ? ' ('+unreadLetters()+')' : ''}`, ()=>postPanel()]);
   if (n.id==='bori') acts.push(['공방 (텃밭·가구)', workshopPanel], ...(RING_OPEN ? [['반지 공방', ringPanel]] : []), ['집 늘리기·인테리어', housePanel]);
   if (n.id==='mongsil') acts.push(['옷가게 · 갈아입기', clothesPanel], ['우산 가게', umbPanel]);
   if (n.id==='kongi' && me.inv.sword) acts.push(['경비대 무기고', weaponPanel]);
   if (n.id==='olly') acts.push(['박물관 기증', museumPanel]);
-  if (n.id==='pengpeng') acts.push(['날씨 예보', ()=>say(title(n), '펭! '+forecast(), npcActions(n))], ['낚시 대회', contestPanel]);
+  if (n.id==='pengpeng') acts.push(['날씨 예보', ()=>say(title(n), '펭! '+forecast(), npcActions(n))], ['낚시 대회', contestPanel], ['얼음 썰매', ()=>mgOpen('sled')]);
   if (n.id==='bami') acts.push(['꽃 씨앗 사기', seedShop]);
   if (n.id==='kongi') acts.push(['먼지 여왕 소식', ()=>say(title(n), boss && boss.gen===today() ? (boss.hp>0 ? `보고드립니다! 깊은 먼지 숲에 먼지 여왕이 나타났습니다! 남은 체력 ${Math.ceil(boss.hp)}/${boss.max}! 다 함께 물리쳐야 합니다!` : '보고드립니다! 오늘의 먼지 여왕은 물리쳤습니다! 내일 다시 나타날 겁니다!') : '보고드립니다! 깊은 먼지 숲을 살피는 중입니다!', npcActions(n))]);
   if (n.id==='toto') acts.push(['오늘의 시세', pricePanel]);
@@ -4810,6 +4818,7 @@ const typing = () => document.activeElement && ['INPUT','TEXTAREA','SELECT'].inc
 function openChat(){ document.body.classList.add('chat-open'); insetT = 0; $('chatin').focus(); const h = $('chatHist'); if (h){ h.scrollTop = h.scrollHeight; setTimeout(()=>{ h.scrollTop = h.scrollHeight; }, 60); setTimeout(()=>{ h.scrollTop = h.scrollHeight; }, 400); } }
 $('chatin').addEventListener('blur', ()=>setTimeout(()=>{ if (!typing() && !$('chatin').value.trim()) { document.body.classList.remove('chat-open'); $('emorow').hidden = true; insetT = 0; } }, 150));
 addEventListener('keydown', e=>{
+  if (mg){ mgKey(e); return; } // 미니게임 중엔 키가 게임으로만 가요
   if (admin){ const tg = document.activeElement?.tagName; if (admWalk && tg !== 'INPUT' && tg !== 'TEXTAREA' && tg !== 'SELECT'){ keys[e.key.toLowerCase()] = true; if (e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); admReviveNear(); } } return; }
   if (!me || obStep) return;
   if (dlg && !typing()){ if (e.key==='Enter' || e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); dlgTap(); } else if (e.key==='Escape' && dlg.waiting) dlgClose(); return; }
@@ -5484,6 +5493,215 @@ function adminClick(e){
   else if (b.dataset.a==='walkoff') admWalkOff();
   else if (b.dataset.a==='logout'){ if (confirm('관리자 페이지에서 나갈까요?')) logout(); }
 }
+// ===== 미니게임 4 종: 모모 케이크 탑 쌓기 · 펭펭 얼음 썰매 · 단단 커피 만들기 · 하나 텃밭 벌레 잡기 =====
+// 게임마다 하루 5 판까지 골드를 받아요 (그 뒤로는 기록만). 판 그림은 330×420 캔버스에 그려요
+const MG_W = 330, MG_H = 420, MG_DAILY = 5;
+const MG_INFO = {
+  stack: {npc:'momo', title:'🎂 모모의 케이크 탑 쌓기', how:'좌우로 움직이는 케이크 층을 톡 눌러 떨어뜨려요. 아래층과 어긋난 만큼 잘려 나가고, 딱 맞추면 다시 넓어져요.', key:'화면을 누르거나 스페이스', pay:'1 층 40 G · 10 층마다 +200 G (최대 1,500 G)', unit:'층'},
+  sled: {npc:'pengpeng', title:'🐧 펭펭의 얼음 썰매', how:'세 줄을 오가며 물고기를 먹어요. 얼음덩이는 점프로 넘고, 눈사람은 옆으로 피해요. 하트 3 개를 다 잃으면 끝!', key:'왼쪽·오른쪽을 누르면 줄 바꾸기, 가운데를 누르면 점프 (방향키·스페이스)', pay:'물고기 15 G · 희귀 바다 친구 150 G · 20 m 마다 1 G (최대 1,500 G)', unit:'m'},
+  coffee: {npc:'dandan', title:'☕ 단단의 커피 만들기', how:'왔다 갔다 하는 바늘을 초록 칸에서 멈추면 하트 라테! 노란 칸은 괜찮은 라테예요. 5 잔, 갈수록 빨라져요.', key:'화면을 누르거나 스페이스', pay:'완벽 120 G · 좋아요 50 G · 5 잔 모두 완벽 +300 G', unit:'점'},
+  bugs: {npc:'hana', title:'🐛 하나의 텃밭 벌레 잡기', how:'구멍에서 고개를 내미는 애벌레를 톡! 금빛 애벌레는 보너스, 무당벌레는 텃밭 친구라 누르면 감점이에요. 40 초.', key:'화면을 눌러요', pay:'애벌레 20 G · 금빛 애벌레 100 G · 무당벌레 −40 G (최대 1,000 G)', unit:'마리'},
+};
+let mg = null, mgImgs = {};
+const mgImg = k => { if (!mgImgs[k]){ const im = new Image(); im.src = iconURL(artIdOf(k)); mgImgs[k] = im; } return mgImgs[k]; };
+const mgCount = id => { if (me.mgDay !== today()){ me.mgDay = today(); me.mgN = {}; } return (me.mgN || (me.mgN = {}))[id] || 0; };
+function mgOpen(id){
+  closeTalk(); $('npcPanel').hidden = true; for (const k in keys) keys[k] = false; target = null;
+  let box = $('mgBox'); if (!box){ box = document.createElement('div'); box.id = 'mgBox'; document.body.appendChild(box); }
+  box.hidden = false; document.body.classList.add('mg-on');
+  box.innerHTML = `<div class="mg-card"><div class="mg-top"><b>${MG_INFO[id].title}</b><small id="mgSub"></small><button class="mini" id="mgClose">닫기</button></div><canvas id="mgCv"></canvas><div class="mg-foot" id="mgFoot"></div></div>`;
+  const cv = $('mgCv'), dpr = Math.min(3, devicePixelRatio || 1); cv.width = MG_W * dpr; cv.height = MG_H * dpr;
+  mg = {id, st:'intro', cv, g:cv.getContext('2d'), dpr, t:0, last:performance.now()};
+  $('mgClose').onclick = mgClose;
+  const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * MG_W, (e.clientY - r.top) / r.height * MG_H]; };
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); if (!mg || mg.st !== 'play') return; const [x, y] = pt(e); mg.down = [x, y, performance.now()]; MG[mg.id].tap && MG[mg.id].tap(x, y); });
+  cv.addEventListener('pointerup', e => { if (!mg || mg.st !== 'play' || !mg.down) return; const [x, y] = pt(e), [x0, y0] = mg.down; mg.down = null; MG[mg.id].swipe && MG[mg.id].swipe(x - x0, y - y0, x0, y0); });
+  ['crop:c12','fish:f19','fish:f30','dish:d18','crop:c01','crop:c06','crop:c05','crop:c11'].forEach(mgImg);
+  mgIntro(); requestAnimationFrame(mgLoop);
+}
+function mgClose(){ if (mg && mg.st === 'play' && !confirm('그만할까요? 이번 판은 보상이 없어요')) return; mg = null; const b = $('mgBox'); if (b){ b.hidden = true; b.innerHTML = ''; } document.body.classList.remove('mg-on'); renderHud(); }
+function mgIntro(){
+  const I = MG_INFO[mg.id], n = mgCount(mg.id), best = (me.mgBest || {})[mg.id] || 0;
+  $('mgSub').textContent = `오늘 보상 ${Math.min(n, MG_DAILY)}/${MG_DAILY} 판`;
+  $('mgFoot').innerHTML = `<p>${I.how}</p><p class="mg-k">조작: ${I.key}</p><p class="mg-k">${I.pay}${best ? ` · 내 최고 ${best.toLocaleString()} ${I.unit}` : ''}</p><button class="btn" id="mgGo">시작!</button>`;
+  $('mgGo').onclick = mgStart; mg.st = 'intro'; MG[mg.id].init(); MG[mg.id].draw(mg.g, 0);
+}
+function mgStart(){ mg.st = 'play'; mg.t = 0; mg.last = performance.now(); MG[mg.id].init(); $('mgFoot').innerHTML = `<p class="mg-k">${MG_INFO[mg.id].key}</p>`; }
+function mgOver(score, gold){
+  if (!mg || mg.st !== 'play') return; mg.st = 'over';
+  const id = mg.id, n = mgCount(id), paid = n < MG_DAILY; gold = Math.max(0, Math.round(gold));
+  me.mgN[id] = n + 1; const bs = me.mgBest || (me.mgBest = {}), rec = score > (bs[id] || 0); if (rec) bs[id] = score;
+  if (paid && gold > 0){ me.inv.gold += gold; me.earned = (me.earned||0) + gold; }
+  stat('mgPlayed'); saveMe(true); renderHud();
+  setTimeout(()=>{ if (!mg || mg.id !== id) return;
+    $('mgSub').textContent = `오늘 보상 ${Math.min(n + 1, MG_DAILY)}/${MG_DAILY} 판`;
+    $('mgFoot').innerHTML = `<p class="mg-r">${score.toLocaleString()} ${MG_INFO[id].unit}${rec ? ' · 🎉 내 최고 기록!' : ''}</p><p>${paid ? (gold > 0 ? `<b>+${gold.toLocaleString()} G</b> 받았어요` : '이번엔 받은 골드가 없어요') : `오늘 보상은 다 받았어요 (${MG_DAILY}/${MG_DAILY}) · 기록은 남아요`}</p><button class="btn" id="mgAgain">다시 하기</button> <button class="btn ghost" id="mgBye">닫기</button>`;
+    $('mgAgain').onclick = mgIntro; $('mgBye').onclick = mgClose; }, 700);
+}
+function mgLoop(now){
+  if (!mg) return; const dt = Math.min(.05, (now - mg.last) / 1000); mg.last = now;
+  if (mg.st === 'play'){ mg.t += dt; MG[mg.id].step(dt); }
+  const g = mg.g; g.setTransform(mg.dpr, 0, 0, mg.dpr, 0, 0); MG[mg.id].draw(g, dt);
+  if (mg.st === 'intro'){ g.fillStyle = 'rgba(255,248,251,.55)'; g.fillRect(0, 0, MG_W, MG_H); }
+  requestAnimationFrame(mgLoop);
+}
+function mgKey(e){
+  if (e.key === 'Escape') return mgClose();
+  if (!mg) return; if (mg.st !== 'play'){ if ((e.key === 'Enter' || e.key === ' ') && $('mgGo')){ e.preventDefault(); mgStart(); } return; }
+  const k = e.key.toLowerCase(), G = MG[mg.id]; e.preventDefault();
+  if (G.key) G.key(k); else if (k === ' ' || k === 'enter') G.tap(MG_W/2, MG_H/2);
+}
+const mgTxt = (g, s, x, y, size, col, al='center', stroke='#fff') => { g.font = `bold ${size}px "Dongle",sans-serif`; g.textAlign = al; g.lineJoin = 'round'; if (stroke){ g.lineWidth = 4; g.strokeStyle = stroke; g.strokeText(s, x, y); } g.fillStyle = col; g.fillText(s, x, y); };
+const mgRR = (g, x, y, w, h, r, col) => { g.fillStyle = col; g.beginPath(); g.roundRect(x, y, w, h, r); g.fill(); };
+const mgPic = (g, k, x, y, s) => { const im = mgImgs[k]; if (im && im.complete && im.naturalWidth) g.drawImage(im, x - s/2, y - s/2, s, s); };
+const mgPops = [];
+const mgPop = (x, y, s, col) => mgPops.push({x, y, s, col, t:mg.t});
+function mgDrawPops(g){ for (let i = mgPops.length - 1; i >= 0; i--){ const p = mgPops[i], k = mg.t - p.t; if (k > .9 || k < 0){ mgPops.splice(i, 1); continue; } g.globalAlpha = 1 - k / .9; mgTxt(g, p.s, Math.max(60, Math.min(MG_W - 60, p.x)), p.y - k * 30, 21, p.col); g.globalAlpha = 1; } }
+const MG = {
+  // ---------- 케이크 탑 쌓기 ----------
+  stack: {
+    COLS: ['#f7c9a0', '#fff1f6', '#ffb3cf', '#c98a5b'],
+    init(){ mgPops.length = 0; mg.s = {layers:[{x:95, w:140, c:0}], cur:{x:10, w:140, dir:1}, fall:[], cam:0, floors:0, streak:0, over:0}; },
+    speed(){ return Math.min(380, 130 + mg.s.floors * 9); },
+    step(dt){ const s = mg.s, c = s.cur;
+      if (s.over){ s.over += dt; if (s.over > .6 && mg.st === 'play') mgOver(s.floors, s.floors * 40 + Math.floor(s.floors / 10) * 200 > 1500 ? 1500 : s.floors * 40 + Math.floor(s.floors / 10) * 200); }
+      else { c.x += c.dir * this.speed() * dt; if (c.x < 6){ c.x = 6; c.dir = 1; } if (c.x + c.w > MG_W - 6){ c.x = MG_W - 6 - c.w; c.dir = -1; } }
+      for (const f of s.fall){ f.vy += 600 * dt; f.y += f.vy * dt; f.x += f.vx * dt; f.r += f.vr * dt; }
+      const want = Math.max(0, (s.layers.length - 9) * 22); s.cam += (want - s.cam) * Math.min(1, dt * 6); },
+    tap(){ const s = mg.s; if (s.over) return; const c = s.cur, top = s.layers[s.layers.length - 1], ly = 380 - 22 * s.layers.length;
+      const l = Math.max(c.x, top.x), r = Math.min(c.x + c.w, top.x + top.w), ov = r - l, col = (s.floors + 1) % 4;
+      if (ov <= 0){ s.fall.push({x:c.x, y:ly, w:c.w, c:col, vx:c.dir * 60, vy:0, r:0, vr:c.dir * 2}); s.over = .01; mgPop(165, ly - 20, '와르르!', '#e0507a'); return; }
+      let nx = l, nw = ov;
+      if (Math.abs(c.x - top.x) < 5){ nx = top.x; nw = top.w; s.streak++; if (s.streak >= 3) nw = Math.min(140, nw + 8), nx = Math.max(6, nx - 4); mgPop(nx + nw/2, ly - 14, s.streak >= 3 ? '딱 맞춤! 넓어져요' : '딱 맞춤!', '#3fae6a'); }
+      else { s.streak = 0; if (c.x < top.x) s.fall.push({x:c.x, y:ly, w:top.x - c.x, c:col, vx:-50, vy:-40, r:0, vr:-3}); else s.fall.push({x:top.x + top.w, y:ly, w:c.x + c.w - top.x - top.w, c:col, vx:50, vy:-40, r:0, vr:3}); }
+      s.layers.push({x:nx, w:nw, c:col}); s.floors++;
+      if (s.floors % 10 === 0) mgPop(nx + nw/2, ly - 34, `${s.floors}층! +200 G`, '#e0507a');
+      s.cur = {x:s.floors % 2 ? MG_W - 6 - nw : 6, w:nw, dir:s.floors % 2 ? -1 : 1}; },
+    draw(g){ const s = mg.s, sky = g.createLinearGradient(0, 0, 0, MG_H); sky.addColorStop(0, '#ffe3ef'); sky.addColorStop(1, '#fff6ea'); g.fillStyle = sky; g.fillRect(0, 0, MG_W, MG_H);
+      g.save(); g.translate(0, s.cam);
+      mgRR(g, 80, 384, 170, 16, 8, '#e9d2c0');
+      const layer = (L, y) => { mgRR(g, L.x, y, L.w, 20, 7, this.COLS[L.c]); g.fillStyle = 'rgba(255,255,255,.5)'; g.fillRect(L.x + 5, y + 3, Math.max(0, L.w - 10), 3); if (this.COLS[L.c] === '#fff1f6'){ g.fillStyle = '#fff'; for (let k = 0; k <= Math.floor(L.w / 22); k++){ g.beginPath(); g.arc(L.x + 6 + k * 22, y + 20, 4, 0, 7); g.fill(); } } };
+      s.layers.forEach((L, i) => { if (i) layer(L, 380 - 22 * i); });
+      s.layers.forEach((L, i) => { if (i && i % 10 === 0) mgPic(g, 'crop:c12', L.x + L.w/2, 380 - 22 * i - 8, 22); });
+      for (const f of s.fall){ g.save(); g.translate(f.x + f.w/2, f.y + 10); g.rotate(f.r); mgRR(g, -f.w/2, -10, f.w, 20, 6, this.COLS[f.c]); g.restore(); }
+      if (!s.over){ const ly = 380 - 22 * s.layers.length; layer({...s.cur, c:(s.floors + 1) % 4}, ly - 40);
+        g.strokeStyle = 'rgba(192,87,127,.35)'; g.setLineDash([3, 4]); g.beginPath(); g.moveTo(s.cur.x + s.cur.w/2, ly - 18); g.lineTo(s.cur.x + s.cur.w/2, ly); g.stroke(); g.setLineDash([]); }
+      mgDrawPops(g); g.restore();
+      mgTxt(g, `${s.floors}층`, 14, 36, 30, '#e0507a', 'left'); },
+  },
+  // ---------- 얼음 썰매 ----------
+  sled: {
+    init(){ mgPops.length = 0; mg.s = {lane:0, lx:0, jump:0, hearts:3, inv:0, objs:[], spawn:.8, dist:0, fish:0, rare:0, gold:0, over:0}; },
+    v(){ return Math.min(1.15, .42 + mg.t * .012); },
+    X(lane, p){ return 165 + lane * (18 + 92 * p); }, Y(p){ return 70 + 330 * p * p; },
+    step(dt){ const s = mg.s;
+      if (s.over){ s.over += dt; if (s.over > .7 && mg.st === 'play') mgOver(Math.floor(s.dist), Math.min(1500, s.gold + Math.floor(s.dist / 20))); return; }
+      const v = this.v(); s.dist += v * dt * 60; s.lx += (s.lane - s.lx) * Math.min(1, dt * 14); if (s.jump > 0) s.jump = Math.max(0, s.jump - dt); if (s.inv > 0) s.inv -= dt;
+      s.spawn -= dt; if (s.spawn <= 0){ s.spawn = (.75 + Math.random() * .5) / (v / .5);
+        const r = Math.random(), lane = (Math.random() * 3 | 0) - 1;
+        if (r < .42){ for (let k = 0; k < 3; k++) s.objs.push({lane, p:-k * .07, kind:'fish'}); }
+        else if (r < .46) s.objs.push({lane, p:0, kind:'rare'});
+        else if (r < .74) s.objs.push({lane, p:0, kind:'ice'});
+        else { s.objs.push({lane, p:0, kind:'snow'}); if (mg.t > 25 && Math.random() < .4){ let l2 = lane; while (l2 === lane) l2 = (Math.random() * 3 | 0) - 1; s.objs.push({lane:l2, p:0, kind:'snow'}); } } }
+      const air = s.jump > .12;
+      for (let i = s.objs.length - 1; i >= 0; i--){ const o = s.objs[i]; o.p += v * dt; if (o.p > 1.08){ s.objs.splice(i, 1); continue; }
+        if (o.hit || o.p < .86 || o.p > .95 || o.lane !== Math.round(s.lx)) continue;
+        if (o.kind === 'fish'){ o.hit = 1; s.fish++; s.gold += 15; s.objs.splice(i, 1); mgPop(this.X(o.lane, .9), this.Y(.9) - 40, '+15', '#3d6fd8'); }
+        else if (o.kind === 'rare'){ o.hit = 1; s.rare++; s.gold += 150; s.objs.splice(i, 1); mgPop(this.X(o.lane, .9), this.Y(.9) - 40, '희귀! +150', '#e0507a'); }
+        else if (o.kind === 'ice' && air){ o.hit = 1; }
+        else if (s.inv <= 0){ o.hit = 1; s.hearts--; s.inv = 1.1; mgPop(this.X(o.lane, .9), this.Y(.9) - 50, o.kind === 'ice' ? '쿵! 점프!' : '눈사람에 쾅!', '#e0507a'); if (s.hearts <= 0) s.over = .01; } } },
+    key(k){ const s = mg.s; if (k === 'arrowleft' || k === 'a') s.lane = Math.max(-1, s.lane - 1); else if (k === 'arrowright' || k === 'd') s.lane = Math.min(1, s.lane + 1); else if (k === 'arrowup' || k === 'w' || k === ' ') this.jumpGo(); },
+    jumpGo(){ if (mg.s.jump <= 0) mg.s.jump = .62; },
+    tap(x){ this.tx = x; },
+    swipe(dx, dy, x0){ const s = mg.s; if (Math.abs(dx) < 24 && Math.abs(dy) < 24){ if (x0 < MG_W/3) s.lane = Math.max(-1, s.lane - 1); else if (x0 > MG_W*2/3) s.lane = Math.min(1, s.lane + 1); else this.jumpGo(); return; }
+      if (Math.abs(dx) > Math.abs(dy)) s.lane = Math.max(-1, Math.min(1, s.lane + (dx > 0 ? 1 : -1))); else if (dy < 0) this.jumpGo(); },
+    draw(g){ const s = mg.s, bg = g.createLinearGradient(0, 0, 0, MG_H); bg.addColorStop(0, '#cfeeff'); bg.addColorStop(.18, '#eaf7ff'); bg.addColorStop(1, '#f9fdff'); g.fillStyle = bg; g.fillRect(0, 0, MG_W, MG_H);
+      g.fillStyle = '#d7ecf7'; g.beginPath(); g.moveTo(0, 70); for (let x = 0; x <= MG_W; x += 30) g.lineTo(x, 58 + Math.sin(x * .05) * 8); g.lineTo(MG_W, 70); g.fill();
+      g.fillStyle = '#eef8ff'; g.beginPath(); g.moveTo(165 - 30, 70); g.lineTo(165 + 30, 70); g.lineTo(MG_W + 40, MG_H); g.lineTo(-40, MG_H); g.fill();
+      const off = (s.dist * .02) % 1; g.strokeStyle = '#bfe0f2'; g.lineWidth = 3;
+      for (const k of [-.5, .5]){ for (let i = 0; i < 8; i++){ const p0 = ((i + off) / 8), p1 = p0 + .06; g.beginPath(); g.moveTo(this.X(k, p0), this.Y(p0)); g.lineTo(this.X(k, p1), this.Y(p1)); g.stroke(); } }
+      const objs = [...s.objs].sort((a, b) => a.p - b.p);
+      for (const o of objs){ if (o.p < 0) continue; const x = this.X(o.lane, o.p), y = this.Y(o.p), sc = .25 + .75 * o.p;
+        if (o.kind === 'fish') mgPic(g, 'fish:f19', x, y - 14 * sc, 34 * sc);
+        else if (o.kind === 'rare'){ g.fillStyle = 'rgba(255,214,90,.5)'; g.beginPath(); g.arc(x, y - 16 * sc, 22 * sc, 0, 7); g.fill(); mgPic(g, 'fish:f30', x, y - 16 * sc, 36 * sc); }
+        else if (o.kind === 'ice'){ mgRR(g, x - 26 * sc, y - 30 * sc, 52 * sc, 30 * sc, 7 * sc, '#a8dcf5'); g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(x - 20 * sc, y - 25 * sc, 18 * sc, 4 * sc); }
+        else { g.fillStyle = '#fff'; g.strokeStyle = '#cfe3ee'; g.lineWidth = 1.5; for (const [dy, r] of [[-14, 14], [-36, 10]]){ g.beginPath(); g.arc(x, y + dy * sc, r * sc, 0, 7); g.fill(); g.stroke(); } g.fillStyle = '#2b3550'; g.beginPath(); g.arc(x - 3 * sc, y - 38 * sc, 1.6 * sc, 0, 7); g.arc(x + 3 * sc, y - 38 * sc, 1.6 * sc, 0, 7); g.fill(); g.fillStyle = '#ff8f3f'; g.fillRect(x, y - 35 * sc, 6 * sc, 2.4 * sc); g.fillStyle = '#ff6f9a'; g.fillRect(x - 10 * sc, y - 27 * sc, 20 * sc, 3.5 * sc); } }
+      // 펭귄
+      const px = this.X(s.lx, .92), py = this.Y(.92) - Math.sin(Math.max(0, s.jump) / .62 * Math.PI) * 46;
+      if (!(s.inv > 0 && Math.floor(mg.t * 12) % 2)){
+        g.fillStyle = 'rgba(0,0,0,.12)'; g.beginPath(); g.ellipse(this.X(s.lx, .92), this.Y(.92) + 14, 26, 6, 0, 0, 7); g.fill();
+        mgRR(g, px - 28, py + 6, 56, 11, 6, '#ff6f9a'); g.fillStyle = '#2b3550'; g.beginPath(); g.ellipse(px, py - 12, 19, 23, 0, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.ellipse(px, py - 6, 12, 16, 0, 0, 7); g.fill();
+        g.fillStyle = '#2b3550'; g.beginPath(); g.arc(px - 5, py - 23, 2.4, 0, 7); g.arc(px + 5, py - 23, 2.4, 0, 7); g.fill(); g.fillStyle = '#ffb347'; g.beginPath(); g.moveTo(px - 4, py - 18); g.lineTo(px + 4, py - 18); g.lineTo(px, py - 13); g.fill(); }
+      mgDrawPops(g);
+      mgTxt(g, `🐟 ${s.fish}${s.rare ? ` · ✨${s.rare}` : ''}`, 12, 28, 18, '#3d6fd8', 'left'); mgTxt(g, '♥'.repeat(Math.max(0, s.hearts)) + '♡'.repeat(Math.max(0, 3 - s.hearts)), MG_W - 12, 28, 20, '#ff4f6f', 'right'); mgTxt(g, `${Math.floor(s.dist)} m`, 165, 28, 18, '#5a3346'); },
+  },
+  // ---------- 커피 만들기 ----------
+  coffee: {
+    init(){ mgPops.length = 0; mg.s = {cup:0, u:0, dir:1, res:[], show:0, art:'', zone:this.zone()}; },
+    zone(){ return .3 + Math.random() * .4; },
+    step(dt){ const s = mg.s;
+      if (s.show > 0){ s.show -= dt; if (s.show <= 0){ if (s.cup >= 5){ const p = s.res.filter(r => r === 2).length, gd = s.res.filter(r => r === 1).length; mgOver(p * 3 + gd, p * 120 + gd * 50 + (p === 5 ? 300 : 0)); } else { s.zone = this.zone(); s.u = 0; s.dir = 1; } } return; }
+      const sp = .75 + s.cup * .28; s.u += s.dir * sp * dt; if (s.u > 1){ s.u = 1; s.dir = -1; } if (s.u < 0){ s.u = 0; s.dir = 1; } },
+    tap(){ const s = mg.s; if (s.show > 0 || s.cup >= 5) return; const d = Math.abs(s.u - s.zone), r = d < .045 ? 2 : d < .13 ? 1 : 0;
+      s.res.push(r); s.cup++; s.art = ['miss', 'good', 'perfect'][r]; s.show = 1;
+      mgPop(165, 70, ['앗, 쏟았어요', '좋아요!', '완벽한 하트!'][r], ['#9a6f84', '#d99a1e', '#3fae6a'][r]); },
+    draw(g){ const s = mg.s; g.fillStyle = '#f6efe6'; g.fillRect(0, 0, MG_W, MG_H);
+      g.fillStyle = '#e8dccd'; for (let i = 0; i < 6; i++) g.fillRect(0, 60 + i * 60, MG_W, 2);
+      // 잔 (위에서 본 모습)
+      const cx = 165, cy = 180; g.fillStyle = '#fff'; g.beginPath(); g.arc(cx, cy, 96, 0, 7); g.fill(); g.fillStyle = '#e9e3dc'; g.beginPath(); g.ellipse(cx + 106, cy, 18, 26, 0, 0, 7); g.fill(); g.fillStyle = '#f6efe6'; g.beginPath(); g.ellipse(cx + 106, cy, 9, 15, 0, 0, 7); g.fill();
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(cx, cy, 96, 0, 7); g.fill();
+      const cof = g.createRadialGradient(cx, cy, 10, cx, cy, 80); cof.addColorStop(0, '#c9935d'); cof.addColorStop(1, '#7a4a2a'); g.fillStyle = cof; g.beginPath(); g.arc(cx, cy, 80, 0, 7); g.fill();
+      if (s.show > 0 || s.art){ const k = Math.min(1, (1 - Math.max(0, s.show)) * 3);
+        g.fillStyle = '#fff7ec';
+        if (s.art === 'perfect'){ g.save(); g.translate(cx, cy + 6); g.scale(k, k); g.beginPath(); g.moveTo(0, 30); g.bezierCurveTo(-50, -4, -30, -46, 0, -20); g.bezierCurveTo(30, -46, 50, -4, 0, 30); g.fill(); g.restore(); }
+        else if (s.art === 'good'){ g.beginPath(); g.ellipse(cx, cy, 34 * k, 26 * k, 0, 0, 7); g.fill(); g.fillStyle = '#c9935d'; g.beginPath(); g.ellipse(cx, cy, 16 * k, 10 * k, 0, 0, 7); g.fill(); }
+        else if (s.art === 'miss'){ g.globalAlpha = .8; for (let i = 0; i < 5; i++){ g.beginPath(); g.arc(cx - 30 + i * 15, cy - 10 + (i % 2) * 22, 10 * k, 0, 7); g.fill(); } g.globalAlpha = 1; } }
+      // 우유 주전자 줄기
+      if (!s.show && mg.st === 'play'){ g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(cx - 3, 40, 6, 60); mgRR(g, cx - 26, 14, 52, 32, 10, '#d9dde6'); }
+      // 게이지
+      const gx = 30, gw = 270, gy = 320; mgRR(g, gx, gy, gw, 26, 13, '#ead9dc');
+      mgRR(g, gx + (s.zone - .13) * gw, gy, .26 * gw, 26, 6, '#ffe59a'); mgRR(g, gx + (s.zone - .045) * gw, gy, .09 * gw, 26, 6, '#8fd8a8');
+      if (!s.show){ g.fillStyle = '#5a3346'; mgRR(g, gx + s.u * gw - 3, gy - 8, 6, 42, 3, '#5a3346'); }
+      mgTxt(g, '우유를 초록 칸에서 멈춰요!', 165, 382, 16, '#9a6f84', 'center', null);
+      for (let i = 0; i < 5; i++){ const r = s.res[i]; g.fillStyle = r === 2 ? '#8fd8a8' : r === 1 ? '#ffd36b' : r === 0 ? '#d8c3cb' : '#fff'; g.beginPath(); g.arc(105 + i * 30, 404, 9, 0, 7); g.fill(); g.strokeStyle = '#e0c8d2'; g.stroke(); }
+      mgDrawPops(g); mgTxt(g, `${Math.min(5, s.cup + (s.show > 0 ? 0 : 1))}/5 잔`, 14, 30, 22, '#7a4a2a', 'left'); },
+  },
+  // ---------- 텃밭 벌레 잡기 ----------
+  bugs: {
+    HOLES: Array.from({length:9}, (_, i) => [70 + (i % 3) * 95, 120 + Math.floor(i / 3) * 95]),
+    init(){ mgPops.length = 0; mg.s = {ups:[], next:.6, caught:0, gold:0, gb:0, shake:0}; },
+    step(dt){ const s = mg.s, T = 40, left = T - mg.t; if (s.shake > 0) s.shake -= dt;
+      if (left <= 0){ mgOver(s.caught, Math.min(1000, Math.max(0, s.gold))); return; }
+      s.next -= dt; if (s.next <= 0){ const free = [...Array(9).keys()].filter(h => !s.ups.some(u => u.h === h)); s.next = Math.max(.32, .8 - mg.t * .012) * (.7 + Math.random() * .6);
+        if (free.length && s.ups.length < 4){ const r = Math.random(); s.ups.push({h:free[Math.random() * free.length | 0], kind:r < .07 ? 'gold' : r < .27 ? 'lady' : 'bug', t0:mg.t, dur:Math.max(.55, 1.15 - mg.t * .013)}); } }
+      for (let i = s.ups.length - 1; i >= 0; i--){ const u = s.ups[i]; if (mg.t - u.t0 > u.dur + (u.hit ? .25 : 0)) s.ups.splice(i, 1); } },
+    tap(x, y){ const s = mg.s; for (const u of s.ups){ if (u.hit) continue; const [hx, hy] = this.HOLES[u.h]; if (Math.hypot(x - hx, y - (hy - 18)) > 42) continue;
+        u.hit = 1; u.dur = mg.t - u.t0;
+        if (u.kind === 'lady'){ s.gold -= 40; s.shake = .3; mgPop(hx, hy - 50, '무당벌레는 친구! −40', '#e0507a'); }
+        else if (u.kind === 'gold'){ s.caught += 5; s.gold += 100; s.gb++; mgPop(hx, hy - 50, '금빛! +100', '#d99a1e'); }
+        else { s.caught++; s.gold += 20; mgPop(hx, hy - 50, '+20', '#3fae6a'); }
+        return; } },
+    draw(g){ const s = mg.s; g.save(); if (s.shake > 0) g.translate(Math.sin(mg.t * 80) * 4, 0);
+      g.fillStyle = '#a8d98f'; g.fillRect(-10, 0, MG_W + 20, MG_H); g.fillStyle = '#9ccd84'; for (let i = 0; i < 40; i++){ g.fillRect((i * 53) % MG_W, (i * 37) % MG_H, 3, 8); }
+      const crops = ['crop:c01', 'crop:c06', 'crop:c12', 'crop:c05', 'crop:c11'];
+      this.HOLES.forEach(([x, y], i) => { mgPic(g, crops[i % 5], x + 38, y - 30, 22); g.fillStyle = '#8a5a3a'; g.beginPath(); g.ellipse(x, y, 36, 14, 0, 0, 7); g.fill(); g.fillStyle = '#5e3b24'; g.beginPath(); g.ellipse(x, y + 1, 30, 10, 0, 0, 7); g.fill(); });
+      for (const u of s.ups){ const [x, y] = this.HOLES[u.h], k = mg.t - u.t0, rise = Math.min(1, k / .12) * (k > u.dur ? Math.max(0, 1 - (k - u.dur) / .2) : 1);
+        g.save(); g.beginPath(); g.rect(x - 40, y - 80, 80, 80); g.clip(); const by = y + 8 - rise * 36;
+        if (u.kind === 'lady'){ g.fillStyle = '#e5333f'; g.beginPath(); g.arc(x, by - 6, 17, Math.PI, 0); g.fill(); g.fillRect(x - 17, by - 6, 34, 10); g.fillStyle = '#222'; g.fillRect(x - 1, by - 22, 2, 26); for (const [dx, dy] of [[-8, -10], [8, -10], [-9, 0], [9, 0]]){ g.beginPath(); g.arc(x + dx, by + dy, 3, 0, 7); g.fill(); } g.beginPath(); g.arc(x, by - 24, 7, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(x - 3, by - 25, 1.6, 0, 7); g.arc(x + 3, by - 25, 1.6, 0, 7); g.fill(); }
+        else { const c1 = u.kind === 'gold' ? '#ffd23f' : '#8fd65f', c2 = u.kind === 'gold' ? '#ffb000' : '#5fae3a';
+          for (let j = 3; j >= 0; j--){ g.fillStyle = j % 2 ? c2 : c1; g.beginPath(); g.arc(x + Math.sin(mg.t * 10 + j) * 2, by + j * 9 - 18, 11 - j, 0, 7); g.fill(); }
+          g.fillStyle = '#fff'; g.beginPath(); g.arc(x - 4, by - 21, 3.4, 0, 7); g.arc(x + 4, by - 21, 3.4, 0, 7); g.fill(); g.fillStyle = '#222'; g.beginPath(); g.arc(x - 4, by - 21, 1.6, 0, 7); g.arc(x + 4, by - 21, 1.6, 0, 7); g.fill();
+          g.strokeStyle = c2; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 4, by - 28); g.lineTo(x - 7, by - 35); g.moveTo(x + 4, by - 28); g.lineTo(x + 7, by - 35); g.stroke();
+          if (u.kind === 'gold'){ g.fillStyle = '#fff6b0'; for (let q = 0; q < 4; q++){ const a = mg.t * 4 + q * 1.57; g.beginPath(); g.arc(x + Math.cos(a) * 18, by - 18 + Math.sin(a) * 14, 2, 0, 7); g.fill(); } } }
+        if (u.hit && u.kind !== 'lady'){ g.fillStyle = 'rgba(255,255,255,.7)'; g.beginPath(); g.arc(x, by - 14, 20, 0, 7); g.fill(); }
+        g.restore(); }
+      mgDrawPops(g); g.restore();
+      const left = Math.max(0, 40 - (mg.st === 'play' ? mg.t : 0));
+      mgTxt(g, `🐛 ${s.caught}`, 12, 30, 20, '#3f7a2a', 'left'); mgTxt(g, `⏱ ${Math.ceil(left)}초`, MG_W - 12, 30, 20, '#5a3346', 'right');
+      mgRR(g, 12, 40, MG_W - 24, 6, 3, 'rgba(255,255,255,.6)'); mgRR(g, 12, 40, (MG_W - 24) * left / 40, 6, 3, '#ff9fc4'); },
+  },
+};
+
 // ===== 오늘의 섬 목표: 다 같이 하나의 목표, 달성하면 기여한 사람 모두 8,000 G =====
 // 목표는 한국 시간 자정에 바뀌어요. 각자 기여한 수는 goals/<날짜>/<uid> 에 쌓아요
 const GOALS = [
