@@ -5146,7 +5146,7 @@ const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick
 // 관리자: 모든 사냥 구역의 몬스터 현황 (몇 마리 살아 있는지, 보스 체력, 누가 때리고 있는지)
 let admMobAll = {}, admMobT = 0;
 let admMobOn = false;
-function adminMobWatch(){ if (solo || !net.mobsZone || admMobOn) return; admMobOn = true; for (const z of Object.keys(COMBAT_ZONES)) net.mobsZone(z, v=>{ admMobAll[z] = v || {}; const t = performance.now(); if (t - admMobT > 2000){ admMobT = t; renderAdmin(); } }); }
+function adminMobWatch(){ if (solo || !net.mobsZone || admMobOn) return; admMobOn = true; for (const z of Object.keys(COMBAT_ZONES)) net.mobsZone(z, v=>{ admMobAll[z] = v || {}; const t = performance.now(); if (admSide && t - admMobT > 2000){ admMobT = t; renderAdmin(); } }); } // 몬스터 현황은 메뉴 안에 있어서 메뉴가 열려 있을 때만 다시 그려요
 function adminMobSec(){
   const now = mobNow(), rows = Object.keys(COMBAT_ZONES).map(z=>{ const v = admMobAll[z] || {}, list = Object.entries(v).filter(([,d])=>d && MONSTERS[d.id]);
     const alive = list.filter(([sl,d])=>sl !== BOSS_SLOT && sl !== '90' && d.hp > 0).length, bd = v[BOSS_SLOT], bm = bd && MONSTERS[bd.id];
@@ -5174,6 +5174,9 @@ function renderAdmin(){
   const watching = cam.follow ? `따라가는 중 · ${esc(others.get(cam.follow)?.nick || '')}` : `보는 곳 · ${esc(zoneName(zoneId))}`;
   const wasTyping = document.activeElement && document.activeElement.id==='admWipeTxt'; // 다시 그려도 입력하던 칸은 그대로
   const typingRk = document.activeElement?.dataset?.rk, pl = box.querySelector('.adm-post-list'), postScroll = pl ? pl.scrollTop : 0;
+  // 다시 그려도 스크롤 자리는 그대로: 스크롤된 칸을 클래스+순번으로 기억해 둬요
+  const scrollKey = e => { const c = String(e.className||'').trim().split(/\s+/)[0] || e.tagName; return c + '#' + [...box.getElementsByClassName(c)].indexOf(e); };
+  const kept = [box, ...box.querySelectorAll('*')].filter(e=>e.scrollTop || e.scrollLeft).map(e=>[e===box ? '' : scrollKey(e), e.scrollTop, e.scrollLeft]), pageY = window.scrollY;
   box.innerHTML = `
     <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span><button data-a="side" class="adm-btn adm-menu ${admSide ? 'on' : ''}">메뉴${adminInbox().some(x=>!x.l.replied) ? ' ●' : ''}</button><button data-a="logout" class="adm-btn">로그아웃</button></div>
     <div class="adm-zones">${Object.keys(ZONES).map(z=>`<button data-z="${z}" class="adm-zone ${zoneId===z && !cam.follow ? 'on' : ''}">${esc(ZONES[z].name)}<i>${count[z]||0}</i></button>`).join('')}</div>
@@ -5187,6 +5190,8 @@ function renderAdmin(){
       <div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
     </div>${admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
+  for (const [k, y, x] of kept){ const [c, i] = k.split('#'), e = k ? box.getElementsByClassName(c)[+i] : box; if (e){ e.scrollTop = y; e.scrollLeft = x; } }
+  if (window.scrollY !== pageY) window.scrollTo(0, pageY);
   const npl = box.querySelector('.adm-post-list'); if (npl) npl.scrollTop = postScroll;
   if (typingRk){ const ta = box.querySelector(`[data-rk="${typingRk}"]`); if (ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }
   const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
