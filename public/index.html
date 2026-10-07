@@ -1613,6 +1613,7 @@ function say(name, text, actions=[], note='', noClose=false, choice=false){
   $('talk').hidden = false;
 }
 function closeTalk(){ $('talk').hidden = true; }
+const talkNpcOpen = () => NPCS.some(n=>n.name === $('talkName').textContent);
 
 // ===== 이야기 대화창: 초상화 + 이름표, 한 번에 한 덩어리, 타자 효과, 탭해서 계속 =====
 // story({n, beats:[{who:'npc'|'player'|'narr', text}], title:{sub, main, star}, choices:[[글, 함수]], acts:[[글, 함수]], hint})
@@ -2211,6 +2212,26 @@ function drawDepth(ctx){
   const k = view.dpr*view.zoom, px = (pos.x - view.cx)*k, py = (pos.y - 30 - view.cy)*k, a = [0, .35, .5, .62][dp] || .62, R = (260 - dp*30)*k;
   const g = ctx.createRadialGradient(px, py, R*.35, px, py, R); g.addColorStop(0, 'rgba(12,6,20,0)'); g.addColorStop(1, `rgba(12,6,20,${a})`);
   ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height); ctx.restore();
+}
+// 다크 모드: 세상이 고장 난 화면처럼 지직거려요 (가로로 찢어지는 줄 · 색 번짐 · 노이즈 조각 · 깜빡임). 바뀌는 순간엔 크게
+let glitchBurst = -1e9, scanPat = null;
+function drawGlitch(c, t){
+  if (!darkOn() && t - glitchBurst > 1400) return;
+  const burst = Math.max(0, 1 - (t - glitchBurst)/1400), inRoom = Z().dark, base = !darkOn() ? 0 : inRoom ? .12 : .35, k = Math.min(1, base + burst);
+  if (k <= 0) return;
+  const W = cv.width, H = cv.height, R = Math.random, dpr = view.dpr || 1;
+  c.save(); c.setTransform(1,0,0,1,0,0);
+  // 가로로 찢어지는 띠
+  if (R() < .12 + k*.6){ const n = 1 + Math.floor(R()*(2 + k*5)); for (let i=0;i<n;i++){ const y = R()*H, h = (3 + R()*36*k)*dpr, dx = (R()-.5)*(10 + 70*k)*dpr; try { c.drawImage(cv, 0, y, W, h, dx, y, W, h); } catch(e){}
+    if (R() < .6){ c.globalCompositeOperation = 'screen'; c.fillStyle = R() < .5 ? `rgba(255,40,120,${.10+.2*k})` : `rgba(40,255,230,${.08+.18*k})`; c.fillRect(dx*1.6, y, W, h); c.globalCompositeOperation = 'source-over'; } } }
+  // 노이즈 조각
+  if (R() < .08 + k*.5){ const n = 2 + Math.floor(R()*8*k); for (let i=0;i<n;i++){ const g = 40 + R()*140|0; c.fillStyle = R() < .3 ? `rgba(180,90,255,${.25+.3*k})` : `rgba(${g},${g},${g+20},${.2+.35*k})`; c.fillRect(R()*W, R()*H, (8 + R()*70*k)*dpr, (2 + R()*10)*dpr); } }
+  // 주사선
+  if (!scanPat){ const p = document.createElement('canvas'); p.width = 4; p.height = 4; const g = p.getContext('2d'); g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(0, 0, 4, 1); scanPat = c.createPattern(p, 'repeat'); }
+  c.globalAlpha = .35 + .4*k; c.fillStyle = scanPat; c.fillRect(0, 0, W, H); c.globalAlpha = 1;
+  // 깜빡임
+  if (R() < .015 + burst*.35){ c.fillStyle = `rgba(${R() < .5 ? '255,255,255' : '10,0,20'},${.08 + .25*burst})`; c.fillRect(0, 0, W, H); }
+  c.restore();
 }
 function drawBite(ctx, t){
   if (!fishing) return;
@@ -4025,7 +4046,7 @@ const darkPuzzles = npc => DARK_ROOMS[npc]?.puzzles || (darkPuzzles._ph || (dark
 const roomOf = npc => darkRooms[npc] || {};
 const darkSolvedN = r => Object.keys(r.solved || {}).length;
 const darkBossUp = r => r && r.hp > 0 && !r.clear;
-const npcVisible = n => !(darkOn() && n.id === darkToday() && !roomOf(n.id).clear); // 오늘 방 주인은 집 안에 숨어 있어요
+const npcVisible = n => !(darkOn() && !roomOf(n.id).clear); // 다크 모드: 주민들은 모두 사라져요 (방이 꿰매진 주민만 돌아와요)
 function darkDoorOf(npc){ const n = NPC[npc]; return [Math.round(n.homeX + 64), Math.round(n.homeY - 6)]; }
 const darkZoneCache = {};
 function darkZone(npc){
@@ -4740,7 +4761,7 @@ function frameBody(t){
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
     for (const e of ents) e.label();
-    drawNight(ctx, t); drawDepth(ctx); drawDarkFx(ctx, t); drawWeather(ctx, t); drawBite(ctx, t);
+    drawNight(ctx, t); drawDepth(ctx); drawDarkFx(ctx, t); drawWeather(ctx, t); drawBite(ctx, t); drawGlitch(ctx, t);
     const fo = Math.max(0, 1 - (t - fadeT)/450); if (fo !== lastFade){ lastFade = fo; $('fade').style.opacity = fo; }
   }
   requestAnimationFrame(frame);
@@ -4755,7 +4776,8 @@ let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기�
 let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
 let reloadSeen; // 관리자 [전원 새로고침]: 처음 본 값에서 바뀌면 저장하고 새로고침해요
 function onWorld(w){ const was = darkOn(); world = w || {};
-  if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('다크 모드가 끝나 방에서 나왔어요'); if (darkOn() && !admin) say('섬이 어두워졌어요', '어딘가에서 실이 끊어지는 소리가 들려요.... 오늘 문이 열린 주민의 집을 찾아가 봐요.'); } }
+  if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('다크 모드가 끝나 방에서 나왔어요'); glitchBurst = performance.now(); if (darkOn() && !admin){ // 아무 말 없이 바로: 주민과 하던 이야기는 끊겨요
+    if (dlg && dlg.n) dlgClose(); if (!$('talk').hidden && talkNpcOpen()) closeTalk(); const p = $('npcPanel'); if (p && !p.hidden && p.dataset.kind === 'npc') p.hidden = true; } } }
 const kstClock = () => new Date(Date.now() + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
 const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : z && z.startsWith('dark:') ? `${NPC[z.slice(5)]?.name || ''}의 방 (다크)` : (ZONES[z]?.name || '집터');
 function enterAdmin(){
