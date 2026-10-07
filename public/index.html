@@ -345,6 +345,8 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 .adm-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;white-space:normal}.adm-card{display:flex;gap:10px;background:rgba(255,255,255,.07);border-radius:14px;padding:8px}.adm-face{display:grid;justify-items:center;align-content:start;width:104px;flex:none;text-align:center}.adm-face img{width:104px;height:104px;background:rgba(255,240,246,.92);border-radius:12px}.adm-face b{font-size:19px;margin-top:2px}.adm-face small{font-size:13px;opacity:.85}.adm-face i.on{color:#7dff9a;font-style:normal}.adm-info{min-width:0;display:grid;gap:6px;align-content:start;font-size:15px}.adm-info ul{list-style:none;margin:0;padding:0;display:grid;gap:1px}.adm-info li small{display:inline-block;width:52px;opacity:.65;font-size:12px}.adm-info li em{opacity:.7;font-style:normal;font-size:12px}.adm-house{display:flex;gap:4px;align-items:flex-start}.adm-house img{width:34px;height:34px;border-radius:8px;flex:none}.adm-house div{display:grid;gap:1px;margin-left:4px}.adm-house small{font-size:12px;opacity:.8}.adm-info .adm-btn{justify-self:start}
 @media (max-width:640px){.adm-cards{grid-template-columns:1fr}}
 .adm-tbl{position:absolute;left:50%;top:66px;transform:translateX(-50%);width:min(1120px,calc(100% - 20px));max-height:calc(100% - 80px);background:rgba(28,22,30,.94);border-radius:16px;padding:8px 12px 10px;pointer-events:auto;display:flex;flex-direction:column;gap:6px;z-index:2}
+.adm-mob{display:flex;flex-wrap:wrap;gap:2px 8px;text-align:left;font-size:15px}.adm-mob b{font-size:16px}.adm-mob .fight{color:#e0457b}
+.adm-face img.adm-rtag{display:block;width:140px;height:auto;aspect-ratio:auto;margin:-2px auto 2px;background:none;border:0;border-radius:0;box-shadow:none;object-fit:contain}
 .adm-grant{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;padding:8px 10px;border-radius:12px;background:rgba(255,159,196,.14);font-size:15px}.adm-grant b{font-size:18px}.adm-grant input,.adm-grant select{font:inherit;padding:3px 6px;border-radius:8px;border:1px solid #e3c6d6;background:#fff}.adm-grant input[type=number]{width:70px}td small.cdl{display:block;font-size:11px;opacity:.75;line-height:1.2}
 .adm-tbl-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.adm-tbl-head b{font-size:24px}.adm-tbl-head small{opacity:.75;font-size:17px;margin-right:auto}
 .adm-tbl-scroll{overflow:auto}.adm-tbl table{border-collapse:separate;border-spacing:3px;font-size:18px;white-space:nowrap}
@@ -2602,6 +2604,11 @@ function syncMobs(){
   }
   return want;
 }
+// 관리자: 보는 구역의 몬스터를 읽기만 해요 (움직임은 그 구역 사람들 화면을 따라가요)
+function adminMobs(dt){ syncMobs(); for (const mob of mobs){ if (mob.tx == null) continue; const dx = mob.tx-mob.x, dy = mob.ty-mob.y, l = Math.hypot(dx,dy); if (l > 220){ mob.x = mob.tx; mob.y = mob.ty; } else if (l > 1){ const k = Math.min(1, dt*6); mob.x += dx*k; mob.y += dy*k; } } }
+function adminMobLabel(c, mob){ const m = MONSTERS[mob.id]; if (!m) return; const who = Object.keys(mob.hits||{}).map(id=>players[id]?.nick || '?'), y = mob.y - (m.boss ? 150 : 52);
+  if (!m.boss) tag(c, `${Math.ceil(mob.hp).toLocaleString()}/${(mob.max||m.hp).toLocaleString()}`, mob.x, y, '#ff7a9a'); // 보스는 원래 이름·체력 표가 있어요
+  if (who.length) tag(c, `⚔ ${who.slice(0,4).join(' · ')}${who.length > 4 ? ` 외 ${who.length-4}` : ''}`, mob.x, mob.y + 22, null); }
 function updateMobs(dt, t){
   const want = syncMobs(); if (!want){ mobs = []; return; }
   const owner = mobOwner(), now = mobNow(), talking = !$('talk').hidden;
@@ -2763,6 +2770,7 @@ let bShots = [], bWarns = [], bQ = [], bBooms = [], bFxZone = '', bPat = {}, pla
 // 공격 알림 받기: 같은 시각에 시작하도록 줄 세워요
 function onBossAtk(zone, a){ if (!a || zone !== zoneId || !BOSS_PAT[zone] || !MONSTERS[a.id]) return; const key = a.at + '|' + a.k; if (key === bAtkSeen) return; bAtkSeen = key; const delay = a.at - mobNow(); if (delay < -700) return; bQ.push({at:performance.now() + Math.max(0, delay), fn:t => bossFire(a, t)}); }
 function bfxHurt(dmg, fx_, fy, t){
+  if (admin) return;
   if (!$('talk').hidden || darkDown || t < wakeGuardUntil) return;
   dmg = ringDmg(dmg, true); if (!dmg) return; playerHp -= dmg; lastHurt = t; pushPlayer(pos.x-fx_, pos.y-fy, ringKb(14)); setExpr('surprised', 1000);
   fx.push({x:pos.x, y:pos.y-50, text:'-'+dmg, t, color:'#ff3b6b'});
@@ -2795,11 +2803,10 @@ function bossFire(a, t){
   }
 }
 function updateBossFx(dt, t){
-  if (bFxZone !== zoneId){ bFxZone = zoneId; bShots = []; bWarns = []; bQ = []; bBooms = []; }
-  if (admin) return;
+  if (bFxZone !== zoneId){ bFxZone = zoneId; bShots = []; bWarns = []; bQ = []; bBooms = []; } // 관리자는 보기만 해요 (맞지 않아요)
   const pats = BOSS_PAT[zoneId], boss = pats && mobs.find(mb => mb.slot === BOSS_SLOT && MONSTERS[mb.id]?.boss && mb.hp > 0);
   if (boss){ const m = MONSTERS[boss.id], st = bPat[zoneId] || (bPat[zoneId] = {next:t + 2000, i:0}), d = Math.hypot(pos.x-boss.x, pos.y-boss.y), rage = boss.hp < (boss.max || m.hp)*.5;
-    if (t >= st.next && mobOwner()){ // 구역 주인만 정해요: 가장 가까운 사람을 노려요
+    if (t >= st.next && !admin && mobOwner()){ // 구역 주인만 정해요: 가장 가까운 사람을 노려요
       let tg = null, best = 640; const cand = [[uid, pos.x, pos.y, !darkDown], ...[...others.entries()].filter(([,o])=>o.z===zoneId && !o.down).map(([k,o])=>[o.uid||k, o.x, o.y, true])];
       for (const c of cand) if (c[3]){ const dd = Math.hypot(c[1]-boss.x, c[2]-boss.y); if (dd < best){ best = dd; tg = c; } }
       const list = pats.filter(k => !k.startsWith('+')).concat(rage ? pats.filter(k => k.startsWith('+')).map(k => k.slice(1)) : []);
@@ -2814,7 +2821,7 @@ function updateBossFx(dt, t){
     if (s.bounce > 0){ if (s.x < 0 || s.x > z.W){ s.vx *= -1; s.bounce--; } if (s.y < 0 || s.y > z.H){ s.vy *= -1; s.bounce--; } }
     if (s.life <= 0 || s.x < -40 || s.y < -40 || s.x > z.W+40 || s.y > z.H+40){ bShots.splice(i, 1); continue; }
     if ([...others.values()].some(o => o.z === zoneId && !o.down && Math.hypot(s.x-o.x, s.y-(o.y-20)) < s.r + 13)){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); continue; } // 다른 사람에게 맞은 탄도 똑같이 사라져요
-    if (Math.hypot(s.x-pos.x, s.y-(pos.y-20)) < s.r + 13){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); if (s.kind === 'web' && $('talk').hidden && !darkDown && !ringFx().noSlow){ playerSlowUntil = t + 2000; toast('거미줄에 걸려 느려졌어요'); } bfxHurt(s.dmg, s.x - s.vx, s.y - s.vy, t); }
+    if (Math.hypot(s.x-pos.x, s.y-(pos.y-20)) < s.r + 13){ bShots.splice(i, 1); bBooms.push({x:s.x, y:s.y, r:s.r*2, col:s.col, t}); if (!admin && s.kind === 'web' && $('talk').hidden && !darkDown && !ringFx().noSlow){ playerSlowUntil = t + 2000; toast('거미줄에 걸려 느려졌어요'); } bfxHurt(s.dmg, s.x - s.vx, s.y - s.vy, t); }
   }
   for (let i = bWarns.length-1; i >= 0; i--){ const w = bWarns[i]; if (t < w.t1) continue; bWarns.splice(i, 1);
     let hit = false;
@@ -5003,6 +5010,8 @@ function ringIcon(c, x, y, s, id, t=0){
   c.restore();
 }
 
+const ringTagCache = {};
+function ringTagURL(nick, rid){ const k = nick+'|'+rid; if (ringTagCache[k]) return ringTagCache[k]; const cv = document.createElement('canvas'); cv.width = 280; cv.height = 90; const x = cv.getContext('2d'); x.scale(2, 2); ringTag(x, nick, 70, 28, null, rid, 300); return ringTagCache[k] = cv.toDataURL(); }
 const ringIconCache = {};
 function ringIconURL(id){ if (ringIconCache[id]) return ringIconCache[id]; const cv = document.createElement('canvas'); cv.width = cv.height = 96; ringIcon(cv.getContext('2d'), 48, 52, 92, id); return ringIconCache[id] = cv.toDataURL(); }
 const RING_TOP = {r05:1, r08:1, r09:1, r10:1, r07:1}; // 이름표 위로 솟는 장식 → 칭호를 조금 더 올려요
@@ -5051,7 +5060,7 @@ function frameBody(t){
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,110); c.scale(1.45,1.45); CH.figure(d, L, dir, t/1000, true, L.expr); c.restore(); } } }
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
-    if (admin){ moveOthers(dt); adminCam(); }
+    if (admin){ moveOthers(dt); adminCam(); adminMobs(dt); updateBossFx(dt, t); }
     else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
@@ -5076,7 +5085,7 @@ function frameBody(t){
       ...forageEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-(RING_TOP[o.rg] ? 92 : 80)); talkBubble(k,o.x,o.y,t); }})),
-      ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
+      ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{ if (admin) adminMobLabel(ctx, mob); }})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
@@ -5105,7 +5114,20 @@ function onWorld(w){ const was = darkOn(); world = w || {};
     if (dlg && dlg.n) dlgClose(); if (!$('talk').hidden && talkNpcOpen()) closeTalk(); const p = $('npcPanel'); if (p && !p.hidden && p.dataset.kind === 'npc') p.hidden = true; } } }
 const kstClock = () => new Date(Date.now() + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
 const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : z && z.startsWith('dark:') ? `${NPC[z.slice(5)]?.name || ''}의 방 (다크)` : (ZONES[z]?.name || '집터');
+// 관리자: 모든 사냥 구역의 몬스터 현황 (몇 마리 살아 있는지, 보스 체력, 누가 때리고 있는지)
+let admMobAll = {}, admMobT = 0;
+let admMobOn = false;
+function adminMobWatch(){ if (solo || !net.mobsZone || admMobOn) return; admMobOn = true; for (const z of Object.keys(COMBAT_ZONES)) net.mobsZone(z, v=>{ admMobAll[z] = v || {}; const t = performance.now(); if (t - admMobT > 2000){ admMobT = t; renderAdmin(); } }); }
+function adminMobSec(){
+  const now = mobNow(), rows = Object.keys(COMBAT_ZONES).map(z=>{ const v = admMobAll[z] || {}, list = Object.entries(v).filter(([,d])=>d && MONSTERS[d.id]);
+    const alive = list.filter(([sl,d])=>sl !== BOSS_SLOT && d.hp > 0).length, bd = v[BOSS_SLOT], bm = bd && MONSTERS[bd.id];
+    const fighters = new Set(); for (const [,d] of list) if (d.hp > 0) for (const id of Object.keys(d.hits||{})) fighters.add(players[id]?.nick || '?');
+    const boss = !bm ? '' : bd.hp > 0 ? `${bm.name} ${Math.round(bd.hp/(bd.max||bm.hp)*100)}%` : `${bm.name} 다시 나오기까지 ${Math.max(0, Math.ceil((BOSS_RESPAWN - (now - (bd.deadAt||0)))/60000))}분`;
+    return `<button data-z="${z}" class="adm-btn adm-mob"><b>${esc(ZONES[z]?.name || z)}</b> <span>몬스터 ${alive}/${COMBAT_ZONES[z]}</span>${boss ? `<span>👑 ${esc(boss)}</span>` : ''}${fighters.size ? `<span class="fight">⚔ ${esc([...fighters].slice(0,4).join(', '))}${fighters.size > 4 ? ` 외 ${fighters.size-4}` : ''}</span>` : ''}</button>`; }).join('');
+  return `<div class="adm-sec"><b>몬스터 현황</b><small>누르면 그 구역을 봐요 · ⚔ = 지금 살아 있는 몬스터를 때린 사람</small>${rows}</div>`;
+}
 function enterAdmin(){
+  setTimeout(adminMobWatch, 500);
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
@@ -5130,6 +5152,7 @@ function renderAdmin(){
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
+      ${adminMobSec()}
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>`).join('')}</div>` : ''}
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
       <div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
@@ -5162,9 +5185,9 @@ function adminLooks(regs){
     const umb = p.umb && UMB[p.umb] ? `${esc(UMB[p.umb].name)} (${UMB_COLS[Math.max(0, Math.min(UMB_COLS.length-1, p.umbCol|0))][0]})` : '없음';
     const bagW = cnt(p.inv?.wear), bagF = cnt(p.inv?.furn), bagU = cnt(p.inv?.umbrellas);
     return `<div class="adm-card">
-      <div class="adm-face"><img src="${lookCard(L)}" alt=""><b>${esc(String(p.nick||'').slice(0,8))}</b><small>Lv ${p.lv||1}${on ? ' · <i class="on">접속 중</i>' : ''}</small>${p.title ? `<small>${esc(titleOf(p.title))}</small>` : ''}</div>
+      <div class="adm-face"><img src="${lookCard(L)}" alt="">${RINGS[p.inv?.ring] ? `<img class="adm-rtag" src="${ringTagURL(String(p.nick||'').slice(0,8), p.inv.ring)}" alt="">` : `<b>${esc(String(p.nick||'').slice(0,8))}</b>`}<small>Lv ${p.lv||1}${on ? ' · <i class="on">접속 중</i>' : ''}</small>${p.title ? `<small>${esc(titleOf(p.title))}</small>` : ''}</div>
       <div class="adm-info">
-        <ul>${wear}<li><small>우산</small>${umb}</li><li><small>펫</small>${pets.length ? pets.map(x=>`${esc(String(x.name||PET[x.sp].name).slice(0,8))} (${PET[x.sp].name})`).join(', ') : '없음'}</li><li><small>가방</small>옷 ${bagW} · 우산 ${bagU} · 가구 ${bagF} · ${(p.inv?.gold|0).toLocaleString()} G</li></ul>
+        <ul>${wear}<li><small>반지</small>${RINGS[p.inv?.ring] ? `${esc(RINGS[p.inv.ring].name)} (최대 체력 +${RINGS[p.inv.ring].hp})` : '없음'}${(p.inv?.rings||[]).length > 1 ? ` · 가진 반지 ${(p.inv.rings).length}개` : ''}</li><li><small>우산</small>${umb}</li><li><small>펫</small>${pets.length ? pets.map(x=>`${esc(String(x.name||PET[x.sp].name).slice(0,8))} (${PET[x.sp].name})`).join(', ') : '없음'}</li><li><small>가방</small>옷 ${bagW} · 우산 ${bagU} · 가구 ${bagF} · ${(p.inv?.gold|0).toLocaleString()} G</li></ul>
         <div class="adm-house"><img src="${swatchURL('wall', WALLS[H.wall] ? H.wall : 'w00')}" alt=""><img src="${swatchURL('floor', FLOORS[H.floor] ? H.floor : 'f00')}" alt=""><div>
           <b>${H.lv}단계 '${esc(HL.name)}'</b><small>벽지 ${esc((WALLS[H.wall]||WALLS.w00).name)} · 바닥 ${esc((FLOORS[H.floor]||FLOORS.f00).name)} · 텃밭 ${p.plots||2}칸</small>
           <small>가구 ${furn.length}/${HL.max}${fl ? ` · ${fl}` : ''}</small></div></div>
