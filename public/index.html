@@ -1078,7 +1078,7 @@ async function flushSave(){
   if (saving){ saveAgain=true; return; }
   saving=true; lastSaved = saveSig();
   me.downAt = darkDown && !zoneId.startsWith('dark:') ? darkDown : 0; // 기절한 채로 나가면 다시 들어와도 기절해 있어요
-  me.hp = Math.max(1, Math.round(playerHp)); me.sta = Math.round(playerSta); me.staAt = Date.now() + serverOffset;
+  if (statsReady){ me.hp = Math.max(1, Math.round(playerHp)); me.sta = Math.round(playerSta); me.staAt = Date.now() + serverOffset; } // 불러오기 전 기본값(100)으로 덮어쓰지 않게
   try { await net.savePlayer(toDB(me)); }
   catch(e){ lastSaved = null; toast('저장하지 못했어요. 인터넷 연결을 확인해 주세요. 잠시 뒤 다시 저장할게요.'); if (!saveTimer) saveTimer = setTimeout(flushSave, 5000); }
   saving=false;
@@ -1573,6 +1573,7 @@ function enterGame(doc){
   $('friendBtn').onclick = ()=>friendPanel();
   $('menuBtn').onclick = menuPanel;
   $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); swing(); });
+  loadStats(); // 체력·기력은 자리 옮기며 저장하기 전에 먼저 불러와요
   if (me.downAt){ darkDown = me.downAt; downOffer = false; } // 기절한 채로 나갔다면 그대로 (자리 옮기며 저장하기 전에 먼저)
   const L = LOTS[me.lot]; pos.dir = 'down';
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
@@ -2447,7 +2448,9 @@ function useSta(kind){
   if (playerSta < c){ const t = performance.now(); if (t - tiredToastT > 2500){ tiredToastT = t; toast('기력이 없어요 · 작물이나 요리를 먹으면 다시 힘이 나요'); } return false; }
   playerSta -= c; return true;
 }
+let statsReady = false;
 function loadStats(){
+  statsReady = true;
   playerHp = Math.min(maxHp(), typeof me.hp==='number' && me.hp > 0 ? me.hp : maxHp());
   playerSta = Math.min(maxSta(), typeof me.sta==='number' ? me.sta : maxSta());
   // 날짜와 상관없이: 꺼 둔 동안에도 1 분에 5 씩 찬 걸로 쳐요
