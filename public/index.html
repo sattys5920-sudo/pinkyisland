@@ -334,6 +334,12 @@ body.typing #chatin{background:#fff}
 #goal .gl-t{display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden}#goal .gl-t b{font-size:16px}#goal .gl-t span{overflow:hidden;text-overflow:ellipsis}#goal .gl-t i{margin-left:auto;font-style:normal;font-size:13px;color:#b07a92}
 #goal .gl-ic{width:20px;height:20px}#goal .gl-s{display:flex;justify-content:space-between;font-size:13px;color:#9a6f84}
 .gl-bar{height:8px;border-radius:4px;background:#f6dce7;overflow:hidden;margin:4px 0 2px}.gl-bar s{display:block;height:100%;background:linear-gradient(90deg,#ff9fc4,#ff6f9a);border-radius:4px}
+#goal .gl-c{display:none}
+@media (max-width:640px){ /* 폰: 위쪽이 답답하지 않게 얇은 한 줄 (누르면 자세히) */
+  #goal{display:flex;align-items:center;gap:8px;padding:3px 10px;border-radius:12px}
+  #goal .gl-t{flex:none;gap:4px}#goal .gl-t b,#goal .gl-w,#goal .gl-t i,#goal .gl-s{display:none}#goal .gl-c{display:inline;font-size:14px}
+  #goal .gl-ic{width:18px;height:18px}#goal .gl-bar{flex:1;margin:0;height:7px}
+}
 #goal.done .gl-bar s{background:linear-gradient(90deg,#9fe0b4,#4fbf7f)}
 body.dlg-on #goal,body.admin #goal{visibility:hidden}
 #aucSheet{position:fixed;z-index:22;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 70px);width:min(400px,calc(100vw - 20px));background:#fff8fb;border:3px solid #ffd36b;border-radius:18px;box-shadow:0 4px 0 #f1c6d8,0 8px 20px rgba(80,30,60,.2);padding:8px 12px 10px;color:#5a3346;font-size:16px}
@@ -5743,7 +5749,7 @@ function renderGoal(){
   if (!el){ el = document.createElement('div'); el.id = 'goal'; el.className = 'pill'; document.body.appendChild(el); el.onclick = goalPanel; }
   const g = goalOf(today()), sum = goalSum(goalData), mine = Number(goalData[uid]) || 0, done = sum >= g.n, rk = goalRank().findIndex(([id]) => id === uid);
   el.hidden = false; el.classList.toggle('done', done);
-  el.innerHTML = `<div class="gl-t">${iconImg(g.icon, 'gl-ic')}<b>오늘의 섬 목표</b><span>${esc(g.what)} ${g.n} ${g.unit} ${g.verb}</span><i>${done ? '달성!' : goalLeft()}</i></div><div class="gl-bar"><s style="width:${Math.min(100, sum / g.n * 100)}%"></s></div><div class="gl-s"><span>${Math.min(sum, 99999)}/${g.n} · ${Math.floor(sum / g.n * 100)}%</span><span>${done ? (mine ? `보상 ${GOAL_REWARD.toLocaleString()} G 받음` : '내일 다시 도전해요') : `내 기여 ${mine}${rk >= 0 ? ` (${rk + 1}등)` : ''}`}</span></div>`;
+  el.innerHTML = `<div class="gl-t">${iconImg(g.icon, 'gl-ic')}<b>오늘의 섬 목표</b><span class="gl-w">${esc(g.what)} ${g.n} ${g.unit} ${g.verb}</span><span class="gl-c">${done ? '✅ ' : ''}${esc(g.what)} ${Math.min(sum, 99999)}/${g.n}</span><i>${done ? '달성!' : goalLeft()}</i></div><div class="gl-bar"><s style="width:${Math.min(100, sum / g.n * 100)}%"></s></div><div class="gl-s"><span>${Math.min(sum, 99999)}/${g.n} · ${Math.floor(sum / g.n * 100)}%</span><span>${done ? (mine ? `보상 ${GOAL_REWARD.toLocaleString()} G 받음` : '내일 다시 도전해요') : `내 기여 ${mine}${rk >= 0 ? ` (${rk + 1}등)` : ''}`}</span></div>`;
   placeTop();
 }
 function goalPanel(){
