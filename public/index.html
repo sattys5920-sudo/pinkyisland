@@ -5041,7 +5041,9 @@ const ringTagCache = {};
 function ringTagURL(nick, rid){ const k = nick+'|'+rid; if (ringTagCache[k]) return ringTagCache[k]; const cv = document.createElement('canvas'); cv.width = 280; cv.height = 90; const x = cv.getContext('2d'); x.scale(2, 2); ringTag(x, nick, 70, 28, null, rid, 300); return ringTagCache[k] = cv.toDataURL(); }
 const ringIconCache = {};
 function ringIconURL(id){ if (ringIconCache[id]) return ringIconCache[id]; const cv = document.createElement('canvas'); cv.width = cv.height = 96; ringIcon(cv.getContext('2d'), 48, 52, 92, id); return ringIconCache[id] = cv.toDataURL(); }
-const RING_TOP = {r05:1, r08:1, r09:1, r10:1, r07:1}; // 이름표 위로 솟는 장식 → 칭호를 조금 더 올려요
+const RING_TOP = {r05:1, r08:1, r09:1, r10:1, r07:1}; // 이름표 위로 솟는 장식 → 발과 안 겹치게 이름표를 조금 더 내려요
+// 이름은 발 밑, 칭호는 머리 위
+const nameDy = rid => RING_TOP[rid] ? 34 : 22;
 function nameTag(c, text, x, y, color, rid, t){ if (!(rid && ringTag(c, text, x, y, color, rid, t))) tag(c, text, x, y, color); }
 function tag(c, text, x, y, color){
   c.font='bold 18px "Dongle",sans-serif'; c.textAlign='center';
@@ -5111,13 +5113,13 @@ function frameBody(t){
       ...mailboxEntities(d, t),
       ...forageEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
-      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-(RING_TOP[o.rg] ? 92 : 80)); talkBubble(k,o.x,o.y,t); }})),
+      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{ if (admin) adminMobLabel(ctx, mob); }})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
       ...snowmenHere().map(([,s])=>({y:s.y, draw:()=>drawSnowman(d, s, t), label:()=>{}})),
-      ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (umbKey() && isRain() && snowOutside()) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving); }, label:()=>{ if (darkDown){ tag(ctx, `${me.nick} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } nameTag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1],me.inv?.ring,t); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-(RING_TOP[me.inv?.ring] ? 92 : 80)); talkBubble('me',pos.x,pos.y,t); }}]),
+      ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (umbKey() && isRain() && snowOutside()) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving); }, label:()=>{ if (darkDown){ tag(ctx, `${me.nick} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } nameTag(ctx,me.nick,pos.x,pos.y+nameDy(me.inv?.ring),ROOFS[me.roof][1],me.inv?.ring,t); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-76); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
