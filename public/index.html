@@ -1118,7 +1118,7 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz;
-    Object.assign(o, {um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), nick:String(s.nick||'').slice(0,8), uid:id});
+    Object.assign(o, {um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', nick:String(s.nick||'').slice(0,8), uid:id});
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
   }
@@ -2458,7 +2458,7 @@ const RING_LIST = [
   ['r09','불사조 깃털 반지',400,450000,[['ore:o38',1],['ore:o30',3]],{phoenix:1},'#ff7a2f'],
   ['r10','별고래의 맹세',500,600000,[['loot:m35',1],['ore:o38',2]],{dr:.12, bossDr:.2},'#d9c9ff'],
 ];
-const RING_OPEN = false; // 반지 그림·이름표가 정해지면 공방에 열어요
+const RING_OPEN = true; // 반지 그림·이름표가 정해지면 공방에 열어요
 const RINGS = Object.fromEntries(RING_LIST.map(r=>[r[0], {name:r[1], hp:r[2], gold:r[3], need:r[4], fx:r[5], color:r[6]}]));
 const ring = () => (me && RINGS[me.inv?.ring]) || null, ringFx = () => ring()?.fx || {};
 let ringShieldAt = 0;
@@ -2680,7 +2680,7 @@ function ringPanel(){
   openPanel(`보리의 반지 공방 · 💰 ${me.inv.gold.toLocaleString()} G`, `<p class="mnote" style="margin-top:0">반지는 하나만 낄 수 있어요. 최대 체력이 늘고 몸을 지켜 줘요. 만든 반지는 되팔 수 없어요.</p>` +
     RING_LIST.map(([id,name,hp,gold,need,f])=>{ const has = own.includes(id), on = me.inv.ring === id;
       const cost = [gold.toLocaleString()+' G', ...need.map(([k,n])=>`${itemName(k)} ${invCount(k)}/${n}`)].join(' · ');
-      return `<button class="np" data-id="${id}"><span class="np-name">💍 ${name} <small>최대 체력 +${hp}</small></span><span class="np-place">${on ? '끼는 중 (누르면 빼기)' : has ? '끼기' : '만들기'}</span><span class="np-day">${ringFxText(f) || '추가 효과 없음'}${has ? '' : ' · ' + cost}</span></button>`; }).join(''),
+      return `<button class="np" data-id="${id}"><span class="np-name"><img src="${ringIconURL(id)}" alt="" style="width:44px;height:44px;vertical-align:middle;margin:-8px 4px -8px -4px">${name} <small>최대 체력 +${hp}</small></span><span class="np-place">${on ? '끼는 중 (누르면 빼기)' : has ? '끼기' : '만들기'}</span><span class="np-day">${ringFxText(f) || '추가 효과 없음'}${has ? '' : ' · ' + cost}</span></button>`; }).join(''),
     b=>{ const id = b.dataset.id, r = RINGS[id];
       if (!own.includes(id)){
         if (me.inv.gold < r.gold || r.need.some(([k,n])=>invCount(k) < n)) return toast('재료나 돈이 모자라요');
@@ -4788,7 +4788,7 @@ let lastPres = 0, presSig = '', lastTarget = null;
 function sendPresence(t){
   if (!net || !me || admin || kicked) return; // 다른 곳에서 접속해 밀려난 창은 위치를 안 보내요
   const tgt = target && !keyMoving ? target : null;
-  const p = {z:zoneId, ...(darkDown ? {down:1} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : ''};
+  const p = {z:zoneId, ...(darkDown ? {down:1} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : '', ...(me.inv?.ring ? {rg:me.inv.ring} : {})};
   if (isRain() && umbKey() && snowOutside()) p.um = umbKey();
   const wp = walkingPet(); if (wp) p.pet = {sp:wp.sp, col:wp.col|0, name:String(wp.name||'').slice(0,8)};
   if (tgt){ p.tx = Math.round(tgt.x); p.ty = Math.round(tgt.y); }
@@ -4912,6 +4912,101 @@ function buildStatic(){
 }
 function drawLamp(d, x, y){ d.ell(x, y+1, 9, 3, 'rgba(0,0,0,.12)'); d.rr(x-3, y-58, 6, 58, 3, '#6e6278'); d.rr(x-7, y-6, 14, 7, 3, '#5d5266'); d.circle(x, y-64, 9, '#fff2b8'); d.rr(x-10, y-76, 20, 6, 3, '#5d5266'); d.circle(x, y-80, 2.5, '#5d5266'); }
 function titleTag(c, text, x, y){ c.font='bold 13px "Dongle",sans-serif'; c.textAlign='center'; const w = c.measureText(text).width + 10; c.fillStyle='rgba(228,143,172,.9)'; c.beginPath(); c.roundRect(x-w/2, y-10, w, 13, 6); c.fill(); c.fillStyle='#fff'; c.fillText(text, x, y); }
+// 반지 이름표: 반지마다 이름표가 귀엽게 꾸며져요 (캐릭터 겉모습은 그대로)
+const RT = {
+  star(c,x,y,r,col,rot=0){ c.fillStyle=col; c.beginPath(); for(let k=0;k<10;k++){ const rr=k%2?r*.45:r, a=rot+k*Math.PI/5-Math.PI/2; c.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);} c.closePath(); c.fill(); },
+  heart(c,x,y,s,col){ c.fillStyle=col; c.beginPath(); c.moveTo(x,y+s*.9); c.bezierCurveTo(x-s*1.4,y-s*.1,x-s*.6,y-s*1.1,x,y-s*.35); c.bezierCurveTo(x+s*.6,y-s*1.1,x+s*1.4,y-s*.1,x,y+s*.9); c.fill(); },
+  flower(c,x,y,r,col,mid='#ffe066'){ c.fillStyle=col; for(let k=0;k<5;k++){ const a=k*Math.PI*2/5; c.beginPath(); c.arc(x+Math.cos(a)*r*.62,y+Math.sin(a)*r*.62,r*.5,0,7); c.fill(); } c.fillStyle=mid; c.beginPath(); c.arc(x,y,r*.38,0,7); c.fill(); },
+  sparkle(c,x,y,r,col){ c.fillStyle=col; c.beginPath(); c.moveTo(x,y-r); c.quadraticCurveTo(x,y,x+r,y); c.quadraticCurveTo(x,y,x,y+r); c.quadraticCurveTo(x,y,x-r,y); c.quadraticCurveTo(x,y,x,y-r); c.fill(); },
+  wing(c,x,y,s,dir,col,edge){ c.save(); c.translate(x,y); c.scale(dir,1); c.fillStyle=col; c.strokeStyle=edge; c.lineWidth=1;
+    for(let k=2;k>=0;k--){ c.beginPath(); c.ellipse(s*(.35+k*.18), -s*(.35+k*.28), s*(.62-k*.1), s*(.24-k*.03), -(.55+k*.32), 0, 7); c.fill(); c.stroke(); } c.restore(); },
+  crown(c,x,y,s,col,gem){ c.fillStyle=col; c.beginPath(); c.moveTo(x-s,y); c.lineTo(x-s,y-s*.8); c.lineTo(x-s*.5,y-s*.35); c.lineTo(x,y-s*1.1); c.lineTo(x+s*.5,y-s*.35); c.lineTo(x+s,y-s*.8); c.lineTo(x+s,y); c.closePath(); c.fill(); c.fillStyle=gem; c.beginPath(); c.arc(x,y-s*.45,s*.2,0,7); c.fill(); for(const dx of [-s,0,s]){ c.fillStyle='#fff6c8'; c.beginPath(); c.arc(x+dx,y-(dx?s*.85:s*1.15),s*.14,0,7); c.fill(); } },
+  bow(c,x,y,s,col){ c.fillStyle=col; c.beginPath(); c.moveTo(x,y); c.quadraticCurveTo(x-s*1.3,y-s*.9,x-s*1.2,y+s*.1); c.quadraticCurveTo(x-s*1.1,y+s*.8,x,y); c.fill(); c.beginPath(); c.moveTo(x,y); c.quadraticCurveTo(x+s*1.3,y-s*.9,x+s*1.2,y+s*.1); c.quadraticCurveTo(x+s*1.1,y+s*.8,x,y); c.fill(); c.beginPath(); c.arc(x,y,s*.3,0,7); c.fill(); c.fillStyle='rgba(255,255,255,.5)'; c.beginPath(); c.arc(x-s*.7,y-s*.15,s*.18,0,7); c.fill(); },
+};
+const RING_TAG = { // 바탕 위·아래 색, 테두리, 글자색
+  r01:['#ffffff','#ffe6f0','#f4b6cf','#7a3a58'], r02:['#f1f6f2','#cfdcd6','#8fa69c','#3f5a52'], r03:['#eaf8ff','#b8e6ff','#5fb8ec','#25607e'],
+  r04:['#fff0ec','#ffc6c0','#ff8a8f','#8a3240'], r05:['#fff9d6','#ffd6ea','#ffb83f','#8a4a2a'], r06:['#ffe8ee','#ffb3c6','#e0405f','#7a1a34'],
+  r07:['#fbfbff','#dcdcf6','#a6a6dc','#4a4a7a'], r08:['#fff0f8','#ffc6e4','#ff86bd','#8a2a5c'], r09:['#fff3d6','#ffb070','#ff6a2f','#7a2a10'], r10:['#3a2a78','#1e1648','#cdb8ff','#fff6ff'],
+};
+function ringTag(c, text, x, y, color, rid, t){
+  const pal = RING_TAG[rid]; if (!pal) return false;
+  c.save(); c.font='bold 18px "Dongle",sans-serif'; c.textAlign='center';
+  const w = c.measureText(text).width + 22, H = 20, L = x-w/2, T = y-14, R = 10, mid = y-4;
+  const path = (d=0) => { c.beginPath(); c.roundRect(L-d, T-d, w+d*2, H+d*2, R+d); };
+  const tw = (k=1) => Math.sin(t/300*k);
+  // 뒤쪽 장식 (날개·후광)
+  if (rid==='r07'){ RT.wing(c, L-2, mid, 11, -1, '#ffffff', '#c9c9ee'); RT.wing(c, L+w+2, mid, 11, 1, '#ffffff', '#c9c9ee'); }
+  if (rid==='r09'){ const f = 1 + tw(2)*.06; RT.wing(c, L-2, mid, 12*f, -1, '#ffb347', '#ff6a2f'); RT.wing(c, L+w+2, mid, 12*f, 1, '#ffb347', '#ff6a2f'); }
+  if (rid==='r10'){ c.shadowColor='rgba(200,170,255,.95)'; c.shadowBlur=14 + tw()*4; }
+  if (rid==='r09'){ c.shadowColor='rgba(255,140,60,.9)'; c.shadowBlur=10 + tw(2)*4; }
+  if (rid==='r01'){ c.fillStyle='#ffffff'; for (let i=0;i<=8;i++){ c.beginPath(); c.arc(L+4+i*(w-8)/8, T, 4.5, 0, 7); c.fill(); c.beginPath(); c.arc(L+4+i*(w-8)/8, T+H, 4.5, 0, 7); c.fill(); } for (const sx of [L, L+w]){ c.beginPath(); c.arc(sx, mid, 6, 0, 7); c.fill(); } }
+  // 바탕
+  const q = c.createLinearGradient(0, T, 0, T+H); q.addColorStop(0, pal[0]); q.addColorStop(1, pal[1]); c.fillStyle = q; path(); c.fill(); c.shadowBlur = 0;
+  c.lineWidth = 2; c.strokeStyle = pal[2]; path(); c.stroke();
+  c.fillStyle='rgba(255,255,255,.55)'; c.beginPath(); c.roundRect(L+5, T+2.5, w-10, 4, 2); c.fill();
+  if (rid==='r06'){ c.lineWidth=1; c.strokeStyle='#ffd6e0'; path(2.5); c.stroke(); for (let i=0;i<6;i++){ c.fillStyle='#ffd23f'; c.beginPath(); c.arc(L+8+i*(w-16)/5, T+H+2.5, 1.4, 0, 7); c.fill(); } }
+  if (rid==='r10'){ for (let i=0;i<9;i++){ const sx=L+5+((i*41)%(w-10)), sy=T+3+((i*13)%(H-6)); c.globalAlpha=.35+.65*Math.abs(Math.sin(t/260+i)); RT.sparkle(c, sx, sy, i%3?1.2:2, '#fff'); } c.globalAlpha=1;
+    const ag = c.createLinearGradient(L, 0, L+w, 0); const h = (t/20)%360; ag.addColorStop(0, `hsl(${h},90%,75%)`); ag.addColorStop(.5, `hsl(${h+90},90%,75%)`); ag.addColorStop(1, `hsl(${h+180},90%,75%)`); c.lineWidth=1.6; c.strokeStyle=ag; path(1.5); c.stroke(); }
+  if (rid==='r05'){ for (let i=0;i<7;i++){ c.fillStyle=['#ff7fb0','#7fd0ff','#ffd23f','#9fe07f'][i%4]; c.save(); c.translate(L+8+i*(w-16)/6, T+H-4); c.rotate(i); c.fillRect(-2,-.7,4,1.4); c.restore(); } }
+  // 앞쪽 장식
+  switch (rid){
+    case 'r01': RT.heart(c, L+w-2, T-1, 4, '#ff9fc4'); RT.sparkle(c, L+3, T-3, 3, '#ffd0e2'); break;
+    case 'r02': for (let i=0;i<5;i++){ c.fillStyle=['#b9c2cc','#9fc9b8','#d9c2a8','#a8b8d9','#c9b0c9'][i]; c.beginPath(); c.ellipse(L+10+i*(w-20)/4, T+H+3, 3.6, 2.6, i, 0, 7); c.fill(); } c.fillStyle='#7fbf8f'; c.beginPath(); c.ellipse(L+w-3, T-1, 4, 2, -.6, 0, 7); c.fill(); break;
+    case 'r03': for (let i=0;i<3;i++){ const dx = L+w*(.25+i*.25), dy = T+H+5+Math.sin(t/400+i)*1.5; c.strokeStyle='rgba(95,184,236,.6)'; c.lineWidth=1; c.beginPath(); c.moveTo(dx, T+H); c.lineTo(dx, dy-3); c.stroke(); c.fillStyle='#7fcaff'; c.beginPath(); c.moveTo(dx, dy-4); c.quadraticCurveTo(dx+3.5, dy+1, dx, dy+3); c.quadraticCurveTo(dx-3.5, dy+1, dx, dy-4); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(dx-1, dy, .8, 0, 7); c.fill(); }
+      for (let i=0;i<3;i++){ const ph=((t/900)+i/3)%1; c.globalAlpha=1-ph; c.strokeStyle='#9fdcff'; c.lineWidth=1; c.beginPath(); c.arc(L+w+4+Math.sin(t/300+i)*2, T+H-ph*22, 1.5+i*.6, 0, 7); c.stroke(); } c.globalAlpha=1; break;
+    case 'r04': { c.save(); c.translate(L-3, mid); c.fillStyle='#ffd6c0'; c.beginPath(); c.moveTo(0,6); for (let k=0;k<=6;k++){ const a=Math.PI+k*Math.PI/6; c.lineTo(Math.cos(a)*7, Math.sin(a)*7+1); } c.closePath(); c.fill(); c.strokeStyle='#ff9f8f'; c.lineWidth=.8; for (let k=1;k<6;k++){ const a=Math.PI+k*Math.PI/6; c.beginPath(); c.moveTo(0,5); c.lineTo(Math.cos(a)*6, Math.sin(a)*6+1); c.stroke(); } c.restore();
+      RT.star(c, L+w+3, T+1, 6, '#ff8f6f', t/2000); c.fillStyle='#ffd0b0'; c.beginPath(); c.arc(L+w+3, T+1, 1.4, 0, 7); c.fill(); break; }
+    case 'r05': for (let i=0;i<5;i++){ const a = t/700 + i*Math.PI*2/5, sx = x + Math.cos(a)*(w/2+7), sy = mid + Math.sin(a)*(H/2+7); RT.star(c, sx, sy, 3.4, ['#ffd23f','#ff9fc4','#9fd6ff','#b8f08a','#d9b8ff'][i], a); } RT.bow(c, x, T-1, 4.5, '#ff7fb0'); break;
+    case 'r06': { const sx=L-5, sy=mid; c.fillStyle='#e0405f'; c.beginPath(); c.moveTo(sx-6,sy-6); c.lineTo(sx+6,sy-6); c.lineTo(sx+6,sy); c.quadraticCurveTo(sx+6,sy+6,sx,sy+8); c.quadraticCurveTo(sx-6,sy+6,sx-6,sy); c.closePath(); c.fill(); c.strokeStyle='#ffd23f'; c.lineWidth=1.2; c.stroke(); RT.heart(c, sx, sy, 2.6, '#fff'); RT.bow(c, L+w+2, T+2, 5, '#ff5f7f'); break; }
+    case 'r07': { const mx=x, my=T-5; c.fillStyle='#fff6c8'; c.beginPath(); c.arc(mx, my, 5.5, 0, 7); c.fill(); c.globalCompositeOperation='destination-out'; c.beginPath(); c.arc(mx+3, my-2, 4.6, 0, 7); c.fill(); c.globalCompositeOperation='source-over'; RT.sparkle(c, mx+8, my-2, 2.2, '#fff'); RT.sparkle(c, mx-8, my+1, 1.6, '#e8e8ff');
+      for (let i=0;i<5;i++){ c.globalAlpha=.4+.6*Math.abs(Math.sin(t/250+i)); RT.sparkle(c, L+8+i*(w-16)/4, T+H-4, 1.4, '#a6a6dc'); } c.globalAlpha=1; break; }
+    case 'r08': for (const [fx,fy,r,col] of [[x-11,T-2,4.2,'#ffb3d9'],[x,T-5,5,'#ff86bd'],[x+11,T-2,4.2,'#ffc6e4']]) RT.flower(c, fx, fy, r, col);
+      c.fillStyle='#8fd08f'; c.beginPath(); c.ellipse(x-17,T-1,3,1.6,-.4,0,7); c.fill(); c.beginPath(); c.ellipse(x+17,T-1,3,1.6,.4,0,7); c.fill();
+      for (let i=0;i<3;i++){ const ph=((t/1600)+i/3)%1, px = L + w*(.2+i*.3) + Math.sin(t/400+i)*8, py = T + H + 2 - ph*34; c.globalAlpha = Math.sin(ph*Math.PI); c.fillStyle='#ffb3d9'; c.beginPath(); c.ellipse(px, py, 2, 3.2, t/500+i, 0, 7); c.fill(); } c.globalAlpha=1; break;
+    case 'r09': { for (let k=0;k<3;k++){ const fx = x-6+k*6, fh = 7 + Math.sin(t/120+k*2)*2 + (k===1?3:0); c.fillStyle = k===1 ? '#ffd23f' : '#ff7a2f'; c.beginPath(); c.moveTo(fx-3, T); c.quadraticCurveTo(fx-3, T-fh*.6, fx, T-fh); c.quadraticCurveTo(fx+3, T-fh*.6, fx+3, T); c.fill(); }
+      for (let i=0;i<5;i++){ const ph=((t/800)+i*.2)%1, ex = L + w*(.1+i*.2) + Math.sin(t/200+i)*3, ey = T - ph*18; c.globalAlpha=1-ph; c.fillStyle=i%2?'#ffd23f':'#ff6a2f'; c.beginPath(); c.arc(ex, ey, 1.6, 0, 7); c.fill(); } c.globalAlpha=1; break; }
+    case 'r10': { RT.crown(c, x, T-1, 7, '#ffd23f', '#9f7fff'); const wx=L+w+5, wy=mid+Math.sin(t/500)*1.5; c.fillStyle='#d9c9ff'; c.beginPath(); c.moveTo(wx-4, wy+5); c.quadraticCurveTo(wx-1, wy-1, wx-8, wy-5); c.quadraticCurveTo(wx, wy-2, wx+2, wy-8); c.quadraticCurveTo(wx+3, wy, wx-4, wy+5); c.fill(); RT.sparkle(c, L-4, T+2, 3, '#fff'); break; }
+  }
+  if (color){ c.fillStyle=color; c.beginPath(); c.arc(L+7, mid, 3, 0, 7); c.fill(); }
+  c.fillStyle = pal[3]; c.fillText(text, x+(color?3:0), y+1); c.restore(); return true;
+}
+
+// 반지 그림 (가게·가방 아이콘). s = 크기(px), 가운데 (x, y)
+function ringIcon(c, x, y, s, id, t=0){
+  const k = s/100; c.save(); c.translate(x, y); c.scale(k, k);
+  const BAND = {r01:['#ffeef6','#e8b8cc'], r02:['#e6eaee','#9aa2ac'], r03:['#eef6fb','#a8bccb'], r04:['#ffe0d6','#e0a090'], r05:['#fff0a8','#e0a830'], r06:['#ffe08a','#d09020'], r07:['#f4f6ff','#aab4d0'], r08:['#ffe0ec','#e0a0bc'], r09:['#ffd88a','#e07a20'], r10:['#f0ecff','#a898d8']}[id];
+  // 그림자
+  c.fillStyle='rgba(60,30,50,.18)'; c.beginPath(); c.ellipse(0, 40, 34, 7, 0, 0, 7); c.fill();
+  // 고리 (앞뒤 두께가 보이게)
+  const band = (y0, a) => { const q = c.createLinearGradient(-32, 0, 32, 0); q.addColorStop(0, BAND[1]); q.addColorStop(.35, BAND[0]); q.addColorStop(.55, '#ffffff'); q.addColorStop(1, BAND[1]); c.globalAlpha = a; c.lineWidth = 9; c.strokeStyle = q; c.beginPath(); c.ellipse(0, y0, 30, 17, 0, 0, 7); c.stroke(); c.globalAlpha = 1; };
+  band(16, .55); // 뒤쪽 고리
+  c.lineWidth = 9; { const q = c.createLinearGradient(-32,0,32,0); q.addColorStop(0, BAND[1]); q.addColorStop(.3, BAND[0]); q.addColorStop(.5, '#fff'); q.addColorStop(.8, BAND[0]); q.addColorStop(1, BAND[1]); c.strokeStyle = q; c.beginPath(); c.ellipse(0, 16, 30, 17, 0, -.15, Math.PI+.15); c.stroke(); }
+  c.strokeStyle='rgba(255,255,255,.8)'; c.lineWidth=2; c.beginPath(); c.ellipse(0, 16, 28, 15, 0, .5, 1.3); c.stroke();
+  // 받침
+  const setting = col => { c.fillStyle = col; c.beginPath(); c.ellipse(0, 0, 13, 6, 0, 0, 7); c.fill(); };
+  const gem = (r, c1, c2, yy=-10) => { const q = c.createRadialGradient(-r*.35, yy-r*.4, 1, 0, yy, r*1.1); q.addColorStop(0, '#ffffff'); q.addColorStop(.35, c1); q.addColorStop(1, c2); c.fillStyle = q; c.beginPath(); c.arc(0, yy, r, 0, 7); c.fill(); c.fillStyle='rgba(255,255,255,.85)'; c.beginPath(); c.ellipse(-r*.38, yy-r*.42, r*.28, r*.16, -.6, 0, 7); c.fill(); };
+  const RTs = (typeof RT !== 'undefined') ? RT : null;
+  switch (id){
+    case 'r01': setting('#f0e6ee'); for (const [dx,dy,r] of [[0,-16,13],[-10,-8,9],[10,-8,9],[0,-4,10]]){ c.fillStyle='#f4c6da'; c.beginPath(); c.arc(dx,dy,r+1.6,0,7); c.fill(); } for (const [dx,dy,r] of [[0,-16,13],[-10,-8,9],[10,-8,9],[0,-4,10]]){ c.fillStyle='#ffffff'; c.beginPath(); c.arc(dx,dy,r,0,7); c.fill(); } c.fillStyle='#ffd0e2'; c.beginPath(); c.arc(-6,-14,3,0,7); c.arc(6,-14,3,0,7); c.fill(); c.strokeStyle='#efe0ea'; c.lineWidth=1.5; c.beginPath(); c.arc(0,-12,15,Math.PI*1.1,Math.PI*1.9); c.stroke(); break;
+    case 'r02': setting('#8a929c'); { const q = c.createRadialGradient(-5,-16,1,0,-10,16); q.addColorStop(0,'#e8f2ee'); q.addColorStop(.5,'#9fc9b8'); q.addColorStop(1,'#6a8f80'); c.fillStyle=q; c.beginPath(); c.ellipse(0,-10,15,11,.15,0,7); c.fill(); c.fillStyle='rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(-5,-15,4,2,-.5,0,7); c.fill(); c.fillStyle='#7fbf8f'; c.beginPath(); c.ellipse(10,-19,6,3,-.7,0,7); c.fill(); } break;
+    case 'r03': setting('#a8bccb'); { const q = c.createRadialGradient(-4,-18,1,0,-10,18); q.addColorStop(0,'#ffffff'); q.addColorStop(.4,'#9fdcff'); q.addColorStop(1,'#3f9fdc'); c.fillStyle=q; c.beginPath(); c.moveTo(0,-32); c.quadraticCurveTo(15,-10,0,0); c.quadraticCurveTo(-15,-10,0,-32); c.fill(); c.fillStyle='rgba(255,255,255,.85)'; c.beginPath(); c.ellipse(-4,-12,2.5,4,.2,0,7); c.fill(); } for (const [dx,dy] of [[-18,-20],[17,-26]]){ c.strokeStyle='#9fdcff'; c.lineWidth=1.5; c.beginPath(); c.arc(dx,dy,3,0,7); c.stroke(); } break;
+    case 'r04': setting('#e0a090'); c.strokeStyle='#ff7f8f'; c.lineWidth=5; c.lineCap='round'; c.beginPath(); c.moveTo(0,-2); c.lineTo(0,-24); c.moveTo(0,-12); c.lineTo(10,-24); c.moveTo(0,-8); c.lineTo(-10,-20); c.moveTo(10,-24); c.lineTo(13,-30); c.moveTo(-10,-20); c.lineTo(-14,-26); c.stroke(); gem(6,'#fff7f0','#e8d8d0',-6); break;
+    case 'r05': setting('#e0a830'); { const sp = (rot) => { const q = c.createRadialGradient(-4,-16,1,0,-10,18); q.addColorStop(0,'#fff'); q.addColorStop(.4,'#ffb3d9'); q.addColorStop(1,'#ff6fae'); c.fillStyle=q; c.beginPath(); for (let i=0;i<10;i++){ const rr = i%2 ? 7 : 16, a = i*Math.PI/5 - Math.PI/2 + rot; c.lineTo(Math.cos(a)*rr, -10+Math.sin(a)*rr); } c.closePath(); c.fill(); }; sp(0); c.fillStyle='rgba(255,255,255,.8)'; c.beginPath(); c.ellipse(-4,-16,3,2,-.5,0,7); c.fill(); for (const [dx,dy,col] of [[-20,-22,'#9fd6ff'],[20,-18,'#b8f08a'],[16,-32,'#ffd23f']]){ c.fillStyle=col; c.beginPath(); c.arc(dx,dy,3,0,7); c.fill(); } } break;
+    case 'r06': setting('#d09020'); { c.fillStyle='#ffd23f'; c.beginPath(); c.moveTo(-14,-24); c.lineTo(14,-24); c.lineTo(14,-10); c.quadraticCurveTo(14,2,0,6); c.quadraticCurveTo(-14,2,-14,-10); c.closePath(); c.fill(); const q = c.createRadialGradient(-3,-14,1,0,-10,12); q.addColorStop(0,'#fff'); q.addColorStop(.4,'#ff6f8f'); q.addColorStop(1,'#c0203f'); c.fillStyle=q; c.beginPath(); c.moveTo(0,0); c.bezierCurveTo(-14,-8,-8,-22,0,-15); c.bezierCurveTo(8,-22,14,-8,0,0); c.fill(); } break;
+    case 'r07': setting('#aab4d0'); { c.fillStyle='#fff6c8'; c.beginPath(); c.arc(0,-12,13,0,7); c.fill(); c.globalCompositeOperation='destination-out'; c.beginPath(); c.arc(6,-16,11,0,7); c.fill(); c.globalCompositeOperation='source-over'; c.shadowColor='#fff6c8'; c.shadowBlur=8; c.fillStyle='#fff3b0'; c.beginPath(); c.arc(0,-12,13,Math.PI*.45,Math.PI*1.55); c.arc(6,-16,11,Math.PI*1.35,Math.PI*.62,true); c.fill(); c.shadowBlur=0; for (const [dx,dy,r] of [[14,-26,4],[20,-14,2.5],[-18,-28,2.5]]){ c.fillStyle='#fff'; c.beginPath(); c.moveTo(dx,dy-r); c.quadraticCurveTo(dx,dy,dx+r,dy); c.quadraticCurveTo(dx,dy,dx,dy+r); c.quadraticCurveTo(dx,dy,dx-r,dy); c.quadraticCurveTo(dx,dy,dx,dy-r); c.fill(); } } break;
+    case 'r08': setting('#e0a0bc'); for (const [dx,dy,r,col] of [[-12,-8,8,'#ffc6e4'],[12,-8,8,'#ffb3d9'],[0,-18,10,'#ff86bd']]){ c.fillStyle=col; for (let i=0;i<5;i++){ const a=i*Math.PI*2/5 - Math.PI/2; c.beginPath(); c.arc(dx+Math.cos(a)*r*.6, dy+Math.sin(a)*r*.6, r*.48, 0, 7); c.fill(); } c.fillStyle='#ffe066'; c.beginPath(); c.arc(dx,dy,r*.35,0,7); c.fill(); } c.fillStyle='#8fd08f'; c.beginPath(); c.ellipse(-20,-4,5,2.5,-.4,0,7); c.fill(); c.beginPath(); c.ellipse(20,-4,5,2.5,.4,0,7); c.fill(); break;
+    case 'r09': setting('#e07a20'); for (const s2 of [-1,1]){ c.save(); c.scale(s2,1); for (let i=2;i>=0;i--){ c.fillStyle = i%2 ? '#ffb347' : '#ff7a2f'; c.beginPath(); c.ellipse(14+i*6, -10-i*6, 12-i*2, 4.5, -(.5+i*.35), 0, 7); c.fill(); } c.restore(); } { const q = c.createRadialGradient(-3,-16,1,0,-10,14); q.addColorStop(0,'#fff6c8'); q.addColorStop(.4,'#ffb347'); q.addColorStop(1,'#ff4f2f'); c.fillStyle=q; c.beginPath(); c.moveTo(0,-32); c.quadraticCurveTo(13,-14,8,-4); c.quadraticCurveTo(0,4,-8,-4); c.quadraticCurveTo(-13,-14,0,-32); c.fill(); } break;
+    case 'r10': setting('#a898d8'); { const q = c.createRadialGradient(-5,-18,1,0,-12,17); q.addColorStop(0,'#c8b8ff'); q.addColorStop(.5,'#5a3ab0'); q.addColorStop(1,'#1e1648'); c.fillStyle=q; c.beginPath(); c.arc(0,-12,15,0,7); c.fill(); for (const [dx,dy,r] of [[-5,-16,1.6],[5,-8,1.2],[3,-19,1],[-7,-7,1],[8,-14,1.4]]){ c.fillStyle='#fff'; c.beginPath(); c.arc(dx,dy,r,0,7); c.fill(); } c.fillStyle='rgba(255,255,255,.8)'; c.beginPath(); c.ellipse(-6,-20,4,2,-.5,0,7); c.fill();
+      c.fillStyle='#ffd23f'; c.beginPath(); c.moveTo(-9,-27); c.lineTo(-9,-34); c.lineTo(-4,-30); c.lineTo(0,-37); c.lineTo(4,-30); c.lineTo(9,-34); c.lineTo(9,-27); c.closePath(); c.fill();
+      c.fillStyle='#d9c9ff'; c.beginPath(); c.moveTo(18,4); c.quadraticCurveTo(22,-4,16,-8); c.quadraticCurveTo(24,-6,27,-12); c.quadraticCurveTo(28,-2,18,4); c.fill(); } break;
+  }
+  c.restore();
+}
+
+const ringIconCache = {};
+function ringIconURL(id){ if (ringIconCache[id]) return ringIconCache[id]; const cv = document.createElement('canvas'); cv.width = cv.height = 96; ringIcon(cv.getContext('2d'), 48, 52, 92, id); return ringIconCache[id] = cv.toDataURL(); }
+const RING_TOP = {r05:1, r08:1, r09:1, r10:1, r07:1}; // 이름표 위로 솟는 장식 → 칭호를 조금 더 올려요
+function nameTag(c, text, x, y, color, rid, t){ if (!(rid && ringTag(c, text, x, y, color, rid, t))) tag(c, text, x, y, color); }
 function tag(c, text, x, y, color){
   c.font='bold 18px "Dongle",sans-serif'; c.textAlign='center';
   const w = c.measureText(text).width + 12;
@@ -4980,13 +5075,13 @@ function frameBody(t){
       ...mailboxEntities(d, t),
       ...forageEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
-      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } tag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-80); talkBubble(k,o.x,o.y,t); }})),
+      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y-64,o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-(RING_TOP[o.rg] ? 92 : 80)); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{}})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
       ...snowmenHere().map(([,s])=>({y:s.y, draw:()=>drawSnowman(d, s, t), label:()=>{}})),
-      ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (umbKey() && isRain() && snowOutside()) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving); }, label:()=>{ if (darkDown){ tag(ctx, `${me.nick} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } tag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1]); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-80); talkBubble('me',pos.x,pos.y,t); }}]),
+      ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (umbKey() && isRain() && snowOutside()) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving); }, label:()=>{ if (darkDown){ tag(ctx, `${me.nick} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } nameTag(ctx,me.nick,pos.x,pos.y-64,ROOFS[me.roof][1],me.inv?.ring,t); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-(RING_TOP[me.inv?.ring] ? 92 : 80)); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
