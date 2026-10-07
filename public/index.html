@@ -424,6 +424,7 @@ import { ACHIEVEMENTS } from './achievements.js';
 import { SITUATIONS } from './situations.js';
 import { UI, EMOJI_UI } from './art/ui.js';
 import { FURN_ALL, FURN_DRAW } from './art/furniture.js';
+import { drawOtumo, OTUMO_HP } from './art/otumo.js';
 import { PET_SPECIES, PET_DRAW } from './art/pets.js';
 import { FORAGE, FORAGE_DRAW, SPOT_OF, SPOT_NAME, SPOT_DRAW } from './forage.js';
 import { JUKE_SONGS, jukeEngine } from './jukebox.js';
@@ -5170,13 +5171,13 @@ function frameBody(t){
       ...mailboxEntities(d, t),
       ...forageEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
-      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
+      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.adm) return drawOtumo(d, o.x, o.y, o.dir||'down', t/1000, !!o.mv); if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.adm){ otumoLabel(ctx, o.x, o.y); talkBubble(k,o.x,o.y,t); return; } if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{ if (admin) adminMobLabel(ctx, mob); }})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
       ...snowmenHere().map(([,s])=>({y:s.y, draw:()=>drawSnowman(d, s, t), label:()=>{}})),
-      ...(admin && admWalk ? [{y:pos.y, draw:()=>drawPlayer(ctx,pos.x,pos.y,OTUMO_LOOK,pos.dir,t/1000,pos.moving,1,'happy'), label:()=>{ tag(ctx, '오투모', pos.x, pos.y+22, '#7fb8ff'); titleTag(ctx, '관리자', pos.x, pos.y-76); if (admRevive){ const k = Math.min(1, (t - admRevive.at)/ADM_REVIVE_MS); ctx.save(); ctx.strokeStyle = '#7fe3a0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pos.x, pos.y-90, 9, -Math.PI/2, -Math.PI/2 + k*6.283); ctx.stroke(); ctx.restore(); } }}] : []),
+      ...(admin && admWalk ? [{y:pos.y, draw:()=>drawOtumo(d, pos.x, pos.y, pos.dir, t/1000, pos.moving), label:()=>{ otumoLabel(ctx, pos.x, pos.y); if (admRevive){ const k = Math.min(1, (t - admRevive.at)/ADM_REVIVE_MS); ctx.save(); ctx.strokeStyle = '#7fe3a0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pos.x, pos.y-104, 9, -Math.PI/2, -Math.PI/2 + k*6.283); ctx.stroke(); ctx.restore(); } }}] : []),
       ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (umbKey() && isRain() && snowOutside()) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving); }, label:()=>{ if (darkDown){ tag(ctx, `${me.nick} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } nameTag(ctx,me.nick,pos.x,pos.y+nameDy(me.inv?.ring),ROOFS[me.roof][1],me.inv?.ring,t); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-76); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
@@ -5443,6 +5444,15 @@ function adminClick(e){
   else if (b.dataset.a==='logout'){ if (confirm('관리자 페이지에서 나갈까요?')) logout(); }
 }
 // ----- 오투모로 걸어 다니기 -----
+// 오투모 이름은 발 밑, 머리 위엔 체력 1 천만 막대와 '관리자' 칭호
+function otumoLabel(c, x, y){
+  tag(c, '오투모', x, y + 22, '#7fb8ff');
+  const w = 54, bx = x - w/2, by = y - 72;
+  c.save(); c.fillStyle = 'rgba(40,30,50,.55)'; c.beginPath(); c.roundRect(bx - 1, by - 1, w + 2, 9, 4.5); c.fill();
+  const g = c.createLinearGradient(bx, 0, bx + w, 0); g.addColorStop(0, '#7fe3a0'); g.addColorStop(1, '#3fbf7a'); c.fillStyle = g; c.beginPath(); c.roundRect(bx, by, w, 7, 3.5); c.fill();
+  c.font = 'bold 9px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(OTUMO_HP.toLocaleString(), x, by + 6.5); c.restore();
+  titleTag(c, '관리자', x, y - 80);
+}
 const ADM_REVIVE_MS = 2000;
 function admWalkOn(){
   if (admWalk) return; admWalk = true; admSide = false; cam.follow = null; target = null; admRevive = null; admPresSig = '';
