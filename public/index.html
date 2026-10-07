@@ -1814,7 +1814,7 @@ function npcActions(n){
   if (n.id==='dandan') acts.push(['요리하기', cookPanel]);
   if (n.id!=='momo' && BUYERS[n.id]) acts.push(['물건 팔기', ()=>sellPanel(n)]);
   if (n.id==='tori') acts.push(['오늘의 심부름', errandPanel], [`우체국 편지함${unreadLetters() ? ' ('+unreadLetters()+')' : ''}`, ()=>postPanel()]);
-  if (n.id==='bori') acts.push(['공방 (텃밭·가구)', workshopPanel], ['반지 공방', ringPanel], ['집 늘리기·인테리어', housePanel]);
+  if (n.id==='bori') acts.push(['공방 (텃밭·가구)', workshopPanel], ...(RING_OPEN ? [['반지 공방', ringPanel]] : []), ['집 늘리기·인테리어', housePanel]);
   if (n.id==='mongsil') acts.push(['옷가게 · 갈아입기', clothesPanel], ['우산 가게', umbPanel]);
   if (n.id==='kongi' && me.inv.sword) acts.push(['경비대 무기고', weaponPanel]);
   if (n.id==='olly') acts.push(['박물관 기증', museumPanel]);
@@ -2458,6 +2458,7 @@ const RING_LIST = [
   ['r09','불사조 깃털 반지',400,450000,[['ore:o38',1],['ore:o30',3]],{phoenix:1},'#ff7a2f'],
   ['r10','별고래의 맹세',500,600000,[['loot:m35',1],['ore:o38',2]],{dr:.12, bossDr:.2},'#d9c9ff'],
 ];
+const RING_OPEN = false; // 반지 그림·이름표가 정해지면 공방에 열어요
 const RINGS = Object.fromEntries(RING_LIST.map(r=>[r[0], {name:r[1], hp:r[2], gold:r[3], need:r[4], fx:r[5], color:r[6]}]));
 const ring = () => (me && RINGS[me.inv?.ring]) || null, ringFx = () => ring()?.fx || {};
 let ringShieldAt = 0;
@@ -3929,6 +3930,7 @@ function myCandy(){
   if (!c.lots.length){ me.candy = null; return null; }
   return {lots:c.lots, n:c.lots.reduce((a,l)=>a+l.n, 0), cost:c.lots.reduce((a,l)=>a+l.cost, 0), until:c.lots[0].until};
 }
+let candyQv = '10';
 function candyTrade(n){
   const live = showLive(); if (!live) return toast('방송 시간에만 사고팔 수 있어요');
   const p = candyPrice(live.slot), c = myCandy();
@@ -3959,10 +3961,12 @@ function tvPanel(){
     `<div class="np" style="display:block">${live ? `<b style="color:#e0457b">● 지금 방송 중</b> · ${live.left} 분 남았어요<br>오늘의 별사탕 <b style="font-size:30px">${price} G</b>` : `방송 쉬는 시간이에요. 다음 방송: ${slotName(nx.slot)} (${fmtLeft(nx.wait)} 뒤)`}</div>
      <div class="tv-grid">${rows}</div>
      ${c ? `<div class="np" style="display:block">내 별사탕 <b>${c.n}</b> 개 · 평균 ${Math.round(c.cost/c.n)} G${price ? ` · 지금 팔면 ${price*c.n} G (${price*c.n - c.cost >= 0 ? '+' : ''}${price*c.n - c.cost} G)` : ''}<br><small>${c.lots.map(l=>`${l.n} 개는 ${candyMeltName(l.until)} 방송까지 팔 수 있어요`).join(' · ')}</small></div>` : ''}
-     ${live ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${[10, 50, 100].map(q=>`<button class="mini" data-q="${q}">${q} 개 사기</button>`).join('')}<button class="mini" data-q="999">최대로 사기</button>${c ? `<button class="mini" data-q="-10">10 개 팔기</button><button class="mini" data-q="-${c.n}">전부 팔기</button>` : ''}</div>` : ''}
+     ${live ? `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px"><input id="candyQ" type="number" min="1" max="${CANDY_MAX}" value="${candyQv}" inputmode="numeric" style="width:84px;font:inherit;padding:4px 8px;border-radius:10px;border:2px solid #f3cfe0;text-align:right"> 개 <button class="mini" data-qb="1">사기</button>${c ? `<button class="mini" data-qb="-1">팔기</button>` : ''}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${[10, 50, 100].map(q=>`<button class="mini" data-q="${q}">${q} 개 사기</button>`).join('')}<button class="mini" data-q="999">최대로 사기</button>${c ? `<button class="mini" data-q="-${c.n}">전부 팔기</button>` : ''}</div>` : ''}
      <p class="mnote">방송은 매일 오후 1 시, 밤 10 시에 한 시간씩. 그때만 사고팔 수 있어요. 값은 3 일(방송 6 번)마다 오르내리는 모양이 바뀌어요. 별사탕은 산 때부터 3 일 뒤 같은 시각 방송까지 팔 수 있고, 그 방송이 끝나면 녹아요. 최대 ${CANDY_MAX} 개.</p>`);
   $('npcPanel').dataset.tv = '1';
   $('npcPanel').querySelectorAll('button[data-q]').forEach(b=>b.onclick = ()=>candyTrade(+b.dataset.q));
+  { const qi = $('candyQ'); if (qi) qi.oninput = ()=>{ candyQv = qi.value; }; } // 수량을 직접 넣어 사고팔아요
+  $('npcPanel').querySelectorAll('button[data-qb]').forEach(b=>b.onclick = ()=>{ const n = Math.floor(Number($('candyQ')?.value)); if (!(n > 0)) return toast('몇 개인지 숫자로 넣어 주세요'); candyQv = String(n); candyTrade(n * Number(b.dataset.qb)); });
 }
 // 홈쇼핑 창을 열어 두면 방송이 시작하거나 끝날 때 새로 그려요
 let tvShown = '';
