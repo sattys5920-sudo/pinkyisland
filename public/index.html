@@ -2223,10 +2223,10 @@ function drawGlitch(c, t){
   c.save(); c.setTransform(1,0,0,1,0,0);
   // 색 보정: 채도를 빼고 어둡고 흐릿하게 (전환 순간엔 서서히 내려앉아요)
   if (darkOn()){ const g = Math.min(1, (t - glitchBurst)/900);
-    c.globalCompositeOperation = 'saturation'; c.globalAlpha = .75*g; c.fillStyle = '#808080'; c.fillRect(0, 0, W, H);
-    c.globalCompositeOperation = 'multiply'; c.globalAlpha = g; c.fillStyle = inRoom ? '#9a90a4' : '#6e6878'; c.fillRect(0, 0, W, H);
-    c.globalCompositeOperation = 'source-over'; c.globalAlpha = .16*g; c.fillStyle = '#2a2433'; c.fillRect(0, 0, W, H);
-    const v = c.createRadialGradient(W/2, H/2, Math.min(W, H)*.3, W/2, H/2, Math.max(W, H)*.75); v.addColorStop(0, 'rgba(5,0,10,0)'); v.addColorStop(1, `rgba(5,0,10,${.55*g})`); c.globalAlpha = 1; c.fillStyle = v; c.fillRect(0, 0, W, H); }
+    c.globalCompositeOperation = 'saturation'; c.globalAlpha = .55*g; c.fillStyle = '#808080'; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = 'multiply'; c.globalAlpha = g; c.fillStyle = inRoom ? '#c4bccc' : '#a49cb4'; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = 'source-over'; c.globalAlpha = .1*g; c.fillStyle = '#3a3048'; c.fillRect(0, 0, W, H);
+    const v = c.createRadialGradient(W/2, H/2, Math.min(W, H)*.3, W/2, H/2, Math.max(W, H)*.75); v.addColorStop(0, 'rgba(5,0,10,0)'); v.addColorStop(1, `rgba(5,0,10,${.32*g})`); c.globalAlpha = 1; c.fillStyle = v; c.fillRect(0, 0, W, H); }
   // 색 어긋남 (빨강·파랑이 옆으로 번져요)
   if (R() < .1 + k*.5){ const o = (2 + R()*8*k)*dpr; c.globalCompositeOperation = 'screen'; c.globalAlpha = .18 + .25*k; try { c.drawImage(cv, o, 0); c.drawImage(cv, -o, 0); } catch(e){} c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
   // 가로로 찢어지는 띠
@@ -2238,7 +2238,7 @@ function drawGlitch(c, t){
   if (!scanPat){ const p = document.createElement('canvas'); p.width = 4; p.height = 4; const g = p.getContext('2d'); g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(0, 0, 4, 1); scanPat = c.createPattern(p, 'repeat'); }
   c.globalAlpha = .35 + .4*k; c.fillStyle = scanPat; c.fillRect(0, 0, W, H); c.globalAlpha = 1;
   // 깜빡임
-  if (R() < .04 + burst*.4){ c.fillStyle = `rgba(${R() < .5 ? '255,255,255' : '10,0,20'},${.08 + .25*burst})`; c.fillRect(0, 0, W, H); }
+  if (R() < .02 + burst*.3){ c.fillStyle = `rgba(${R() < .5 ? '255,255,255' : '10,0,20'},${.05 + .15*burst})`; c.fillRect(0, 0, W, H); }
   c.restore();
 }
 function drawBite(ctx, t){
