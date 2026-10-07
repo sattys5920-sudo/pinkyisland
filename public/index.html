@@ -323,6 +323,18 @@ body.typing #chatin{background:#fff}
 /* 관리자 CCTV */
 #adminUi{position:fixed;inset:0;pointer-events:none;z-index:30;font-size:20px;color:#f4eef2}
 #adminUi button{pointer-events:auto;font:inherit;cursor:pointer}
+#goal{position:fixed;z-index:5;padding:6px 10px 5px;font-size:15px;cursor:pointer;line-height:1.2}
+#goal .gl-t{display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden}#goal .gl-t b{font-size:16px}#goal .gl-t span{overflow:hidden;text-overflow:ellipsis}#goal .gl-t i{margin-left:auto;font-style:normal;font-size:13px;color:#b07a92}
+#goal .gl-ic{width:20px;height:20px}#goal .gl-s{display:flex;justify-content:space-between;font-size:13px;color:#9a6f84}
+.gl-bar{height:8px;border-radius:4px;background:#f6dce7;overflow:hidden;margin:4px 0 2px}.gl-bar s{display:block;height:100%;background:linear-gradient(90deg,#ff9fc4,#ff6f9a);border-radius:4px}
+#goal.done .gl-bar s{background:linear-gradient(90deg,#9fe0b4,#4fbf7f)}
+body.dlg-on #goal,body.admin #goal{visibility:hidden}
+#aucSheet{position:fixed;z-index:22;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 70px);width:min(400px,calc(100vw - 20px));background:#fff8fb;border:3px solid #ffd36b;border-radius:18px;box-shadow:0 4px 0 #f1c6d8,0 8px 20px rgba(80,30,60,.2);padding:8px 12px 10px;color:#5a3346;font-size:16px}
+#aucSheet .au-h{display:flex;align-items:center;gap:6px}#aucSheet .au-h small{margin-left:auto;color:#b07a92;font-size:13px}
+#aucSheet .au-i{display:flex;gap:10px;align-items:center;margin:4px 0}#aucSheet .au-ic{width:44px;height:44px;font-size:32px;text-align:center}#aucSheet .au-p{color:#e0507a}#aucSheet small{color:#9a6f84;font-size:13px}
+#aucSheet .au-b{display:flex;gap:6px;justify-content:center;align-items:center;margin-top:6px}#aucSheet input{width:110px;font:inherit;padding:4px 8px;border-radius:10px;border:2px solid #f3cfe0;text-align:right}
+#aucSheet .au-n{display:block;text-align:center;margin-top:4px}
+#adminUi .adm-auc label{display:block;font-size:16px;margin:3px 0}#adminUi .adm-auc input,#adminUi .adm-auc select{font:inherit;font-size:16px;width:auto;max-width:150px;pointer-events:auto}
 #adminUi .adm-walk{background:#3d6fd8;color:#fff;border-color:#7fb8ff} #adminUi .adm-walk.warn{background:#c2456b}
 .adm-top{position:absolute;left:10px;right:10px;top:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:rgba(28,22,30,.78);border-radius:16px;padding:6px 12px;pointer-events:auto}
 .adm-top b{font-size:24px}.adm-clock{font-variant-numeric:tabular-nums;opacity:.85}.adm-view{opacity:.85;margin-right:auto}
@@ -1186,6 +1198,12 @@ function soloNet(){
     mobSpawn: async (z, sl, oldGen, d) => { const M_ = soloNet.mobs, c = (M_[z] = M_[z] || {}), cur = c[sl]; if (oldGen == null ? cur : (!cur || cur.gen !== oldGen || (cur.hp > 0 && !(cur.id === d.id && cur.max < d.max)))) return; c[sl] = d; soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); },
     mobHit: async (z, sl, gen, dmg) => { const c = (soloNet.mobs||{})[z] || {}, cur = c[sl]; if (!cur || cur.gen !== gen || !(cur.hp > 0)) return {committed:false}; cur.hp = Math.max(0, cur.hp - dmg); cur.lastHit = Date.now(); cur.hits = {...(cur.hits||{}), [uid]:true}; if (cur.hp <= 0) cur.deadAt = Date.now(); soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); return {committed:true, killed:cur.hp <= 0}; },
     bossAtk: async (z, a) => onBossAtk(z, a),
+    goalWatch: (d, cb) => { const g = soloNet.goals || (soloNet.goals = {}); setTimeout(()=>cb(g[d] || {})); return ()=>{}; },
+    goalGet: async d => (soloNet.goals || {})[d] || {},
+    goalSet: async (d, v) => { const g = soloNet.goals || (soloNet.goals = {}); (g[d] = g[d] || {})[uid] = v; },
+    aucStart: async m => { soloNet.auc = {...(soloNet.auc||{}), meta:m, top:null}; onAuction(structuredClone(soloNet.auc)); },
+    aucBid: async (id, p, nick) => { const a = soloNet.auc; if (!a || a.meta.id !== id || (a.top && a.top.aid === id && a.top.p >= p)) return false; a.top = {aid:id, p, uid, nick, at:Date.now()}; onAuction(structuredClone(a)); return true; },
+    aucFinish: async (id, res, cancel) => { const a = soloNet.auc; a.meta = {...a.meta, ...(cancel ? {cancel:1} : {done:1, win:res})}; (a.hist = a.hist || {})[id] = res; onAuction(structuredClone(a)); },
     mobHeal: async (z, sl, gen) => { const c = (soloNet.mobs||{})[z] || {}, cur = c[sl]; if (!cur || cur.gen !== gen || !(cur.hp > 0) || cur.hp >= cur.max || Date.now() - (cur.lastHit||0) < MOB_HEAL_IDLE) return; cur.hp = Math.min(cur.max, cur.hp + Math.floor(cur.max * MOB_HEAL_STEP)); if (cur.hp >= cur.max) delete cur.hits; soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); },
     mobPos: async (z, up) => { const c = (soloNet.mobs||{})[z] || {}; for (const [k,v] of Object.entries(up)){ const [sl, f] = k.split('/'); if (c[sl]) c[sl][f] = v; } },
     museumGive: async (cat, id) => { const c = museum[cat] || (museum[cat] = {}); if (c[id]) return false; c[id] = {uid, nick:me.nick, at:Date.now()}; onMuseum(museum); return true; },
@@ -1290,8 +1308,15 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'lettersOut/'+uid), s=>onLettersOut(s.val()), ()=>{});
       F.onValue(F.ref(db, 'market'), s=>onMarket(s.val()));
       F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'auction'), s=>onAuction(s.val()), ()=>{});
     },
     setWorld: v => F.update(F.ref(db, 'world'), v),
+    goalWatch: (d, cb) => F.onValue(F.ref(db, 'goals/'+d), s=>cb(s.val()), ()=>{}),
+    goalGet: async d => (await F.get(F.ref(db, 'goals/'+d))).val(),
+    goalSet: (d, v) => F.set(F.ref(db, 'goals/'+d+'/'+uid), v),
+    aucStart: m => F.update(F.ref(db, 'auction'), {meta:m, top:null}),
+    aucBid: async (id, p, nick) => { try { const r = await F.runTransaction(F.ref(db, 'auction/top'), cur => (cur && cur.aid === id && cur.p >= p) ? undefined : {aid:id, p, uid, nick:String(nick).slice(0,16), at:F.serverTimestamp()}, {applyLocally:false}); return r.committed && r.snapshot.val()?.uid === uid && r.snapshot.val()?.p === p; } catch(e){ return false; } },
+    aucFinish: (id, res, cancel) => F.update(F.ref(db, 'auction'), {...(cancel ? {'meta/cancel':1} : {'meta/done':1, 'meta/win':res}), ['hist/'+id]:res}),
     contestSubmit: (w, size) => F.set(F.ref(db, 'contest/'+w+'/'+uid), {nick:me.nick, size}),
     marketList: l => F.push(F.ref(db, 'market'), {...l, at:F.serverTimestamp()}),
     marketBuy: async id => { try { const r = await F.runTransaction(F.ref(db, 'market/'+id), cur => (cur && !cur.buyer && cur.uid!==uid) ? {...cur, buyer:uid, bnick:me.nick} : undefined, {applyLocally:false}); return r.committed && r.snapshot.val()?.buyer===uid; } catch(e){ return false; } },
@@ -1618,7 +1643,7 @@ function renderHud(){
   const online = 1 + [...others.values()].filter(o=>!o.adm).length; // 오투모(관리자)는 인원에 안 세요
   $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold} G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span><span id="wxClock">${wxClockText()}</span>`;
   if (!$('stats')){ const st = document.createElement('div'); st.id = 'stats'; st.innerHTML = `<b id="lvTag"></b><div class="sb hp" id="hpBar"><s></s><em></em></div><div class="sb st" id="staBar"><s></s><em></em></div><div class="xb" id="expBar"><s></s><em></em></div>`; $('hud').after(st); }
-  $('stats').hidden = false; barSig = ''; updateBars(); placeTop();
+  $('stats').hidden = false; barSig = ''; updateBars(); goalWatch(); renderGoal(); if (me.aucHold) aucSettle(); placeTop();
   $('quest').hidden = me.quest >= TUT_DONE; $('quest').innerHTML = `<b>할 일${me.quest >= TUT_START ? ` · 섬 생활 첫걸음 ${me.quest - TUT_START + 1}/${TUT.length}` : ''}</b>${QUESTS[Math.min(me.quest, TUT_DONE)]}`; setTimeout(tutCheck);
   $('swingBtn').hidden = !me.inv.sword; snowBtnUpdate(); darkHud();
   if (darkDown && !zoneId.startsWith('dark:')){ $('quest').hidden = false; $('quest').innerHTML = '<b style="color:#ff4f87">기절했어요</b>친구가 다가와 눌러 주면 일어나요 · 잠깐 쉬어요'; }
@@ -1626,7 +1651,7 @@ function renderHud(){
   if (!$('npcPanel').hidden && $('npcPanel').dataset.kind==='npc') renderNpcPanel();
 }
 const wxClockText = () => { const d = new Date(Date.now() + serverOffset + 9*3600000), w = wxNow(); return `${w[1]} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; };
-setInterval(()=>{ const el = $('wxClock'); if (el) el.textContent = wxClockText(); if (me && !admin) snowBtnUpdate(); }, 20000);
+setInterval(()=>{ const el = $('wxClock'); if (el) el.textContent = wxClockText(); if (me && !admin) snowBtnUpdate(); if (me && !admin){ goalWatch(); renderGoal(); if (me.aucHold) aucSettle(); } }, 20000);
 let toastT = 0;
 function toast(t, key){ const el = $('toast'); el.innerHTML = (key ? iconImg(key, 'tic') : '') + deEmoji(esc(t)); el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(()=>el.style.opacity=0, 2600); }
 function addLog(t, sys){
@@ -4073,7 +4098,7 @@ function refundStocks(){
 
 // ===== 기록(stats) · 업적 · 칭호 =====
 function stats(){ me.stats = me.stats || {}; return me.stats; }
-function stat(key, n=1){ const st = stats(); st[key] = (st[key]||0) + n; checkAchievements(); return st[key]; }
+function stat(key, n=1){ const st = stats(); st[key] = (st[key]||0) + n; checkAchievements(); goalCount(key, n); return st[key]; }
 function statSet(key, v){ const st = stats(); if (st[key] !== v){ st[key] = v; checkAchievements(); } }
 function syncStats(){ // 다른 데이터에서 바로 계산되는 기록
   const st = stats(); st.dexFish = Object.keys(me.dex||{}).length; st.dexOre = Object.keys(me.odex||{}).length; st.dexMon = Object.keys(me.mdex||{}).length;
@@ -5141,7 +5166,13 @@ function placeTop(){
   st.style.top = (hud.getBoundingClientRect().bottom + 4) + 'px';
   const phone = matchMedia('(max-width:640px)').matches, sb = st.getBoundingClientRect().bottom;
   q.style.top = phone ? (sb + 4) + 'px' : '';
-  $('toast').style.top = (Math.max(sb, phone && shown(q) ? q.getBoundingClientRect().bottom : 0) + 8) + 'px';
+  // 오늘의 섬 목표: 폰은 할 일 아래(없으면 체력 막대 아래), PC 는 오른쪽 할 일 아래
+  const gl = $('goal'); let gb = 0;
+  if (gl && !gl.hidden){ const qb = shown(q) ? q.getBoundingClientRect().bottom : 0;
+    if (phone){ gl.style.top = (Math.max(sb, qb) + 4) + 'px'; gl.style.left = '10px'; gl.style.right = '10px'; gl.style.width = ''; }
+    else { gl.style.top = ((qb || 10) + (qb ? 8 : 0)) + 'px'; gl.style.right = '10px'; gl.style.left = 'auto'; gl.style.width = '260px'; }
+    gb = phone ? gl.getBoundingClientRect().bottom : 0; }
+  $('toast').style.top = (Math.max(sb, phone && shown(q) ? q.getBoundingClientRect().bottom : 0, gb) + 8) + 'px';
   insetT = 0;
 }
 addEventListener('resize', ()=>setTimeout(placeTop, 60));
@@ -5153,8 +5184,8 @@ function frameBody(t){
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,110); c.scale(1.45,1.45); CH.figure(d, L, dir, t/1000, true, L.expr); c.restore(); } } }
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
-    if (admin){ moveOthers(dt); if (admWalk){ step(dt); admWalkTick(t); } else adminCam(); adminMobs(dt); updateBossFx(dt, t); }
-    else { step(dt); moveOthers(dt); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
+    if (admin){ moveOthers(dt); if (admWalk){ step(dt); admWalkTick(t); } else adminCam(); adminMobs(dt); updateBossFx(dt, t); aucTick(); }
+    else { step(dt); moveOthers(dt); aucSheet(); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
     const z = view.zoom, vw = view.w/z, vh = view.h/z;
@@ -5170,7 +5201,7 @@ function frameBody(t){
     ctx.drawImage(staticLayer, 0, 0, W, H);
     const d = painter(ctx), now = Date.now();
     if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const g = id===uid ? me.gardens : (p.gardens||[]); slotsOf(p.lot, id===uid ? me.plots : p.plots).forEach((sl,i)=>drawSlot(d, sl, g[i], now, id===uid)); }
-    drawRocks(d, t);
+    drawRocks(d, t); drawAucRing(ctx, t);
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
       ...darkEntities(d, t),
@@ -5225,7 +5256,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -5249,6 +5280,7 @@ function renderAdmin(){
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
+      ${adminAucSec()}
       ${adminMobSec()}
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
@@ -5445,10 +5477,174 @@ function adminClick(e){
   else if (b.dataset.a==='dkreset'){ const npc = darkToday(); if (npc && confirm(`${NPC[npc].name}의 방을 처음 상태로 되돌릴까요? 푼 문제·시간·보스 체력이 모두 지워져요.`)) net.darkWipe(npc); }
   else if (b.dataset.a==='dkview'){ const npc = darkToday(); if (npc){ admSide = false; cam.follow = null; cam.zone = 'dark:'+npc; enterZone('dark:'+npc, null, DARK_ROOM.W/2, DARK_ROOM.H/2); renderAdmin(); } }
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) Promise.resolve(net.setWorld({dark:v, darkAt:Date.now() + serverOffset, darkShift:0})).then(()=>v && net.darkWipe ? net.darkWipe() : null).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
+  else if (b.dataset.a==='aucgo') adminAucGo();
+  else if (b.dataset.a==='aucend'){ if (confirm('지금 최고가로 낙찰 확정할까요?')) adminAucEnd(false); }
+  else if (b.dataset.a==='auccancel'){ if (confirm('경매를 취소할까요? 부른 사람들은 골드를 돌려받아요')) adminAucEnd(true); }
   else if (b.dataset.a==='walkon') admWalkOn();
   else if (b.dataset.a==='walkoff') admWalkOff();
   else if (b.dataset.a==='logout'){ if (confirm('관리자 페이지에서 나갈까요?')) logout(); }
 }
+// ===== 오늘의 섬 목표: 다 같이 하나의 목표, 달성하면 기여한 사람 모두 8,000 G =====
+// 목표는 한국 시간 자정에 바뀌어요. 각자 기여한 수는 goals/<날짜>/<uid> 에 쌓아요
+const GOALS = [
+  {k:'fishCaught', what:'물고기', unit:'마리', verb:'잡기', n:120, icon:'fish:f19'},
+  {k:'oreMined', what:'광석', unit:'개', verb:'캐기', n:150, icon:'ore:o21'},
+  {k:'cropsHarvested', what:'작물', unit:'개', verb:'수확하기', n:200, icon:'crop:c01'},
+  {k:'dishesCooked', what:'요리', unit:'개', verb:'만들기', n:40, icon:'dish:d01'},
+  {k:'monsterKills', what:'몬스터', unit:'마리', verb:'물리치기', n:150, icon:'loot:m01'},
+  {k:'foraged', what:'채집물', unit:'개', verb:'줍기', n:120, icon:'forage:g01'},
+];
+const GOAL_REWARD = 8000;
+const goalOf = day => GOALS[hash('goal' + day) % GOALS.length];
+let goalDay = 0, goalData = {}, goalOff = null, goalPushT = 0, goalPending = false;
+const goalSum = d => Object.values(d || {}).reduce((a, v) => a + (Number(v) || 0), 0);
+function goalWatch(){
+  const d = today(); if (d === goalDay || !net || !net.goalWatch) return;
+  goalDay = d; goalData = {}; goalOff && goalOff(); goalOff = net.goalWatch(d, v => { goalData = v || {}; goalPay(d, goalData); renderGoal(); });
+  if (!admin && net.goalGet) net.goalGet(d - 1).then(v => goalPay(d - 1, v || {})).catch(()=>{}); // 어제 못 받은 보상도 챙겨요
+}
+// 목표 활동을 하면 내 기여를 1 씩 올려요 (모아서 1.5 초마다 저장)
+function goalCount(key, n){
+  if (admin || !me || !net || !net.goalSet || goalOf(today()).k !== key || !(n > 0)) return;
+  const d = today(); goalWatch(); goalData[uid] = (Number(goalData[uid]) || 0) + n; renderGoal();
+  if (goalPending) return; goalPending = true;
+  setTimeout(()=>{ goalPending = false; net.goalSet(d, goalData[uid] | 0).catch(()=>{}); goalPay(d, goalData); }, 1500);
+}
+function goalPay(day, data){
+  if (admin || !me) return; const g = goalOf(day);
+  if (!((Number(data[uid]) || 0) > 0) || goalSum(data) < g.n) return;
+  const paid = me.goalPaid || (me.goalPaid = {}); if (paid[day]) return;
+  paid[day] = 1; for (const k of Object.keys(paid)) if (+k < today() - 3) delete paid[k];
+  me.inv.gold += GOAL_REWARD; me.earned = (me.earned||0) + GOAL_REWARD; saveMe(true); renderHud();
+  toast(`🎯 ${day === today() ? '오늘' : '어제'}의 섬 목표 달성! 기여한 보상 ${GOAL_REWARD.toLocaleString()} G 를 받았어요`);
+}
+const goalLeft = () => { const ms = (today() + 1) * 86400000 - (Date.now() + serverOffset + 9*3600000), h = Math.floor(ms/3600000), m = Math.floor(ms%3600000/60000); return `${h}:${String(m).padStart(2,'0')} 남음`; };
+const goalRank = () => Object.entries(goalData).map(([id, v]) => [id, Number(v) || 0]).filter(([,v]) => v > 0).sort((a, b) => b[1] - a[1]);
+function renderGoal(){
+  let el = $('goal'); if (admin || !me){ if (el) el.hidden = true; return; }
+  if (!el){ el = document.createElement('div'); el.id = 'goal'; el.className = 'pill'; document.body.appendChild(el); el.onclick = goalPanel; }
+  const g = goalOf(today()), sum = goalSum(goalData), mine = Number(goalData[uid]) || 0, done = sum >= g.n, rk = goalRank().findIndex(([id]) => id === uid);
+  el.hidden = false; el.classList.toggle('done', done);
+  el.innerHTML = `<div class="gl-t">${iconImg(g.icon, 'gl-ic')}<b>오늘의 섬 목표</b><span>${esc(g.what)} ${g.n} ${g.unit} ${g.verb}</span><i>${done ? '달성!' : goalLeft()}</i></div><div class="gl-bar"><s style="width:${Math.min(100, sum / g.n * 100)}%"></s></div><div class="gl-s"><span>${Math.min(sum, 99999)}/${g.n} · ${Math.floor(sum / g.n * 100)}%</span><span>${done ? (mine ? `보상 ${GOAL_REWARD.toLocaleString()} G 받음` : '내일 다시 도전해요') : `내 기여 ${mine}${rk >= 0 ? ` (${rk + 1}등)` : ''}`}</span></div>`;
+  placeTop();
+}
+function goalPanel(){
+  const g = goalOf(today()), sum = goalSum(goalData), rows = goalRank();
+  openPanel('🎯 오늘의 섬 목표', `<div class="np" style="display:block"><b>다 같이 ${esc(g.what)} ${g.n} ${g.unit} ${g.verb}</b><div class="gl-bar" style="margin:6px 0"><s style="width:${Math.min(100, sum / g.n * 100)}%"></s></div><small>${sum}/${g.n} · ${sum >= g.n ? '달성했어요!' : '자정까지 ' + goalLeft().replace(' 남음', '')}</small></div>
+    <p class="mnote">달성하면 <b>한 번이라도 기여한 사람 모두</b> ${GOAL_REWARD.toLocaleString()} G 를 받아요. 목표는 날마다 물고기 · 광석 · 수확 · 요리 · 몬스터 · 채집 중에서 바뀌어요.</p>
+    <div class="bag-sec"><b>기여 순위</b>${rows.length ? rows.slice(0, 12).map(([id, v], i) => `<div class="np"><span class="np-name">${i + 1}. ${esc(id === uid ? (me.nick + ' (나)') : (players[id]?.nick || '누군가'))}</span><span class="np-place">${v}</span></div>`).join('') : '<p class="mnote">아직 아무도 시작하지 않았어요. 첫 기여자가 되어 봐요!</p>'}</div>`);
+}
+
+// ===== 오투모 경매: 관리자가 오투모로 들어가 시작해요. 오투모 자리 둘레가 경매장이고, 그 안에 들어온 사람만 값을 불러요 =====
+// auction/meta (관리자만): {id, k, n, name, start, endAt, z, x, y, at, done?, win?, cancel?}, auction/top: {aid, p, uid, nick, at}, auction/hist/<id>: 결과
+// 부른 골드는 바로 맡겨 두고(가방에서 빠져요), 더 높은 값이 나오거나 취소되면 돌려받아요. 낙찰되면 물건이 들어와요
+const AUC_R = 170, AUC_STEP = 1000, AUC_EXT = 10000;
+let auc = null, aucSeen = '', aucBidding = false, aucSheetSig = '';
+const aucLive = () => !!(auc && auc.meta && auc.meta.id && !auc.meta.done && !auc.meta.cancel);
+const aucEnd = () => { const m = auc.meta, t = auc.top && auc.top.aid === m.id ? auc.top : null; return Math.max(m.endAt || 0, t ? (t.at || 0) + AUC_EXT : 0); };
+const aucTop = () => (auc && auc.top && auc.meta && auc.top.aid === auc.meta.id) ? auc.top : null;
+const aucItemName = m => m.name || itemName(m.k);
+function onAuction(v){
+  auc = v || null; const m = auc && auc.meta;
+  if (m && aucLive() && aucSeen !== m.id){ aucSeen = m.id;
+    if (!admin && me && Date.now() + serverOffset - (m.at || 0) < 120000){
+      const zn = zoneName(m.z);
+      say('🔨 오투모 경매', `오투모가 경매를 시작했어요!\n물건: ${aucItemName(m)}${m.n > 1 ? ' ' + m.n + ' 개' : ''} · 시작가 ${Number(m.start).toLocaleString()} G\n장소: ${zn}\n지금 당장 오투모를 찾아가 봐요!`, [['확인', closeTalk]], '오투모 둘레 노란 원 안에 들어가면 값을 부를 수 있어요', true);
+    } }
+  aucSettle(); aucSheetSig = ''; if (admin) renderAdmin();
+}
+// 내가 맡긴 골드 정리: 밀렸거나 취소되면 돌려받고, 낙찰되면 물건을 받아요
+function aucSettle(){
+  if (admin || !me || !me.aucHold || !auc) return;
+  const h = me.aucHold, m = auc.meta, hist = auc.hist && auc.hist[h.id];
+  const refund = msg => { me.inv.gold += h.p; me.aucHold = null; saveMe(true); renderHud(); toast(msg); };
+  const res = (m && m.id === h.id && (m.done || m.cancel)) ? (m.cancel ? {cancel:1} : (m.win || {})) : hist;
+  if (res){
+    if (res.uid === uid && !res.cancel){ const k = auc.meta?.id === h.id ? auc.meta.k : res.k, n = (auc.meta?.id === h.id ? auc.meta.n : res.n) || 1;
+      if (k && k.startsWith('ring:')){ const id = k.slice(5); if ((me.inv.rings || []).includes(id)) return refund('이미 가진 반지라 맡긴 골드를 돌려받았어요'); me.inv.rings = [...(me.inv.rings || []), id]; }
+      else if (k) invAdd(k, n);
+      me.aucHold = null; stat('aucWon'); saveMe(true); renderHud(); toast(`🔨 낙찰! ${res.name || itemName(k)} 을(를) ${Number(h.p).toLocaleString()} G 에 샀어요`); return; }
+    return refund(res.cancel ? '경매가 취소돼서 맡긴 골드를 돌려받았어요' : '다른 사람이 낙찰받아서 맡긴 골드를 돌려받았어요');
+  }
+  if (m && m.id === h.id){ const t = aucTop(); if (t && t.uid !== uid) refund(`${t.nick} 님이 더 높게 불러서 맡긴 ${Number(h.p).toLocaleString()} G 를 돌려받았어요`); return; }
+  if (!m || m.id !== h.id) return; // 결과를 아직 몰라요 (기다려요)
+}
+async function aucBid(p){
+  if (!aucLive() || aucBidding || !me) return; const m = auc.meta, t = aucTop(), min = t ? t.p + AUC_STEP : m.start;
+  p = Math.floor((Number(p) || 0) / AUC_STEP) * AUC_STEP; if (p < min) return toast(`${min.toLocaleString()} G 이상 불러야 해요`);
+  const hold = me.aucHold && me.aucHold.id === m.id ? me.aucHold.p : 0;
+  if (me.inv.gold + hold < p) return toast('골드가 모자라요');
+  if (Date.now() + serverOffset > aucEnd()) return toast('경매가 끝났어요');
+  aucBidding = true;
+  const ok = await net.aucBid(m.id, p, me.nick).catch(()=>false); aucBidding = false;
+  if (!ok) return toast('그새 다른 사람이 더 높게 불렀어요. 다시 불러 봐요');
+  me.inv.gold += hold; me.inv.gold -= p; me.aucHold = {id:m.id, p}; saveMe(true); renderHud(); toast(`${p.toLocaleString()} G 불렀어요! (골드는 경매가 끝날 때까지 맡겨 둬요)`);
+}
+const aucInRange = () => aucLive() && me && !admin && zoneId === auc.meta.z && Math.hypot((pos.x - auc.meta.x) / 1, (pos.y - auc.meta.y) / .6) < AUC_R;
+// 경매장 안에 들어오면 아래에 값 부르기 창이 떠요
+function aucSheet(){
+  let el = $('aucSheet'); const show = aucInRange() && !dlg;
+  if (!show){ if (el && !el.hidden){ el.hidden = true; aucSheetSig = ''; } return; }
+  if (!el){ el = document.createElement('div'); el.id = 'aucSheet'; document.body.appendChild(el);
+    el.addEventListener('click', e => { const b = e.target.closest('[data-bid]'); if (!b) return; const t = aucTop(), base = t ? t.p : auc.meta.start - AUC_STEP;
+      if (b.dataset.bid === 'in') aucBid($('aucIn').value); else aucBid(base + Number(b.dataset.bid)); }); }
+  el.hidden = false;
+  const m = auc.meta, t = aucTop(), left = Math.max(0, Math.ceil((aucEnd() - Date.now() - serverOffset) / 1000)), mine = me.aucHold && me.aucHold.id === m.id;
+  const sig = [m.id, t && t.p, t && t.uid, left, me.inv.gold, mine].join('|'); if (sig === aucSheetSig) return; aucSheetSig = sig;
+  const keep = $('aucIn') ? $('aucIn').value : '', focus = document.activeElement && document.activeElement.id === 'aucIn';
+  el.innerHTML = `<div class="au-h">🔨 <b>오투모 경매장</b><small>경매장 안이라 값을 부를 수 있어요</small></div>
+    <div class="au-i">${m.k && !m.k.startsWith('ring:') ? iconImg(m.k, 'au-ic') : '<span class="au-ic">💍</span>'}<div><b>${esc(aucItemName(m))}${m.n > 1 ? ` ${m.n} 개` : ''}</b><div>지금 최고가 <b class="au-p">${(t ? t.p : m.start).toLocaleString()} G</b> ${t ? `(${esc(t.nick)}${t.uid === uid ? ' · 나' : ''})` : '(아직 아무도 안 불렀어요 · 시작가)'}</div><small>⏱ ${left} 초 남음 · 누가 부르면 10 초 늘어나요</small></div></div>
+    <div class="au-b">${t ? [1000, 5000, 10000].map(v => `<button class="mini" data-bid="${v}">+${v.toLocaleString()}</button>`).join('') : `<button class="mini" data-bid="${AUC_STEP}">시작가로 부르기</button>`}</div>
+    <div class="au-b"><input id="aucIn" type="number" inputmode="numeric" placeholder="${((t ? t.p : m.start - AUC_STEP) + AUC_STEP)}" value="${esc(keep)}"> G <button class="mini" data-bid="in">이 값 부르기</button></div>
+    <small class="au-n">내 골드 ${me.inv.gold.toLocaleString()} G${mine ? ` · 맡긴 골드 ${me.aucHold.p.toLocaleString()} G` : ''} · 낙찰되면 물건이 가방에 들어와요</small>`;
+  if (focus){ const i = $('aucIn'); i.focus(); }
+}
+// 땅에 노란 점선 원 (경매장)
+function drawAucRing(c, t){
+  if (!aucLive() || zoneId !== auc.meta.z) return; const m = auc.meta;
+  c.save(); c.translate(m.x, m.y); c.scale(1, .6); c.fillStyle = 'rgba(255,214,90,.12)'; c.beginPath(); c.arc(0, 0, AUC_R, 0, 7); c.fill();
+  c.strokeStyle = 'rgba(255,200,60,.9)'; c.lineWidth = 3; c.setLineDash([10, 8]); c.lineDashOffset = -t/60; c.beginPath(); c.arc(0, 0, AUC_R, 0, 7); c.stroke(); c.restore();
+}
+// 오투모 머리 위 말풍선: 물건 · 지금 값 · 남은 시간
+function aucBubble(c, x, y){
+  if (!aucLive()) return; const m = auc.meta, t = aucTop(), left = Math.max(0, Math.ceil((aucEnd() - Date.now() - serverOffset) / 1000));
+  const l1 = `🔨 ${aucItemName(m)} 경매 중`, l2 = `현재 ${(t ? t.p : m.start).toLocaleString()} G${t ? ' · ' + t.nick : ''} · ⏱ ${left}초`;
+  c.save(); c.font = 'bold 14px "Dongle",sans-serif'; const w = Math.max(c.measureText(l1).width, c.measureText(l2).width) + 20, by = y - 100;
+  c.fillStyle = '#fff4d6'; c.beginPath(); c.roundRect(x - w/2, by - 30, w, 36, 10); c.fill(); c.beginPath(); c.moveTo(x - 6, by + 6); c.lineTo(x + 6, by + 6); c.lineTo(x, by + 13); c.fill();
+  c.textAlign = 'center'; c.fillStyle = '#5a3346'; c.fillText(l1, x, by - 15); c.fillStyle = '#e0507a'; c.fillText(l2, x, by + 1); c.restore();
+}
+// ----- 관리자: 경매 열기 · 끝내기 -----
+const admAuc = {aucK:'ring:r10', aucN:'1', aucStart:'100000', aucDur:'60'};
+function aucItems(){
+  const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1]])], ['가구', FURN_ALL.map((f, i) => ['furn:u' + String(i + 1).padStart(2, '0'), f[0]])],
+    ['광석', Object.keys(ORES).map(id => ['ore:' + id, ORES[id].name])], ['요리', Object.keys(DISHES).map(id => ['dish:' + id, DISHES[id].name])]];
+  return o.map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n]) => `<option value="${k}"${admAuc.aucK === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup>`).join('');
+}
+function adminAucSec(){
+  if (!admWalk) return `<div class="adm-sec"><b>🔨 오투모 경매</b><small>오투모로 들어가면 지금 서 있는 자리에서 경매를 열 수 있어요</small></div>`;
+  if (aucLive()){ const m = auc.meta, t = aucTop(), left = Math.max(0, Math.ceil((aucEnd() - Date.now() - serverOffset) / 1000));
+    return `<div class="adm-sec"><b>🔨 경매 중 · ${esc(aucItemName(m))}${m.n > 1 ? ' ×' + m.n : ''}</b><small>${esc(zoneName(m.z))} · 시작가 ${m.start.toLocaleString()} G · ${left} 초 남음</small><small>최고가 ${t ? `${t.p.toLocaleString()} G · ${esc(t.nick)}` : '아직 없음'}</small><button data-a="aucend" class="adm-btn">지금 낙찰 확정</button><button data-a="auccancel" class="adm-btn warn">경매 취소</button></div>`; }
+  return `<div class="adm-sec adm-auc"><b>🔨 오투모 경매 열기</b><small>지금 오투모 자리(${esc(zoneName(zoneId))}) 둘레가 경매장이 돼요</small>
+    <select id="aucK">${aucItems()}</select><label>개수 <input id="aucN" type="number" min="1" max="99" value="${esc(admAuc.aucN)}"></label>
+    <label>시작가 <input id="aucStart" type="number" min="1000" step="1000" value="${esc(admAuc.aucStart)}"> G</label>
+    <label>시간 <select id="aucDur">${[30, 60, 90, 120, 180].map(s => `<option value="${s}"${admAuc.aucDur === String(s) ? ' selected' : ''}>${s} 초</option>`).join('')}</select></label>
+    <button data-a="aucgo" class="adm-btn">경매 시작</button></div>`;
+}
+function adminAucGo(){
+  const k = admAuc.aucK, n = Math.max(1, Math.min(99, admAuc.aucN | 0)), start = Math.max(1000, Math.round((admAuc.aucStart | 0) / 1000) * 1000), dur = Math.max(30, Math.min(300, admAuc.aucDur | 0));
+  if (!k) return toast('물건을 골라요'); if (!confirm(`${itemName(k)} ${n} 개 · 시작가 ${start.toLocaleString()} G · ${dur} 초 경매를 시작할까요?`)) return;
+  const now = Date.now() + serverOffset, id = 'a' + now.toString(36);
+  const name = k.startsWith('ring:') ? (RINGS[k.slice(5)]?.name || '반지') : itemName(k);
+  net.aucStart({id, k, n: k.startsWith('ring:') ? 1 : n, name, start, endAt: now + dur * 1000, z: zoneId, x: Math.round(pos.x), y: Math.round(pos.y), at: now}).then(()=>toast('경매를 시작했어요 · 섬 사람들에게 알림이 갔어요')).catch(e=>toast('경매를 시작하지 못했어요 ' + (e.message||'')));
+}
+function adminAucEnd(cancel){
+  if (!aucLive()) return; const m = auc.meta, t = aucTop();
+  const res = cancel ? {cancel:1} : t ? {uid:t.uid, nick:t.nick, p:t.p, k:m.k, n:m.n, name:m.name} : {none:1};
+  net.aucFinish(m.id, res, cancel).then(()=>toast(cancel ? '경매를 취소했어요' : t ? `${t.nick} 님이 ${t.p.toLocaleString()} G 에 낙찰받았어요` : '아무도 부르지 않아서 유찰됐어요')).catch(()=>toast('끝내지 못했어요'));
+}
+// 관리자 화면이 켜져 있으면 시간이 다 된 경매를 알아서 끝내요
+function aucTick(){ if (admin && aucLive() && Date.now() + serverOffset > aucEnd() + 800 && !aucTick.busy){ aucTick.busy = true; adminAucEnd(false); setTimeout(()=>{ aucTick.busy = false; }, 3000); } }
+
 // ----- 오투모로 걸어 다니기 -----
 // 오투모 이름은 발 밑, 머리 위엔 체력 1 천만 막대와 '관리자' 칭호
 function otumoLabel(c, x, y){
@@ -5458,6 +5654,7 @@ function otumoLabel(c, x, y){
   const g = c.createLinearGradient(bx, 0, bx + w, 0); g.addColorStop(0, '#7fe3a0'); g.addColorStop(1, '#3fbf7a'); c.fillStyle = g; c.beginPath(); c.roundRect(bx, by, w, 7, 3.5); c.fill();
   c.font = 'bold 9px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(OTUMO_HP.toLocaleString(), x, by + 6.5); c.restore();
   titleTag(c, '관리자', x, y - 80);
+  aucBubble(c, x, y);
 }
 const ADM_REVIVE_MS = 2000;
 function admWalkOn(){
