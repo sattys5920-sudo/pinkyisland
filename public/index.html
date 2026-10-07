@@ -1169,8 +1169,9 @@ function soloNet(){
     snowman: async s => { snowmen[uid] = s; },
     mobsZone: (z, cb) => { const M_ = soloNet.mobs || (soloNet.mobs = {}); soloNet.mobCb = [z, cb]; setTimeout(()=>cb(structuredClone(M_[z]||{}))); return ()=>{ soloNet.mobCb = null; }; },
     mobSpawn: async (z, sl, oldGen, d) => { const M_ = soloNet.mobs, c = (M_[z] = M_[z] || {}), cur = c[sl]; if (oldGen == null ? cur : (!cur || cur.gen !== oldGen || (cur.hp > 0 && !(cur.id === d.id && cur.max < d.max)))) return; c[sl] = d; soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); },
-    mobHit: async (z, sl, gen, dmg) => { const c = (soloNet.mobs||{})[z] || {}, cur = c[sl]; if (!cur || cur.gen !== gen || !(cur.hp > 0)) return {committed:false}; cur.hp = Math.max(0, cur.hp - dmg); cur.hits = {...(cur.hits||{}), [uid]:true}; if (cur.hp <= 0) cur.deadAt = Date.now(); soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); return {committed:true, killed:cur.hp <= 0}; },
+    mobHit: async (z, sl, gen, dmg) => { const c = (soloNet.mobs||{})[z] || {}, cur = c[sl]; if (!cur || cur.gen !== gen || !(cur.hp > 0)) return {committed:false}; cur.hp = Math.max(0, cur.hp - dmg); cur.lastHit = Date.now(); cur.hits = {...(cur.hits||{}), [uid]:true}; if (cur.hp <= 0) cur.deadAt = Date.now(); soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); return {committed:true, killed:cur.hp <= 0}; },
     bossAtk: async (z, a) => onBossAtk(z, a),
+    mobHeal: async (z, sl, gen) => { const c = (soloNet.mobs||{})[z] || {}, cur = c[sl]; if (!cur || cur.gen !== gen || !(cur.hp > 0) || cur.hp >= cur.max || Date.now() - (cur.lastHit||0) < MOB_HEAL_IDLE) return; cur.hp = Math.min(cur.max, cur.hp + Math.floor(cur.max * MOB_HEAL_STEP)); if (cur.hp >= cur.max) delete cur.hits; soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); },
     mobPos: async (z, up) => { const c = (soloNet.mobs||{})[z] || {}; for (const [k,v] of Object.entries(up)){ const [sl, f] = k.split('/'); if (c[sl]) c[sl][f] = v; } },
     museumGive: async (cat, id) => { const c = museum[cat] || (museum[cat] = {}); if (c[id]) return false; c[id] = {uid, nick:me.nick, at:Date.now()}; onMuseum(museum); return true; },
     darkTx: async (npc, fn) => { const st_ = soloNet.dark || (soloNet.dark = {}); const r = fn(st_[npc] ? structuredClone(st_[npc]) : null); if (r !== undefined){ if (r === null) delete st_[npc]; else st_[npc] = r; } onDarkRooms(structuredClone(st_)); return r !== undefined; },
@@ -1225,8 +1226,9 @@ function firebaseNet(){
     snowman: s => F.set(F.ref(db, 'snowmen/'+uid), s),
     mobsZone: (z, cb) => F.onValue(F.ref(db, 'mobs/'+z), s=>cb(s.val()), ()=>{}),
     mobSpawn: async (z, sl, oldGen, d) => { try { await F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => (oldGen == null ? cur : (!cur || cur.gen !== oldGen || (cur.hp > 0 && !(cur.id === d.id && cur.max < d.max)))) ? undefined : d); } catch(e){} },
-    mobHit: async (z, sl, gen, dmg) => { let killed = false; try { const r = await F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => { if (!cur || cur.gen !== gen || !(cur.hp > 0)) return; const hp = Math.max(0, cur.hp - dmg); killed = hp <= 0; return {...cur, hp, hits:{...(cur.hits||{}), [uid]:true}, ...(killed ? {deadAt: Date.now() + serverOffset} : {})}; }); return {committed:r.committed, killed:r.committed && killed}; } catch(e){ return {committed:false}; } },
+    mobHit: async (z, sl, gen, dmg) => { let killed = false; try { const r = await F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => { if (!cur || cur.gen !== gen || !(cur.hp > 0)) return; const hp = Math.max(0, cur.hp - dmg); killed = hp <= 0; return {...cur, hp, lastHit: Date.now() + serverOffset, hits:{...(cur.hits||{}), [uid]:true}, ...(killed ? {deadAt: Date.now() + serverOffset} : {})}; }); return {committed:r.committed, killed:r.committed && killed}; } catch(e){ return {committed:false}; } },
     mobPos: (z, up) => F.update(F.ref(db, 'mobs/'+z), up).catch(()=>{}),
+    mobHeal: (z, sl, gen) => F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => { const now = Date.now() + serverOffset; if (!cur || cur.gen !== gen || !(cur.hp > 0) || cur.hp >= cur.max || now - (cur.lastHit||0) < MOB_HEAL_IDLE) return; const hp = Math.min(cur.max, cur.hp + Math.floor(cur.max * MOB_HEAL_STEP)); const out = {...cur, hp}; if (hp >= cur.max) delete out.hits; return out; }).catch(()=>{}),
     bossAtk: (z, a) => F.update(F.ref(db, 'mobs/'+z), {[BOSS_SLOT+'/atk']:a}).catch(()=>{}),
     museumGive: async (cat, id) => { try { const r = await F.runTransaction(F.ref(db, 'museum/'+cat+'/'+id), cur => cur ? undefined : {uid, nick:String(me.nick||'').slice(0,16), at:Date.now() + serverOffset}); return r.committed; } catch(e){ return false; } },
     darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
@@ -2553,6 +2555,7 @@ function rollMonster(){
 // 구역에 있는 사람 중 한 명(아이디가 가장 앞선 사람)이 몬스터를 움직이고 자리를 알려 줘요. 체력은 다 같이 깎고,
 // 쓰러뜨리면 한 대라도 친 사람 모두가 보상을 받아요. 쓰러진 자리는 MOB_RESPAWN 뒤에 새 몬스터가 나와요.
 const MOB_RESPAWN = 10000, BOSS_RESPAWN = 3600000, BOSS_SLOT = '90'; // 보스는 1 시간
+const MOB_HEAL_IDLE = 60000, MOB_HEAL_STEP = .05; // 1 분 동안 아무도 안 때리면 5 초마다 최대 체력의 5% 회복
 const ZONE_BOSS = Object.fromEntries(Object.entries(MONSTERS).filter(([,m])=>m.boss).map(([id,m])=>[m.zone, id]));
 let mobMap = {}, mobSub = null, mobSubZone = null, mobLoaded = false, mobPosAt = 0, mobTry = {};
 const mobNow = () => Date.now() + serverOffset;
@@ -2578,7 +2581,8 @@ function onMobs(zone, v){
     if (!d || !MONSTERS[d.id]) continue;
     let mob = mobMap[slot];
     if (!mob || mob.gen !== d.gen){ if (mobLoaded && MONSTERS[d.id].boss && d.hp > 0) setTimeout(()=>toast(`⚠ ${MONSTERS[d.id].name}이(가) 나타났어요! 다 같이 잡아요`), 300); mob = {slot, x:d.x, y:d.y, cd:0, wander:0, wx:d.x, wy:d.y, hurt:0}; }
-    Object.assign(mob, {id:d.id, gen:d.gen, hp:d.hp, max:d.max, tx:d.x, ty:d.y, hx:d.hx ?? d.x, hy:d.hy ?? d.y, deadAt:d.deadAt||0, hits:d.hits||{}});
+    if (mob.gen === d.gen && d.hp > mob.hp && mob.hp > 0 && mobLoaded) fx.push({x:mob.x, y:mob.y - (MONSTERS[d.id].boss ? 170 : 60), text:'+' + Math.round(d.hp - mob.hp).toLocaleString() + ' 회복', t:performance.now(), color:'#59c27a'});
+    Object.assign(mob, {lastHit:d.lastHit||0, id:d.id, gen:d.gen, hp:d.hp, max:d.max, tx:d.x, ty:d.y, hx:d.hx ?? d.x, hy:d.hy ?? d.y, deadAt:d.deadAt||0, hits:d.hits||{}});
     next[slot] = mob;
     if (slot === BOSS_SLOT && d.atk && d.hp > 0) onBossAtk(zone, d.atk);
     if (!(d.hp > 0) && mob.hits[uid]) mobReward(zone, slot, d);
@@ -2627,6 +2631,7 @@ function updateMobs(dt, t){
   }
   { const bid = ZONE_BOSS[zoneId], bm = mobMap[BOSS_SLOT]; // 예전 크기로 남아 있는 보스는 새 판 화면을 가진 누구든 새 크기로 바꿔요
     if (mobLoaded && bid && bm && bm.hp > 0 && bm.id === bid && bm.max < MONSTERS[bid].hp && !(mobTry.up && t - mobTry.up < 5000)){ mobTry.up = t; const d = newMobData(bm.gen + 1, bid); if (d) net.mobSpawn(zoneId, BOSS_SLOT, bm.gen, d); } }
+  if (owner && mobLoaded && t - (mobTry.heal||0) > 5000){ mobTry.heal = t; for (const [sl, mb] of Object.entries(mobMap)) if (mb.hp > 0 && mb.hp < (mb.max||0) && now - (mb.lastHit||0) > MOB_HEAL_IDLE) net.mobHeal && net.mobHeal(zoneId, sl, mb.gen); } // 한동안 아무도 안 때리면 체력이 다시 차요
   const chase = owner ? [{x:pos.x, y:pos.y, ok:!talking && !darkDown && t > wakeGuardUntil}, ...[...others.values()].filter(o=>o.z===zoneId && !o.down).map(o=>({x:o.x, y:o.y, ok:true}))] : [];
   for (const mob of mobs){
     const m = MONSTERS[mob.id], d = Math.hypot(pos.x-mob.x, pos.y-mob.y);
