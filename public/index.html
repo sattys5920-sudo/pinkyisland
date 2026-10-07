@@ -2217,20 +2217,28 @@ function drawDepth(ctx){
 let glitchBurst = -1e9, scanPat = null;
 function drawGlitch(c, t){
   if (!darkOn() && t - glitchBurst > 1400) return;
-  const burst = Math.max(0, 1 - (t - glitchBurst)/1400), inRoom = Z().dark, base = !darkOn() ? 0 : inRoom ? .12 : .35, k = Math.min(1, base + burst);
+  const burst = Math.max(0, 1 - (t - glitchBurst)/1400), inRoom = Z().dark, base = !darkOn() ? 0 : inRoom ? .25 : .6, k = Math.min(1, base + burst);
   if (k <= 0) return;
   const W = cv.width, H = cv.height, R = Math.random, dpr = view.dpr || 1;
   c.save(); c.setTransform(1,0,0,1,0,0);
+  // 색 보정: 채도를 빼고 어둡고 흐릿하게 (전환 순간엔 서서히 내려앉아요)
+  if (darkOn()){ const g = Math.min(1, (t - glitchBurst)/900);
+    c.globalCompositeOperation = 'saturation'; c.globalAlpha = .75*g; c.fillStyle = '#808080'; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = 'multiply'; c.globalAlpha = g; c.fillStyle = inRoom ? '#9a90a4' : '#6e6878'; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = 'source-over'; c.globalAlpha = .16*g; c.fillStyle = '#2a2433'; c.fillRect(0, 0, W, H);
+    const v = c.createRadialGradient(W/2, H/2, Math.min(W, H)*.3, W/2, H/2, Math.max(W, H)*.75); v.addColorStop(0, 'rgba(5,0,10,0)'); v.addColorStop(1, `rgba(5,0,10,${.55*g})`); c.globalAlpha = 1; c.fillStyle = v; c.fillRect(0, 0, W, H); }
+  // 색 어긋남 (빨강·파랑이 옆으로 번져요)
+  if (R() < .1 + k*.5){ const o = (2 + R()*8*k)*dpr; c.globalCompositeOperation = 'screen'; c.globalAlpha = .18 + .25*k; try { c.drawImage(cv, o, 0); c.drawImage(cv, -o, 0); } catch(e){} c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
   // 가로로 찢어지는 띠
-  if (R() < .12 + k*.6){ const n = 1 + Math.floor(R()*(2 + k*5)); for (let i=0;i<n;i++){ const y = R()*H, h = (3 + R()*36*k)*dpr, dx = (R()-.5)*(10 + 70*k)*dpr; try { c.drawImage(cv, 0, y, W, h, dx, y, W, h); } catch(e){}
+  if (R() < .25 + k*.65){ const n = 1 + Math.floor(R()*(3 + k*7)); for (let i=0;i<n;i++){ const y = R()*H, h = (3 + R()*50*k)*dpr, dx = (R()-.5)*(20 + 120*k)*dpr; try { c.drawImage(cv, 0, y, W, h, dx, y, W, h); } catch(e){}
     if (R() < .6){ c.globalCompositeOperation = 'screen'; c.fillStyle = R() < .5 ? `rgba(255,40,120,${.10+.2*k})` : `rgba(40,255,230,${.08+.18*k})`; c.fillRect(dx*1.6, y, W, h); c.globalCompositeOperation = 'source-over'; } } }
   // 노이즈 조각
-  if (R() < .08 + k*.5){ const n = 2 + Math.floor(R()*8*k); for (let i=0;i<n;i++){ const g = 40 + R()*140|0; c.fillStyle = R() < .3 ? `rgba(180,90,255,${.25+.3*k})` : `rgba(${g},${g},${g+20},${.2+.35*k})`; c.fillRect(R()*W, R()*H, (8 + R()*70*k)*dpr, (2 + R()*10)*dpr); } }
+  if (R() < .15 + k*.55){ const n = 3 + Math.floor(R()*12*k); for (let i=0;i<n;i++){ const g = 40 + R()*140|0; c.fillStyle = R() < .3 ? `rgba(180,90,255,${.25+.3*k})` : `rgba(${g},${g},${g+20},${.2+.35*k})`; c.fillRect(R()*W, R()*H, (8 + R()*70*k)*dpr, (2 + R()*10)*dpr); } }
   // 주사선
   if (!scanPat){ const p = document.createElement('canvas'); p.width = 4; p.height = 4; const g = p.getContext('2d'); g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(0, 0, 4, 1); scanPat = c.createPattern(p, 'repeat'); }
   c.globalAlpha = .35 + .4*k; c.fillStyle = scanPat; c.fillRect(0, 0, W, H); c.globalAlpha = 1;
   // 깜빡임
-  if (R() < .015 + burst*.35){ c.fillStyle = `rgba(${R() < .5 ? '255,255,255' : '10,0,20'},${.08 + .25*burst})`; c.fillRect(0, 0, W, H); }
+  if (R() < .04 + burst*.4){ c.fillStyle = `rgba(${R() < .5 ? '255,255,255' : '10,0,20'},${.08 + .25*burst})`; c.fillRect(0, 0, W, H); }
   c.restore();
 }
 function drawBite(ctx, t){
