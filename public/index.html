@@ -160,6 +160,7 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .np-day{font-size:16px;color:var(--soft);text-align:right}
 .np-h small{color:var(--soft);letter-spacing:0}
 .np-keep{grid-column:1/-1;font-size:16px;color:var(--ink);opacity:.8}
+.dk-img{display:block;max-width:100%;max-height:0;margin:0 auto 8px;border-radius:12px;object-fit:contain;cursor:zoom-in;transition:max-height .2s}.dk-img.on{max-height:42vh}.dk-img.big{max-height:80vh;cursor:zoom-out}.adm-qimg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.adm-qimg img{height:70px;border-radius:8px;background:#fff}.adm-qimg label.adm-btn{cursor:pointer}
 .dk-q{font-size:18px;line-height:1.5;margin:4px 2px 10px;white-space:pre-wrap}.dk-ans{display:flex;gap:6px;margin-bottom:8px}.dk-ans input{flex:1;min-width:0;font:inherit;font-size:18px;padding:8px 12px;border-radius:12px;border:2px solid #f2c6d6}.dk-ok{color:#2f9b57;font-size:17px}.adm-lhead i.rd{color:#7dff9a;margin-left:6px;font-style:normal}.adm-lhead i.unrd{color:#ffb86b;margin-left:6px;font-style:normal}
 .adm-dark{display:grid;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.12)}.adm-dark small{opacity:.8}
 .worn-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}.worn-row>b{font-size:14px;width:100%}.worn{display:flex;align-items:center;gap:6px;background:#fff;border:0;border-radius:14px;padding:4px 10px 4px 4px;box-shadow:0 2px 0 #f2d6e1;font:inherit;cursor:pointer;color:inherit}.worn img{width:38px;height:38px}.worn span{display:grid;line-height:1.15;text-align:left;font-size:13px}.worn small{color:var(--soft,#9b7d8b);font-size:11px}.worn b{font-size:12px;color:#e0708f;margin-left:2px}
@@ -1291,6 +1292,8 @@ function soloNet(){
     setWorld: async v => { st.world = {...(st.world||{}), ...v}; onWorld(st.world); },
     darkQSet: async (npc, pid, pub, plain) => { for (const [k, v] of [['dq', pub], ['dqa', plain]]){ const o = ((st[k] = st[k] || {})[npc] = st[k][npc] || {}); if (v) o[pid] = v; else delete o[pid]; } onDarkQ(structuredClone(st.dq)); st.dqaCb && st.dqaCb(structuredClone(st.dqa)); },
     darkQA: cb => { st.dqaCb = cb; cb(structuredClone(st.dqa || {})); },
+    darkImgSet: async (npc, pid, img, at) => { ((st.dimg = st.dimg || {})[npc] = st.dimg[npc] || {})[pid] = img ? {d:img, at} : null; const o = ((st.dq = st.dq || {})[npc] = st.dq[npc] || {}); if (img) o[pid] = {...(o[pid] || {}), im:at}; else if (o[pid]) delete o[pid].im; onDarkQ(structuredClone(st.dq)); },
+    darkImg: async (npc, pid) => st.dimg?.[npc]?.[pid]?.d || '',
     listen(){ setTimeout(()=>{ onRoofs({}); onPlayers({}); onBoss(null); }); },
   };
 }
@@ -1319,8 +1322,10 @@ function firebaseNet(){
     museumGive: async (cat, id) => { try { const r = await F.runTransaction(F.ref(db, 'museum/'+cat+'/'+id), cur => cur ? undefined : {uid, nick:String(me.nick||'').slice(0,16), at:Date.now() + serverOffset}); return r.committed; } catch(e){ return false; } },
     darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
-    darkQSet: (npc, pid, pub, plain) => F.update(F.ref(db), {[`darkQ/${npc}/${pid}`]: pub || null, [`darkQA/${npc}/${pid}`]: plain || null}),
+    darkQSet: (npc, pid, pub, plain) => F.update(F.ref(db), {[`darkQ/${npc}/${pid}`]: pub || null, [`darkQA/${npc}/${pid}`]: plain || null, ...(pub ? {} : {[`darkImg/${npc}/${pid}`]: null})}),
     darkQA: cb => F.onValue(F.ref(db, 'darkQA'), s=>cb(s.val() || {}), ()=>{}),
+    darkImgSet: (npc, pid, img, at) => F.update(F.ref(db), {[`darkImg/${npc}/${pid}`]: img ? {d:img, at} : null, [`darkQ/${npc}/${pid}/im`]: img ? at : null}),
+    darkImg: async (npc, pid) => (await F.get(F.ref(db, `darkImg/${npc}/${pid}/d`))).val() || '',
     reviveSend: (id, by) => F.set(F.ref(db, 'revive/'+id), {by:String(by).slice(0,12), at:F.serverTimestamp()}),
     reviveClear: () => F.remove(F.ref(db, 'revive/'+uid)).catch(()=>{}),
     grantDel: id => F.remove(F.ref(db, 'grants/'+uid+'/'+id)).catch(()=>{}),
@@ -4414,8 +4419,17 @@ let darkQ = {}, darkQv = 0; const darkPzCache = {};
 function onDarkQ(v){ darkQ = v || {}; darkQv++; staticSig = ''; }
 const darkBase = npc => DARK_ROOMS[npc]?.puzzles || (darkBase._ph || (darkBase._ph = placeholderPuzzles()));
 function darkPuzzles(npc){ const base = darkBase(npc), o = darkQ[npc]; if (!o) return base; const c = darkPzCache[npc]; if (c && c.v === darkQv) return c.list;
-  const list = base.map(p => { const e = o[p.id]; if (!e) return p; return {...p, title: e.t || p.title, q: e.q || p.q, hint: e.h ?? p.hint, ...(Array.isArray(e.ah) && e.ah.length ? {ah: e.ah, a: []} : {})}; });
+  const list = base.map(p => { const e = o[p.id]; if (!e) return p; return {...p, title: e.t || p.title, q: e.q || p.q, hint: e.h ?? p.hint, im: e.im || 0, ...(Array.isArray(e.ah) && e.ah.length ? {ah: e.ah, a: []} : {})}; });
   darkPzCache[npc] = {v: darkQv, list}; return list; }
+// 문제 그림: darkImg/<주민>/<문제 id> 에 따로 두고, 문제를 열 때만 불러와요 (im = 올린 시각, 바뀌면 다시 받아요)
+const darkImgCache = {};
+function darkImgGet(npc, pid, im, cb){ const k = `${npc}|${pid}|${im}`; if (!darkImgCache[k]) darkImgCache[k] = Promise.resolve(net.darkImg(npc, pid)).catch(() => { delete darkImgCache[k]; return ''; }); darkImgCache[k].then(d => cb(d || '')); }
+const darkImgHtml = (npc, pz) => pz.im ? `<img class="dk-img" data-dkimg="${npc}|${pz.id}|${pz.im}" alt="문제 그림" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">` : '';
+function darkImgFill(root){ for (const el of (root || document).querySelectorAll('img[data-dkimg]')){ const [npc, pid, im] = el.dataset.dkimg.split('|'); darkImgGet(npc, pid, im, d => { if (d) { el.src = d; el.classList.add('on'); } }); } }
+// 관리자가 고른 그림을 줄여요 (긴 쪽 900px, JPEG). 너무 크면 한 번 더 줄여요
+async function shrinkImage(file){ const url = URL.createObjectURL(file); try { const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+  for (const [max, q] of [[900, .82], [700, .72], [520, .65]]){ const k = Math.min(1, max/Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width*k); c.height = Math.round(im.height*k); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); const d = c.toDataURL('image/jpeg', q); if (d.length < 600000) return d; }
+  return ''; } finally { URL.revokeObjectURL(url); } }
 const sha256 = async str => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)))].map(b => b.toString(16).padStart(2, '0')).join('');
 const darkAnsHash = (npc, pid, v) => sha256(`pinky|${npc}|${pid}|${darkNorm(v)}`);
 async function darkCheck(npc, pz, v){ if (pz.ah) return pz.ah.includes(await darkAnsHash(npc, pz.id, v)); return pz.a.some(a => darkNorm(a) === darkNorm(v)); }
@@ -4624,10 +4638,11 @@ const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLow
 function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of darkPuzzles(z.dark)){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
 function darkPuzzlePanel(pz){
   const npc = Z().dark; if (!npc) return; const r = roomOf(npc), done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), list = darkPuzzles(npc);
-  const shown = done && (done.ans || pz.a[0] || ''), body = done ? `<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
+  const shown = done && (done.ans || pz.a[0] || ''), body = done ? `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
     : lock ? `<p class="dk-q">이 물건은 아직 열리지 않아요.</p><p class="mnote">먼저 풀어야 하는 것: ${(pz.need||[]).filter(id=>!(r.solved||{})[id]).map(id=>esc(list.find(x=>x.id===id)?.title || id)).join(', ')}</p>`
-    : `<p class="dk-q">${esc(pz.q)}</p><div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>`;
-  openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body);
+    : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>`;
+  openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body); darkImgFill($('npcPanel'));
+  for (const el of $('npcPanel').querySelectorAll('.dk-img')) el.onclick = () => el.classList.toggle('big'); // 누르면 크게
   if (done || lock) return;
   const go = async () => {
     const v = $('dkIn').value; if (!darkNorm(v)) return;
@@ -5606,7 +5621,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -5642,6 +5657,7 @@ function renderAdmin(){
   for (const [k, y, x] of kept){ const [c, i] = k.split('#'), e = k ? box.getElementsByClassName(c)[+i] : box; if (e){ e.scrollTop = y; e.scrollLeft = x; } }
   if (window.scrollY !== pageY) window.scrollTo(0, pageY);
   const npl = box.querySelector('.adm-post-list'); if (npl) npl.scrollTop = postScroll;
+  if (admQ !== null) darkImgFill(box);
   if (typingRk){ const ta = box.querySelector(`[data-rk="${typingRk}"]`); if (ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }
   const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
   const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
@@ -5771,25 +5787,29 @@ function adminQEdit(){
   const npc = admQ, list = darkBase(npc), plain = darkQAData[npc] || {}, pub = darkQ[npc] || {}, R = darkRoomOf(npc);
   const val = (pid, f, def) => admDrafts[`q|${npc}|${pid}|${f}`] ?? def;
   const opts = DARK_ORDER.map((n, i) => `<option value="${n}"${n === npc ? ' selected' : ''}>${i+1} 일 차 · ${esc(NPC[n].name)}</option>`).join('');
-  const rows = list.map((p, i) => { const e = plain[p.id], saved = !!pub[p.id], k = f => `q|${npc}|${p.id}|${f}`;
+  const rows = list.map((p, i) => { const e = plain[p.id], saved = !!pub[p.id]?.q, k = f => `q|${npc}|${p.id}|${f}`;
     const t = val(p.id, 't', e?.t ?? p.title), q = val(p.id, 'q', e?.q ?? p.q), a = val(p.id, 'a', e ? (e.a || []).join(', ') : (p.a || []).join(', ')), h = val(p.id, 'h', e?.h ?? p.hint ?? '');
     return `<div class="adm-qi${saved ? ' done' : ''}"><div class="adm-lhead"><b>${i+1} 번${R?.floors ? ` · ${p.floor} 층` : ''}</b><span>${p.need?.length ? `먼저 풀 문제: ${p.need.map(x => +x.slice(1)).join(', ')}` : '처음부터 열림'}</span><i class="${saved ? '' : 'unrd'}">${saved ? '저장됨 ✓' : '기본 임시 문제'}</i></div>
       <label>물건 이름<input data-rk="${k('t')}" value="${esc(t)}" maxlength="30"></label>
       <label>문제<textarea data-rk="${k('q')}" rows="4" maxlength="800">${esc(q)}</textarea></label>
       <label>정답 <small>쉼표(,)로 여러 개 · 띄어쓰기·대소문자는 무시</small><input data-rk="${k('a')}" value="${esc(a)}" maxlength="300"></label>
       <label>힌트<input data-rk="${k('h')}" value="${esc(h)}" maxlength="300"></label>
+      <div class="adm-qimg">${pub[p.id]?.im ? `<img data-dkimg="${npc}|${p.id}|${pub[p.id].im}" alt="">` : '<small>그림 없음</small>'}<label class="adm-btn">그림 ${pub[p.id]?.im ? '바꾸기' : '넣기'}<input type="file" accept="image/*" data-qimg="${p.id}" hidden></label>${pub[p.id]?.im ? `<button data-a="dkqimgdel" data-pid="${p.id}" class="adm-btn warn">그림 지우기</button>` : ''}</div>
       <div class="adm-wrow"><button data-a="dkqsave" data-pid="${p.id}" class="adm-btn">저장</button>${saved ? `<button data-a="dkqreset" data-pid="${p.id}" class="adm-btn warn">기본으로 되돌리기</button>` : ''}</div></div>`; }).join('');
-  return `<div class="adm-tbl adm-chat adm-qed"><div class="adm-tbl-head"><b>✏️ 다크 모드 문제 편집</b><select id="admQWho">${opts}</select><small>${Object.keys(pub).length}/${list.length} 저장됨 · 플레이어에게 정답은 보이지 않아요</small><button data-a="dkqclose" class="adm-btn">닫기</button></div>
+  return `<div class="adm-tbl adm-chat adm-qed"><div class="adm-tbl-head"><b>✏️ 다크 모드 문제 편집</b><select id="admQWho">${opts}</select><small>${Object.values(pub).filter(v => v?.q).length}/${list.length} 저장됨 · 플레이어에게 정답은 보이지 않아요 · 그림은 문제 위에 나와요</small><button data-a="dkqclose" class="adm-btn">닫기</button></div>
     <div class="adm-chat-list adm-q-list">${rows}</div></div>`;
 }
+async function adminQImage(pid, file){ const npc = admQ; if (!npc || !file) return; toast('그림을 줄이는 중....');
+  const d = await shrinkImage(file).catch(() => ''); if (!d) return toast('그림을 읽지 못했거나 너무 커요');
+  Promise.resolve(net.darkImgSet(npc, pid, d, Date.now() + serverOffset)).then(() => { toast(`${pid.slice(1)*1} 번 문제에 그림을 넣었어요`); renderAdmin(); }).catch(() => toast('그림을 저장하지 못했어요. 관리자 권한을 확인해 주세요')); }
 async function adminQSave(pid, reset){
   const npc = admQ; if (!npc) return;
-  if (reset){ if (!confirm(`${pid.slice(1)*1} 번 문제를 기본 임시 문제로 되돌릴까요?`)) return; for (const f of 'tqah') delete admDrafts[`q|${npc}|${pid}|${f}`]; return Promise.resolve(net.darkQSet(npc, pid, null, null)).then(()=>toast('기본 문제로 되돌렸어요')).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); }
+  if (reset){ if (!confirm(`${pid.slice(1)*1} 번 문제를 기본 임시 문제로 되돌릴까요? 그림도 지워져요.`)) return; for (const f of 'tqah') delete admDrafts[`q|${npc}|${pid}|${f}`]; return Promise.resolve(net.darkQSet(npc, pid, null, null)).then(()=>toast('기본 문제로 되돌렸어요')).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); }
   const box = $('adminUi'), get = f => box.querySelector(`[data-rk="q|${npc}|${pid}|${f}"]`)?.value ?? '';
   const t = get('t').trim().slice(0, 30), q = get('q').trim().slice(0, 800), h = get('h').trim().slice(0, 300), a = [...new Set(get('a').split(',').map(x => x.trim()).filter(x => darkNorm(x)))].slice(0, 10);
   if (!q) return toast('문제를 써 주세요'); if (!a.length) return toast('정답을 하나 이상 써 주세요');
   const ah = await Promise.all(a.map(x => darkAnsHash(npc, pid, x)));
-  try { await net.darkQSet(npc, pid, {t, q, h, ah}, {t, q, h, a}); for (const f of 'tqah') delete admDrafts[`q|${npc}|${pid}|${f}`]; toast(`${pid.slice(1)*1} 번 문제를 저장했어요`); renderAdmin(); }
+  const im = darkQ[npc]?.[pid]?.im; try { await net.darkQSet(npc, pid, {t, q, h, ah, ...(im ? {im} : {})}, {t, q, h, a}); for (const f of 'tqah') delete admDrafts[`q|${npc}|${pid}|${f}`]; toast(`${pid.slice(1)*1} 번 문제를 저장했어요`); renderAdmin(); }
   catch(e){ toast('저장하지 못했어요. 관리자 권한을 확인해 주세요'); }
 }
 function adminPost(){
@@ -5859,6 +5879,7 @@ function adminClick(e){
   else if (b.dataset.a==='dkq'){ admQ = admQ === null ? (darkToday() || DARK_ORDER[0]) : null; if (admQ){ admDm = null; admPost = false; admTbl = null; admChat = null; admWipe = false; admLook = null; admSide = false; } renderAdmin(); }
   else if (b.dataset.a==='dkqclose'){ admQ = null; renderAdmin(); }
   else if (b.dataset.a==='dkqsave' || b.dataset.a==='dkqreset') adminQSave(b.dataset.pid, b.dataset.a==='dkqreset');
+  else if (b.dataset.a==='dkqimgdel'){ if (confirm('이 문제의 그림을 지울까요?')) Promise.resolve(net.darkImgSet(admQ, b.dataset.pid, null, 0)).then(()=>{ toast('그림을 지웠어요'); renderAdmin(); }).catch(()=>toast('지우지 못했어요')); }
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) Promise.resolve(net.setWorld({dark:v, darkAt:Date.now() + serverOffset, darkShift:0})).then(()=>v && net.darkWipe ? net.darkWipe() : null).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
   else if (b.dataset.a==='aucgo') adminAucGo();
   else if (['meteorgo','meteorcancel','fwgo'].includes(b.dataset.a)) adminNightClick(b.dataset.a);
@@ -6301,9 +6322,10 @@ function aucBubble(c, x, y){
 // ----- 관리자: 경매 열기 · 끝내기 -----
 const admAuc = {aucK:'ring:r10', aucN:'1', aucStart:'100000', aucDur:'60'};
 function aucItems(){
-  const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1]])], ['가구', FURN_ALL.map((f, i) => ['furn:u' + String(i + 1).padStart(2, '0'), f[0]])],
-    ['광석', Object.keys(ORES).map(id => ['ore:' + id, ORES[id].name])], ['요리', Object.keys(DISHES).map(id => ['dish:' + id, DISHES[id].name])]];
-  return o.map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n]) => `<option value="${k}"${admAuc.aucK === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup>`).join('');
+  // 원가: 반지는 공방에서 만드는 값, 가구는 상점 값, 광석·요리는 기본 판매가 (시세·보너스 빼고)
+  const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1], r[3]])], ['가구', FURN_ALL.map((f, i) => { const id = 'u' + String(i + 1).padStart(2, '0'); return ['furn:' + id, f[0], FURN[id]?.gold || 0]; })],
+    ['광석', Object.keys(ORES).map(id => ['ore:' + id, ORES[id].name, itemPrice('ore:' + id)])], ['요리', Object.keys(DISHES).map(id => ['dish:' + id, DISHES[id].name, itemPrice('dish:' + id)])]];
+  return o.map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n, p]) => `<option value="${k}"${admAuc.aucK === k ? ' selected' : ''}>${esc(n)} · 원가 ${(p || 0).toLocaleString()} G</option>`).join('')}</optgroup>`).join('');
 }
 function adminAucSec(){
   if (!admWalk) return `<div class="adm-sec"><b>🔨 오투모 경매</b><small>오투모로 들어가면 지금 서 있는 자리에서 경매를 열 수 있어요</small></div>`;

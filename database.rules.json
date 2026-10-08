@@ -213,6 +213,15 @@
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'"
     },
+    "darkImg": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$npc": {
+        "$pid": {
+          ".validate": "newData.child('d').isString() && newData.child('d').val().length < 800000 && newData.child('at').isNumber()"
+        }
+      }
+    },
     "darkQA": {
       ".read": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'"
