@@ -899,6 +899,7 @@ let fadeT = 0;
 function enterZone(id, from, x, y){
   if (!zoneOk(id)) id = 'home';
   decorating = null;
+  if (me && obStep == null && zoneId && zoneId !== id) stat('zoneMoves');
   if (me){ const v = (me.visited||'home').split(',').filter(Boolean); const zid = id.includes(':') ? id.split(':')[0] : id; if (!v.includes(zid)){ v.push(zid); me.visited = v.join(','); syncStats(); } }
   zoneId = id; const z = Z(); target = null; staticSig = ''; if (jukeOn && z.house !== uid) jukeStop(); if (z.depth && me && !admin) setTimeout(()=>toast(`${z.name} · 추천 레벨 ${[0,15,25,35,45][z.depth]} 이상 · 여럿이 같이 와요`), 900);
   if (x!=null){ pos.x = x; pos.y = y; }
@@ -3790,7 +3791,7 @@ function friendPanel(){
     <div class="bag-sec"><b>친구 ${fr.length}${fr.length ? ` · 접속 ${fr.filter(isOnline).length}` : ''}</b>${sortF.map(id=>row(id, true)).join('') || '<p class="mnote">아직 친구가 없어요. 아래 섬 주민에서 추가해요.</p>'}</div>
     <div class="bag-sec"><b>섬 주민</b>${rest.map(id=>row(id, false)).join('') || '<p class="mnote">다른 주민이 아직 없어요.</p>'}</div>`);
   const p = $('npcPanel'); p.dataset.dm = 'list';
-  p.querySelectorAll('[data-add]').forEach(b=>b.onclick = ()=>{ me.friends = [...myFriends(), b.dataset.add]; saveMe(); toast(`${players[b.dataset.add].nick} 님을 친구로 추가했어요`); friendPanel(); });
+  p.querySelectorAll('[data-add]').forEach(b=>b.onclick = ()=>{ me.friends = [...myFriends(), b.dataset.add]; syncStats(); checkAchievements(); saveMe(); toast(`${players[b.dataset.add].nick} 님을 친구로 추가했어요`); friendPanel(); });
   p.querySelectorAll('[data-dm]').forEach(b=>b.onclick = ()=>dmPanel(b.dataset.dm));
 }
 function dmPanel(other){
@@ -3886,7 +3887,7 @@ function postPanel(v){
       if (!text) return toast('편지 내용을 적어 주세요');
       if (to===uid) return toast('나에게는 보낼 수 없어요');
       b.disabled = true;
-      try { await net.letterSend(to, {from:uid, nick:me.nick, text, ...(postView.replyTo ? {replyTo:postView.replyTo} : {})}); stat('lettersSent'); toast(`${letterWho(to)}에게 편지를 보냈어요`); postPanel({tab:'out'}); }
+      try { await net.letterSend(to, {from:uid, nick:me.nick, text, ...(postView.replyTo ? {replyTo:postView.replyTo} : {})}); stat('lettersSent'); if (to === OTUMO.key) stat('otumoFriend'); toast(`${letterWho(to)}에게 편지를 보냈어요`); postPanel({tab:'out'}); }
       catch(e){ b.disabled = false; toast('보내지 못했어요. 잠시 뒤 다시 해 봐요'); } }
   });
 }
@@ -4143,7 +4144,7 @@ function stats(){ me.stats = me.stats || {}; return me.stats; }
 function stat(key, n=1){ const st = stats(); st[key] = (st[key]||0) + n; checkAchievements(); goalCount(key, n); return st[key]; }
 function statSet(key, v){ const st = stats(); if (st[key] !== v){ st[key] = v; checkAchievements(); } }
 function syncStats(){ // 다른 데이터에서 바로 계산되는 기록
-  const st = stats(); st.dexFish = Object.keys(me.dex||{}).length; st.dexOre = Object.keys(me.odex||{}).length; st.dexMon = Object.keys(me.mdex||{}).length;
+  const st = stats(); st.friendCount = (me.friends||[]).length; st.dexFish = Object.keys(me.dex||{}).length; st.dexOre = Object.keys(me.odex||{}).length; st.dexMon = Object.keys(me.mdex||{}).length;
   st.earned = me.earned||0; st.closetCount = (me.closet||[]).length; st.plots = me.plots||2; st.museumDonated = museumTotal() ? museumShared() : 0;
   const hearts = NPCS.map(n=>heartsN(n)); st.maxHearts = Math.max(0, ...hearts); st.friends7 = hearts.filter(h=>h>=7).length; st.soulmates = hearts.filter(h=>h>=10).length;
   st.weaponTier = Math.max(1, WEAPON_LIST.findIndex(w=>w[0]===(me.inv.weapon||'w1')) + 1);
@@ -4536,6 +4537,7 @@ function darkRespawn(){
   toast(zoneId.startsWith('dark:') ? '쓰러졌어요.... 다른 사람이 살려 줄 때까지 기다려요' : '앗, 기운이 다 빠져서 기절했어요.... 친구가 와서 깨워 주면 일어나요'); renderHud(); if (!zoneId.startsWith('dark:') && !zoneId.startsWith('house:')){ me.zx = Math.round(pos.x); me.zy = Math.round(pos.y); } flushSave();
 }
 function darkStandUp(by){
+  if (by === OTUMO_NAME && darkDown) stat('otumoFriend'); // 오투모가 깨워 줬어요
   if (!darkDown) return; darkDown = null; playerHp = Math.round(maxHp()*.5); darkGuard = 3; wakeGuardUntil = performance.now() + 5000; renderHud();
   flushSave(); closeTalk(); toast(by ? `${String(by).slice(0,12)} 님이 ${downWords().helped}! ${zoneId.startsWith('dark:') ? '다시 싸워요' : '조심해서 다녀요'}` : '다시 일어났어요');
 }
@@ -4882,7 +4884,7 @@ function sendChat(){
   if (!t) return;
   const z = zoneId; net.sendChat(t).then(()=>net.chatTrim(z)).catch(()=>toast('채팅을 보내지 못했어요.')); stat('chatSent');
 }
-document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow').hidden = true; emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); setExpr({'👋':'happy','❤️':'wink','✨':'sparkle','😢':'sad'}[b.dataset.e] || 'cat', 3000); stat('emotesSent'); });
+document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow').hidden = true; emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); setExpr({'👋':'happy','❤️':'wink','✨':'sparkle','😢':'sad'}[b.dataset.e] || 'cat', 3000); stat('emotesSent'); if (b.dataset.e === '❤️') stat('heartEmotes'); });
 
 function toWorld(cx, cy){ return { x: view.cx + cx/view.zoom, y: view.cy + cy/view.zoom }; }
 function hitTarget(w){
@@ -5681,7 +5683,7 @@ const MG = {
     init(){ mgPops.length = 0; mg.s = {cup:0, u:0, dir:1, res:[], show:0, art:'', zone:this.zone()}; },
     zone(){ return .3 + Math.random() * .4; },
     step(dt){ const s = mg.s;
-      if (s.show > 0){ s.show -= dt; if (s.show <= 0){ if (s.cup >= 5){ const p = s.res.filter(r => r === 2).length, gd = s.res.filter(r => r === 1).length; mgOver(p * 3 + gd, p * 120 + gd * 50 + (p === 5 ? 300 : 0)); } else { s.zone = this.zone(); s.u = 0; s.dir = 1; } } return; }
+      if (s.show > 0){ s.show -= dt; if (s.show <= 0){ if (s.cup >= 5){ const p = s.res.filter(r => r === 2).length, gd = s.res.filter(r => r === 1).length; if (p === 5) stat('coffeePerfect'); mgOver(p * 3 + gd, p * 120 + gd * 50 + (p === 5 ? 300 : 0)); } else { s.zone = this.zone(); s.u = 0; s.dir = 1; } } return; }
       const sp = .75 + s.cup * .28; s.u += s.dir * sp * dt; if (s.u > 1){ s.u = 1; s.dir = -1; } if (s.u < 0){ s.u = 0; s.dir = 1; } },
     tap(){ const s = mg.s; if (s.show > 0 || s.cup >= 5) return; const d = Math.abs(s.u - s.zone), r = d < .045 ? 2 : d < .13 ? 1 : 0;
       s.res.push(r); s.cup++; s.art = ['miss', 'good', 'perfect'][r]; s.show = 1;

@@ -79,4 +79,16 @@ export const ACHIEVEMENTS = [
   { id:'zones_13',   name:'섬 구석구석',       desc:'섬의 13 구역 모두 방문하기',     stat:'zonesVisited', n:13,     reward:{gold:1500,  title:'섬 구석구석'},       icon:'🗺️' },
   { id:'wish_10',    name:'별을 세는 사람',    desc:'별빛 언덕에서 소원 10 번 빌기',  stat:'wishes',      n:10,      reward:{gold:3000,  title:'별을 세는 사람'},    icon:'🌠' },
   { id:'walk_100k',  name:'섬 한 바퀴',        desc:'100,000 px 걷기',                stat:'distanceWalked', n:100000, reward:{gold:1000, title:'섬 한 바퀴'},        icon:'👣' },
+  { id:'zone_300',   name:'동에 번쩍 서에 번쩍', desc:'구역을 300 번 오가기',          stat:'zoneMoves',   n:300,     reward:{gold:2000,  title:'동에 번쩍 서에 번쩍'}, icon:'⚡' },
+
+  // ── 함께 놀기 ──
+  { id:'auc_win',    name:'경매 낙찰자',       desc:'오투모 경매에서 낙찰받기',       stat:'aucWon',      n:1,       reward:{gold:2000,  title:'경매 낙찰자'},       icon:'🔨' },
+  { id:'mg_50',      name:'알바의 인생',       desc:'미니게임 50 판 하기',            stat:'mgPlayed',    n:50,      reward:{gold:3000,  title:'알바의 인생'},       icon:'🧺' },
+  { id:'coffee_ace', name:'초천재',            desc:'커피 만들기에서 5 잔 모두 완벽',  stat:'coffeePerfect', n:1,     reward:{gold:3000,  title:'초천재'},            icon:'🧠' },
+  { id:'otumo_3',    name:'오투모의 친구',     desc:'오투모에게 편지 보내기 · 오투모가 깨워 주기 합쳐서 3 번', stat:'otumoFriend', n:3, reward:{gold:1500, title:'오투모의 친구'}, icon:'🤖' },
+  { id:'friend_5',   name:'친구모아',          desc:'친구 5 명 추가하기',             stat:'friendCount', n:5,       reward:{gold:1500,  title:'친구모아'},          icon:'🤝' },
+  { id:'pet_100',    name:'강형욱',            desc:'펫에게 밥 100 번 주기',          stat:'petFed',      n:100,     reward:{gold:3000,  title:'강형욱'},            icon:'🐶' },
+  { id:'emote_100',  name:'귀염둥이',          desc:'이모티콘 100 번 보내기',         stat:'emotesSent',  n:100,     reward:{gold:1000,  title:'귀염둥이'},          icon:'🥰' },
+  { id:'heart_50',   name:'사랑스러운',        desc:'❤️ 이모티콘 50 번 보내기',       stat:'heartEmotes', n:50,      reward:{gold:1000,  title:'사랑스러운'},        icon:'💗' },
+  { id:'outfit_50',  name:'입을 줄 아는',      desc:'옷 50 번 갈아입기',              stat:'outfitChanged', n:50,    reward:{gold:2000,  title:'입을 줄 아는'},      icon:'👗' },
 ];
