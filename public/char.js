@@ -387,9 +387,12 @@ const BY = -BH, HY = BY - R*1.06 + 1.6;
 // 각 항목: {name, price, draw(d, g)}  g = {c, side, up, bw, step, sk, L}
 // 공통 그리기 도움
 const torso = (d, g, col, o) => d.rr(-g.bw/2, BY, g.bw, BH*.64, 4.5, col, o);
-const sleeves = (d, g, col) => { if (!g.side) d.ell(-g.bw/2-1.4, BY+BH*.34, 3.2, 4.6, col); d.ell(g.bw/2+1.4, BY+BH*.34, 3.2, 4.6, col); };
-const hands = (d, g) => { if (!g.side) d.ell(-g.bw/2-1.6, BY+BH*.48, 3.1, 3.7, g.sk); d.ell(g.bw/2+1.6, BY+BH*.48, 3.1, 3.7, g.sk); };
-const bareArms = (d, g) => { if (!g.side) d.ell(-g.bw/2-1.6, BY+BH*.44, 3.1, 4.4, g.sk); d.ell(g.bw/2+1.6, BY+BH*.44, 3.1, 4.4, g.sk); };
+// 소원 빌기: 팔은 안쪽으로 모이고, 손은 가슴 앞에서 맞닿아요
+const praySleeves = (d, g, col) => { d.ell(-g.bw/2+.6, BY+BH*.36, 3.2, 4.2, col); d.ell(g.bw/2-.6, BY+BH*.36, 3.2, 4.2, col); };
+const prayHands = (d, g) => { d.ell(-1.45, BY+BH*.16, 2.4, 4.5, g.sk); d.ell(1.45, BY+BH*.16, 2.4, 4.5, g.sk); d.line(k=>{ k.moveTo(0, BY+BH*.16-3.8); k.lineTo(0, BY+BH*.16+3.6); }, 'rgba(150,100,90,.5)', .7, .8); };
+const sleeves = (d, g, col) => { if (g.pray) return praySleeves(d, g, col); if (!g.side) d.ell(-g.bw/2-1.4, BY+BH*.34, 3.2, 4.6, col); d.ell(g.bw/2+1.4, BY+BH*.34, 3.2, 4.6, col); };
+const hands = (d, g) => { if (g.pray) return prayHands(d, g); if (!g.side) d.ell(-g.bw/2-1.6, BY+BH*.48, 3.1, 3.7, g.sk); d.ell(g.bw/2+1.6, BY+BH*.48, 3.1, 3.7, g.sk); };
+const bareArms = (d, g) => { if (g.pray){ praySleeves(d, g, g.sk); return prayHands(d, g); } if (!g.side) d.ell(-g.bw/2-1.6, BY+BH*.44, 3.1, 4.4, g.sk); d.ell(g.bw/2+1.6, BY+BH*.44, 3.1, 4.4, g.sk); };
 const collar = (d, g, col) => { if (g.up) return; d.shape(c=>{ c.beginPath(); c.moveTo(-4, BY); c.lineTo(0, BY+4); c.lineTo(4, BY); c.closePath(); }, col, [0,BY+2,4], {flat:true}); };
 const stripe = (d, g, col, n=3) => { if (g.up) return; for (let i=0;i<n;i++) d.rr(-g.bw/2+1, BY+2.5+i*3.2, g.bw-2, 1.4, .7, col, {flat:true, noShadow:true}); };
 const front = (d, g, col) => { if (!g.up) d.rr(-BW*.16, BY+1.5, BW*.32, BH*.55, 2.5, col, {flat:true}); };
@@ -586,13 +589,15 @@ export const ITEM = id => TOPS[id] || BOTTOMS[id] || SETS[id] || HATS[id] || ACC
 // ---------- 전체 그리기 ----------
 // dir: down(정면) / left / right / up(뒷모습). t: 초. walk: 걷는 중. expr: 표정
 export function figure(d, L, dir, t, walk, expr){
+  // 'pray': 소원 빌기 — 정면을 보고 눈을 감고 가슴 앞에서 두 손을 모아요
+  const pray = expr === 'pray'; if (pray){ expr = 'sleepy'; dir = 'down'; walk = false; }
   const c = d.ctx, side = dir==='left' || dir==='right', up = dir==='up';
   const ph = t*8, step = walk ? Math.sin(ph) : 0, bob = walk ? Math.abs(Math.sin(ph))*1.2 : Math.sin(t*2)*.3+.3;
   const a = Math.max(0,step)*1.6, b = Math.max(0,-step)*1.6;
   c.save(); if (dir==='left') c.scale(-1,1);
   c.save(); c.fillStyle='rgba(60,30,50,.14)'; c.beginPath(); c.ellipse(0, 1, BW*.75, 3, 0,0,7); c.fill(); c.restore();
   c.translate(0, -bob);
-  const g = {c, side, up, bw: side ? BW*.8 : BW, step, a, b, sk:L.skin, L};
+  const g = {c, side, up, bw: side ? BW*.8 : BW, step, a, b, sk:L.skin, L, pray};
   const set = SETS[L.set], top = TOPS[L.top] || TOPS.t01, bottom = BOTTOMS[L.bottom] || BOTTOMS.b01;
   const hat = HATS[L.hat] || HATS.none, acc = ACCS[L.acc] || ACCS.none, shoes = SHOES[L.shoes] || SHOES.sh01;
   const AN = L.animal && ANIMALS[L.animal.kind], AP = AN && {d, g, L, A:L.animal, side, up, fx: side ? R*.22 : 0, fy: HY+R*.28};
