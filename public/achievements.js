@@ -93,4 +93,16 @@ export const ACHIEVEMENTS = [
   { id:'emote_100',  name:'귀염둥이',          desc:'이모티콘 100 번 보내기',         stat:'emotesSent',  n:100,     reward:{gold:1000,  title:'귀염둥이'},          icon:'🥰' },
   { id:'heart_50',   name:'사랑스러운',        desc:'❤️ 이모티콘 50 번 보내기',       stat:'heartEmotes', n:50,      reward:{gold:1000,  title:'사랑스러운'},        icon:'💗' },
   { id:'outfit_50',  name:'입을 줄 아는',      desc:'옷 50 번 갈아입기',              stat:'outfitChanged', n:50,    reward:{gold:2000,  title:'입을 줄 아는'},      icon:'👗' },
+  // ── 장난스러운 칭호 ──
+  { id:'solo_60',    name:'나는솔로',          desc:'섬에 나 혼자 있을 때 60 분 놀기', stat:'aloneMin',    n:60,      reward:{gold:1500,  title:'나는솔로'},          icon:'🧍' },
+  { id:'letter_20',  name:'호그와트 장학생',   desc:'토리 우체국 편지 20 통 보내기',   stat:'lettersSent', n:20,      reward:{gold:2000,  title:'호그와트 장학생'},   icon:'🦉' },
+  { id:'saw_god',    name:'신을 본 자',        desc:'섬을 걷는 오투모를 직접 만나기',  stat:'sawGod',      n:1,       reward:{gold:1000,  title:'신을 본 자'},        icon:'🤖' },
+  { id:'eat_300',    name:'돼지',              desc:'음식 300 번 먹기',               stat:'foodEaten',   n:300,     reward:{gold:2000,  title:'돼지'},              icon:'🐷' },
+  { id:'cook_1500',  name:'요리왕 비룡',       desc:'요리 1500 번 만들기',            stat:'dishesCooked', n:1500,   reward:{gold:15000, title:'요리왕 비룡'},       icon:'🐉' },
+  { id:'faint_30',   name:'류크',              desc:'기절 30 번 하기',                stat:'faints',      n:30,      reward:{gold:1500,  title:'류크'},              icon:'📓' },
+  { id:'dex_100',    name:'콜렉터',            desc:'물고기·광석·몬스터 도감 합쳐서 100 종', stat:'dexTotal', n:100,  reward:{gold:10000, title:'콜렉터'},            icon:'🗂️' },
+  { id:'mg_200',     name:'퇴사할게요',        desc:'미니게임 알바 200 판 하기',      stat:'mgPlayed',    n:200,     reward:{gold:5000,  title:'퇴사할게요'},        icon:'🏃' },
+  { id:'broke',      name:'돈이 없어',         desc:'10 만 G 넘게 벌어 놓고 지갑이 100 G 아래',  stat:'brokeNow', n:1, reward:{gold:100, title:'돈이 없어'},      icon:'🕳️' },
+  { id:'homeless',   name:'집이 없어',         desc:'집을 한 번도 안 늘리고 출석 14 일', stat:'homeless',   n:1,       reward:{gold:1400,  title:'집이 없어'},         icon:'⛺' },
+  { id:'legend',     name:'레전드',            desc:'업적 60 개 달성하기',            stat:'achCount',    n:60,      reward:{gold:30000, title:'레전드'},            icon:'🏆' },
 ];

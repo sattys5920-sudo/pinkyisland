@@ -2605,7 +2605,15 @@ function loadStats(){
   // 날짜와 상관없이: 꺼 둔 동안에도 1 분에 5 씩 찬 걸로 쳐요
   if (typeof me.staAt === 'number') playerSta = Math.min(maxSta(), playerSta + Math.max(0, (Date.now() + serverOffset - me.staAt) / 60000) * 5);
 }
+// 장난스러운 칭호 기록: 혼자 논 시간 · 오투모 만나기 · 지갑·집 상태는 5 초마다 다시 계산해요
+let aloneT = 0, achTickT = 0;
+function achTick(dt, t){ if (!me || admin) return;
+  if (![...others.values()].some(o => !o.adm) && document.visibilityState === 'visible'){ aloneT += dt; if (aloneT >= 60){ aloneT -= 60; stat('aloneMin'); } } // 나는솔로
+  if (t > achTickT){ achTickT = t + 5000;
+    syncStats(); checkAchievements(); // 지갑·집 상태를 먼저 (다른 보상 골드가 들어오기 전에)
+    if (!stats().sawGod && [...others.values()].some(o => o.adm && o.z === zoneId && Math.hypot(o.x - pos.x, o.y - pos.y) < 400)) stat('sawGod'); } } // 신을 본 자
 function updateStats(dt, t){
+  achTick(dt, t);
   if (!darkDown && t - lastHurt > 8000 && playerHp < maxHp()) playerHp = Math.min(maxHp(), playerHp + 1.5*dt*(ringFx().regen || 1));
   if (playerSta < maxSta()) playerSta = Math.min(maxSta(), playerSta + dt/12); // 1 분에 5 씩
 }
@@ -2636,7 +2644,7 @@ function foodOf(k){
 }
 function eat(k){
   const f = foodOf(k); if (!f || invCount(k) < 1) return;
-  invAdd(k, -1); const h0 = playerHp, s0 = playerSta;
+  invAdd(k, -1); stat('foodEaten'); const h0 = playerHp, s0 = playerSta;
   playerHp = Math.min(maxHp(), playerHp + f.hp); playerSta = Math.min(maxSta(), playerSta + f.sta);
   setExpr('happy', 1500); saveMe(); renderHud();
   toast(`${itemName(k)}을(를) 먹었어요 · 체력 +${Math.round(playerHp-h0)} · 기력 +${Math.round(playerSta-s0)}`, k);
@@ -4187,6 +4195,9 @@ function syncStats(){ // 다른 데이터에서 바로 계산되는 기록
   st.zonesVisited = (me.visited||'home').split(',').filter(Boolean).length; st.questsDone = (me.q&&me.q.done||[]).length;
   { const H = houseOf(me); st.houseLevel = H.lv; st.interiorCount = H.walls.length + H.floors.length - 2; }
   st.furnCount = Object.values(me.inv.furn||{}).reduce((a,b)=>a+b,0) + (me.furn||[]).length;
+  st.dexTotal = st.dexFish + st.dexOre + st.dexMon; st.achCount = (me.ach||[]).length;
+  if ((me.earned||0) >= 100000 && me.inv.gold < 100) st.brokeNow = 1; // 돈이 없어 (한 번 되면 기록은 남아요)
+  st.homeless = st.houseLevel === 1 && (st.daysAttended||0) >= 14 ? 1 : (st.homeless || 0); // 집이 없어
   { const jid = Object.keys(FURN).find(k=>FURN[k].shape==='jukebox'); st.jukebox = jid && (invCount('furn:'+jid) > 0 || (me.furn||[]).some(f=>f.id===jid)) ? 1 : 0; } // 주크박스를 가진 사람
 }
 let achQueue = [];
@@ -4613,6 +4624,7 @@ const downWords = () => zoneId.startsWith('dark:') ? {down:'쓰러짐', did:'쓰
 let downOffer = false, wakeGuardUntil = 0; // 깨어난 뒤 5 초는 몬스터가 안 쫓아오고 안 때려요
 function darkRespawn(){
   if (darkDown) return;
+  stat('faints'); // 류크
   playerHp = 0; darkDown = darkNow(); downOffer = false; darkSlams = []; target = null; setExpr('sad', 3000);
   toast(zoneId.startsWith('dark:') ? '쓰러졌어요.... 다른 사람이 살려 줄 때까지 기다려요' : '앗, 기운이 다 빠져서 기절했어요.... 친구가 와서 깨워 주면 일어나요'); renderHud(); if (!zoneId.startsWith('dark:') && !zoneId.startsWith('house:')){ me.zx = Math.round(pos.x); me.zy = Math.round(pos.y); } flushSave();
 }
