@@ -345,6 +345,9 @@ body.typing #chatin{background:#fff}
 #mgBox .mg-foot{text-align:center;font-size:16px;line-height:1.35}#mgBox .mg-foot p{margin:6px 0}#mgBox .mg-k{font-size:14px;color:#9a6f84}#mgBox .mg-r{font-size:24px;color:#e0507a;font-weight:bold}
 #mgBox .btn{margin-top:4px}#mgBox .btn.ghost{background:#fff;color:#c0577f}
 @media (max-height:700px){#mgBox canvas{max-height:52vh;width:auto;margin:0 auto}}
+#dlvChip{position:fixed;z-index:5;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);border:0;border-radius:999px;padding:5px 14px;background:#fff4d6;color:#5a3346;font:inherit;font-size:15px;box-shadow:0 3px 0 #f1d9a8,0 4px 12px rgba(0,0,0,.12);white-space:nowrap;touch-action:manipulation}
+#dlvChip img.ui{width:18px;height:18px;vertical-align:-3px;margin-right:4px}
+body.dlg-on #dlvChip,body.typing #dlvChip,body.mg-on #dlvChip,body.admin #dlvChip{visibility:hidden}
 #goal{position:fixed;z-index:5;padding:6px 10px 5px;font-size:15px;cursor:pointer;line-height:1.2}
 #goal .gl-t{display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden}#goal .gl-t b{font-size:16px}#goal .gl-t span{overflow:hidden;text-overflow:ellipsis}#goal .gl-t i{margin-left:auto;font-style:normal;font-size:13px;color:#b07a92}
 #goal .gl-ic{width:20px;height:20px}#goal .gl-s{display:flex;justify-content:space-between;font-size:13px;color:#9a6f84}
@@ -1456,9 +1459,9 @@ function menuPanel(){
   const row = (key, icon, label, sub) => `<button class="np" data-id="${key}" style="grid-template-columns:auto 1fr;align-items:center"><span>${ui(icon,'mi')}</span><span class="np-name">${label}${sub ? ` <small>${sub}</small>` : ''}</span></button>`;
   openPanel('메뉴',
     `<div class="np" style="grid-template-columns:auto 1fr;align-items:center"><span>${ui('people','mi')}</span><span class="np-name">${esc(me.nick)} <small>${solo ? '혼자 보기 모드' : id ? '아이디 ' + esc(id) : '로그인 중'}</small></span></div>` +
-    row('bag','bag','가방','아이템·도감·거래') + row('closet','shirt','옷장','갈아입기') + row('quest','scroll','퀘스트','진행 중인 부탁') + row('ach','trophy','업적','칭호 고르기') + row('map','map','섬 지도','') + row('bgm','sparkle', bgmOn() ? '배경 음악 끄기' : '배경 음악 켜기', bgmOn() ? '지금 켜져 있어요' : '지금 꺼져 있어요') + row('dlgsize','scroll','대화 글자 크기',{s:'작게',m:'보통',l:'크게'}[dlgSize]) + row('dlglog','scroll','대화 기록','최근 대사 다시 보기') +
+    row('bag','bag','가방','아이템·도감·거래') + row('closet','shirt','옷장','갈아입기') + row('quest','scroll','퀘스트','진행 중인 부탁') + row('dlv','box','배달 주문서', `${(me.orders||[]).length} 건 · 오늘 ${dlvDone()}/${DLV_DAY}`) + row('ach','trophy','업적','칭호 고르기') + row('map','map','섬 지도','') + row('bgm','sparkle', bgmOn() ? '배경 음악 끄기' : '배경 음악 켜기', bgmOn() ? '지금 켜져 있어요' : '지금 꺼져 있어요') + row('dlgsize','scroll','대화 글자 크기',{s:'작게',m:'보통',l:'크게'}[dlgSize]) + row('dlglog','scroll','대화 기록','최근 대사 다시 보기') +
     `<button class="btn ghost" id="logoutBig" style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px">${ui('door','mi')}로그아웃</button>`,
-    b=>({bag:showBag, closet:clothesPanel, quest:questLog, ach:achPanel, dlgsize:()=>{ setDlgSize({s:'m', m:'l', l:'s'}[dlgSize]); menuPanel(); }, dlglog:()=>{ $('npcPanel').hidden = true; dlgLogOpen(); }, map:()=>{ $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }, bgm:()=>{ bgmSet(!bgmOn()); menuPanel(); }})[b.dataset.id]?.());
+    b=>({bag:showBag, closet:clothesPanel, quest:questLog, dlv:dlvPanel, ach:achPanel, dlgsize:()=>{ setDlgSize({s:'m', m:'l', l:'s'}[dlgSize]); menuPanel(); }, dlglog:()=>{ $('npcPanel').hidden = true; dlgLogOpen(); }, map:()=>{ $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }, bgm:()=>{ bgmSet(!bgmOn()); menuPanel(); }})[b.dataset.id]?.());
   $('logoutBig').onclick = ()=>{ if (confirm('로그아웃할까요? 캐릭터와 집은 아이디에 저장돼 있어요.')) logout(); };
 }
 // ===== 배경 음악: 들어오면 무한 반복. 메뉴에서 끄고 켤 수 있어요 (이 기기에 기억) =====
@@ -1685,7 +1688,7 @@ function renderHud(){
   const online = 1 + [...others.values()].filter(o=>!o.adm).length; // 오투모(관리자)는 인원에 안 세요
   $('hud').innerHTML = `<span><i style="background:${ROOFS[me.roof][1]}"></i>${esc(me.nick)}</span><span>${ui('coin')}${me.inv.gold} G</span><span>${ui('pin')}${Z().name}</span><span>${ui('people')}${Math.min(online,MAX)}/${MAX}</span><span id="wxClock">${wxClockText()}</span>`;
   if (!$('stats')){ const st = document.createElement('div'); st.id = 'stats'; st.innerHTML = `<b id="lvTag"></b><div class="sb hp" id="hpBar"><s></s><em></em></div><div class="sb st" id="staBar"><s></s><em></em></div><div class="xb" id="expBar"><s></s><em></em></div>`; $('hud').after(st); }
-  $('stats').hidden = false; barSig = ''; updateBars(); goalWatch(); renderGoal(); if (me.aucHold) aucSettle(); placeTop();
+  $('stats').hidden = false; barSig = ''; updateBars(); goalWatch(); renderGoal(); dlvRefresh(); if (me.aucHold) aucSettle(); placeTop();
   $('quest').hidden = me.quest >= TUT_DONE; $('quest').innerHTML = `<b>할 일${me.quest >= TUT_START ? ` · 섬 생활 첫걸음 ${me.quest - TUT_START + 1}/${TUT.length}` : ''}</b>${QUESTS[Math.min(me.quest, TUT_DONE)]}`; setTimeout(tutCheck);
   $('swingBtn').hidden = !me.inv.sword; document.body.classList.toggle('has-sword', !!me.inv.sword); snowBtnUpdate(); darkHud();
   if (darkDown && !zoneId.startsWith('dark:')){ $('quest').hidden = false; $('quest').innerHTML = '<b style="color:#ff4f87">기절했어요</b>친구가 다가와 눌러 주면 일어나요 · 잠깐 쉬어요'; }
@@ -1693,7 +1696,8 @@ function renderHud(){
   if (!$('npcPanel').hidden && $('npcPanel').dataset.kind==='npc') renderNpcPanel();
 }
 const wxClockText = () => { const d = new Date(Date.now() + serverOffset + 9*3600000), w = wxNow(); return `${w[1]} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; };
-setInterval(()=>{ const el = $('wxClock'); if (el) el.textContent = wxClockText(); if (me && !admin) snowBtnUpdate(); if (me && !admin){ goalWatch(); renderGoal(); if (me.aucHold) aucSettle(); } }, 20000);
+setInterval(()=>{ const el = $('wxClock'); if (el) el.textContent = wxClockText(); if (me && !admin) snowBtnUpdate(); if (me && !admin){ goalWatch(); renderGoal(); dlvRefresh(); if (me.aucHold) aucSettle(); } }, 20000);
+setInterval(()=>{ if (me && !admin && $('dlvChip') && !$('dlvChip').hidden) renderDlvChip(); }, 1000);
 let toastT = 0;
 function toast(t, key){ const el = $('toast'); el.innerHTML = (key ? iconImg(key, 'tic') : '') + deEmoji(esc(t)); el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(()=>el.style.opacity=0, 2600); }
 function addLog(t, sys){
@@ -1896,6 +1900,7 @@ function playEvents(n, list){
 }
 function npcActions(n){
   const r = relOf(n.id), acts = [...questActions(n)];
+  { const od = dlvFor(n.id); if (od) acts.unshift([`📦 배달하기 (${dlvName(od.k)} ${Math.min(dlvHave(od.k), od.n)}/${od.n})`, ()=>dlvGive(od)]); }
   if ((r.seen || r.ev4)) acts.push(['지난 이야기', ()=>storyReplay(n)]);
   if (n.id==='momo') acts.push(...sellActions(n), ['케이크 탑 쌓기 알바', ()=>mgOpen('stack')]);
   if (n.id==='dandan') acts.push(['요리하기', cookPanel], ['커피 만들기 알바', ()=>mgOpen('coffee')]);
@@ -5258,7 +5263,7 @@ function frameBody(t){
       ...darkEntities(d, t),
       ...mailboxEntities(d, t),
       ...forageEntities(d, t),
-      ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>tag(ctx, n.name, n.x, n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0), dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null)})),
+      ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>{ const ly = n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0); tag(ctx, n.name, n.x, ly, dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null); if (!admin) dlvMark(ctx, n, ly); }})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.adm) return drawOtumo(d, o.x, o.y, o.dir||'down', t/1000, !!o.mv); if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.um && isRain() && snowOutside()) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv); }, label:()=>{ if (o.adm){ otumoLabel(ctx, o.x, o.y); talkBubble(k,o.x,o.y,t); return; } if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{ if (admin) adminMobLabel(ctx, mob); }})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
@@ -5748,6 +5753,72 @@ const MG = {
 // 걷는 동안 위쪽 카드가 반투명해져서 위쪽 길이 잘 보여요 (멈추고 0.6 초 뒤 돌아와요)
 let walkT = 0, walkOn = false;
 function walkFade(t){ if (pos.moving) walkT = t; const on = t - walkT < 600 && !darkDown; if (on !== walkOn){ walkOn = on; document.body.classList.toggle('walking', on); } }
+// ===== 배달 주문서: 주민들이 2 시간마다 하나씩 주문을 보내요 (나만의 주문 · 한 번에 3 개 · 하루 5 건까지 배달) =====
+// 제시간 안에 그 주민에게 가져가면 시세의 2.5 배 + 호감도, 늦으면 반값. 늦은 주문은 6 시간 뒤 사라져요
+const DLV_SLOT = 2 * 3600000, DLV_MAX = 3, DLV_DAY = 5, DLV_PTS = 15;
+const DLV_POOL = [ // [물건, 최소, 최대] — 섬에서 흔히 구하는 것 위주
+  ...['c01','c02','c03','c04','c05','c06','c07','c08','c11','c12'].map(id=>['crop:'+id, 3, 8]),
+  ['fish:*', 2, 5], ['fish:*', 3, 6],
+  ...['o01','o02','o03','o04','o05','o11','o12'].map(id=>['ore:'+id, 3, 6]),
+  ...['d01','d02','d05','d08','d18','d21'].map(id=>['dish:'+id, 1, 3]),
+  ...['g01','g02','g03','g04','g05'].map(id=>['forage:'+id, 3, 6]),
+];
+const dlvName = k => k === 'fish:*' ? '아무 물고기' : itemName(k);
+const dlvHave = k => k === 'fish:*' ? countOf('fish') : invCount(k);
+const dlvNow = () => Date.now() + serverOffset;
+const dlvLeft = o => o.due - dlvNow();
+const dlvTime = ms => { ms = Math.max(0, ms); const h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000), s = Math.floor(ms % 60000 / 1000); return h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`; };
+function dlvDone(){ if (me.dlvDay !== today()){ me.dlvDay = today(); me.dlvN = 0; } return me.dlvN || 0; }
+// 지난 시간만큼 새 주문을 받아요 (주문 내용은 아이디·시간으로 정해져서 새로고침해도 같아요)
+function dlvRefresh(){
+  if (!me || admin) return; const now = dlvNow(), slot = Math.floor(now / DLV_SLOT);
+  me.orders = (me.orders || []).filter(o => o && NPC[o.npc] && now < o.due + 6 * 3600000);
+  if (me.orderSlot == null) me.orderSlot = slot - 1;
+  let changed = false;
+  for (let sl = Math.max(me.orderSlot + 1, slot - DLV_MAX + 1); sl <= slot; sl++){
+    if (me.orders.length >= DLV_MAX || dlvDone() >= DLV_DAY) break;
+    const r = seeded(hash(uid + '|dlv|' + sl)), npcs = NPCS.filter(n => !me.orders.some(o => o.npc === n.id)), n = npcs[Math.floor(r() * npcs.length)];
+    const [k, a, b] = DLV_POOL[Math.floor(r() * DLV_POOL.length)], cnt = a + Math.floor(r() * (b - a + 1)), at = Math.max(sl * DLV_SLOT, now - 5 * 60000);
+    const each = k === 'fish:*' ? 25 : itemPrice(k), reward = Math.max(300, Math.round(each * cnt * 2.5 / 10) * 10 + 100);
+    me.orders.push({id:'o' + sl, npc:n.id, k, n:cnt, at, due:at + (60 + Math.floor(r() * 4) * 20) * 60000, reward}); changed = true;
+  }
+  me.orderSlot = slot; if (changed){ saveMe(); toast('📦 새 배달 주문이 왔어요! 아래 배달 칸을 눌러 봐요'); }
+  renderDlvChip();
+}
+const dlvFor = id => (me && me.orders || []).find(o => o.npc === id);
+function dlvGive(o){
+  const n = NPC[o.npc]; if (!n || !me.orders.includes(o)) return;
+  if (dlvHave(o.k) < o.n) return toast(`${dlvName(o.k)} ${o.n} 개가 필요해요 (지금 ${dlvHave(o.k)} 개)`);
+  if (dlvDone() >= DLV_DAY) return toast(`오늘 배달은 ${DLV_DAY} 건까지예요 · 내일 또 해요`);
+  if (o.k === 'fish:*'){ let left = o.n; for (const [fk, c] of anyFishKeys()){ const t = Math.min(left, c); invAdd(fk, -t); left -= t; if (!left) break; } } else invAdd(o.k, -o.n);
+  const onTime = dlvLeft(o) > 0, g = onTime ? o.reward : Math.round(o.reward / 2 / 10) * 10;
+  me.inv.gold += g; me.earned = (me.earned||0) + g; me.dlvN = dlvDone() + 1; me.orders = me.orders.filter(x => x !== o);
+  if (onTime) addPts(n, DLV_PTS); stat('deliveries'); syncStats(); saveMe(true); renderHud();
+  say(title(n), onTime ? `와, 딱 맞춰 왔네! ${dlvName(o.k)} ${o.n} 개 고마워. 이건 수고비야!` : `조금 늦었지만... 그래도 고마워. ${dlvName(o.k)} 잘 쓸게.`, npcActions(n), `배달 완료 · +${g.toLocaleString()} G${onTime ? ` · 호감도 +${DLV_PTS}` : ' (늦어서 반값)'}`);
+}
+function dlvPanel(){
+  dlvRefresh(); const list = [...(me.orders || [])].sort((a, b) => a.due - b.due);
+  openPanel(`📦 배달 주문서 · 오늘 ${dlvDone()}/${DLV_DAY} 건`, `<p class="mnote" style="margin-top:0">주문한 주민에게 가져가서 말을 걸면 배달할 수 있어요. 제시간이면 수고비 + 호감도, 늦으면 반값이에요. 주문은 2 시간마다 하나씩 와요.</p>` +
+    (list.length ? list.map(o => { const n = NPC[o.npc], h = dlvHave(o.k), late = dlvLeft(o) <= 0;
+      return `<button class="np" data-id="${o.id}"><span class="np-name">${o.k === 'fish:*' ? iconImg('fish:f19') : iconImg(o.k)} ${esc(dlvName(o.k))} ${Math.min(h, o.n)}/${o.n} <small>${esc(n.name)} · ${esc(ZONES[n.zone]?.name || '')}</small></span><span class="np-place" style="${late ? 'color:#d0405f' : ''}">${late ? '늦었어요 · 반값' : '⏱ ' + dlvTime(dlvLeft(o))}</span><span class="np-day">${h >= o.n ? '✅ 다 모았어요 · 가져가요' : '모으는 중'} · 수고비 ${(late ? Math.round(o.reward/2/10)*10 : o.reward).toLocaleString()} G</span></button>`; }).join('')
+      : `<p class="mnote">지금은 주문이 없어요. ${dlvDone() >= DLV_DAY ? '오늘 배달을 다 했어요! 내일 또 와요.' : '다음 주문은 ' + dlvTime((Math.floor(dlvNow() / DLV_SLOT) + 1) * DLV_SLOT - dlvNow()) + ' 뒤에 와요.'}</p>`),
+    b => { const o = me.orders.find(x => x.id === b.dataset.id); if (!o) return; const n = NPC[o.npc];
+      if (zoneId === n.zone){ $('npcPanel').hidden = true; target = {x:n.x, y:n.y + 30, act:()=>talkTo(n), mark:performance.now()}; toast(`${n.name}에게 걸어가요`); }
+      else say('배달', `${n.name}은(는) ${ZONES[n.zone]?.name || ''}에 있어요. 지도로 가 볼까요?`, [['지도 열기', ()=>{ closeTalk(); $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }], ['나중에', closeTalk]]); });
+}
+// 아래 배달 칸: 가장 급한 주문을 늘 보여 줘요
+function renderDlvChip(){
+  let el = $('dlvChip'); const list = me && !admin ? [...(me.orders || [])].sort((a, b) => a.due - b.due) : [];
+  if (!list.length){ if (el) el.hidden = true; return; }
+  if (!el){ el = document.createElement('button'); el.id = 'dlvChip'; document.body.appendChild(el); el.onclick = dlvPanel; }
+  const o = list[0], ready = list.filter(x => dlvHave(x.k) >= x.n).length;
+  el.hidden = false; el.innerHTML = `${ui('box','ui')}배달 ${list.length} 건${ready ? ` · 준비 ${ready}` : ''} · ${esc(NPC[o.npc].name)} ${dlvLeft(o) > 0 ? dlvTime(dlvLeft(o)) : '늦음'}`;
+}
+// 주문한 주민 머리 위 📦 표시
+function dlvMark(c, n, y){ const o = dlvFor(n.id); if (!o) return; const ready = dlvHave(o.k) >= o.n;
+  c.save(); c.font = 'bold 13px "Dongle",sans-serif'; const s = ready ? '📦 배달 왔어요?' : '📦 주문', w = c.measureText(s).width + 14, by = y - 24;
+  c.fillStyle = ready ? '#d7f5e2' : '#fff4d6'; c.beginPath(); c.roundRect(n.x - w/2, by - 14, w, 19, 9); c.fill(); c.textAlign = 'center'; c.fillStyle = '#5a3346'; c.fillText(s, n.x, by); c.restore(); }
+
 // ===== 오늘의 섬 목표: 다 같이 하나의 목표, 달성하면 기여한 사람 모두 8,000 G =====
 // 목표는 한국 시간 자정에 바뀌어요. 각자 기여한 수는 goals/<날짜>/<uid> 에 쌓아요
 const GOALS = [
