@@ -5728,7 +5728,9 @@ const MG_INFO = {
 };
 let mg = null, mgImgs = {};
 const mgImg = k => { if (!mgImgs[k]){ const im = new Image(); im.src = iconURL(artIdOf(k)); mgImgs[k] = im; } return mgImgs[k]; };
-const mgCount = id => { if (me.mgDay !== today()){ me.mgDay = today(); me.mgN = {}; } return (me.mgN || (me.mgN = {}))[id] || 0; };
+const mgCount = id => { if (me.mgDay !== today()){ me.mgDay = today(); me.mgN = {}; }
+  if (me.mgFix !== 'coffee1'){ me.mgFix = 'coffee1'; if (me.mgN) me.mgN.coffee = 0; } // 커피 만들기 바늘 오류 보상: 모두 한 번씩 오늘 커피 도전 횟수를 0 으로
+  return (me.mgN || (me.mgN = {}))[id] || 0; };
 function mgOpen(id){
   closeTalk(); $('npcPanel').hidden = true; for (const k in keys) keys[k] = false; target = null;
   let box = $('mgBox'); if (!box){ box = document.createElement('div'); box.id = 'mgBox'; document.body.appendChild(box); }
