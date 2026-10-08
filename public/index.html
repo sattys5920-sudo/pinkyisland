@@ -3325,7 +3325,7 @@ function drawBazaarGround(c, d, z){
 }
 function drawBazaarTop(c, d){
   BZ_PLOTS.forEach((P_, i) => { const pl = bazaar.plots?.[i]; if (pl && SHOP_TYPES_OK(pl.type)){ c.save(); c.translate(P_.x, P_.gy); c.scale(.9, .9); c.translate(-P_.x, -P_.gy); drawShop(d, pl.type, P_.x, P_.gy, String(pl.name || '').slice(0, 10)); c.restore();
-      const o = bzOwnerOf(pl.uid), lv = o?.shop ? shopLv(o.shop) : 1; c.font = 'bold 15px "Maple",sans-serif'; c.textAlign = 'center'; const t = `${o?.nick || '?'} · Lv${lv}${o?.shop?.open ? ' · 영업 중' : ''}`, w = c.measureText(t).width + 18; c.fillStyle = 'rgba(255,253,253,.92)'; c.beginPath(); c.roundRect(P_.x - w/2, P_.gy + 6, w, 22, 11); c.fill(); c.fillStyle = o?.shop?.open ? '#e0507a' : '#7a5a6a'; c.fillText(t, P_.x, P_.gy + 22); }
+      const o = bzOwnerOf(pl.uid), lv = o?.shop ? shopLv(o.shop) : 1; c.font = 'bold 15px "Maple",sans-serif'; c.textAlign = 'center'; const t = `${o?.nick || '?'} · Lv${lv}${o?.shop?.open ? ' · 영업 중' : ''}`, w = c.measureText(t).width + 18; c.fillStyle = 'rgba(255,253,253,.92)'; c.beginPath(); c.roundRect(P_.x - w/2, P_.gy + 6, w, 22, 11); c.fill(); c.fillStyle = o?.shop?.open ? '#e0507a' : '#7a5a6a'; c.fillText(t, P_.x, P_.gy + 22); bzShelf(c, d, P_.x + 128, P_.gy, pl.type, o?.shop ? stockN(shopProject(o.shop, Date.now() + serverOffset).sh) : 0); }
     else drawLot(d, P_.x, P_.gy, i + 1); });
   // 식료품 노점
   const {x, gy} = BZ_STALL; c.save(); c.translate(x, gy); c.scale(.8, .8); c.translate(-x, -gy);
@@ -3336,6 +3336,15 @@ function drawBazaarTop(c, d){
   // 게시판
   const rk = bzRanking(); bzBoard(d, BZ_BOARDS[0].x, BZ_BOARDS[0].gy, '이번 주 맛집', rk.length ? rk.slice(0, 3).map((p, i) => `${i+1} ${p.shop.name}`) : ['아직 판매가 없어요'], '#e2486a');
   const rq = Object.values(bazaar.reqs || {}).filter(r => r && !r.done); bzBoard(d, BZ_BOARDS[1].x, BZ_BOARDS[1].gy, '재료 의뢰', rq.length ? rq.slice(0, 3).map(r => `${ingName(r.key)} ${r.n}개`) : ['의뢰가 없어요'], '#4f8a4a');
+}
+// 가게 옆 진열대: 진열한 개수만큼 메뉴가 쌓여 보여요 (누구 눈에나 똑같이)
+const bzShopImg = {};
+function bzShelf(c, d, x, gy, type, n){
+  d.rr(x-26, gy-34, 52, 10, 4, '#c98e5b'); d.rr(x-22, gy-24, 6, 24, 3, '#9a6a45'); d.rr(x+16, gy-24, 6, 24, 3, '#9a6a45');
+  if (!n) { c.font = 'bold 12px "Maple",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#a08a7a'; c.fillText('비었어요', x, gy-40); return; }
+  let im = bzShopImg[type]; if (!im){ im = bzShopImg[type] = new Image(); im.onload = () => { if (zoneId === 'bazaar') staticSig = ''; }; im.src = shopIconURL(type); }
+  const k = Math.min(3, n); if (im.complete && im.naturalWidth) for (let j = 0; j < k; j++) c.drawImage(im, k === 1 ? x - 13 : x - 26 + j*26/(k-1), gy - 66 - (j%2)*6, 26, 26);
+  const t = '×' + n; c.font = 'bold 13px "Maple",sans-serif'; c.textAlign = 'center'; const w = c.measureText(t).width + 12; c.fillStyle = '#e0507a'; c.beginPath(); c.roundRect(x + 10, gy - 80, w, 18, 9); c.fill(); c.fillStyle = '#fff'; c.fillText(t, x + 10 + w/2, gy - 66);
 }
 const SHOP_TYPES_OK = t => Number.isInteger(t) && t >= 0 && t < 12;
 const bzStapleImg = {};
@@ -3398,8 +3407,8 @@ function shopPanel(){
     <div class="bz-box"><b>진열대 ${n}/${cap}</b> · ${sh.open ? `<span class="bz-on">영업 중</span> · 다음 손님까지 약 ${Math.max(1, Math.round((nextSaleMs(sh) - (Date.now() + serverOffset - (sh.lastAt||0)))/60000))}분` : '쉬는 중'}<div class="bz-stock">${stock}</div>
       <div class="bz-acts"><button class="btn" id="bzOpenBtn" ${!n && !sh.open ? 'disabled' : ''}>${sh.open ? '장사 쉬기' : '장사 시작!'}</button><button class="btn ghost" id="bzTill" ${(sh.till||0) > 0 ? '' : 'disabled'}>수금하기 ${(sh.till||0).toLocaleString()} G</button></div></div>
     <p class="mnote">메뉴를 고르고 만들기를 누르면 만드는 과정이 시작돼요. 재료는 끝까지 만들었을 때 빠져요. PERFECT는 1.5배, 아쉬움은 반값에 팔려요. 밀가루·쌀·우유·달걀·설탕은 시장 노점에서 사요.</p>${rows}`, shopPanel);
-  $('bzOpenBtn').onclick = () => { shopSettle(); sh.open = sh.open ? 0 : 1; sh.lastAt = Date.now() + serverOffset; saveMe(true); staticSig = ''; toast(sh.open ? '장사 시작! 자리를 비워도 진열대 물건이 팔려요' : '장사를 쉬어요'); shopPanel(); };
-  $('bzTill').onclick = () => { shopSettle(); const g = sh.till || 0; if (!g) return; sh.till = 0; me.inv.gold += g; saveMe(true); renderHud(); toast(`${g.toLocaleString()} G를 수금했어요`); setExpr('happy', 2000); shopPanel(); };
+  $('bzOpenBtn').onclick = () => { shopSettle(); const sh = me.shop; sh.open = sh.open ? 0 : 1; sh.lastAt = Date.now() + serverOffset; saveMe(true); staticSig = ''; toast(sh.open ? '장사 시작! 자리를 비워도 진열대 물건이 팔려요' : '장사를 쉬어요'); shopPanel(); };
+  $('bzTill').onclick = () => { shopSettle(); const sh = me.shop, g = sh.till || 0; if (!g) return; sh.till = 0; me.inv.gold += g; saveMe(true); renderHud(); toast(`${g.toLocaleString()} G를 수금했어요`); setExpr('happy', 2000); shopPanel(); };
   document.querySelectorAll('.bz-make button').forEach(b => b.onclick = () => bzMake(+b.dataset.r, +b.dataset.n));
 }
 function bzMake(r, n){
@@ -3410,17 +3419,19 @@ function bzMake(r, n){
   openKitchen({shop:sh.type, rec:r, n, onClose: shopPanel, onDone: score => {
     if (!me.shop || !canMake(rec, n)){ toast('재료가 모자라서 진열하지 못했어요'); return shopPanel(); }
     for (const [k, q] of rec.need) ingTake(k, q*n);
-    shopSettle(); sh.stock = sh.stock || []; const g = gradeIdx(score), last = sh.stock[sh.stock.length - 1];
+    shopSettle(); const sh = me.shop; sh.stock = sh.stock || []; const g = gradeIdx(score), last = sh.stock[sh.stock.length - 1];
     if (last && last.r === r && last.g === g) last.n += n; else sh.stock.push({r, g, n});
-    sh.made = (sh.made || 0) + n; gainExp(2*n); saveMe(true); toast(`${rec.n} ${n}개를 진열했어요 (${GNAME[g]})`); shopPanel();
+    sh.made = (sh.made || 0) + n; gainExp(2*n); staticSig = ''; saveMe(true); toast(`${rec.n} ${n}개를 진열했어요 (${GNAME[g]})`); shopPanel();
   }});
 }
 function visitPanel(i){
-  const pl = bazaar.plots[i], o = bzOwnerOf(pl.uid), sh = o?.shop, m = MENU[pl.type];
+  const pl = bazaar.plots[i], o = bzOwnerOf(pl.uid), m = MENU[pl.type];
   if (!m) return;
+  const sh = o?.shop ? (pl.uid === uid ? (shopSettle(), me.shop) : shopProject(o.shop, Date.now() + serverOffset).sh) : null; // 주인이 자리를 비운 동안 팔린 것까지 셈해서 보여 줘요
+  const stock = (sh?.stock || []).map(s => `<span class="bz-st g${s.g}">${recOf(sh, s.r).n} ×${s.n} <i>${GNAME[s.g]}</i></span>`).join('');
   const lv = sh ? shopLv(sh) : 1;
   bzOpen(`${esc(pl.name)} · ${m.name}`, `<div class="bz-head"><img src="${shopIconURL(pl.type)}" alt=""><div><b>${esc(o?.nick || '?')}</b> 님의 가게 · Lv${lv}<br><small>${sh?.open ? `영업 중 · 진열 ${stockN(sh)}개` : '쉬는 중'} · 누적 판매 ${(sh?.sold||0).toLocaleString()}개</small></div></div>
-    <p class="mnote">팔고 있는 메뉴</p>${m.r.slice(0, lv).map((r, k) => `<div class="bz-rec"><div class="bz-rh"><span class="bz-lv">Lv${k+1}</span><b>${r.n}</b><span class="bz-pr">${r.price.toLocaleString()} G</span></div></div>`).join('')}`, () => visitPanel(i));
+    ${stock ? `<div class="bz-box"><b>진열대</b><div class="bz-stock">${stock}</div></div>` : ''}<p class="mnote">팔고 있는 메뉴</p>${m.r.slice(0, lv).map((r, k) => `<div class="bz-rec"><div class="bz-rh"><span class="bz-lv">Lv${k+1}</span><b>${r.n}</b><span class="bz-pr">${r.price.toLocaleString()} G</span></div></div>`).join('')}`, () => visitPanel(i));
 }
 function groceryPanel(){
   const row = k => `<div class="bz-rec"><div class="bz-rh"><img class="ic" src="${stapleIconURL(k)}" alt=""><b>${STAPLES[k][0]}</b><small>가방 ${invCount('staple:'+k)}개</small><span class="bz-pr">${STAPLES[k][1]} G</span></div><div class="bz-make">${[1, 5, 10, 30].map(c => `<button class="mini" data-k="${k}" data-n="${c}" ${(me.inv.gold|0) >= STAPLES[k][1]*c ? '' : 'disabled'}>${c}개 사기</button>`).join('')}</div></div>`;
@@ -5677,7 +5688,7 @@ function drawZonePlace(d, z, p){
 function buildStatic(){
   const z = Z(), T = THEME[z.theme];
   const s = Math.min(1.6, view.dpr*view.zoom);
-  const sig = zoneId+'|'+s+'|'+(zoneId==='bazaar' ? JSON.stringify(bazaar.plots||{})+'|'+JSON.stringify(bazaar.reqs||{}).length+'|'+Object.values({...players, [uid]:me}).map(p=>p&&p.shop ? p.shop.name+shopLv(p.shop)+(p.shop.open?1:0)+(p.shop.wkRev||0) : '').join(',') : zoneId==='home' ? Object.entries(players).map(([k,p])=>k+p.lot+p.roof+p.nick+houseOf(k===uid ? me : p).lv).join(',') : z.house ? JSON.stringify(houseOf(z.house===uid ? me : players[z.house])) : '');
+  const sig = zoneId+'|'+s+'|'+(zoneId==='bazaar' ? JSON.stringify(bazaar.plots||{})+'|'+JSON.stringify(bazaar.reqs||{}).length+'|'+Object.values({...players, [uid]:me}).map(p=>p&&p.shop ? p.shop.name+shopLv(p.shop)+(p.shop.open?1:0)+(p.shop.wkRev||0)+'/'+stockN(p.shop) : '').join(',')+'|'+Math.floor(Date.now()/60000) : zoneId==='home' ? Object.entries(players).map(([k,p])=>k+p.lot+p.roof+p.nick+houseOf(k===uid ? me : p).lv).join(',') : z.house ? JSON.stringify(houseOf(z.house===uid ? me : players[z.house])) : '');
   if (sig===staticSig && staticLayer) return;
   staticSig = sig;
   staticLayer = staticLayer || document.createElement('canvas');
