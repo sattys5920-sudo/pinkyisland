@@ -344,6 +344,23 @@ body.typing #chatin{background:#fff}
 /* 관리자 CCTV */
 #adminUi{position:fixed;inset:0;pointer-events:none;z-index:30;font-size:20px;color:#f4eef2}
 #adminUi button{pointer-events:auto;font:inherit;cursor:pointer}
+#npcPanel .bz-types{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:6px 0}
+#npcPanel .bz-type{border:2px solid transparent;background:#fff;border-radius:14px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:16px;cursor:pointer}
+#npcPanel .bz-type img{width:40px;height:40px}#npcPanel .bz-type small{font-size:12px;color:var(--soft)}
+#npcPanel .bz-type[aria-pressed="true"]{border-color:var(--pinkd);background:#fff0f5}#npcPanel .bz-type:disabled{opacity:.45;cursor:default}
+#npcPanel .bz-name{display:flex;align-items:center;gap:8px;margin:8px 2px;font-size:17px}#npcPanel .bz-name input{flex:1;min-width:0;font:inherit;padding:6px 10px;border-radius:12px;border:2px solid #f3dbe5}
+#npcPanel .bz-head{display:flex;gap:10px;align-items:center;margin:4px 2px 8px;font-size:17px}#npcPanel .bz-head img{width:52px;height:52px}#npcPanel .bz-head small{color:var(--soft);font-size:14px}
+#npcPanel .bz-bar{height:8px;border-radius:4px;background:#f3e6ec;margin:4px 0;overflow:hidden}#npcPanel .bz-bar i{display:block;height:100%;background:#ffc23f;border-radius:4px}
+#npcPanel .bz-box{background:#fff6f9;border-radius:14px;padding:8px 10px;margin:6px 0;font-size:16px}
+#npcPanel .bz-stock{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}#npcPanel .bz-st{background:#fff;border-radius:10px;padding:2px 8px;font-size:14px}#npcPanel .bz-st i{font-style:normal;font-size:11px;color:#a297b4}#npcPanel .bz-st.g0 i{color:#e2486a}#npcPanel .bz-st.g1 i{color:#e9a93a}
+#npcPanel .bz-acts{display:flex;gap:6px}#npcPanel .bz-acts .btn{flex:1;font-size:16px;padding:8px}
+#npcPanel .bz-on{color:#e0507a}
+#npcPanel .bz-rec{background:#fff;border-radius:14px;padding:7px 10px;margin:5px 0}#npcPanel .bz-rec.lock{opacity:.6}
+#npcPanel .bz-rh{display:flex;align-items:center;gap:6px;font-size:16px}#npcPanel .bz-rh small{color:var(--soft);font-size:13px}#npcPanel .bz-pr{margin-left:auto;color:#d08a1a;font-size:15px}
+#npcPanel .bz-lv{background:#fbdbe5;color:#c9657a;border-radius:8px;padding:0 6px;font-size:13px}
+#npcPanel .bz-ing{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;font-size:13px}#npcPanel .bz-ing span{display:inline-flex;align-items:center;gap:2px}#npcPanel .bz-ing .ok{color:#4f8a4a}#npcPanel .bz-ing .no{color:#e2486a}#npcPanel .bz-ing .ic{width:20px;height:20px}
+#npcPanel .bz-make{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}#npcPanel .bz-lockt{color:var(--soft);font-size:13px}
+#npcPanel .bz-req{display:flex;gap:6px;margin:6px 0}#npcPanel .bz-req select{font:inherit;border-radius:10px;border:2px solid #f3dbe5;padding:2px 6px;min-width:0}
 #mgBox{position:fixed;inset:0;z-index:70;background:rgba(60,30,50,.45);display:grid;place-items:center;padding:10px}
 #mgBox .mg-card{width:min(400px,100%);max-height:100%;overflow:auto;background:#fff8fb;border-radius:22px;border:3px solid #ffd3e4;box-shadow:0 6px 0 #f1c6d8;padding:10px 12px 12px;color:#5a3346}
 #mgBox .mg-top{display:flex;align-items:center;gap:8px;font-size:19px;margin-bottom:6px}#mgBox .mg-top small{margin-left:auto;color:#b07a92;font-size:14px}
@@ -495,6 +512,9 @@ import { ART_PART as ART_CROPS } from './art/crops.js';
 import { ART_PART as ART_ORES } from './art/ores.js';
 import { ART_PART as ART_MON } from './art/monsters.js';
 import { ART_PART as ART_DISH } from './art/dishes.js';
+import { openKitchen, gradeIdx, shopIconURL, stapleIconURL, MENU } from './kitchen.js';
+import { LV_SOLD, STAPLES } from './shopdata.js';
+import { drawShop, drawLot } from './art/shops.js';
 const P = {grass:'#b5e6a3',grass2:'#9fdb8c',path:'#ffe0bf',water:'#9fd9ff',waterHi:'#e8f7ff',cream:'#fff0e0',pink:'#ffa6c9',choco:'#9a5a45',cherry:'#ff5a78',candyA:'#ffa6cf',candyB:'#fff09a',stick:'#fff',soil:'#d69a70',berry:'#ff5a78',leaf:'#6cc46a',rock:'#c3b8d2',gem:'#bf8cff',dust:'#bdb5c9',blush:'#ffadc4',eye:'#5b3345',stitch:'#ffffff',bubble:'#fff',text:'#8a4b63'};
 // 캐릭터 만들기: 피부·머리·표정과 기본 옷(상의 5 · 하의 5 · 신발 3)을 색까지 골라요. 기본 옷은 다섯 색 모두 무료
 const BASIC = cat => Object.keys(CH[cat]).filter(id => CH.FREE.includes(id));
@@ -675,8 +695,10 @@ const ZONES = {
   workshop:  {name:'공방 거리', theme:'grass', W:1600, H:1100, grid:[2,3], places:[
     {kind:'house', x:520, y:520, roof:'#c98e5b', label:'보리 공방', icon:'🔨'},
     {kind:'house', x:1100, y:520, roof:'#ffb3c6', label:'반려동물 보호소', icon:'💞', shelter:true},
-    {kind:'logs', x:820, y:860},
+    {kind:'logs', x:1050, y:900},
   ], trees:[[260,220],[1340,220],[1300,880],[300,900]]},
+  // 핑크 시장: 친구들 가게 터 12 곳 (크기는 줄이지 않아요)
+  bazaar:    {name:'핑크 시장', theme:'grass', W:1800, H:1520, grid:[2,4], places:[], trees:[], lamps:[]},
   minegate:  {name:'광산 입구', theme:'grass', W:1600, H:1100, grid:[1,3], places:[
     {kind:'mine'},
     {kind:'sign', x:1060, y:420, text:'바위를 눌러 캐요'},
@@ -705,9 +727,11 @@ const ZONES = {
 };
 { const at = {}; for (const [id,z] of Object.entries(ZONES)) at[z.grid] = id;
   for (const z of Object.values(ZONES)){ const [x,y] = z.grid; z.exits = {}; for (const [k,dx,dy] of [['n',0,-1],['s',0,1],['w',-1,0],['e',1,0]]){ const n = at[[x+dx,y+dy]]; if (n) z.exits[k] = n; } } }
+// 핑크 시장은 공방 거리(북쪽)로만 드나들어요. 옆칸 동굴과는 이어지지 않아요
+delete ZONES.bazaar.exits.w; delete ZONES.cave.exits.e;
 // 넓기만 하고 빈 곳이 많던 구역을 3/4 크기로 줄여요 (집터는 12 집이 들어가야 해서 그대로). 위 숫자는 줄이기 전 기준
 const ZK = 0.75, zk = v => Math.round(v*ZK);
-for (const [id,z] of Object.entries(ZONES)){ if (id==='home') continue; z.k = ZK; z.W = zk(z.W); z.H = zk(z.H); z.trees = z.trees.map(([x,y])=>[zk(x), zk(y)]); for (const p of z.places){ if (p.x!=null){ p.x = zk(p.x); p.y = zk(p.y); } if (p.rx){ p.rx = zk(p.rx); p.ry = zk(p.ry); } } }
+for (const [id,z] of Object.entries(ZONES)){ if (id==='home' || id==='bazaar') continue; z.k = ZK; z.W = zk(z.W); z.H = zk(z.H); z.trees = z.trees.map(([x,y])=>[zk(x), zk(y)]); for (const p of z.places){ if (p.x!=null){ p.x = zk(p.x); p.y = zk(p.y); } if (p.rx){ p.rx = zk(p.rx); p.ry = zk(p.ry); } } }
 const DIRS = {n:'북', s:'남', e:'동', w:'서'};
 const THEME = {
   grass:{ground:'#b5e6a3', ground2:'#9fdb8c', path:'#ffe0bf', edge:'#7cc46a'},
@@ -864,6 +888,7 @@ function rebuildObstacles(){
     if (p.kind==='mine'){ o.ells.push({x:zk(520),y:zk(900),rx:zk(220),ry:zk(150)}, {x:zk(1080),y:zk(900),rx:zk(220),ry:zk(150)}); }
     if (p.kind==='logs') o.rects.push({x:p.x-60, y:p.y-30, w:120, h:40});
   }
+  if (zoneId==='bazaar') bazaarObstacles(o);
   if (zoneId==='home') for (const p of Object.values(players)) if (p.lot!=null){ const L=LOTS[p.lot]; o.rects.push({x:L.x-54,y:L.y-106,w:108,h:108}); const [mx, my] = mailboxPos(p.lot); o.circles.push({x:mx, y:my-2, r:9}); }
   // 남의 울타리(빈 집터 포함)는 못 들어가요. 내 울타리만 드나들 수 있어요
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (me && me.lot===i) return; if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return; o.rects.push({x:L.x-FENCE.w/2, y:L.y+FENCE.top-6, w:FENCE.w, h:FENCE.h+6}); });
@@ -921,6 +946,7 @@ function enterZone(id, from, x, y){
   else if (from==='s'){ pos.x = z.W/2; pos.y = z.H-M-30; }
   else if (from==='w'){ pos.x = M+40; pos.y = z.H/2; }
   else if (from==='e'){ pos.x = z.W-M-40; pos.y = z.H/2; }
+  if (id==='bazaar' && me){ bzPrepImages(); shopSettle(); }
   rebuildObstacles(); fadeT = performance.now();
   if (blocked(pos.x, pos.y)){ const [fx_, fy_] = freeSpot(pos.x, pos.y); pos.x = fx_; pos.y = fy_; } // 예전 자리가 막혀 있거나 구역 밖이면 가까운 빈자리로
   if (me){ chatZone(); renderDecor(); me.zone = id.startsWith('house:') ? 'home' : id.startsWith('dark:') ? (darkDoorZone(id.slice(5)) || 'village') : id; me.zx = Math.round(id.startsWith('dark:') ? darkDoorOf(id.slice(5))[0] : pos.x); me.zy = Math.round(id.startsWith('dark:') ? darkDoorOf(id.slice(5))[1] + 40 : pos.y); saveMe(); renderHud(); if (!$('mapPanel').hidden) renderMap(); }
@@ -1274,7 +1300,7 @@ function soloNet(){
     chatLog: cb => { st.chatCb = cb; cb(st.chat||{}); },
     chatZone: (z, cb) => { st.zone = z; st.zoneCb = cb; cb(Object.fromEntries(Object.entries(st.chat||{}).filter(([,v])=>v.z===z).slice(-CHAT_KEEP))); return ()=>{ st.zoneCb = null; }; },
     chatTrim: async () => {},
-    wipeAll: async withChat => { st.players = {}; st.roofs = {}; st.market = {}; if (withChat){ st.chat = {}; st.chatCb && st.chatCb({}); } onPlayers({}); onRoofs({}); onMarket({}); },
+    wipeAll: async withChat => { st.players = {}; st.roofs = {}; st.market = {}; st.bz = {}; onBazaar({}); if (withChat){ st.chat = {}; st.chatCb && st.chatCb({}); } onPlayers({}); onRoofs({}); onMarket({}); },
     contestSubmit: async (w, size) => { contestBoard = [{nick:me.nick, size}]; },
     mailSend: async () => { throw new Error('solo'); },
     letterSend: async (to, l) => { st.letters = st.letters || {}; const id = 'l'+Date.now()+Math.random().toString(36).slice(2,6); (st.letters[to] = st.letters[to] || {})[id] = {...l, at:Date.now()}; st.out = {...(st.out||{}), [id]: {...l, to, at:Date.now()}}; onLettersOut(st.out); if (to===uid) onLetters(st.letters[uid]); st.adminCb && st.adminCb(st.letters); },
@@ -1297,7 +1323,12 @@ function soloNet(){
     balloonWatch: (ev, cb) => { st.balCb = cb; cb(structuredClone(st.bal?.[ev] || {})); return () => { st.balCb = null; }; },
     darkImgSet: async (npc, pid, img, at) => { ((st.dimg = st.dimg || {})[npc] = st.dimg[npc] || {})[pid] = img ? {d:img, at} : null; const o = ((st.dq = st.dq || {})[npc] = st.dq[npc] || {}); if (img) o[pid] = {...(o[pid] || {}), im:at}; else if (o[pid]) delete o[pid].im; onDarkQ(structuredClone(st.dq)); },
     darkImg: async (npc, pid) => st.dimg?.[npc]?.[pid]?.d || '',
-    listen(){ setTimeout(()=>{ onRoofs({}); onPlayers({}); onBoss(null); }); },
+    bazaarClaim: async (i, t, name) => { const b = st.bz || (st.bz = {}); b.plots = b.plots || {}; b.types = b.types || {}; if (b.plots[i] || b.types[t]) return false; b.plots[i] = {uid, type:t, name, at:Date.now()}; b.types[t] = uid; (b.owners = b.owners || {})[uid] = i; setTimeout(()=>onBazaar(structuredClone(b))); return true; },
+    bazaarReq: async r => { const b = st.bz || (st.bz = {}); (b.reqs = b.reqs || {})['q'+Date.now()] = {...r, at:Date.now()}; setTimeout(()=>onBazaar(structuredClone(b))); },
+    bazaarDeliver: async id => { const r = st.bz?.reqs?.[id]; if (!r || r.done) return false; r.done = {uid, nick:me.nick, at:Date.now()}; setTimeout(()=>onBazaar(structuredClone(st.bz))); return true; },
+    bazaarTake: async id => { const r = st.bz?.reqs?.[id]; if (!r || !r.done || r.uid !== uid) return false; delete st.bz.reqs[id]; setTimeout(()=>onBazaar(structuredClone(st.bz))); return true; },
+    bazaarCancel: async id => { const r = st.bz?.reqs?.[id]; if (!r || r.done || r.uid !== uid) return false; delete st.bz.reqs[id]; setTimeout(()=>onBazaar(structuredClone(st.bz))); return true; },
+    listen(){ setTimeout(()=>{ onRoofs({}); onPlayers({}); onBoss(null); onBazaar(st.bz || {}); }); },
   };
 }
 function firebaseNet(){
@@ -1338,7 +1369,7 @@ function firebaseNet(){
     // 입주한 뒤 남아 있는 내 옛 선점(다른 지붕·집터)을 풀어 줘요
     cleanupClaims: async (roof, lot) => { for (const [kind, mine] of [['roofs', roof], ['lots', lot]]){ try { const v = (await F.get(F.ref(db, kind))).val() || {}; for (const [k,c] of Object.entries(v)) if (c && c.uid===uid && +k !== mine) await F.remove(F.ref(db, kind+'/'+k)).catch(()=>{}); } catch(e){} } },
     adminCapPts: (ups) => F.update(F.ref(db), ups),
-    adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ['snowmen/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
+    adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ...bzRemovePaths(id), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ['snowmen/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
     sessionClaim: sid => { const r = F.ref(db, 'sessions/'+uid); F.set(r, sid).catch(()=>{}); F.onValue(r, s=>{ const v = s.val(); if (v && v !== sid) onKicked(); }); },
     presence: p => F.set(meRef, p),
     presenceRemove: () => F.remove(meRef).catch(()=>{}),
@@ -1350,7 +1381,7 @@ function firebaseNet(){
     // 장소마다 100 줄만 남기고 오래된 줄은 지워요
     chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, mobs:null, darkRooms:null, market:null, boss:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -1374,8 +1405,14 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'market'), s=>onMarket(s.val()));
       F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
       F.onValue(F.ref(db, 'auction'), s=>onAuction(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'bazaar'), s=>onBazaar(s.val()), ()=>{});
     },
     setWorld: v => F.update(F.ref(db, 'world'), v),
+    bazaarClaim: async (i, t, name) => { try { await F.update(F.ref(db, 'bazaar'), {['plots/'+i]: {uid, type:t, name, at:F.serverTimestamp()}, ['types/'+t]: uid, ['owners/'+uid]: i}); return true; } catch(e){ return false; } },
+    bazaarReq: r => F.push(F.ref(db, 'bazaar/reqs'), {...r, at:F.serverTimestamp()}),
+    bazaarDeliver: async id => { try { const r = await F.runTransaction(F.ref(db, 'bazaar/reqs/'+id), cur => (cur && !cur.done && cur.uid !== uid) ? {...cur, done:{uid, nick:String(me.nick).slice(0,16), at:Date.now() + serverOffset}} : undefined, {applyLocally:false}); return r.committed && r.snapshot.val()?.done?.uid === uid; } catch(e){ return false; } },
+    bazaarTake: async id => { try { const r = await F.runTransaction(F.ref(db, 'bazaar/reqs/'+id), cur => (cur && cur.uid === uid && cur.done) ? null : undefined, {applyLocally:false}); return r.committed && !r.snapshot.exists(); } catch(e){ return false; } },
+    bazaarCancel: async id => { try { const r = await F.runTransaction(F.ref(db, 'bazaar/reqs/'+id), cur => (cur && cur.uid === uid && !cur.done) ? null : undefined, {applyLocally:false}); return r.committed && !r.snapshot.exists(); } catch(e){ return false; } },
     goalWatch: (d, cb) => F.onValue(F.ref(db, 'goals/'+d), s=>cb(s.val()), ()=>{}),
     goalGet: async d => (await F.get(F.ref(db, 'goals/'+d))).val(),
     goalSet: (d, v) => F.set(F.ref(db, 'goals/'+d+'/'+uid), v),
@@ -2132,7 +2169,7 @@ function renderNpcPanel(){
 }
 // ===== 섬 지도 (미니맵) =====
 // 구역 칸을 실제 배치 그대로 그리고, 집·연못·나무·주민·친구·나를 점으로 보여 줘요. 가 본 구역은 눌러서 바로 갈 수 있어요 (기력 10)
-const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', minegate:'광산 입구', cave:'의문의 동굴', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층', cave4:'지하 4층'};
+const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', bazaar:'핑크 시장', minegate:'광산 입구', cave:'의문의 동굴', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층', cave4:'지하 4층'};
 let mapSel = null, mapGeo = null, mapDrawT = 0;
 const visitedZones = () => (me.visited||'home').split(',');
 function renderMap(){
@@ -2385,7 +2422,7 @@ function showFishBag(){
 // ===== 가방 =====
 // 아이템 키: 'crop:c01' 작물, 'seed:c01' 씨앗, 'fish:f01_3' 물고기(별 3), 'ore:o01' 광석, 'loot:m01' 전리품
 const STAR_PRICE = 50000; // 별 조각: 시세와 상관없이 늘 5 만 G
-const CATS = {seed:'seeds', crop:'crops', fish:'fish', ore:'ores', loot:'loot', forage:'forage', dish:'dishes', furn:'furn', wear:'wear', umb:'umbrellas', wall:'walls', floor:'floors', star:'stars'};
+const CATS = {seed:'seeds', crop:'crops', fish:'fish', ore:'ores', loot:'loot', forage:'forage', dish:'dishes', furn:'furn', wear:'wear', umb:'umbrellas', wall:'walls', floor:'floors', star:'stars', staple:'staples'};
 function bagOf(cat){ me.inv[CATS[cat]] = me.inv[CATS[cat]] || {}; return me.inv[CATS[cat]]; }
 function invCount(key){ const [cat, id] = key.split(':'); return bagOf(cat)[id] || 0; }
 // 가방: 같은 물건은 한 칸에 겹쳐 쌓여요. 한 칸 최대 500 개 — 넘치는 만큼은 버려지고 알려 줘요
@@ -2414,6 +2451,7 @@ function itemName(key){
   if (cat==='wall') return (WALLS[id]?.name || '') + ' 벽지';
   if (cat==='floor') return (FLOORS[id]?.name || '') + ' 바닥';
   if (cat==='star') return '별 조각';
+  if (cat==='staple') return STAPLES[id]?.[0] || '재료';
   return key;
 }
 function itemPrice(key){
@@ -2430,6 +2468,7 @@ function itemPrice(key){
   if (cat==='umb') return Math.round((UMB[id]?.price || 0)/2);
   if (cat==='wall' || cat==='floor') return Math.round(((cat==='wall' ? WALLS : FLOORS)[id]?.price || 0)/2);
   if (cat==='star') return STAR_PRICE;
+  if (cat==='staple') return Math.round((STAPLES[id]?.[1] || 0) / 2);
   return 0;
 }
 function itemsOf(cat){ return Object.entries(bagOf(cat)).filter(([,n])=>n>0).map(([id,n])=>[cat+':'+id, n]); }
@@ -3212,9 +3251,191 @@ function cookPanel(){
 }
 function eatDish(id){ eat('dish:'+id); }
 
+// ===== 핑크 시장 (공방 거리 남쪽) =====
+// 가게 터 12 곳: 한 사람당 한 곳, 업종(12 가지)도 겹치지 않아요. 터·업종 선점은 bazaar/ 에, 가게 진행(판매·진열)은 내 문서 me.shop 에 저장해요.
+// 만들기 미니게임으로 진열대를 채우고 [장사 시작]을 누르면, 자리를 비워도 일정 간격으로 하나씩 팔려요. 판 돈은 [수금하기]로 받아요.
+let bazaar = {};
+const BZ_COLS = [240, 560, 1240, 1560], BZ_ROWS = [430, 910, 1390];
+const BZ_PLOTS = BZ_ROWS.flatMap(gy => BZ_COLS.map(x => ({x, gy})));
+const BZ_COST = 10000;
+const BZ_STALL = {x:745, gy:420}, BZ_BOARDS = [{x:800, gy:770, kind:'rank'}, {x:1000, gy:770, kind:'req'}];
+const GMULT = [1.5, 1, .5], GNAME = ['PERFECT', 'GOOD', '아쉬움'];
+function onBazaar(v){ bazaar = v || {}; if (zoneId === 'bazaar'){ staticSig = ''; rebuildObstacles(); } if (!$('npcPanel').hidden && $('npcPanel').dataset.bz) bzRefresh(); }
+const bzOwnerOf = uid_ => uid_ === uid ? me : players[uid_];
+const shopLv = sh => { let lv = 1; LV_SOLD.forEach((v, i) => { if ((sh?.sold || 0) >= v) lv = i + 1; }); return lv; };
+const shopCap = sh => 8 + (shopLv(sh) - 1) * 4;
+const saleMs = lv => Math.round(6*60000 * Math.pow(.9, lv - 1)); // Lv1 6 분에 하나 → Lv8 약 2.9 분에 하나
+const stockN = sh => (sh?.stock || []).reduce((a, s) => a + s.n, 0);
+const recOf = (sh, r) => MENU[sh.type].r[r];
+// 재료 키: c00 작물 · f00 물고기(별 상관없이) · o00 광석 · g00 채집물 · flour 등 시장 기본 재료
+const ingCat = k => STAPLES[k] ? 'staple' : {c:'crop', f:'fish', o:'ore', g:'forage'}[k[0]];
+const ingName = k => STAPLES[k] ? STAPLES[k][0] : itemName(ingCat(k) + ':' + (k[0]==='f' ? k+'_1' : k)).replace(/ ★+$/, '');
+function ingHave(k){ if (ingCat(k) === 'fish') return Object.entries(bagOf('fish')).filter(([id, n]) => n > 0 && parseFish(id).id === k).reduce((a, [, n]) => a + n, 0); return invCount(ingCat(k) + ':' + k); }
+function ingTake(k, n){ if (ingCat(k) === 'fish'){ let left = n; for (const [id, c] of Object.entries(bagOf('fish')).filter(([id, c]) => c > 0 && parseFish(id).id === k).sort((a, b) => parseFish(a[0]).st - parseFish(b[0]).st)){ const t = Math.min(left, c); invAdd('fish:'+id, -t); left -= t; if (!left) break; } } else invAdd(ingCat(k) + ':' + k, -n); }
+const ingIcon = k => STAPLES[k] ? `<img class="ic" src="${stapleIconURL(k)}" alt="">` : iconImg(ingCat(k) + ':' + (k[0]==='f' ? k+'_1' : k));
+const canMake = (rec, n) => rec.need.every(([k, q]) => ingHave(k) >= q*n);
+// 판매 정리: 마지막으로 정리한 때부터 지난 시간만큼 앞에서부터 팔려요
+function shopSettle(){
+  const sh = me?.shop; if (!sh) return 0;
+  const now = Date.now() + serverOffset; if (!sh.open){ sh.lastAt = now; return 0; }
+  const lv0 = shopLv(sh); let t = sh.lastAt || now, n = 0, rev = 0;
+  while ((sh.stock || []).length && n < 500){ const iv = saleMs(shopLv(sh)); if (now - t < iv) break; t += iv; const it = sh.stock[0]; it.n--; rev += Math.round(recOf(sh, it.r).price * GMULT[it.g]); sh.sold = (sh.sold || 0) + 1; n++; if (it.n <= 0) sh.stock.shift(); }
+  if (!(sh.stock || []).length){ sh.open = 0; t = now; }
+  sh.lastAt = t;
+  if (n){ sh.till = (sh.till || 0) + rev; const wk = weekKey(); if (sh.wk !== wk){ sh.wk = wk; sh.wkRev = 0; } sh.wkRev = (sh.wkRev || 0) + rev; saveMe(); }
+  const lv1 = shopLv(sh); if (lv1 > lv0){ toast(`가게 레벨 UP! Lv${lv1} · 새 메뉴 "${recOf(sh, lv1 - 1).n}"이(가) 열렸어요`); setExpr('sparkle', 2500); staticSig = ''; saveMe(true); }
+  return n;
+}
+setInterval(() => { if (me && me.shop && !admin) shopSettle(); }, 30000);
+
+// ── 그리기 ──
+function bzBoard(d, x, gy, title, lines, col){ const c = d.ctx; d.rr(x-5, gy-60, 10, 60, 5, '#9a6a45'); d.rr(x-84, gy-190, 168, 140, 14, '#c98e5b'); d.rr(x-74, gy-180, 148, 120, 10, '#fffaf2');
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = 'bold 17px "Maple",sans-serif'; c.fillStyle = col; c.fillText(title, x, gy-162);
+  c.font = '14px "Maple",sans-serif'; c.fillStyle = '#5b4a50'; lines.slice(0, 4).forEach((s, i) => c.fillText(s, x, gy-136 + i*22, 140)); c.textBaseline = 'alphabetic'; }
+function bzRanking(){ const wk = weekKey(); return Object.values({...players, [uid]: me}).filter(p => p && p.shop && p.shop.wk === wk && p.shop.wkRev > 0).sort((a, b) => b.shop.wkRev - a.shop.wkRev); }
+function drawBazaarGround(c, d, z){
+  const road = (x, y, w, h) => d.rr(x, y, w, h, Math.min(w, h)/2, 'path');
+  road(840, -20, 120, z.H + 40); road(100, 440, z.W - 200, 100); road(100, 920, z.W - 200, 90); road(100, 1400, z.W - 200, 60);
+  d.ell(900, 740, 200, 120, 'path');
+  for (const y of [300, 780]){ c.strokeStyle = '#9a6a45'; c.lineWidth = 2; c.beginPath(); c.moveTo(110, y); for (let x = 110; x <= z.W - 110; x += 100) c.quadraticCurveTo(x - 50, y + 30, x, y); c.stroke(); for (let x = 160; x < z.W - 110; x += 100) d.circle(x, y + 22, 9, ['#ff9fc4', '#ffd35c', '#9fd9ff', '#9fe3c4'][(x/100|0) % 4]); }
+}
+function drawBazaarTop(c, d){
+  BZ_PLOTS.forEach((P_, i) => { const pl = bazaar.plots?.[i]; if (pl && SHOP_TYPES_OK(pl.type)){ c.save(); c.translate(P_.x, P_.gy); c.scale(.9, .9); c.translate(-P_.x, -P_.gy); drawShop(d, pl.type, P_.x, P_.gy, String(pl.name || '').slice(0, 10)); c.restore();
+      const o = bzOwnerOf(pl.uid), lv = o?.shop ? shopLv(o.shop) : 1; c.font = 'bold 15px "Maple",sans-serif'; c.textAlign = 'center'; const t = `${o?.nick || '?'} · Lv${lv}${o?.shop?.open ? ' · 영업 중' : ''}`, w = c.measureText(t).width + 18; c.fillStyle = 'rgba(255,253,253,.92)'; c.beginPath(); c.roundRect(P_.x - w/2, P_.gy + 6, w, 22, 11); c.fill(); c.fillStyle = o?.shop?.open ? '#e0507a' : '#7a5a6a'; c.fillText(t, P_.x, P_.gy + 22); }
+    else drawLot(d, P_.x, P_.gy, i + 1); });
+  // 식료품 노점
+  const {x, gy} = BZ_STALL; c.save(); c.translate(x, gy); c.scale(.8, .8); c.translate(-x, -gy);
+  d.rr(x-90, gy-80, 180, 80, 10, '#e0b07a'); d.rr(x-84, gy-74, 168, 24, 6, '#fff3e3'); Object.keys(STAPLES).forEach((k, i) => { const im = bzStapleImg[k]; if (im && im.complete) c.drawImage(im, x-78 + i*32, gy-80, 28, 28); });
+  d.rr(x-86, gy-170, 8, 96, 4, '#9a6a45'); d.rr(x+78, gy-170, 8, 96, 4, '#9a6a45'); for (let i = 0; i < 6; i++){ const sw = 200/6, sx = x - 100 + i*sw; d.shape(()=>{ c.beginPath(); c.moveTo(sx, gy-176); c.lineTo(sx+sw, gy-176); c.lineTo(sx+sw, gy-162); c.arc(sx+sw/2, gy-162, sw/2, 0, Math.PI); c.closePath(); }, i%2 ? '#ffffff' : '#7fd07a', [sx+sw/2, gy-166, sw/2]); }
+  d.rr(x-76, gy-214, 152, 36, 18, '#fffaf2'); c.font = 'bold 18px "Maple",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#4f8a4a'; c.fillText('식료품 노점', x, gy-195); c.textBaseline = 'alphabetic'; c.restore();
+  animalNpc(d, x, gy + 14, {kind:'sheep', fur:'#fffaf2'}, 0, false, false);
+  // 게시판
+  const rk = bzRanking(); bzBoard(d, BZ_BOARDS[0].x, BZ_BOARDS[0].gy, '이번 주 맛집', rk.length ? rk.slice(0, 3).map((p, i) => `${i+1} ${p.shop.name}`) : ['아직 판매가 없어요'], '#e2486a');
+  const rq = Object.values(bazaar.reqs || {}).filter(r => r && !r.done); bzBoard(d, BZ_BOARDS[1].x, BZ_BOARDS[1].gy, '재료 의뢰', rq.length ? rq.slice(0, 3).map(r => `${ingName(r.key)} ${r.n}개`) : ['의뢰가 없어요'], '#4f8a4a');
+}
+const SHOP_TYPES_OK = t => Number.isInteger(t) && t >= 0 && t < 12;
+const bzStapleImg = {};
+function bzPrepImages(){ for (const k of Object.keys(STAPLES)) if (!bzStapleImg[k]){ const im = new Image(); im.onload = () => { if (zoneId === 'bazaar') staticSig = ''; }; im.src = stapleIconURL(k); bzStapleImg[k] = im; } }
+function bazaarObstacles(o){
+  BZ_PLOTS.forEach((P_, i) => { const pl = bazaar.plots?.[i]; o.rects.push(pl ? {x:P_.x-100, y:P_.gy-120, w:200, h:120} : {x:P_.x-6, y:P_.gy-120, w:12, h:40}); });
+  o.rects.push({x:BZ_STALL.x-72, y:BZ_STALL.gy-64, w:144, h:64});
+  for (const b of BZ_BOARDS) o.circles.push({x:b.x, y:b.gy-6, r:12});
+}
+function bazaarTap(w){
+  if (zoneId !== 'bazaar') return null;
+  for (const [i, P_] of BZ_PLOTS.entries()) if (Math.abs(w.x - P_.x) < 120 && w.y > P_.gy - 270 && w.y < P_.gy + 30) return {x:P_.x, y:P_.gy + 46, act:()=>plotPanel(i)};
+  if (Math.abs(w.x - BZ_STALL.x) < 90 && w.y > BZ_STALL.gy - 190 && w.y < BZ_STALL.gy + 30) return {x:BZ_STALL.x, y:BZ_STALL.gy + 56, act:groceryPanel};
+  for (const b of BZ_BOARDS) if (Math.abs(w.x - b.x) < 90 && w.y > b.gy - 200 && w.y < b.gy + 20) return {x:b.x, y:b.gy + 40, act: b.kind === 'rank' ? rankPanel : reqPanel};
+  return null;
+}
+
+// ── 패널 ──
+let bzView = null; // 지금 열린 시장 패널 다시 그리기
+function bzOpen(title, body, view){ openPanel(title, body); $('npcPanel').dataset.bz = '1'; bzView = view; }
+function bzRefresh(){ if (bzView) keepScroll(bzView); }
+function plotPanel(i){
+  const pl = bazaar.plots?.[i];
+  if (!pl) return claimPanel(i);
+  if (pl.uid === uid && me.shop) return shopPanel();
+  visitPanel(i);
+}
+function claimPanel(i){
+  if (me.shop){ toast(`이미 "${me.shop.name}" 가게가 있어요. 한 사람당 한 곳이에요`); return; }
+  let pick = null;
+  const draw = () => {
+    const taken = bazaar.types || {};
+    bzOpen(`${i + 1}번 빈 터 · 가게 열기`, `<p class="mnote">업종을 하나 고르고 가게 이름을 지어요. 이미 누가 연 업종은 고를 수 없어요. 개업비 ${BZ_COST.toLocaleString()} G</p>
+      <div class="bz-types">${MENU.map((m, t) => { const who = taken[t] ? bzOwnerOf(taken[t])?.nick || '누군가' : ''; return `<button class="bz-type" data-t="${t}" ${who ? 'disabled' : ''} aria-pressed="${pick === t}"><img src="${shopIconURL(t)}" alt=""><b>${m.name}</b><small>${who ? who + ' 운영' : m.r[0].n + ' 부터'}</small></button>`; }).join('')}</div>
+      <label class="bz-name">가게 이름 <input id="bzName" maxlength="10" placeholder="예: ${me.nick}의 가게" value="${esc($('bzName')?.value || '')}"></label>
+      <button class="btn" id="bzGo" ${pick == null ? 'disabled' : ''}>터 잡고 간판 걸기 · ${BZ_COST.toLocaleString()} G</button>`, draw);
+    document.querySelectorAll('.bz-type').forEach(b => b.onclick = () => { pick = +b.dataset.t; draw(); });
+    $('bzGo').onclick = async () => {
+      const name = ($('bzName').value || '').trim().slice(0, 10);
+      if (pick == null) return; if (!name){ toast('가게 이름을 지어 주세요'); return; }
+      if ((me.inv.gold|0) < BZ_COST){ toast(`개업비 ${BZ_COST.toLocaleString()} G가 모자라요`); return; }
+      $('bzGo').disabled = true;
+      const ok = await net.bazaarClaim(i, pick, name);
+      if (!ok){ toast('터를 잡지 못했어요. 그 사이 다른 사람이 먼저 골랐을 수 있어요'); draw(); return; }
+      me.inv.gold -= BZ_COST; me.shop = {plot:i, type:pick, name, sold:0, stock:[], open:0, lastAt:Date.now() + serverOffset, till:0, wk:weekKey(), wkRev:0};
+      saveMe(true); renderHud(); staticSig = ''; rebuildObstacles(); setExpr('happy', 2500); toast(`"${name}" 개업! 이제 메뉴를 만들어 진열해 봐요`); shopPanel();
+    };
+  };
+  draw();
+}
+function shopPanel(){
+  shopSettle();
+  const sh = me.shop, m = MENU[sh.type], lv = shopLv(sh), next = LV_SOLD[lv], cap = shopCap(sh), n = stockN(sh);
+  const prog = next ? Math.min(1, ((sh.sold||0) - LV_SOLD[lv-1]) / (next - LV_SOLD[lv-1])) : 1;
+  const rows = m.r.map((r, i) => { const open = i < lv; return `<div class="bz-rec ${open ? '' : 'lock'}"><div class="bz-rh"><span class="bz-lv">Lv${i+1}</span><b>${r.n}</b><span class="bz-pr">${r.price.toLocaleString()} G</span></div>
+    <div class="bz-ing">${r.need.map(([k, q]) => `<span class="${ingHave(k) >= q ? 'ok' : 'no'}">${ingIcon(k)}${ingName(k)} ${ingHave(k)}/${q}</span>`).join('')}</div>
+    ${open ? `<div class="bz-make">${[1, 2, 3, 5].map(c => `<button class="mini" data-r="${i}" data-n="${c}" ${canMake(r, c) && n + c <= cap ? '' : 'disabled'}>${c}개 만들기</button>`).join('')}</div>` : `<small class="bz-lockt">Lv${i+1}에 열려요 · 누적 판매 ${LV_SOLD[i]}개</small>`}</div>`; }).join('');
+  const stock = (sh.stock || []).map(s => `<span class="bz-st g${s.g}">${recOf(sh, s.r).n} ×${s.n} <i>${GNAME[s.g]}</i></span>`).join('') || '<small>진열대가 비어 있어요. 아래에서 만들어 올려요</small>';
+  bzOpen(`${esc(sh.name)} · ${m.name}`, `<div class="bz-head"><img src="${shopIconURL(sh.type)}" alt=""><div><b>Lv${lv}</b> · 누적 판매 ${(sh.sold||0).toLocaleString()}개<div class="bz-bar"><i style="width:${Math.round(prog*100)}%"></i></div><small>${next ? `Lv${lv+1}까지 ${next - (sh.sold||0)}개` : '최고 레벨이에요'}</small></div></div>
+    <div class="bz-box"><b>진열대 ${n}/${cap}</b> · ${sh.open ? `<span class="bz-on">영업 중</span> · ${Math.round(saleMs(lv)/60000*10)/10}분마다 하나씩 팔려요` : '쉬는 중'}<div class="bz-stock">${stock}</div>
+      <div class="bz-acts"><button class="btn" id="bzOpenBtn" ${!n && !sh.open ? 'disabled' : ''}>${sh.open ? '장사 쉬기' : '장사 시작!'}</button><button class="btn ghost" id="bzTill" ${(sh.till||0) > 0 ? '' : 'disabled'}>수금하기 ${(sh.till||0).toLocaleString()} G</button></div></div>
+    <p class="mnote">메뉴를 고르고 만들기를 누르면 만드는 과정이 시작돼요. 재료는 끝까지 만들었을 때 빠져요. PERFECT는 1.5배, 아쉬움은 반값에 팔려요. 밀가루·쌀·우유·달걀·설탕은 시장 노점에서 사요.</p>${rows}`, shopPanel);
+  $('bzOpenBtn').onclick = () => { shopSettle(); sh.open = sh.open ? 0 : 1; sh.lastAt = Date.now() + serverOffset; saveMe(true); staticSig = ''; toast(sh.open ? '장사 시작! 자리를 비워도 진열대 물건이 팔려요' : '장사를 쉬어요'); shopPanel(); };
+  $('bzTill').onclick = () => { shopSettle(); const g = sh.till || 0; if (!g) return; sh.till = 0; me.inv.gold += g; saveMe(true); renderHud(); toast(`${g.toLocaleString()} G를 수금했어요`); setExpr('happy', 2000); shopPanel(); };
+  document.querySelectorAll('.bz-make button').forEach(b => b.onclick = () => bzMake(+b.dataset.r, +b.dataset.n));
+}
+function bzMake(r, n){
+  const sh = me.shop, rec = recOf(sh, r);
+  if (!canMake(rec, n)){ toast('재료가 모자라요'); return; }
+  if (stockN(sh) + n > shopCap(sh)){ toast('진열대가 꽉 찼어요'); return; }
+  $('npcPanel').hidden = true;
+  openKitchen({shop:sh.type, rec:r, n, onClose: shopPanel, onDone: score => {
+    if (!me.shop || !canMake(rec, n)){ toast('재료가 모자라서 진열하지 못했어요'); return shopPanel(); }
+    for (const [k, q] of rec.need) ingTake(k, q*n);
+    shopSettle(); sh.stock = sh.stock || []; const g = gradeIdx(score), last = sh.stock[sh.stock.length - 1];
+    if (last && last.r === r && last.g === g) last.n += n; else sh.stock.push({r, g, n});
+    sh.made = (sh.made || 0) + n; gainExp(2*n); saveMe(true); toast(`${rec.n} ${n}개를 진열했어요 (${GNAME[g]})`); shopPanel();
+  }});
+}
+function visitPanel(i){
+  const pl = bazaar.plots[i], o = bzOwnerOf(pl.uid), sh = o?.shop, m = MENU[pl.type];
+  if (!m) return;
+  const lv = sh ? shopLv(sh) : 1;
+  bzOpen(`${esc(pl.name)} · ${m.name}`, `<div class="bz-head"><img src="${shopIconURL(pl.type)}" alt=""><div><b>${esc(o?.nick || '?')}</b> 님의 가게 · Lv${lv}<br><small>${sh?.open ? `영업 중 · 진열 ${stockN(sh)}개` : '쉬는 중'} · 누적 판매 ${(sh?.sold||0).toLocaleString()}개</small></div></div>
+    <p class="mnote">팔고 있는 메뉴</p>${m.r.slice(0, lv).map((r, k) => `<div class="bz-rec"><div class="bz-rh"><span class="bz-lv">Lv${k+1}</span><b>${r.n}</b><span class="bz-pr">${r.price.toLocaleString()} G</span></div></div>`).join('')}`, () => visitPanel(i));
+}
+function groceryPanel(){
+  const row = k => `<div class="bz-rec"><div class="bz-rh"><img class="ic" src="${stapleIconURL(k)}" alt=""><b>${STAPLES[k][0]}</b><small>가방 ${invCount('staple:'+k)}개</small><span class="bz-pr">${STAPLES[k][1]} G</span></div><div class="bz-make">${[1, 5, 10, 30].map(c => `<button class="mini" data-k="${k}" data-n="${c}" ${(me.inv.gold|0) >= STAPLES[k][1]*c ? '' : 'disabled'}>${c}개 사기</button>`).join('')}</div></div>`;
+  bzOpen('양 할머니의 식료품 노점', `<p class="mnote">"기본 재료는 할머니한테 사 가렴. 나머지 재료는 섬에서 직접 구해 오고." · 가진 골드 ${(me.inv.gold|0).toLocaleString()} G</p>${Object.keys(STAPLES).map(row).join('')}`, groceryPanel);
+  document.querySelectorAll('.bz-make button[data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k, c = +b.dataset.n, cost = STAPLES[k][1]*c; if ((me.inv.gold|0) < cost) return; if (invRoom('staple:'+k) < c){ toast('가방에 자리가 없어요'); return; } me.inv.gold -= cost; invAdd('staple:'+k, c); saveMe(true); renderHud(); toast(`${STAPLES[k][0]} ${c}개를 샀어요`); groceryPanel(); });
+}
+function rankPanel(){
+  const rk = bzRanking(), all = Object.values({...players, [uid]: me}).filter(p => p && p.shop).sort((a, b) => (b.shop.sold||0) - (a.shop.sold||0));
+  bzOpen('핑크 시장 맛집 랭킹', `<p class="mnote">이번 주 매출 순위예요. 매주 월요일에 새로 시작해요.</p>${rk.length ? rk.map((p, i) => `<div class="bz-rec"><div class="bz-rh"><span class="bz-lv">${i+1}위</span><b>${esc(p.shop.name)}</b><small>${esc(p.nick)} · ${MENU[p.shop.type]?.name || ''}</small><span class="bz-pr">${(p.shop.wkRev||0).toLocaleString()} G</span></div></div>`).join('') : '<p class="mnote">이번 주에는 아직 판매가 없어요.</p>'}
+    <p class="mnote">누적 판매</p>${all.map(p => `<div class="bz-rec"><div class="bz-rh"><b>${esc(p.shop.name)}</b><small>${esc(p.nick)} · Lv${shopLv(p.shop)}</small><span class="bz-pr">${(p.shop.sold||0).toLocaleString()}개</span></div></div>`).join('') || '<p class="mnote">아직 연 가게가 없어요.</p>'}`, rankPanel);
+}
+function reqPanel(){
+  const reqs = Object.entries(bazaar.reqs || {}).filter(([, r]) => r).sort((a, b) => (b[1].at||0) - (a[1].at||0));
+  const mine = me.shop ? uniq_(MENU[me.shop.type].r.slice(0, shopLv(me.shop)).flatMap(r => r.need.map(([k]) => k)).filter(k => !STAPLES[k])) : [];
+  const row = ([id, r]) => { const own = r.uid === uid, have = ingHave(r.key) >= r.n;
+    return `<div class="bz-rec"><div class="bz-rh">${ingIcon(r.key)}<b>${ingName(r.key)} ${r.n}개</b><small>${esc(r.shop || '')} · ${esc(r.nick || '')}</small><span class="bz-pr">${(r.reward||0).toLocaleString()} G</span></div>
+      <div class="bz-make">${r.done ? (own ? `<button class="mini" data-take="${id}">${esc(r.done.nick || '')} 님이 납품 · 받기</button>` : `<small>${esc(r.done.nick || '')} 님이 납품했어요</small>`) : own ? `<button class="mini" data-cancel="${id}">의뢰 취소 (골드 돌려받기)</button>` : `<button class="mini" data-give="${id}" ${have ? '' : 'disabled'}>납품하기 (가방 ${ingHave(r.key)}개)</button>`}</div></div>`; };
+  bzOpen('재료 의뢰 게시판', `<p class="mnote">가게 주인이 필요한 재료를 걸어 두면, 누구나 납품하고 보상 골드를 받아요. 보상은 의뢰할 때 미리 걸어 둬요.</p>
+    ${me.shop ? `<div class="bz-box"><b>의뢰 올리기</b><div class="bz-req"><select id="bzRk">${mine.map(k => `<option value="${k}">${ingName(k)}</option>`).join('')}</select><select id="bzRn">${[1, 3, 5, 10, 20].map(n => `<option>${n}</option>`).join('')}</select><button class="mini" id="bzRgo" ${mine.length ? '' : 'disabled'}>올리기</button></div><small id="bzRcost"></small></div>` : '<p class="mnote">가게를 연 사람만 의뢰를 올릴 수 있어요.</p>'}
+    ${reqs.map(row).join('') || '<p class="mnote">아직 올라온 의뢰가 없어요.</p>'}`, reqPanel);
+  const reward = () => { const k = $('bzRk')?.value, n = +($('bzRn')?.value || 1); return k ? Math.max(50, Math.round(itemPrice(ingCat(k) + ':' + (k[0]==='f' ? k+'_1' : k)) * n * 1.5 / 10) * 10) : 0; };
+  const upd = () => { if ($('bzRcost')) $('bzRcost').textContent = `보상 ${reward().toLocaleString()} G (지금 가진 골드에서 미리 빠져요)`; };
+  if ($('bzRk')){ $('bzRk').onchange = upd; $('bzRn').onchange = upd; upd();
+    $('bzRgo').onclick = async () => { const k = $('bzRk').value, n = +$('bzRn').value, g = reward(); if ((me.inv.gold|0) < g){ toast('보상으로 걸 골드가 모자라요'); return; } $('bzRgo').disabled = true; me.inv.gold -= g; saveMe(true); renderHud();
+      try { await net.bazaarReq({uid, nick:me.nick, shop:me.shop.name, key:k, n, reward:g}); toast('의뢰를 올렸어요'); } catch(e){ me.inv.gold += g; saveMe(true); renderHud(); toast('의뢰를 올리지 못했어요'); } }; }
+  document.querySelectorAll('[data-give]').forEach(b => b.onclick = async () => { const id = b.dataset.give, r = bazaar.reqs[id]; if (!r || ingHave(r.key) < r.n) return; b.disabled = true;
+    if (await net.bazaarDeliver(id)){ ingTake(r.key, r.n); me.inv.gold += r.reward; saveMe(true); renderHud(); toast(`납품 완료! ${r.reward.toLocaleString()} G를 받았어요`); setExpr('happy', 2000); } else toast('이미 다른 사람이 납품했어요'); });
+  document.querySelectorAll('[data-take]').forEach(b => b.onclick = async () => { const id = b.dataset.take, r = bazaar.reqs[id]; if (!r) return; b.disabled = true;
+    if (await net.bazaarTake(id)){ const key = ingCat(r.key) + ':' + (r.key[0]==='f' && !STAPLES[r.key] ? r.key+'_1' : r.key); invAdd(key, r.n); saveMe(true); toast(`${ingName(r.key)} ${r.n}개를 받았어요`); } });
+  document.querySelectorAll('[data-cancel]').forEach(b => b.onclick = async () => { const id = b.dataset.cancel, r = bazaar.reqs[id]; if (!r) return; b.disabled = true;
+    if (await net.bazaarCancel(id)){ me.inv.gold += r.reward; saveMe(true); renderHud(); toast('의뢰를 취소하고 골드를 돌려받았어요'); } else toast('그 사이 누가 납품했어요'); });
+}
+const uniq_ = a => [...new Set(a)];
+// 관리자가 사람을 지울 때 그 사람 가게 터·업종도 비워요
+function bzRemovePaths(id){ const o = {['bazaar/owners/'+id]: null}; for (const [i, p] of Object.entries(bazaar.plots || {})) if (p && p.uid === id){ o['bazaar/plots/'+i] = null; o['bazaar/types/'+p.type] = null; } return o; }
+
 // ===== 공통 패널 =====
 function openPanel(title, body, onClick){
-  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv; delete p.dataset.museum;
+  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.bz; bzView = null; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv; delete p.dataset.museum;
   p.innerHTML = deEmoji(`<div class="np-head"><b>${title}</b><button class="mini" id="pnClose">닫기</button></div>${body}`);
   $('pnClose').onclick = ()=>{ p.hidden = true; };
   if (onClick) p.querySelectorAll('.np[data-id]').forEach(b=>b.onclick = ()=>onClick(b));
@@ -5076,7 +5297,7 @@ function artIdOf(key){
   if (cat==='fish') return parseFish(id).id;
   if (cat==='dish') return 'dish:'+id;
   if (cat==='furn') return 'furn:'+id;
-  if (cat==='wear' || cat==='umb' || cat==='wall' || cat==='floor' || cat==='forage' || cat==='star') return key;
+  if (cat==='wear' || cat==='umb' || cat==='wall' || cat==='floor' || cat==='forage' || cat==='star' || cat==='staple') return key;
   return id; // seed·crop → c00, ore → o00, loot → m00
 }
 function drawArt(d, aid, t=0){
@@ -5113,6 +5334,7 @@ function specialIcon(key){
   if (cat==='wall' && WALLS[id]) return swatchURL('wall', id);
   if (cat==='floor' && FLOORS[id]) return swatchURL('floor', id);
   if (cat==='star') return starShardIcon();
+  if (cat==='staple' && STAPLES[id]) return stapleIconURL(id);
   return '';
 }
 const iconImg = (key, cls='ic') => { const a = artIdOf(key); return a ? `<img class="${cls}" src="${iconURL(a)}" alt="">` : ''; };
@@ -5183,7 +5405,7 @@ function detailBox(el, k, buttons){
 function showBag(sel){
   if (typeof sel==='string'){ bagState.sel = sel; const c = sel.split(':')[0]; if (bagState.tab!=='all' && bagState.tab!==c) bagState.tab = c; }
   const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
-  const cats = ['star','crop','forage','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'];
+  const cats = ['star','crop','forage','dish','staple','fish','ore','loot','seed','wear','umb','furn','wall','floor'];
   keepScroll(()=>openPanel('가방',
     `<div class="np"><span class="np-name">💰 ${me.inv.gold} G <small>· 체력 ${Math.ceil(playerHp)}/${maxHp()} · 기력 ${Math.floor(playerSta)}/${maxSta()}</small></span><span class="np-day" style="grid-column:1/-1;text-align:left">도구: ${tools}</span></div>${wornRow()}${invGrid(cats, bagState)}
      ${ringRow()}
@@ -5287,6 +5509,7 @@ function hitTarget(w){
   const pt = petTap(w); if (pt) return pt;
   for (const pl of (Z().places||[])) if (pl.post){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:()=>postPanel()}; }
   for (const pl of (Z().places||[])) if (pl.shelter){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:shelterPanel}; }
+  { const bt = bazaarTap(w); if (bt) return bt; }
   const ht = houseTap(w); if (ht) return ht;
   if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const L = LOTS[p.lot]; if (w.x>L.x-56 && w.x<L.x+56 && w.y>L.y-150 && w.y<L.y){ const HL = HOUSE_LV[houseOf(p).lv-1]; return {x:L.x, y:L.y+16, act:()=>enterZone('house:'+id, null, HL.W/2, HL.H-100)}; } }
   if (zoneId==='starhill'){ for (const st of stars){ const a = (performance.now()-st.t)/4000, sx = st.x + a*160, sy = st.y + a*90; if (Math.hypot(w.x-sx, w.y-sy) < 40){ makeWish(); return {x:pos.x, y:pos.y, act:null, mark:performance.now()}; } } { const tr = Z().places.find(p=>p.kind==='tree'); if (tr && Math.hypot(w.x-tr.x, w.y-(tr.y-20)) < 70) return {x:tr.x, y:tr.y+100, act:promiseTree}; } }
@@ -5430,7 +5653,7 @@ function drawZonePlace(d, z, p){
 function buildStatic(){
   const z = Z(), T = THEME[z.theme];
   const s = Math.min(1.6, view.dpr*view.zoom);
-  const sig = zoneId+'|'+s+'|'+(zoneId==='home' ? Object.entries(players).map(([k,p])=>k+p.lot+p.roof+p.nick+houseOf(k===uid ? me : p).lv).join(',') : z.house ? JSON.stringify(houseOf(z.house===uid ? me : players[z.house])) : '');
+  const sig = zoneId+'|'+s+'|'+(zoneId==='bazaar' ? JSON.stringify(bazaar.plots||{})+'|'+JSON.stringify(bazaar.reqs||{}).length+'|'+Object.values({...players, [uid]:me}).map(p=>p&&p.shop ? p.shop.name+shopLv(p.shop)+(p.shop.open?1:0)+(p.shop.wkRev||0) : '').join(',') : zoneId==='home' ? Object.entries(players).map(([k,p])=>k+p.lot+p.roof+p.nick+houseOf(k===uid ? me : p).lv).join(',') : z.house ? JSON.stringify(houseOf(z.house===uid ? me : players[z.house])) : '');
   if (sig===staticSig && staticLayer) return;
   staticSig = sig;
   staticLayer = staticLayer || document.createElement('canvas');
@@ -5447,6 +5670,7 @@ function buildStatic(){
   for (let i=0;i<14;i++){ const x=(i*331)%z.W, y=(i*197)%z.H, rx=50+(i%3)*20, ry=16+(i%2)*6; c.save(); c.globalAlpha=.55; c.fillStyle=T.ground2; c.beginPath(); c.ellipse(x,y,rx,ry,0,0,7); c.fill(); c.restore(); }
   if (z.theme==='flower') for (let i=0;i<120;i++) d.dot(M+(i*173)%(z.W-2*M), M+(i*97)%(z.H-2*M), 2.6, ['#ff8fc4','#ffe066','#ffffff','#c9a6ff'][i%4]);
   if (z.theme==='night') for (let i=0;i<70;i++) d.dot((i*223)%z.W, (i*137)%z.H, 1.6, '#fff6b0', .8);
+  if (zoneId==='bazaar') drawBazaarGround(c, d, z);
   // 구역 길: 출구에서 가운데로
   const cx = z.W/2, cy = z.H/2, ex = z.exits;
   d.shape(()=>{ c.beginPath(); if (ex.n) c.roundRect(cx-17,-10,34,cy+27,17); if (ex.s) c.roundRect(cx-17,cy-17,34,z.H/2+27,17); if (ex.w) c.roundRect(-10,cy-17,cx+27,34,17); if (ex.e) c.roundRect(cx-17,cy-17,z.W/2+27,34,17); }, T.path, [cx,cy,Math.max(z.W,z.H)/2]);
@@ -5458,6 +5682,7 @@ function buildStatic(){
   for (let y=20; y<z.H; y+=64) for (const x of [26, z.W-26]) if (!open(x,y)) d.circle(x, y+(x%5), 44, edgeCol);
   for (const [x,y] of z.trees) drawTree(d,x,y,x+y);
   for (const l of (z.lamps||[])) drawLamp(d, l.x, l.y);
+  if (zoneId==='bazaar') drawBazaarTop(c, d);
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return;
     const owner = Object.values(players).find(p=>p.lot===i);
     drawFence(d, L);

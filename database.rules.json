@@ -281,6 +281,33 @@
         ".write": "auth != null && newData.exists() && newData.child('uid').val() === auth.uid && newData.child('aid').val() === root.child('auction/meta/id').val() && !root.child('auction/meta/done').exists() && !root.child('auction/meta/cancel').exists() && newData.child('at').val() === now && newData.child('p').val() >= root.child('auction/meta/start').val() && (!data.exists() || data.child('aid').val() !== newData.child('aid').val() || newData.child('p').val() >= data.child('p').val() + 1000) && (now <= root.child('auction/meta/endAt').val() || (data.exists() && data.child('aid').val() === newData.child('aid').val() && now <= data.child('at').val() + 10000))",
         ".validate": "newData.hasChildren(['aid','p','uid','nick','at']) && newData.child('p').isNumber() && newData.child('p').val() % 1000 === 0 && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
       }
+    },
+    "bazaar": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "plots": {
+        "$i": {
+          ".write": "auth != null && $i.matches(/^([0-9]|1[01])$/) && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && data.child('uid').val() === auth.uid))",
+          ".validate": "newData.child('uid').val() === auth.uid && newData.child('type').isNumber() && newData.child('type').val() >= 0 && newData.child('type').val() <= 11 && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 10 && newData.parent().parent().child('types/' + newData.child('type').val()).val() === auth.uid && ('' + newData.parent().parent().child('owners/' + auth.uid).val()) === $i"
+        }
+      },
+      "types": {
+        "$t": {
+          ".write": "auth != null && $t.matches(/^([0-9]|1[01])$/) && ((!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && !newData.exists()))"
+        }
+      },
+      "owners": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 11"
+        }
+      },
+      "reqs": {
+        "$id": {
+          ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && !newData.child('done').exists()) || (data.exists() && data.child('uid').val() === auth.uid && (!newData.exists() || newData.child('done').val() === data.child('done').val())) || (data.exists() && !data.child('done').exists() && data.child('uid').val() !== auth.uid && newData.child('done/uid').val() === auth.uid && newData.child('uid').val() === data.child('uid').val() && newData.child('key').val() === data.child('key').val() && newData.child('n').val() === data.child('n').val() && newData.child('reward').val() === data.child('reward').val()))",
+          ".validate": "newData.hasChildren(['uid', 'key', 'n', 'reward']) && newData.child('key').isString() && newData.child('key').val().length <= 12 && newData.child('n').isNumber() && newData.child('n').val() >= 1 && newData.child('n').val() <= 50 && newData.child('reward').isNumber() && newData.child('reward').val() >= 0 && newData.child('reward').val() <= 1000000"
+        }
+      }
     }
   }
 }
