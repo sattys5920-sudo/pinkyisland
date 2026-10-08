@@ -3236,7 +3236,7 @@ function workshopPanel(){
     }
     const f = FURN[b.dataset.id];
     if (me.inv.gold < f.gold || invCount(f.need) < f.n) return toast('재료가 모자라요');
-    me.inv.gold -= f.gold; invAdd(f.need, -f.n); invAdd('furn:'+b.dataset.id, 1); syncStats();
+    me.inv.gold -= f.gold; invAdd(f.need, -f.n); invAdd('furn:'+b.dataset.id, 1); syncStats(); checkAchievements();
     saveMe(); renderHud(); toast(`${f.name}을(를) 만들었어요!`); workshopPanel();
   });
 }
@@ -4156,6 +4156,7 @@ function syncStats(){ // 다른 데이터에서 바로 계산되는 기록
   st.zonesVisited = (me.visited||'home').split(',').filter(Boolean).length; st.questsDone = (me.q&&me.q.done||[]).length;
   { const H = houseOf(me); st.houseLevel = H.lv; st.interiorCount = H.walls.length + H.floors.length - 2; }
   st.furnCount = Object.values(me.inv.furn||{}).reduce((a,b)=>a+b,0) + (me.furn||[]).length;
+  { const jid = Object.keys(FURN).find(k=>FURN[k].shape==='jukebox'); st.jukebox = jid && (invCount('furn:'+jid) > 0 || (me.furn||[]).some(f=>f.id===jid)) ? 1 : 0; } // 주크박스를 가진 사람
 }
 let achQueue = [];
 function checkAchievements(){
