@@ -6611,7 +6611,7 @@ function aucSettle(){
   if (res){
     if (res.uid === uid && !res.cancel){ const k = auc.meta?.id === h.id ? auc.meta.k : res.k, n = (auc.meta?.id === h.id ? auc.meta.n : res.n) || 1;
       if (k && k.startsWith('ring:')){ const id = k.slice(5); if ((me.inv.rings || []).includes(id)) return refund('이미 가진 반지라 맡긴 골드를 돌려받았어요'); me.inv.rings = [...(me.inv.rings || []), id]; }
-      else if (k) invAdd(k, n);
+      else if (k){ invAdd(k, n); if (k.startsWith('wear:')){ const id = k.slice(5).replace('~', '#'); if (!CLOSET().includes(id)) CLOSET().push(id); } }
       me.aucHold = null; stat('aucWon'); saveMe(true); renderHud(); toast(`🔨 낙찰! ${res.name || itemName(k)} 을(를) ${Number(h.p).toLocaleString()} G 에 샀어요`); return; }
     return refund(res.cancel ? '경매가 취소돼서 맡긴 골드를 돌려받았어요' : '다른 사람이 낙찰받아서 맡긴 골드를 돌려받았어요');
   }
@@ -6666,7 +6666,8 @@ function aucBubble(c, x, y){
 const admAuc = {aucK:'ring:r10', aucN:'1', aucStart:'100000', aucDur:'60'};
 function aucItems(){
   // 원가: 반지는 공방에서 만드는 값, 가구는 상점 값, 광석·요리는 기본 판매가 (시세·보너스 빼고)
-  const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1], r[3]])], ['가구', FURN_ALL.map((f, i) => { const id = 'u' + String(i + 1).padStart(2, '0'); return ['furn:' + id, f[0], FURN[id]?.gold || 0]; })],
+  const paid = (list, pre) => Object.entries(list).filter(([id, it]) => id !== 'none' && it && (it.price || 0) > 0).map(([id, it]) => [pre + id, it.name + (pre === 'umb:' ? ' 우산' : ''), it.price]);
+  const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1], r[3]])], ...CH.CATS.map(([, l, list]) => [l, paid(list, 'wear:')]).filter(([, l]) => l.length), ['우산', paid(UMB, 'umb:')], ['벽지', paid(WALLS, 'wall:')], ['바닥', paid(FLOORS, 'floor:')], ['가구', FURN_ALL.map((f, i) => { const id = 'u' + String(i + 1).padStart(2, '0'); return ['furn:' + id, f[0], FURN[id]?.gold || 0]; })],
     ['광석', Object.keys(ORES).map(id => ['ore:' + id, ORES[id].name, itemPrice('ore:' + id)])], ['요리', Object.keys(DISHES).map(id => ['dish:' + id, DISHES[id].name, itemPrice('dish:' + id)])]];
   return o.map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n, p]) => `<option value="${k}"${admAuc.aucK === k ? ' selected' : ''}>${esc(n)} · 원가 ${(p || 0).toLocaleString()} G</option>`).join('')}</optgroup>`).join('');
 }
