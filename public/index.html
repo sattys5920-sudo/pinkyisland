@@ -6257,17 +6257,19 @@ const GOALS = [
 ];
 const GOAL_REWARD = 8000, GOAL_RANK = [5000, 3000, 1000]; // 달성한 날 기여 1·2·3 위 추가 골드 (1 위는 칭호 '고급 노동자'도)
 const goalOf = day => GOALS[hash('goal' + day) % GOALS.length];
-let goalDay = 0, goalData = {}, goalOff = null, goalPushT = 0, goalPending = false;
+let goalDay = 0, goalData = {}, goalOff = null, goalPushT = 0, goalPending = false, goalLoaded = 0; // goalLoaded: 오늘 현황을 서버에서 받아 온 날
 const goalSum = d => Object.values(d || {}).reduce((a, v) => a + (Number(v) || 0), 0);
 function goalWatch(){
   const d = today(); if (d === goalDay || !net || !net.goalWatch) return;
-  goalDay = d; goalData = {}; goalOff && goalOff(); goalOff = net.goalWatch(d, v => { goalData = v || {}; goalPay(d, goalData); renderGoal(); if (admin) renderAdmin(); });
+  goalDay = d; goalData = {}; goalOff && goalOff(); goalOff = net.goalWatch(d, v => { goalData = v || {}; goalLoaded = d; goalPay(d, goalData); renderGoal(); if (admin) renderAdmin(); });
   if (!admin && net.goalGet) net.goalGet(d - 1).then(v => { goalPay(d - 1, v || {}); goalRankPay(d - 1, v || {}); }).catch(()=>{}); // 어제 못 받은 보상 + 어제 순위 보상
 }
 // 목표 활동을 하면 내 기여를 1 씩 올려요 (모아서 1.5 초마다 저장)
 function goalCount(key, n){
   if (admin || !me || !net || !net.goalSet || goalOf(today()).k !== key || !(n > 0)) return;
-  const d = today(); goalWatch(); goalData[uid] = (Number(goalData[uid]) || 0) + n; renderGoal();
+  const d = today(); goalWatch();
+  if (goalLoaded !== d || goalSum(goalData) >= goalOf(d).n) return; // 이미 달성한 뒤(또는 현황을 받기 전)의 활동은 기여로 안 세요 → 끝난 뒤 한 마리 잡고 보상 받는 일 없음
+  goalData[uid] = (Number(goalData[uid]) || 0) + n; renderGoal();
   if (goalPending) return; goalPending = true;
   setTimeout(()=>{ goalPending = false; net.goalSet(d, goalData[uid] | 0).catch(()=>{}); goalPay(d, goalData); }, 1500);
 }
