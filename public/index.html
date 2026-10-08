@@ -344,6 +344,7 @@ body.typing #chatin{background:#fff}
 /* 관리자 CCTV */
 #adminUi{position:fixed;inset:0;pointer-events:none;z-index:30;font-size:20px;color:#f4eef2}
 #adminUi button{pointer-events:auto;font:inherit;cursor:pointer}
+#adminUi .adm-shop{display:block;line-height:1.45;padding:4px 0;border-top:1px dashed #f3dbe5}
 #npcPanel .bz-types{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:6px 0}
 #npcPanel .bz-type{border:2px solid transparent;background:#fff;border-radius:14px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:16px;cursor:pointer}
 #npcPanel .bz-type img{width:40px;height:40px}#npcPanel .bz-type small{font-size:12px;color:var(--soft)}
@@ -3264,7 +3265,11 @@ function onBazaar(v){ bazaar = v || {}; if (zoneId === 'bazaar'){ staticSig = ''
 const bzOwnerOf = uid_ => uid_ === uid ? me : players[uid_];
 const shopLv = sh => { let lv = 1; LV_SOLD.forEach((v, i) => { if ((sh?.sold || 0) >= v) lv = i + 1; }); return lv; };
 const shopCap = sh => 8 + (shopLv(sh) - 1) * 4;
-const saleMs = lv => Math.round(6*60000 * Math.pow(.9, lv - 1)); // Lv1 6 분에 하나 → Lv8 약 2.9 분에 하나
+// 하나 팔리는 간격: 비싼 메뉴일수록 천천히, 가게 레벨이 높을수록 조금 빨리 (3 분 ~ 25 분)
+// 예) 70 G 메뉴 Lv1 ≈ 5.4 분 · 500 G Lv3 ≈ 9.6 분 · 7,000 G Lv8 ≈ 19 분
+const saleMs = (lv, price) => Math.round(Math.max(3, Math.min(25, 9 * Math.pow(Math.max(1, price)/300, .35) * Math.pow(.95, lv - 1))) * 60000);
+const itemPriceOf = (sh, it) => Math.round(recOf(sh, it.r).price * GMULT[it.g]);
+const nextSaleMs = sh => { const it = (sh.stock || [])[0]; return it ? saleMs(shopLv(sh), recOf(sh, it.r).price) : 0; };
 const stockN = sh => (sh?.stock || []).reduce((a, s) => a + s.n, 0);
 const recOf = (sh, r) => MENU[sh.type].r[r];
 // 재료 키: c00 작물 · f00 물고기(별 상관없이) · o00 광석 · g00 채집물 · flour 등 시장 기본 재료
@@ -3275,14 +3280,22 @@ function ingTake(k, n){ if (ingCat(k) === 'fish'){ let left = n; for (const [id,
 const ingIcon = k => STAPLES[k] ? `<img class="ic" src="${stapleIconURL(k)}" alt="">` : iconImg(ingCat(k) + ':' + (k[0]==='f' ? k+'_1' : k));
 const canMake = (rec, n) => rec.need.every(([k, q]) => ingHave(k) >= q*n);
 // 판매 정리: 마지막으로 정리한 때부터 지난 시간만큼 앞에서부터 팔려요
-function shopSettle(){
-  const sh = me?.shop; if (!sh) return 0;
-  const now = Date.now() + serverOffset; if (!sh.open){ sh.lastAt = now; return 0; }
-  const lv0 = shopLv(sh); let t = sh.lastAt || now, n = 0, rev = 0;
-  while ((sh.stock || []).length && n < 500){ const iv = saleMs(shopLv(sh)); if (now - t < iv) break; t += iv; const it = sh.stock[0]; it.n--; rev += Math.round(recOf(sh, it.r).price * GMULT[it.g]); sh.sold = (sh.sold || 0) + 1; n++; if (it.n <= 0) sh.stock.shift(); }
-  if (!(sh.stock || []).length){ sh.open = 0; t = now; }
+// 판매 계산 (저장하지 않고 셈만): 관리자 화면에서 주인이 접속 안 한 동안 팔린 것까지 미리 보여 줄 때도 써요
+function shopProject(sh0, now){
+  const sh = structuredClone(sh0); sh.stock = sh.stock || [];
+  if (!sh.open){ return {sh, n:0, rev:0}; }
+  let t = sh.lastAt || now, n = 0, rev = 0;
+  while (sh.stock.length && n < 500){ const it = sh.stock[0], iv = saleMs(shopLv(sh), recOf(sh, it.r).price); if (now - t < iv) break; t += iv; it.n--; const p = itemPriceOf(sh, it); rev += p; sh.sold = (sh.sold || 0) + 1; n++; if (it.n <= 0) sh.stock.shift(); }
+  if (!sh.stock.length){ sh.open = 0; t = now; }
   sh.lastAt = t;
-  if (n){ sh.till = (sh.till || 0) + rev; const wk = weekKey(); if (sh.wk !== wk){ sh.wk = wk; sh.wkRev = 0; } sh.wkRev = (sh.wkRev || 0) + rev; saveMe(); }
+  if (n){ sh.till = (sh.till || 0) + rev; sh.rev = (sh.rev || 0) + rev; const wk = weekKey(); if (sh.wk !== wk){ sh.wk = wk; sh.wkRev = 0; } sh.wkRev = (sh.wkRev || 0) + rev; }
+  return {sh, n, rev};
+}
+function shopSettle(){
+  if (!me?.shop) return 0;
+  const now = Date.now() + serverOffset; if (!me.shop.open){ me.shop.lastAt = now; return 0; }
+  const lv0 = shopLv(me.shop), {sh, n} = shopProject(me.shop, now);
+  me.shop = sh; if (n) saveMe();
   const lv1 = shopLv(sh); if (lv1 > lv0){ toast(`가게 레벨 UP! Lv${lv1} · 새 메뉴 "${recOf(sh, lv1 - 1).n}"이(가) 열렸어요`); setExpr('sparkle', 2500); staticSig = ''; saveMe(true); }
   return n;
 }
@@ -3371,7 +3384,7 @@ function shopPanel(){
     ${open ? `<div class="bz-make">${[1, 2, 3, 5].map(c => `<button class="mini" data-r="${i}" data-n="${c}" ${canMake(r, c) && n + c <= cap ? '' : 'disabled'}>${c}개 만들기</button>`).join('')}</div>` : `<small class="bz-lockt">Lv${i+1}에 열려요 · 누적 판매 ${LV_SOLD[i]}개</small>`}</div>`; }).join('');
   const stock = (sh.stock || []).map(s => `<span class="bz-st g${s.g}">${recOf(sh, s.r).n} ×${s.n} <i>${GNAME[s.g]}</i></span>`).join('') || '<small>진열대가 비어 있어요. 아래에서 만들어 올려요</small>';
   bzOpen(`${esc(sh.name)} · ${m.name}`, `<div class="bz-head"><img src="${shopIconURL(sh.type)}" alt=""><div><b>Lv${lv}</b> · 누적 판매 ${(sh.sold||0).toLocaleString()}개<div class="bz-bar"><i style="width:${Math.round(prog*100)}%"></i></div><small>${next ? `Lv${lv+1}까지 ${next - (sh.sold||0)}개` : '최고 레벨이에요'}</small></div></div>
-    <div class="bz-box"><b>진열대 ${n}/${cap}</b> · ${sh.open ? `<span class="bz-on">영업 중</span> · ${Math.round(saleMs(lv)/60000*10)/10}분마다 하나씩 팔려요` : '쉬는 중'}<div class="bz-stock">${stock}</div>
+    <div class="bz-box"><b>진열대 ${n}/${cap}</b> · ${sh.open ? `<span class="bz-on">영업 중</span> · 다음 손님까지 약 ${Math.max(1, Math.round((nextSaleMs(sh) - (Date.now() + serverOffset - (sh.lastAt||0)))/60000))}분` : '쉬는 중'}<div class="bz-stock">${stock}</div>
       <div class="bz-acts"><button class="btn" id="bzOpenBtn" ${!n && !sh.open ? 'disabled' : ''}>${sh.open ? '장사 쉬기' : '장사 시작!'}</button><button class="btn ghost" id="bzTill" ${(sh.till||0) > 0 ? '' : 'disabled'}>수금하기 ${(sh.till||0).toLocaleString()} G</button></div></div>
     <p class="mnote">메뉴를 고르고 만들기를 누르면 만드는 과정이 시작돼요. 재료는 끝까지 만들었을 때 빠져요. PERFECT는 1.5배, 아쉬움은 반값에 팔려요. 밀가루·쌀·우유·달걀·설탕은 시장 노점에서 사요.</p>${rows}`, shopPanel);
   $('bzOpenBtn').onclick = () => { shopSettle(); sh.open = sh.open ? 0 : 1; sh.lastAt = Date.now() + serverOffset; saveMe(true); staticSig = ''; toast(sh.open ? '장사 시작! 자리를 비워도 진열대 물건이 팔려요' : '장사를 쉬어요'); shopPanel(); };
@@ -5970,6 +5983,7 @@ function renderAdmin(){
       ${adminMobSec()}
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
+      ${adminShopSec(regs)}
       <div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
     </div>${admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : admQ !== null ? adminQEdit() : ''}`;
@@ -5981,6 +5995,13 @@ function renderAdmin(){
   const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
   const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
   const cl = box.querySelector('.adm-chat-list:not(.adm-post-list)'); if (cl){ cl.scrollTop = admChatScroll ?? cl.scrollHeight; cl.onscroll = ()=>{ admChatScroll = cl.scrollTop + cl.clientHeight >= cl.scrollHeight - 4 ? null : cl.scrollTop; }; }
+}
+// 관리자: 핑크 시장 가게 현황 (주인이 접속 안 한 동안 팔린 것까지 계산해서 보여 줘요)
+function adminShopSec(regs){
+  const now = Date.now() + serverOffset;
+  const list = regs.filter(([, p]) => p.shop && MENU[p.shop.type]).map(([id, p]) => [id, p, shopProject(p.shop, now).sh]).sort((a, b) => (b[2].rev || 0) - (a[2].rev || 0));
+  const rows = list.map(([id, p, sh]) => `<small class="adm-shop"><b>${esc(sh.name)}</b> · ${esc(MENU[sh.type].name)} · ${esc(p.nick)} 님<br>Lv${shopLv(sh)} · 누적 판매 ${(sh.sold || 0).toLocaleString()}개 · <b>누적 매출 ${(sh.rev || 0).toLocaleString()} G</b><br>이번 주 ${(sh.wk === weekKey() ? sh.wkRev || 0 : 0).toLocaleString()} G · ${sh.open ? '영업 중' : '쉬는 중'} · 진열 ${stockN(sh)}/${shopCap(sh)} · 수금 안 한 돈 ${(sh.till || 0).toLocaleString()} G</small>`).join('');
+  return `<div class="adm-sec"><b>🏪 핑크 시장 가게 ${list.length}곳</b>${rows || '<small>아직 연 가게가 없어요</small>'}</div>`;
 }
 function adminDarkSec(){
   const i = darkIdx(), npc = darkToday(), r = npc ? roomOf(npc) : {}, n = npc ? darkPuzzles(npc).length : 0;
