@@ -83,6 +83,7 @@ export const ACHIEVEMENTS = [
 
   // ── 함께 놀기 ──
   { id:'auc_win',    name:'경매 낙찰자',       desc:'오투모 경매에서 낙찰받기',       stat:'aucWon',      n:1,       reward:{gold:2000,  title:'경매 낙찰자'},       icon:'🔨' },
+  { id:'dlv_50',     name:'배달의 민족',       desc:'배달 주문 50 건 배달하기',       stat:'deliveries',  n:50,      reward:{gold:3000,  title:'배달의 민족'},       icon:'📦' },
   { id:'mg_50',      name:'알바의 인생',       desc:'미니게임 50 판 하기',            stat:'mgPlayed',    n:50,      reward:{gold:3000,  title:'알바의 인생'},       icon:'🧺' },
   { id:'coffee_ace', name:'초천재',            desc:'커피 만들기에서 5 잔 모두 완벽',  stat:'coffeePerfect', n:1,     reward:{gold:3000,  title:'초천재'},            icon:'🧠' },
   { id:'otumo_3',    name:'오투모의 친구',     desc:'오투모에게 편지 보내기 · 오투모가 깨워 주기 합쳐서 3 번', stat:'otumoFriend', n:3, reward:{gold:1500, title:'오투모의 친구'}, icon:'🤖' },
