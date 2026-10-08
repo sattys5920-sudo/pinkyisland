@@ -5733,7 +5733,7 @@ function renderAdmin(){
   if (window.scrollY !== pageY) window.scrollTo(0, pageY);
   const npl = box.querySelector('.adm-post-list'); if (npl) npl.scrollTop = postScroll;
   if (admQ !== null) darkImgFill(box);
-  if (typingRk){ const ta = box.querySelector(`[data-rk="${typingRk}"]`); if (ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }
+  if (typingRk){ const ta = box.querySelector(`[data-rk="${typingRk}"]`); if (ta){ ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch(e){} } } // 다시 그려도 쓰던 칸·커서 그대로
   const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
   const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
   const cl = box.querySelector('.adm-chat-list:not(.adm-post-list)'); if (cl){ cl.scrollTop = admChatScroll ?? cl.scrollHeight; cl.onscroll = ()=>{ admChatScroll = cl.scrollTop + cl.clientHeight >= cl.scrollHeight - 4 ? null : cl.scrollTop; }; }
@@ -6410,16 +6410,17 @@ function adminAucSec(){
   if (aucLive()){ const m = auc.meta, t = aucTop(), left = Math.max(0, Math.ceil((aucEnd() - Date.now() - serverOffset) / 1000));
     return `<div class="adm-sec"><b>🔨 경매 중 · ${esc(aucItemName(m))}${m.n > 1 ? ' ×' + m.n : ''}</b><small>${esc(zoneName(m.z))} · 시작가 ${m.start.toLocaleString()} G · ${left} 초 남음</small><small>최고가 ${t ? `${t.p.toLocaleString()} G · ${esc(t.nick)}` : '아직 없음'}</small><button data-a="aucend" class="adm-btn">지금 낙찰 확정</button><button data-a="auccancel" class="adm-btn warn">경매 취소</button></div>`; }
   return `<div class="adm-sec adm-auc"><b>🔨 오투모 경매 열기</b><small>지금 오투모 자리(${esc(zoneName(zoneId))}) 둘레가 경매장이 돼요</small>
-    <select id="aucK">${aucItems()}</select><label>개수 <input id="aucN" type="number" min="1" max="99" value="${esc(admAuc.aucN)}"></label>
-    <label>시작가 <input id="aucStart" type="number" min="1000" step="1000" value="${esc(admAuc.aucStart)}"> G</label>
+    <select id="aucK">${aucItems()}</select><label>개수 <input id="aucN" data-rk="auc|aucN" type="text" inputmode="numeric" maxlength="2" value="${esc(admAuc.aucN)}"></label>
+    <label>시작가 <input id="aucStart" data-rk="auc|aucStart" type="text" inputmode="numeric" maxlength="9" value="${esc(admAuc.aucStart)}"> G</label><small>시작가는 1,000 G 단위로 맞춰요 (입찰도 1,000 G 씩 올라가요)</small>
     <label>시간 <select id="aucDur">${[30, 60, 90, 120, 180].map(s => `<option value="${s}"${admAuc.aucDur === String(s) ? ' selected' : ''}>${s} 초</option>`).join('')}</select></label>
     <button data-a="aucgo" class="adm-btn">경매 시작</button></div>`;
 }
 function adminAucGo(){
-  const k = admAuc.aucK, n = Math.max(1, Math.min(99, admAuc.aucN | 0)), start = Math.max(1000, Math.round((admAuc.aucStart | 0) / 1000) * 1000), dur = Math.max(30, Math.min(300, admAuc.aucDur | 0));
-  if (!k) return toast('물건을 골라요'); if (!confirm(`${itemName(k)} ${n} 개 · 시작가 ${start.toLocaleString()} G · ${dur} 초 경매를 시작할까요?`)) return;
+  const num = v => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0; // 쉼표·공백이 섞여도 숫자만
+  const k = admAuc.aucK, n = Math.max(1, Math.min(99, num(admAuc.aucN))), start = Math.max(1000, Math.round(num(admAuc.aucStart) / 1000) * 1000), dur = Math.max(30, Math.min(300, admAuc.aucDur | 0));
+  if (!k) return toast('물건을 골라요'); const name = k.startsWith('ring:') ? (RINGS[k.slice(5)]?.name || '반지') : itemName(k);
+  if (!confirm(`${name} ${k.startsWith('ring:') ? 1 : n} 개 · 시작가 ${start.toLocaleString()} G · ${dur} 초 경매를 시작할까요?`)) return;
   const now = Date.now() + serverOffset, id = 'a' + now.toString(36);
-  const name = k.startsWith('ring:') ? (RINGS[k.slice(5)]?.name || '반지') : itemName(k);
   net.aucStart({id, k, n: k.startsWith('ring:') ? 1 : n, name, start, endAt: now + dur * 1000, z: zoneId, x: Math.round(pos.x), y: Math.round(pos.y), at: now}).then(()=>toast('경매를 시작했어요 · 섬 사람들에게 알림이 갔어요')).catch(e=>toast('경매를 시작하지 못했어요 ' + (e.message||'')));
 }
 function adminAucEnd(cancel){
