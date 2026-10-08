@@ -392,6 +392,10 @@ body.dlg-on #dlvChip,body.typing #dlvChip,body.mg-on #dlvChip,body.admin #dlvChi
 }
 #goal.done .gl-bar s{background:linear-gradient(90deg,#9fe0b4,#4fbf7f)}
 body.dlg-on #goal,body.admin #goal{visibility:hidden}
+#oxBar{position:fixed;z-index:22;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 112px);width:min(420px,calc(100vw - 20px));background:#fff8fb;border:3px solid #ff9fc4;border-radius:18px;box-shadow:0 4px 0 #f1c6d8,0 8px 20px rgba(80,30,60,.2);padding:8px 12px 10px;color:#5a3346;font-size:16px;pointer-events:none}#oxBar[hidden]{display:none!important}
+#oxBar .ox-h{display:flex;align-items:center;gap:6px}#oxBar .ox-h small{margin-left:auto;color:#b07a92;font-size:13px}
+#oxBar .ox-q{margin:5px 0;font-size:19px;line-height:1.25;word-break:keep-all}#oxBar .ox-q span{display:inline-block;background:#ff8fb2;color:#fff;border-radius:10px;padding:0 7px;margin-right:6px;font-size:14px}
+#oxBar .ox-f{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;color:#9a6f84}#oxBar .ox-t{font-size:22px;color:#e0507a}#oxBar .ox-a{font-size:22px;color:#4f9cff}#oxBar .ox-ok{color:#3aa76d}#oxBar .ox-out{color:#e0507a}
 #aucSheet{position:fixed;z-index:22;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 70px);width:min(400px,calc(100vw - 20px));background:#fff8fb;border:3px solid #ffd36b;border-radius:18px;box-shadow:0 4px 0 #f1c6d8,0 8px 20px rgba(80,30,60,.2);padding:8px 12px 10px;color:#5a3346;font-size:16px}
 #aucSheet .au-h{display:flex;align-items:center;gap:6px}#aucSheet .au-h small{margin-left:auto;color:#b07a92;font-size:13px}
 #aucSheet .au-i{display:flex;gap:10px;align-items:center;margin:4px 0}#aucSheet .au-ic{width:44px;height:44px;font-size:32px;text-align:center}#aucSheet .au-p{color:#e0507a}#aucSheet small{color:#9a6f84;font-size:13px}
@@ -1280,6 +1284,9 @@ function soloNet(){
     goalWatch: (d, cb) => { const g = soloNet.goals || (soloNet.goals = {}); setTimeout(()=>cb(g[d] || {})); return ()=>{}; },
     goalGet: async d => (soloNet.goals || {})[d] || {},
     goalSet: async (d, v) => { const g = soloNet.goals || (soloNet.goals = {}); (g[d] = g[d] || {})[uid] = v; },
+    oxOpen: async m => { soloNet.ox = {meta:m}; onOx(structuredClone(soloNet.ox)); },
+    oxSet: async v => { const o = soloNet.ox || (soloNet.ox = {}); for (const [k, val] of Object.entries(v)){ const ks = k.split('/'); let t = o; for (const q of ks.slice(0, -1)) t = t[q] = t[q] || {}; if (val === null) delete t[ks.at(-1)]; else t[ks.at(-1)] = structuredClone(val); } onOx(structuredClone(o)); },
+    oxJoin: async (id, p) => { const o = soloNet.ox || (soloNet.ox = {}); ((o.players = o.players || {})[id] = o.players[id] || {})[uid] = p; onOx(structuredClone(o)); },
     aucStart: async m => { soloNet.auc = {...(soloNet.auc||{}), meta:m, top:null}; onAuction(structuredClone(soloNet.auc)); },
     aucBid: async (id, p, nick) => { const a = soloNet.auc; if (!a || a.meta.id !== id || (a.top && a.top.aid === id && a.top.p >= p)) return false; a.top = {aid:id, p, uid, nick, at:Date.now()}; onAuction(structuredClone(a)); return true; },
     aucFinish: async (id, res, cancel) => { const a = soloNet.auc; a.meta = {...a.meta, ...(cancel ? {cancel:1} : {done:1, win:res})}; (a.hist = a.hist || {})[id] = res; onAuction(structuredClone(a)); },
@@ -1382,7 +1389,7 @@ function firebaseNet(){
     // 장소마다 100 줄만 남기고 오래된 줄은 지워요
     chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ox:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -1406,6 +1413,7 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'market'), s=>onMarket(s.val()));
       F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
       F.onValue(F.ref(db, 'auction'), s=>onAuction(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'ox'), s=>onOx(s.val()), ()=>{});
       F.onValue(F.ref(db, 'bazaar'), s=>onBazaar(s.val()), ()=>{});
     },
     setWorld: v => F.update(F.ref(db, 'world'), v),
@@ -1417,6 +1425,9 @@ function firebaseNet(){
     goalWatch: (d, cb) => F.onValue(F.ref(db, 'goals/'+d), s=>cb(s.val()), ()=>{}),
     goalGet: async d => (await F.get(F.ref(db, 'goals/'+d))).val(),
     goalSet: (d, v) => F.set(F.ref(db, 'goals/'+d+'/'+uid), v),
+    oxOpen: m => F.set(F.ref(db, 'ox'), {meta:m}),
+    oxSet: v => F.update(F.ref(db, 'ox'), v),
+    oxJoin: (id, p) => F.set(F.ref(db, 'ox/players/' + id + '/' + uid), p),
     aucStart: m => F.update(F.ref(db, 'auction'), {meta:m, top:null}),
     aucBid: async (id, p, nick) => { try { const r = await F.runTransaction(F.ref(db, 'auction/top'), cur => (cur && cur.aid === id && cur.p >= p) ? undefined : {aid:id, p, uid, nick:String(nick).slice(0,16), at:F.serverTimestamp()}, {applyLocally:false}); return r.committed && r.snapshot.val()?.uid === uid && r.snapshot.val()?.p === p; } catch(e){ return false; } },
     aucFinish: (id, res, cancel) => F.update(F.ref(db, 'auction'), {...(cancel ? {'meta/cancel':1} : {'meta/done':1, 'meta/win':res}), ['hist/'+id]:res}),
@@ -5878,8 +5889,8 @@ function frameBody(t){
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,110); c.scale(1.45,1.45); CH.figure(d, L, dir, t/1000, true, L.expr); c.restore(); } } }
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
-    if (admin){ moveOthers(dt); if (admWalk){ step(dt); admWalkTick(t); } else adminCam(); adminMobs(dt); updateBossFx(dt, t); aucTick(); }
-    else { step(dt); moveOthers(dt); aucSheet(); walkFade(t); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
+    if (admin){ moveOthers(dt); if (admWalk){ step(dt); admWalkTick(t); } else adminCam(); adminMobs(dt); updateBossFx(dt, t); aucTick(); oxTick(); }
+    else { step(dt); moveOthers(dt); aucSheet(); oxTick(); walkFade(t); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
     if (!admin){ const zf = Z().dark === 'tori' && darkBossUp(roomOf('tori')) && floorOf(pos.y, 3) === 3, wz = view.base * (zf ? .7 : 1); if (Math.abs(view.zoom - wz) > .01) view.zoom = wz; } // 토리??? 와 싸울 땐 한 발 물러서서 봐요
@@ -5897,7 +5908,7 @@ function frameBody(t){
     ctx.drawImage(staticLayer, 0, 0, W, H);
     const d = painter(ctx), now = Date.now();
     if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const g = id===uid ? me.gardens : (p.gardens||[]); slotsOf(p.lot, id===uid ? me.plots : p.plots).forEach((sl,i)=>drawSlot(d, sl, g[i], now, id===uid)); }
-    drawRocks(d, t); drawAucRing(ctx, t);
+    drawRocks(d, t); drawAucRing(ctx, t); drawOxField(ctx, t);
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
       ...darkEntities(d, t),
@@ -5953,7 +5964,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK'){ e.target.blur(); renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -5982,6 +5993,7 @@ function renderAdmin(){
       ${adminGoalSec()}
       ${adminNightSec()}
       ${adminAucSec()}
+      ${adminOxSec()}
       ${adminMobSec()}
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
@@ -6224,6 +6236,9 @@ function adminClick(e){
   else if (b.dataset.a==='dkqimgdel'){ if (confirm('이 문제의 그림을 지울까요?')) Promise.resolve(net.darkImgSet(admQ, b.dataset.pid, null, 0)).then(()=>{ toast('그림을 지웠어요'); renderAdmin(); }).catch(()=>toast('지우지 못했어요')); }
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) Promise.resolve(net.setWorld({dark:v, darkAt:Date.now() + serverOffset, darkShift:0})).then(()=>v && net.darkWipe ? net.darkWipe() : null).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
   else if (b.dataset.a==='aucgo') adminAucGo();
+  else if (b.dataset.a==='oxgo') adminOxGo(); else if (b.dataset.a==='oxq') adminOxQ();
+  else if (b.dataset.a==='oxend'){ if (confirm('끝내고 살아남은 사람에게 상품을 줄까요?')) adminOxEnd(false); }
+  else if (b.dataset.a==='oxcancel'){ if (confirm('OX 퀴즈를 취소할까요?')) adminOxEnd(true); }
   else if (['meteorgo','meteorcancel','fwgo'].includes(b.dataset.a)) adminNightClick(b.dataset.a);
   else if (b.dataset.a==='balgo') adminBalloon();
   else if (b.dataset.a==='aucend'){ if (confirm('지금 최고가로 낙찰 확정할까요?')) adminAucEnd(false); }
@@ -6698,6 +6713,117 @@ function adminAucEnd(cancel){
 }
 // 관리자 화면이 켜져 있으면 시간이 다 된 경매를 알아서 끝내요
 function aucTick(){ if (admin && aucLive() && Date.now() + serverOffset > aucEnd() + 800 && !aucTick.busy){ aucTick.busy = true; adminAucEnd(false); setTimeout(()=>{ aucTick.busy = false; }, 3000); } }
+
+// ===== 오투모 OX 퀴즈 =====
+// 오투모가 서 있는 자리에 OX 판(왼쪽 O · 오른쪽 X)이 생겨요. 1번 문제 시간 안에 판에 들어온 사람이 참가자예요.
+// 문제마다 10 초, 시간이 끝나는 순간 서 있는 쪽으로 판정해요. 정답은 10 초가 지난 뒤에야 올라가서 미리 볼 수 없어요.
+// [끝내고 상품 주기]를 누르면 끝까지 살아남은 사람이 저마다 상품을 받아요.
+const OX_R = 300, OX_SEC = 10;
+let ox = null, oxSeen = '', oxQSeen = '', oxBarSig = '';
+const oxSide = {}, oxJudged = {};
+const admOx = {oxK:'gold', oxN:'10000', oxQ:'', oxA:'O', ans:'', r:0};
+const oxLive = () => !!(ox && ox.meta && ox.meta.id && !ox.meta.done && !ox.meta.cancel);
+const oxPlayers = () => (ox && ox.meta && ox.players && ox.players[ox.meta.id]) || {};
+const oxMine = () => oxPlayers()[uid];
+const oxAlive = () => Object.values(oxPlayers()).filter(p => p && p.alive);
+const oxIn = () => oxLive() && zoneId === ox.meta.z && Math.hypot(pos.x - ox.meta.x, (pos.y - ox.meta.y) / .6) < OX_R;
+const oxPrizeName = m => m.k === 'gold' ? `${Number(m.n).toLocaleString()} G` : `${m.name}${m.n > 1 ? ' ' + m.n + '개' : ''}`;
+const oxCounting = () => { const c = ox && ox.cur; return !!(c && c.r && !c.ans && Date.now() + serverOffset < c.endAt); };
+function onOx(v){
+  ox = v || null; const m = ox && ox.meta;
+  if (m && oxLive() && oxSeen !== m.id){ oxSeen = m.id;
+    if (!admin && me && Date.now() + serverOffset - (m.at || 0) < 180000)
+      say('❓ 오투모 OX 퀴즈', `오투모가 OX 퀴즈를 열었어요!\n상품: ${oxPrizeName(m)} (끝까지 살아남은 사람 모두)\n장소: ${zoneName(m.z)}\n첫 문제 시간 안에 오투모 둘레 OX 판으로 들어와요!`, [['확인', closeTalk]], '왼쪽이 O, 오른쪽이 X 예요');
+  }
+  const c = ox && ox.cur; if (m && c && c.r && !c.ans && oxQSeen !== m.id + '|' + c.r){ oxQSeen = m.id + '|' + c.r; if (!admin && me && (zoneId === m.z || oxMine())) toast(`❓ ${c.r}번 문제! 10 초 안에 O 또는 X 로 움직여요`); }
+  // 상품: 끝났고 내가 살아남았으면
+  if (!admin && me && m && m.done && m.win && m.win[uid] && me.oxGot !== m.id){ me.oxGot = m.id;
+    if (m.k === 'gold') me.inv.gold += Number(m.n) || 0;
+    else if (m.k.startsWith('ring:')){ const id = m.k.slice(5); if (!(me.inv.rings || []).includes(id)) me.inv.rings = [...(me.inv.rings || []), id]; else me.inv.gold += RINGS[id]?.gold || 0; }
+    else { invAdd(m.k, m.n || 1); if (m.k.startsWith('wear:')){ const id = m.k.slice(5).replace('~', '#'); if (!CLOSET().includes(id)) CLOSET().push(id); } }
+    saveMe(true); renderHud(); setExpr('sparkle', 3000); say('🎉 OX 퀴즈 우승!', `끝까지 살아남았어요!\n상품 ${oxPrizeName(m)}을(를) 받았어요`, [['좋아요', closeTalk]]); }
+  oxBarSig = ''; if (admin) renderAdmin();
+}
+function oxTick(){
+  oxBar();
+  if (!oxLive()) return; const now = Date.now() + serverOffset, c = ox.cur, id = ox.meta.id;
+  if (admin){
+    if (c && c.r && !c.ans && admOx.r === c.r && admOx.ans && now > c.endAt + 600 && !oxTick.busy){ oxTick.busy = true; net.oxSet({'cur/ans': admOx.ans}).catch(()=>{}).finally(()=>setTimeout(()=>{ oxTick.busy = false; }, 1500)); }
+    const ph = c ? c.r + (c.ans ? 'a' : now < c.endAt ? 'q' : 'w') : '-'; if (oxTick.ph !== ph){ oxTick.ph = ph; renderAdmin(); }
+    return;
+  }
+  if (!me || !c || !c.r) return;
+  const key = id + '|' + c.r;
+  if (c.r === 1 && !c.ans && now < c.endAt && oxIn() && !oxMine() && !oxTick.joining){ oxTick.joining = true; net.oxJoin(id, {nick:String(me.nick).slice(0, 16), alive:true}).catch(()=>{}).finally(()=>{ oxTick.joining = false; }); }
+  if (now >= c.endAt && !(key in oxSide)) oxSide[key] = oxIn() ? (pos.x < ox.meta.x ? 'O' : 'X') : '-';
+  if (c.ans && !oxJudged[key] && (key in oxSide)){ oxJudged[key] = 1; const mine = oxMine();
+    if (mine && mine.alive){ const side = oxSide[key];
+      if (side === c.ans){ toast(`⭕ 정답은 ${c.ans}! 살아남았어요`); setExpr('happy', 2000); }
+      else { net.oxJoin(id, {nick:String(me.nick).slice(0, 16), alive:false, r:c.r}).catch(()=>{}); toast(side === '-' ? `판 밖에 있어서 탈락했어요 (정답 ${c.ans})` : `❌ 땡! 정답은 ${c.ans} · 탈락했어요`); setExpr('sad', 2500); } } }
+}
+// 위쪽 OX 알림판: 문제 · 남은 시간 · 남은 사람 · 내 상태
+function oxBar(){
+  let el = $('oxBar'); const show = oxLive() && (admin || (me && (zoneId === ox.meta.z || oxMine())));
+  if (!show){ if (el && !el.hidden){ el.hidden = true; oxBarSig = ''; } return; }
+  if (!el){ el = document.createElement('div'); el.id = 'oxBar'; document.body.appendChild(el); }
+  el.hidden = false;
+  const m = ox.meta, c = ox.cur, now = Date.now() + serverOffset, left = c && c.r && !c.ans ? Math.max(0, Math.ceil((c.endAt - now) / 1000)) : 0, mine = oxMine(), alive = oxAlive().length, all = Object.keys(oxPlayers()).length;
+  const st = admin ? '' : mine ? (mine.alive ? '<b class="ox-ok">참가 중</b>' : '<b class="ox-out">탈락</b>') : c && c.r > 1 ? '구경 중' : c && c.r === 1 && left ? (oxIn() ? '<b class="ox-ok">판 안 · 참가해요</b>' : '판으로 들어와요!') : '첫 문제를 기다려요';
+  const sig = [m.id, c && c.r, c && c.ans, left, alive, all, st].join('|'); if (sig === oxBarSig) return; oxBarSig = sig;
+  el.innerHTML = `<div class="ox-h">❓ <b>OX 퀴즈</b><small>상품 ${esc(oxPrizeName(m))}</small></div>
+    ${c && c.r ? `<div class="ox-q"><span>${c.r}번</span>${esc(c.q || '')}</div>` : '<div class="ox-q">곧 첫 문제가 나와요 · 오투모 둘레 OX 판 안으로!</div>'}
+    <div class="ox-f">${c && c.r ? (c.ans ? `정답 <b class="ox-a">${c.ans}</b>` : left ? `<b class="ox-t">${left}</b>초 · 왼쪽 O · 오른쪽 X` : '판정 중…') : ''}<span>남은 사람 ${alive}${all ? '/' + all : ''}</span>${st ? `<span>${st}</span>` : ''}</div>`;
+}
+// 땅에 OX 판 (왼쪽 분홍 O · 오른쪽 하늘 X)
+function drawOxField(c, t){
+  if (!oxLive() || zoneId !== ox.meta.z) return; const m = ox.meta, live = oxCounting(), cur = ox.cur, a = cur && cur.ans;
+  c.save(); c.translate(m.x, m.y); c.scale(1, .6);
+  for (const [side, from, to, col] of [['O', Math.PI/2, Math.PI*1.5, '255,143,178'], ['X', -Math.PI/2, Math.PI/2, '127,184,255']]){
+    const lit = a ? (a === side ? .32 : .06) : live ? .16 + .06*Math.sin(t/180) : .14;
+    c.fillStyle = `rgba(${col},${lit})`; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, OX_R, from, to); c.closePath(); c.fill(); }
+  c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 4; c.setLineDash([12, 9]); c.beginPath(); c.arc(0, 0, OX_R, 0, 7); c.stroke(); c.beginPath(); c.moveTo(0, -OX_R); c.lineTo(0, OX_R); c.stroke(); c.setLineDash([]);
+  c.restore();
+  c.save(); c.font = 'bold 120px "Dongle",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 8; c.strokeStyle = 'rgba(255,255,255,.8)';
+  for (const [s, dx, col] of [['O', -OX_R*.55, '#ff6f9f'], ['X', OX_R*.55, '#4f9cff']]){ c.globalAlpha = a && a !== s ? .3 : .85; c.strokeText(s, m.x + dx, m.y + 10); c.fillStyle = col; c.fillText(s, m.x + dx, m.y + 10); }
+  c.restore();
+}
+function adminOxSec(){
+  if (!admWalk) return `<div class="adm-sec"><b>❓ OX 퀴즈</b><small>오투모로 들어가면 지금 서 있는 자리에서 OX 퀴즈를 열 수 있어요</small></div>`;
+  if (!oxLive()) return `<div class="adm-sec adm-auc"><b>❓ OX 퀴즈 열기</b><small>지금 오투모 자리(${esc(zoneName(zoneId))}) 둘레에 OX 판이 생겨요 · 끝까지 살아남은 사람 모두 상품을 받아요</small>
+    <select id="oxK"><optgroup label="골드"><option value="gold"${admOx.oxK === 'gold' ? ' selected' : ''}>골드</option></optgroup>${aucItems().replace(/ selected/g, '').replace(`value="${admOx.oxK}"`, `value="${admOx.oxK}" selected`)}</select>
+    <label>${admOx.oxK === 'gold' ? '골드' : '개수'} <input id="oxN" data-rk="ox|oxN" type="text" inputmode="numeric" maxlength="9" value="${esc(admOx.oxN)}"></label>
+    <button data-a="oxgo" class="adm-btn">OX 퀴즈 열기</button></div>`;
+  const m = ox.meta, c = ox.cur, now = Date.now() + serverOffset, alive = oxAlive(), all = Object.values(oxPlayers()).filter(Boolean);
+  const counting = c && c.r && !c.ans, left = counting ? Math.max(0, Math.ceil((c.endAt - now) / 1000)) : 0;
+  return `<div class="adm-sec adm-auc"><b>❓ OX 퀴즈 중 · 상품 ${esc(oxPrizeName(m))}</b><small>${esc(zoneName(m.z))} · 참가 ${all.length}명 · 살아남은 ${alive.length}명</small>
+    <small>${alive.map(p => esc(p.nick)).join(', ') || (c && c.r && !(c.r === 1 && !c.ans) ? '아무도 안 남았어요' : '1번 문제 시간에 판 안에 있는 사람이 참가해요')}</small>
+    ${counting ? `<small><b>${c.r}번 문제 진행 중</b> · ${left ? left + '초 남음' : '정답 공개 중…'} · 정답 ${esc(admOx.ans || '?')}<br>${esc(c.q)}</small>` : `${c && c.ans ? `<small>${c.r}번 정답 <b>${c.ans}</b> 공개 · 살아남은 ${alive.length}명</small>` : ''}
+      <label>${(c && c.r || 0) + 1}번 문제<textarea id="oxQ" data-rk="ox|oxQ" rows="2" maxlength="120" placeholder="예: 토리는 다람쥐다">${esc(admOx.oxQ)}</textarea></label>
+      <label>정답 <select id="oxA"><option value="O"${admOx.oxA === 'O' ? ' selected' : ''}>O</option><option value="X"${admOx.oxA === 'X' ? ' selected' : ''}>X</option></select></label>
+      <button data-a="oxq" class="adm-btn">문제 내기 (10초)</button>`}
+    <button data-a="oxend" class="adm-btn" ${counting ? 'disabled' : ''}>끝내고 상품 주기</button><button data-a="oxcancel" class="adm-btn warn">퀴즈 취소</button></div>`;
+}
+function adminOxGo(){
+  const num = v => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0, k = admOx.oxK || 'gold';
+  const n = k === 'gold' ? Math.max(100, num(admOx.oxN)) : k.startsWith('ring:') ? 1 : Math.max(1, Math.min(99, num(admOx.oxN)));
+  const name = k === 'gold' ? '골드' : k.startsWith('ring:') ? (RINGS[k.slice(5)]?.name || '반지') : itemName(k), m0 = {k, n, name};
+  if (!confirm(`상품 ${oxPrizeName(m0)} · OX 퀴즈를 열까요?`)) return;
+  const now = Date.now() + serverOffset, id = 'x' + now.toString(36);
+  admOx.ans = ''; admOx.r = 0; admOx.oxQ = '';
+  net.oxOpen({id, k, n, name, z: zoneId, x: Math.round(pos.x), y: Math.round(pos.y), at: now}).then(()=>toast('OX 퀴즈를 열었어요 · 섬 사람들에게 알림이 갔어요')).catch(e=>toast('열지 못했어요 ' + (e.message || '')));
+}
+function adminOxQ(){
+  if (!oxLive() || oxCounting()) return; const q = String(admOx.oxQ || '').trim().slice(0, 120), a = admOx.oxA === 'X' ? 'X' : 'O';
+  if (!q) return toast('문제를 적어 주세요');
+  const r = ((ox.cur && ox.cur.r) || 0) + 1; if (r > 1 && !oxAlive().length) return toast('살아남은 사람이 없어요. 끝내기를 눌러요');
+  admOx.ans = a; admOx.r = r; admOx.oxQ = '';
+  net.oxSet({cur: {r, q, endAt: Date.now() + serverOffset + OX_SEC * 1000}}).then(()=>toast(`${r}번 문제를 냈어요 · 정답 ${a}`)).catch(()=>toast('문제를 내지 못했어요'));
+}
+function adminOxEnd(cancel){
+  if (!oxLive()) return;
+  const win = cancel ? null : Object.fromEntries(Object.entries(oxPlayers()).filter(([, p]) => p && p.alive).map(([u]) => [u, true]));
+  net.oxSet(cancel ? {'meta/cancel': 1} : {'meta/done': 1, 'meta/win': Object.keys(win).length ? win : null}).then(()=>toast(cancel ? 'OX 퀴즈를 취소했어요' : `끝! ${Object.keys(win).length}명이 상품을 받아요`)).catch(()=>toast('끝내지 못했어요'));
+}
 
 // ----- 오투모로 걸어 다니기 -----
 // 오투모 이름은 발 밑, 머리 위엔 체력 1 천만 막대와 '관리자' 칭호

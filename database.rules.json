@@ -308,6 +308,18 @@
           ".validate": "newData.hasChildren(['uid', 'key', 'n', 'reward']) && newData.child('key').isString() && newData.child('key').val().length <= 12 && newData.child('n').isNumber() && newData.child('n').val() >= 1 && newData.child('n').val() <= 50 && newData.child('reward').isNumber() && newData.child('reward').val() >= 0 && newData.child('reward').val() <= 1000000"
         }
       }
+    },
+    "ox": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "players": {
+        "$id": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && $id === root.child('ox/meta/id').val() && !root.child('ox/meta/done').exists() && !root.child('ox/meta/cancel').exists() && newData.exists() && ((!data.exists() && root.child('ox/cur/r').val() === 1 && now <= root.child('ox/cur/endAt').val() + 3000) || (data.exists() && newData.child('alive').val() === false))",
+            ".validate": "newData.hasChildren(['nick','alive']) && newData.child('alive').isBoolean() && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
+          }
+        }
+      }
     }
   }
 }
