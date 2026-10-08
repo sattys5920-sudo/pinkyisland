@@ -479,7 +479,7 @@ import { NPC_TEXT } from './npcs.js';
 import * as CH from './char.js';
 import { QUESTS as NPC_QUESTS } from './quests.js';
 import { LORE } from './lore.js';
-import { ACHIEVEMENTS } from './achievements.js';
+import { ACHIEVEMENTS, TITLE_FX, titleFxText } from './achievements.js';
 import { SITUATIONS } from './situations.js';
 import { UI, EMOJI_UI } from './art/ui.js';
 import { FURN_ALL, FURN_DRAW } from './art/furniture.js';
@@ -2252,7 +2252,7 @@ let fishing = null; // {phase:'wait'|'bite'|'game', bx, by, biteAt, biteEnd, id}
 function rollFish(){
   const night = isNight();
   const list = Object.entries(FISH).filter(([,f])=>f.zone===zoneId && (f.time==='any' || (f.time==='night')===night));
-  const w = f => f.weight * (isRain() && f.weight <= 8 ? 2.2 : 1);
+  const w = f => f.weight * (isRain() && f.weight <= 8 ? 2.2 : 1) * (f.weight <= 8 ? 1 + tfx('fish') : 1); // 칭호: 희귀 물고기 +%
   const total = list.reduce((a,[,f])=>a+w(f),0);
   let r = Math.random()*total; for (const [id,f] of list){ if ((r-=w(f)) < 0) return id; } return list[0][0];
 }
@@ -2484,7 +2484,7 @@ for (const mz of Object.values(MINE_ZONES)) mz.spots = mz.spots.map(([x,y])=>[zk
 function rollOre(zid){
   const mz = MINE_ZONES[zid];
   const list = Object.entries(ORES).filter(([,o])=>mz.tiers.includes(o.tier) && (mz.sea || !o.sea));
-  const w = o => TIER_W[o.tier] * (o.sea ? 3 : 1) * (isRainbow() && o.tier >= 3 ? 2.5 : 1);
+  const w = o => TIER_W[o.tier] * (o.sea ? 3 : 1) * (isRainbow() && o.tier >= 3 ? 2.5 : 1) * (o.tier >= 3 ? 1 + tfx('ore') : 1); // 칭호: 희귀 광석 +%
   const total = list.reduce((a,[,o])=>a+w(o),0);
   let r = Math.random()*total; for (const [id,o] of list){ if ((r -= w(o)) < 0) return id; } return list[0][0];
 }
@@ -2585,9 +2585,11 @@ const RING_OPEN = true; // 반지 그림·이름표가 정해지면 공방에 �
 const RINGS = Object.fromEntries(RING_LIST.map(r=>[r[0], {name:r[1], hp:r[2], gold:r[3], need:r[4], fx:r[5], color:r[6]}]));
 const ring = () => (me && RINGS[me.inv?.ring]) || null, ringFx = () => ring()?.fx || {};
 let ringShieldAt = 0;
-function ringDmg(d, boss){ const f = ringFx(), t = performance.now(); if (f.shield && t - ringShieldAt > f.shield*1000){ ringShieldAt = t; fx.push({x:pos.x, y:pos.y-70, text:'보호막!', t, color:'#ffb3d9'}); return 0; } return Math.max(1, Math.round(d * (1 - (f.dr||0) - (boss ? (f.bossDr||0) : 0)))); }
+function ringDmg(d, boss){ const f = ringFx(), t = performance.now(); if (f.shield && t - ringShieldAt > f.shield*1000){ ringShieldAt = t; fx.push({x:pos.x, y:pos.y-70, text:'보호막!', t, color:'#ffb3d9'}); return 0; } return Math.max(1, Math.round(d * (1 - (f.dr||0) - tfx('dr') - (boss ? (f.bossDr||0) : 0)))); }
 const ringKb = n => n * (ringFx().kb || 1);
-const maxHp = () => 100 + (lvOf()-1)*10 + (ring()?.hp || 0), maxSta = () => 100 + (lvOf()-1)*10 + (ringFx().sta || 0);
+// 칭호 효과: 지금 달고 있는 칭호 하나만 (achievements.js 의 TITLE_FX)
+const tfx = k => (me && me.title && TITLE_FX[me.title]?.[k]) || 0;
+const maxHp = () => 100 + (lvOf()-1)*10 + (ring()?.hp || 0) + tfx('hp'), maxSta = () => 100 + (lvOf()-1)*10 + (ringFx().sta || 0) + tfx('sta');
 const expNeed = lv => Math.round(40 + lv*30 + 3*lv*lv); // 뒤로 갈수록 점점 어려워져요 (Lv1→2: 73, Lv10→11: 640, Lv30→31: 3,640, Lv49→50: 8,713)
 // 기력: 일할 때마다 조금씩 써요. 천천히 차오르고, 날이 바뀌면 가득, 먹으면 바로 차요
 const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10, snow:2, forage:1};
@@ -2595,6 +2597,7 @@ let playerSta = 100, tiredToastT = 0, dayChkT = 0;
 function useSta(kind){
   const c = STA_COST[kind] || 1;
   if (playerSta < c){ const t = performance.now(); if (t - tiredToastT > 2500){ tiredToastT = t; toast('기력이 없어요 · 작물이나 요리를 먹으면 다시 힘이 나요'); } return false; }
+  if (Math.random() < tfx('free')) return true; // 칭호: 기력 안 쓸 확률
   playerSta -= c; return true;
 }
 let statsReady = false;
@@ -2614,7 +2617,7 @@ function achTick(dt, t){ if (!me || admin) return;
     if (!stats().sawGod && [...others.values()].some(o => o.adm && o.z === zoneId && Math.hypot(o.x - pos.x, o.y - pos.y) < 400)) stat('sawGod'); } } // 신을 본 자
 function updateStats(dt, t){
   achTick(dt, t);
-  if (!darkDown && t - lastHurt > 8000 && playerHp < maxHp()) playerHp = Math.min(maxHp(), playerHp + 1.5*dt*(ringFx().regen || 1));
+  if (!darkDown && t - lastHurt > 8000 && playerHp < maxHp()) playerHp = Math.min(maxHp(), playerHp + 1.5*dt*(ringFx().regen || 1)*(1 + tfx('regen')));
   if (playerSta < maxSta()) playerSta = Math.min(maxSta(), playerSta + dt/12); // 1 분에 5 씩
 }
 // 먹으면 차는 양: 비싼 것일수록 많이. 요리는 체력·기력 모두, 작물은 기력 위주
@@ -2645,7 +2648,7 @@ function foodOf(k){
 function eat(k){
   const f = foodOf(k); if (!f || invCount(k) < 1) return;
   invAdd(k, -1); stat('foodEaten'); const h0 = playerHp, s0 = playerSta;
-  playerHp = Math.min(maxHp(), playerHp + f.hp); playerSta = Math.min(maxSta(), playerSta + f.sta);
+  const fk = 1 + tfx('food'); playerHp = Math.min(maxHp(), playerHp + f.hp*fk); playerSta = Math.min(maxSta(), playerSta + f.sta*fk);
   setExpr('happy', 1500); saveMe(); renderHud();
   toast(`${itemName(k)}을(를) 먹었어요 · 체력 +${Math.round(playerHp-h0)} · 기력 +${Math.round(playerSta-s0)}`, k);
 }
@@ -2695,7 +2698,7 @@ function quickAssign(k){
 }
 function gainExp(n){
   if (!me || !(n > 0)) return;
-  n = Math.round(n); me.lv = lvOf(); me.exp = (me.exp||0) + n;
+  n = Math.round(n*(1 + tfx('xp'))); me.lv = lvOf(); me.exp = (me.exp||0) + n;
   const t = performance.now(); fx.push({x:pos.x+18, y:pos.y-78, text:`+${n} EXP`, t, color:'#c9a6ff'});
   let up = 0; while (me.lv < LV_MAX && me.exp >= expNeed(me.lv)){ me.exp -= expNeed(me.lv); me.lv++; up++; }
   if (me.lv >= LV_MAX) me.exp = 0;
@@ -2763,7 +2766,7 @@ function onMobs(zone, v){
 // 쓰러진 몬스터에 한 대라도 쳤으면 보상 (칸마다 마지막으로 받은 차례를 저장해서 새로고침해도 두 번 안 받아요)
 function mobReward(zone, slot, d){
   me.mobGot = me.mobGot || {}; const key = zone + ':' + slot; if ((me.mobGot[key]|0) >= d.gen) return; me.mobGot[key] = d.gen;
-  const m = MONSTERS[d.id], gold = Math.round((m.gold || m.atk) * (0.8 + Math.random()*.4)), crew = Object.keys(d.hits||{}).length;
+  const m = MONSTERS[d.id], gold = Math.round((m.gold || m.atk) * (0.8 + Math.random()*.4) * (1 + tfx('loot'))), crew = Object.keys(d.hits||{}).length;
   stat('monsterKills'); if (d.id==='m28') stat('caveBossKills'); questEvent('kill', d.id);
   invAdd('loot:'+d.id, 1); me.inv.gold += gold;
   me.mdex = me.mdex || {}; const first = !me.mdex[d.id]; me.mdex[d.id] = (me.mdex[d.id]||0) + 1;
@@ -2845,7 +2848,7 @@ const WEAPON_LIST = [
 const WEAPONS = Object.fromEntries(WEAPON_LIST.map(w=>[w[0], {name:w[1], atk:w[2], gold:w[3], need:w[4], color:w[5]}]));
 const weapon = () => WEAPONS[me.inv.weapon] || WEAPONS.w1;
 let swingTired = false; // 기력이 없으면 힘이 반만 들어가요
-function swordAtk(){ const a = weapon().atk, v = a + Math.floor(Math.random()*(a*.25+1)); return swingTired ? Math.ceil(v/2) : v; }
+function swordAtk(){ const a = weapon().atk, v = Math.round((a + Math.floor(Math.random()*(a*.25+1)))*(1 + tfx('atk'))); return swingTired ? Math.ceil(v/2) : v; }
 function weaponPanel(){
   const own = me.inv.weapons || ['w1'];
   openPanel(`경비대 무기고 · 💰 ${me.inv.gold} G`, `<p class="mnote" style="margin-top:0">무기를 바꾸면 공격력이 세져요. 광석은 광산과 동굴에서 캘 수 있어요.</p>` +
@@ -2943,6 +2946,7 @@ function hitMob(mob, t, vx, vy){
 }
 function faint(){ // 불사조 깃털 반지: 하루 한 번은 쓰러지자마자 일어나요 (다크 방 안에서는 안 돼요)
   if (ringFx().phoenix && me.phoenixDay !== today() && !zoneId.startsWith('dark:')){ me.phoenixDay = today(); playerHp = Math.round(maxHp()*.3); wakeGuardUntil = performance.now() + 3000; fx.push({x:pos.x, y:pos.y-70, text:'불사조!', t:performance.now(), color:'#ff7a2f'}); toast('불사조 깃털 반지가 빛나며 다시 일어났어요 (오늘은 한 번만)'); saveMe(); renderHud(); return; }
+  if (tfx('revive') && me.titleReviveDay !== today() && !zoneId.startsWith('dark:')){ me.titleReviveDay = today(); playerHp = Math.round(maxHp()*.3); wakeGuardUntil = performance.now() + 3000; fx.push({x:pos.x, y:pos.y-70, text:'다시 일어남!', t:performance.now(), color:'#ffd23f'}); toast(`칭호 '${titleOf(me.title)}' 의 힘으로 바로 일어났어요 (하루 한 번)`); saveMe(); renderHud(); return; }
   return darkRespawn(); }
 // 아무도 깨워 주지 않을 때: 집 앞에서 깨어나요 (일반 모드)
 function wakeAtHome(){
@@ -3124,7 +3128,7 @@ function useSlot(i){
     const c = cropNow(g.crop, now); g.crop = c; const cd = CROPS[c.type] || CROPS.c01;
     if (c.stage>=4){
       if (!useSta('harvest')) return;
-      const n = cd.y1 + Math.floor(Math.random()*(cd.y2-cd.y1+1));
+      const n = cd.y1 + Math.floor(Math.random()*(cd.y2-cd.y1+1)) + (Math.random() < tfx('crop') ? 1 : 0); // 칭호: 수확 +1 확률
       g.crop = null; invAdd('crop:'+c.type, n); setExpr('happy', 2000); stat('cropsHarvested', n); gainExp(2 + Math.floor(cd.min/30));
       if (me.quest<=5 && me.quest>=3){ me.quest = 6; invAdd('seed:c01', 2); say('하나 · 꼬마 농부', '첫 수확 축하해! 기념으로 토마토 씨앗 2 개 더 줄게! 다른 씨앗은 마을 광장 모모 가게에서 살 수 있어! 이제 섬 구경 가 봐! 등대 해변 펭펭이 낚시 알려 줄 거야!'); }
       else toast(`${cd.name} ${n} 개를 수확했어요!`, 'crop:'+c.type);
@@ -3972,7 +3976,7 @@ function buyerBonus(n, key){
 const SELL_BOOST = {crop:1.5, forage:1.5, fish:1.5, ore:1.5, loot:1.5, dish:1.5};
 const sellBase = key => itemPrice(key) * (SELL_BOOST[key.split(':')[0]] || 1);
 function unitPrice(key, n, extra=0){ if (key.startsWith('star:')) return STAR_PRICE; // 별 조각은 시세 없이 늘 같은 값
-  return Math.max(1, Math.round(sellBase(key) * marketMul(key) * glut(key, extra) * (n ? buyerBonus(n, key) : 1))); }
+  return Math.max(1, Math.round(sellBase(key) * marketMul(key) * glut(key, extra) * (n ? buyerBonus(n, key) : 1) * (1 + tfx('sell')))); }
 function sellTotal(key, cnt, n){ let s = 0; for (let i=0;i<cnt;i++) s += unitPrice(key, n, i); return s; }
 function sellItem(key, cnt, n){
   cnt = Math.min(cnt, invCount(key)); if (cnt <= 0) return 0;
@@ -4203,22 +4207,25 @@ function syncStats(){ // 다른 데이터에서 바로 계산되는 기록
 let achQueue = [];
 function checkAchievements(){
   if (!me) return; me.ach = me.ach || []; const st = stats(); let got = false;
-  for (const a of ACHIEVEMENTS){ if (me.ach.includes(a.id) || (st[a.stat]||0) < a.n) continue; me.ach.push(a.id); me.inv.gold += a.reward.gold||0; got = true; achQueue.push(a); }
+  for (const a of ACHIEVEMENTS){ if (me.ach.includes(a.id) || (st[a.stat]||0) < a.n) continue; me.ach.push(a.id); got = true; achQueue.push(a); } // 보상은 골드 대신 칭호 효과
   if (got){ saveMe(); renderHud(); flushAch(); }
 }
 let achToastT = 0;
-function flushAch(){ if (!achQueue.length) return; const a = achQueue.shift(); toast(`${a.icon} 업적 달성! ${a.name} · +${a.reward.gold} G · 칭호 획득`); setExpr('sparkle', 2500); clearTimeout(achToastT); achToastT = setTimeout(flushAch, 2800); }
+function flushAch(){ if (!achQueue.length) return; const a = achQueue.shift(); toast(`${a.icon} 업적 달성! 칭호 '${a.reward.title}' · ${titleFxText(TITLE_FX[a.id])}`); setExpr('sparkle', 2500); clearTimeout(achToastT); achToastT = setTimeout(flushAch, 2800); }
 // 업적이 아닌 특별 칭호 (오늘의 섬 목표 기여 1위 등)
 const SPECIAL_TITLES = {goal1:'고급 노동자'};
 const titleOf = id => SPECIAL_TITLES[id] || (ACHIEVEMENTS.find(a=>a.id===id)||{}).reward?.title || '';
 function achPanel(){
   syncStats(); const st = stats(), done = me.ach || [];
-  const sp = (me.stitles||[]).filter(id=>SPECIAL_TITLES[id]).map(id=>`<button class="np" data-id="${id}"><span class="np-name">👑 ${esc(SPECIAL_TITLES[id])} <small>오늘의 섬 목표 기여 1위</small></span><span class="np-place">${me.title===id ? '칭호 사용 중' : '칭호 쓰기'}</span><span class="np-day">특별 칭호</span></button>`).join('');
+  const sp = (me.stitles||[]).filter(id=>SPECIAL_TITLES[id]).map(id=>`<button class="np" data-id="${id}"><span class="np-name">👑 ${esc(SPECIAL_TITLES[id])} <small>오늘의 섬 목표 기여 1위</small></span><span class="np-place">${me.title===id ? '칭호 사용 중' : '칭호 쓰기'}</span><span class="np-day">특별 칭호 · ✨ ${esc(titleFxText(TITLE_FX[id]))}</span></button>`).join('');
   const rows = sp + ACHIEVEMENTS.map(a=>{ const ok = done.includes(a.id), v = Math.min(st[a.stat]||0, a.n);
-    return `<button class="np ${ok?'':'dim'}" data-id="${a.id}" style="${ok?'':'opacity:.7'}"><span class="np-name">${a.icon} ${esc(a.name)} <small>${esc(a.desc)}</small></span><span class="np-place">${ok ? (me.title===a.id ? '칭호 사용 중' : '칭호 쓰기') : `${v}/${a.n}`}</span><span class="np-day">${ok ? '달성 · '+a.reward.gold+' G' : ''}</span></button>`; }).join('');
-  openPanel(`업적 ${done.length}/${ACHIEVEMENTS.length}`, `<p class="mnote" style="margin-top:0">달성한 업적의 칭호를 고르면 이름 위에 보여요.${me.title ? ` 지금 칭호: <b>${esc(titleOf(me.title))}</b>` : ''}</p><div style="display:flex;gap:6px"><button class="mini" id="achNone">칭호 없음</button></div>${rows}`,
-    b=>{ const id = b.dataset.id; if (!done.includes(id) && !(me.stitles||[]).includes(id)) return; me.title = me.title===id ? '' : id; saveMe(); achPanel(); });
-  $('achNone').onclick = ()=>{ me.title = ''; saveMe(); achPanel(); };
+    return `<button class="np ${ok?'':'dim'}" data-id="${a.id}" style="${ok?'':'opacity:.7'}"><span class="np-name">${a.icon} ${esc(a.name)} <small>${esc(a.desc)}</small></span><span class="np-place">${ok ? (me.title===a.id ? '칭호 사용 중' : '칭호 쓰기') : `${v}/${a.n}`}</span><span class="np-day">✨ ${esc(titleFxText(TITLE_FX[a.id]))}${ok ? '' : ' (달성하면 이 칭호로 받을 수 있어요)'}</span></button>`; }).join('');
+  openPanel(`업적 ${done.length}/${ACHIEVEMENTS.length}`, `<p class="mnote" style="margin-top:0">달성한 업적의 칭호를 고르면 이름 위에 보이고, <b>그 칭호의 효과</b>가 적용돼요 (한 번에 하나).${me.title ? ` 지금 칭호: <b>${esc(titleOf(me.title))}</b> · ${esc(titleFxText(TITLE_FX[me.title]))}` : ''}</p><div style="display:flex;gap:6px"><button class="mini" id="achNone">칭호 없음</button></div>${rows}`,
+    b=>{ const id = b.dataset.id; if (!done.includes(id) && !(me.stitles||[]).includes(id)) return; me.title = me.title===id ? '' : id; titleApplied(); achPanel(); if (me.title) toast(`칭호 '${titleOf(me.title)}' · ${titleFxText(TITLE_FX[me.title])}`); });
+  $('achNone').onclick = ()=>{ me.title = ''; titleApplied(); achPanel(); };
+}
+// 칭호를 바꾸면 최대 체력·기력이 달라질 수 있어요
+function titleApplied(){ playerHp = Math.min(playerHp, maxHp()); playerSta = Math.min(playerSta, maxSta()); saveMe(); renderHud();
 }
 
 // ===== 주민 퀘스트: 주민마다 6 개가 이어져요 =====
@@ -5332,7 +5339,7 @@ function step(dt){
   if (!len) return;
   vx/=len; vy/=len;
   pos.dir = Math.abs(vx) > Math.abs(vy) ? (vx>0?'right':'left') : (vy>0?'down':'up');
-  const ox = pos.x, oy = pos.y, spd = SPEED * (performance.now() < playerSlowUntil ? .5 : 1), nx = pos.x + vx*spd*dt, ny = pos.y + vy*spd*dt;
+  const ox = pos.x, oy = pos.y, spd = SPEED * (performance.now() < playerSlowUntil ? .5 : 1) * (1 + tfx('speed')), nx = pos.x + vx*spd*dt, ny = pos.y + vy*spd*dt;
   const stuck = blocked(pos.x, pos.y); // 이미 막힌 곳에 서 있으면(새 울타리가 생긴 자리 등) 빠져나갈 수 있게
   if (stuck || !blocked(nx, pos.y)) pos.x = nx;
   if (stuck || !blocked(pos.x, ny)) pos.y = ny;

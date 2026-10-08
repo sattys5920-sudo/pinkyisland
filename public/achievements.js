@@ -106,3 +106,35 @@ export const ACHIEVEMENTS = [
   { id:'homeless',   name:'집이 없어',         desc:'집을 한 번도 안 늘리고 출석 14 일', stat:'homeless',   n:1,       reward:{gold:1400,  title:'집이 없어'},         icon:'⛺' },
   { id:'legend',     name:'레전드',            desc:'업적 60 개 달성하기',            stat:'achCount',    n:60,      reward:{gold:30000, title:'레전드'},            icon:'🏆' },
 ];
+
+// ===== 칭호 효과: 지금 달고 있는 칭호 하나만 적용돼요 =====
+// hp/sta 최대 체력·기력 +N · atk 공격력 +% · dr 받는 피해 -% · regen 체력 회복 +% · revive 하루 한 번 쓰러지면 바로 일어남(30%)
+// fish 희귀 물고기 확률 +% · ore 희귀 광석 확률 +% · crop 수확 +1 개 확률 · sell 판매가 +% · loot 몬스터 골드 +%
+// speed 이동 속도 +% · xp 경험치 +% · free 기력 안 쓸 확률 · food 음식 회복량 +%
+export const TITLE_FX = {
+  fish_10:{fish:.05}, fish_100:{fish:.1}, fish_500:{fish:.15}, fish_2000:{fish:.25, sta:30}, fish3_10:{fish:.12}, fish3_100:{fish:.2, xp:.05},
+  dexfish_10:{fish:.06}, dexfish_25:{fish:.12}, dexfish_50:{fish:.2, free:.1},
+  ore_10:{ore:.05}, ore_100:{ore:.1}, ore_500:{ore:.15}, ore_2000:{ore:.25, sta:30}, dexore_10:{ore:.06}, dexore_25:{ore:.12}, dexore_40:{ore:.2, free:.1},
+  mon_10:{atk:.03}, mon_100:{atk:.06}, mon_1000:{atk:.12, hp:50}, dexmon_15:{loot:.1}, dexmon_30:{loot:.2, atk:.05},
+  boss_1:{dr:.03}, boss_5:{dr:.06, hp:30}, boss_30:{dr:.1, hp:80}, cave_1:{atk:.08, dr:.05}, weapon_8:{atk:.15},
+  crop_10:{crop:.05}, crop_100:{crop:.1}, crop_1000:{crop:.2, sta:30}, plots_6:{crop:.08, free:.05},
+  cook_10:{food:.1}, cook_100:{food:.2}, cook_500:{food:.3, sta:20}, cook_1500:{food:.5, sta:40},
+  earn_1k:{sell:.02}, earn_10k:{sell:.04}, earn_100k:{sell:.07}, earn_1m:{sell:.12}, sold_100:{sell:.04}, sold_1000:{sell:.08},
+  mkt_sold_10:{sell:.05}, mkt_bought_10:{loot:.08}, stock_10k:{sell:.05}, stock_100k:{sell:.1},
+  bought_10:{speed:.03}, closet_30:{speed:.05}, closet_60:{speed:.08, xp:.05},
+  furn_10:{regen:.2}, furn_20:{regen:.4}, house_3:{hp:30, regen:.2}, house_5:{hp:80, regen:.5}, interior_10:{regen:.3, sta:20},
+  hearts_7:{xp:.05}, soulmate_1:{xp:.08}, soulmates_14:{xp:.15, hp:50}, friends_7:{xp:.1}, gift_50:{sell:.03, xp:.03}, gift_300:{xp:.1, sell:.05},
+  errand_30:{speed:.05, free:.05}, attend_30:{hp:40, sta:40}, museum_120:{xp:.12, fish:.05, ore:.05}, zones_13:{speed:.06}, wish_10:{revive:1},
+  walk_100k:{speed:.1}, zone_300:{speed:.08, free:.05},
+  auc_win:{sell:.05}, juke_1:{regen:.3}, dlv_50:{speed:.08}, mg_50:{xp:.06}, coffee_ace:{food:.2, xp:.03}, otumo_3:{revive:1},
+  friend_5:{xp:.05, hp:20}, pet_100:{regen:.3, food:.1}, emote_100:{sta:20}, heart_50:{hp:30}, outfit_50:{speed:.05},
+  solo_60:{atk:.08, dr:.05}, letter_20:{xp:.12}, saw_god:{revive:1, hp:50}, eat_300:{food:.4, hp:60}, faint_30:{revive:1},
+  dex_100:{fish:.1, ore:.1, loot:.1}, mg_200:{free:.15}, broke:{loot:.2}, homeless:{speed:.1, sta:30}, legend:{hp:100, atk:.1, dr:.05, xp:.1},
+  goal1:{free:.1, xp:.05, crop:.05}, // 고급 노동자 (오늘의 섬 목표 기여 1 위)
+};
+const PCT = v => Math.round(v*100) + '%';
+export function titleFxText(f){ if (!f) return ''; const o = [];
+  if (f.hp) o.push(`최대 체력 +${f.hp}`); if (f.sta) o.push(`최대 기력 +${f.sta}`); if (f.atk) o.push(`공격력 +${PCT(f.atk)}`); if (f.dr) o.push(`받는 피해 -${PCT(f.dr)}`);
+  if (f.regen) o.push(`체력 회복 +${PCT(f.regen)}`); if (f.revive) o.push('하루 한 번 즉시 부활'); if (f.fish) o.push(`희귀 물고기 +${PCT(f.fish)}`); if (f.ore) o.push(`희귀 광석 +${PCT(f.ore)}`);
+  if (f.crop) o.push(`수확 +1 확률 ${PCT(f.crop)}`); if (f.sell) o.push(`판매가 +${PCT(f.sell)}`); if (f.loot) o.push(`몬스터 골드 +${PCT(f.loot)}`); if (f.speed) o.push(`이동 속도 +${PCT(f.speed)}`);
+  if (f.xp) o.push(`경험치 +${PCT(f.xp)}`); if (f.free) o.push(`기력 안 쓸 확률 ${PCT(f.free)}`); if (f.food) o.push(`음식 회복 +${PCT(f.food)}`); return o.join(' · '); }
