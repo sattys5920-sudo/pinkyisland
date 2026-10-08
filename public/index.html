@@ -482,6 +482,7 @@ import { SITUATIONS } from './situations.js';
 import { UI, EMOJI_UI } from './art/ui.js';
 import { FURN_ALL, FURN_DRAW } from './art/furniture.js';
 import { drawOtumo, OTUMO_HP } from './art/otumo.js';
+import * as TB from './art/toriboss.js';
 import { PET_SPECIES, PET_DRAW } from './art/pets.js';
 import { FORAGE, FORAGE_DRAW, SPOT_OF, SPOT_NAME, SPOT_DRAW } from './forage.js';
 import { JUKE_SONGS, jukeEngine } from './jukebox.js';
@@ -4526,9 +4527,10 @@ function darkEntities(d, t){
   if (z.floors){ const R = darkRoomOf(z.dark);
     for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawEvidence(d.ctx, pz), label:()=>darkObjLabel(d, pz, r, t)});
     for (const st of R.stairs) if (st.gate && stairLocked(z.dark, st)) out.push({y:floorTop(st.f)+st.rect[1]+st.rect[3], draw:()=>drawStairLock(d.ctx, z.dark, st, t), label:()=>{}});
-    for (const st of R.stairs) if (Math.hypot(pos.x-st.at[0], pos.y-st.at[1]) < 160) out.push({y:-1, draw:()=>{}, label:()=>tag(d.ctx, st.label + (st.gate && stairLocked(z.dark, st) ? ' · 꿰매짐' : ''), st.at[0], st.at[1] - 20, st.gate && stairLocked(z.dark, st) ? '#ff4f87' : null)}); }
+    for (const st of R.stairs) if (Math.hypot(pos.x-st.at[0], pos.y-st.at[1]) < 160 && !(st.f === 3 && darkBossUp(r))) out.push({y:-1, draw:()=>{}, label:()=>tag(d.ctx, st.label + (st.gate && stairLocked(z.dark, st) ? ' · 꿰매짐' : ''), st.at[0], st.at[1] - 20, st.gate && stairLocked(z.dark, st) ? '#ff4f87' : null)}); }
   else for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawFurn(d, {id:pz.furn}, pz.x, pz.y), label:()=>darkObjLabel(d, pz, r, t)});
-  if (darkBossUp(r)){ const [bx, by] = darkBossPos(r); out.push({y:by, draw:()=>drawDarkBoss(d, z.dark, r, bx, by, t), label:()=>{}}); }
+  if (darkBossUp(r) && z.dark === 'tori') out.push({y:0, draw:()=>drawToriFloor(d.ctx, r, t), label:()=>{}}, {y:toriState(r).y + TB_FEET, draw:()=>drawToriBoss(d.ctx, r, t), label:()=>toriLabel(d.ctx, r, t)}, {y:1e9, draw:()=>drawToriShots(d.ctx, r), label:()=>{}});
+  else if (darkBossUp(r)){ const [bx, by] = darkBossPos(r); out.push({y:by, draw:()=>drawDarkBoss(d, z.dark, r, bx, by, t), label:()=>{}}); }
   return out;
 }
 const darkLocked = (pz, r) => (pz.need || []).some(id => !(r.solved || {})[id]);
@@ -4641,7 +4643,80 @@ function darkPuzzlePanel(pz){
 }
 // ----- 보스: 문제를 다 풀면 그 주민이 깨어나요. 체력은 모두가 같이 깎아요 -----
 function darkWake(npc){ net.darkTx(npc, cur => cur && cur.start && !cur.clear && !(cur.hp > 0) && darkSolvedN(cur) >= darkPuzzles(npc).length ? {...cur, hp:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, max:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, bossAt:darkNow()} : undefined); }
-function darkBossPos(r){ const s = (darkNow() - (r.bossAt || 0)) / 1000, W = DARK_ROOM.W, [cx, cy] = darkRoomOf(Z().dark)?.boss || [W/2, 560]; return [cx + Math.cos(s*.31)*300 + Math.sin(s*.83)*60, cy + Math.sin(s*.47)*150]; } // 모두에게 같은 자리
+// ----- 토리??? (토리 방 보스): 모두에게 같은 시계(bossAt · rageAt)로 움직여서 누구 화면이든 같은 자리·같은 공격이에요 -----
+// 1 페이즈: 정해진 자리를 뒤뚱뒤뚱 돌며, 멈추면 8 방향 편지 탄막, 걸을 땐 쿵 할 때마다 발밑에서 편지 고리
+// 체력 절반: 화면이 붉게 번쩍이고 뒤뚱뒤뚱 돌아서요 → 등의 실밥이 끊어지며 갈라지고 손이 나와요
+// 2 페이즈: 등을 보인 채 오가요. 내 발밑에 빨간 예고 원이 차면 그 자리에서 손이 솟아요 + 아래쪽으로 편지 부채
+const TB_S = .62, TB_FEET = 190 * TB_S;
+const TB_P1 = {len:7, moves:[[.6,1.5,-150,-30,2],[2.2,3.55,150,-30,3],[4.2,5.1,0,40,2],[5.6,6.5,0,0,2]], stops:[.3,1.65,3.7,5.25]};
+const TB_P2 = {len:7, moves:[[.5,1.4,-130,-40,2],[2.1,3.45,130,-40,3],[4.6,5.5,0,0,2]], waves:[.2,2.6,5.0], fans:[1.0,3.6,6.0]};
+const TB_TURN = 1.8, TB_OPEN = 4.2, TB_DMG = {letter:30, ring:25, hand:110, touch:40};
+const tbLands = P => P.moves.flatMap(([t0, t1, , , n]) => Array.from({length:n}, (_, k) => t0 + (t1 - t0)*(k + 1)/n));
+const TB_L1 = tbLands(TB_P1), TB_L2 = tbLands(TB_P2);
+function tbMove(P, t, x0 = 0, y0 = 0){ let x = x0, y = y0;
+  for (const [t0, t1, x1, y1, n] of P.moves){ if (t < t0) break; const px = x, py = y; if (t >= t1){ x = x1; y = y1; continue; }
+    const U = (t - t0)/(t1 - t0), k = Math.min(n - 1, Math.floor(U*n)), u = U*n - k, pr = (k + TB.ease(u))/n, dir = Math.sign(x1 - px), land = u < .15 ? 1 - u/.15 : u > .85 ? (u - .85)/.15 : 0, lift = [0, 0]; lift[k%2] = Math.sin(u*Math.PI)*22;
+    return {x:px + (x1 - px)*pr, y:py + (y1 - py)*pr, walk:true, th:dir*.5*Math.min(1, Math.sin(U*Math.PI)*2.2), hop:Math.sin(u*Math.PI)*18, tilt:(k%2 ? 1 : -1)*.11*Math.sin(u*Math.PI), sqx:1 - .04*Math.sin(u*Math.PI) + .07*land, sqy:1 + .06*Math.sin(u*Math.PI) - .09*land, lift}; }
+  const br = Math.sin(t*2.4); return {x, y, walk:false, th:0, hop:0, tilt:br*.015, sqx:1 - br*.012, sqy:1 + br*.02, lift:[0, 0]}; }
+// 지금 모습: ph 1(앞) · turn(돌기) · open(등이 열림) · 2(뒷모습). x, y = 몸 가운데
+function toriState(r, now = darkNow()){
+  const [cx, cy] = darkRoomOf('tori').boss, ra = r.rageAt || 0, at = r.bossAt || now;
+  const p1 = T => { const tb = Math.max(0, (T - at)/1000), cyc = Math.floor(tb/TB_P1.len), t = tb - cyc*TB_P1.len; return {cyc, t, m:tbMove(TB_P1, t)}; };
+  if (!ra || now < ra){ const s = p1(now); return {ph:1, ...s, x:cx + s.m.x, y:cy + s.m.y}; }
+  const s0 = p1(ra), x0 = s0.m.x, y0 = s0.m.y, tr = (now - ra)/1000; // 화난 순간 서 있던 자리에서 돌아서요
+  if (tr < TB_TURN) return {ph:'turn', tr, x:cx + x0, y:cy + y0};
+  if (tr < TB_OPEN) return {ph:'open', tr, x:cx + x0, y:cy + y0};
+  const t2 = tr - TB_OPEN, cyc = Math.floor(t2/TB_P2.len), t = t2 - cyc*TB_P2.len, m = tbMove(TB_P2, t, cyc ? 0 : x0, cyc ? 0 : y0);
+  return {ph:2, cyc, t, m, x:cx + m.x, y:cy + m.y, x0, y0};
+}
+// 지금 날아다니는 편지들 (모두에게 같은 자리). 키는 맞았는지 한 번만 세려고 써요
+function toriLetters(r, now = darkNow()){
+  const out = [], st = toriState(r, now), [cx, cy] = darkRoomOf('tori').boss;
+  if (st.ph === 1){
+    for (const dc of [0, -1]){ const cyc = st.cyc + dc; if (cyc < 0) continue; const base = r.bossAt + cyc*TB_P1.len*1000;
+      TB_P1.stops.forEach((s0, w) => { const k = (now - base)/1000 - s0; if (k < 0 || k > 2.4) return; const o = tbMove(TB_P1, s0), al = TB.cl(2.4 - k)*TB.cl(k*5);
+        for (let j = 0; j < 8; j++){ const a = j/8*6.283 + (w + cyc*4)*.4, rr = 120 + k*260; out.push({x:cx + o.x + Math.cos(a)*rr, y:cy + o.y - 80 + Math.sin(a)*rr*.75, a:a + k*4, al, key:`b${cyc}.${w}`, dmg:TB_DMG.letter}); } });
+      for (const l0 of TB_L1){ const k = (now - base)/1000 - l0; if (k < 0 || k > 1.3) continue; const o = tbMove(TB_P1, l0 - .01), fx = cx + o.x, fy = cy + o.y + TB_FEET;
+        out.push({ring:1, x:fx, y:fy, k});
+        for (let j = 0; j < 6; j++){ const a = j/6*6.283 + l0, rr = 70 + k*230; out.push({x:fx + Math.cos(a)*rr, y:fy - 20 + Math.sin(a)*rr*.45, a:a + k*6, al:TB.cl(1.3 - k)*TB.cl(k*6), key:`r${cyc}.${l0}`, dmg:TB_DMG.ring}); } } } }
+  if (st.ph === 2){
+    for (const dc of [0, -1]){ const cyc = st.cyc + dc; if (cyc < 0) continue; const base = r.rageAt + (TB_OPEN + cyc*TB_P2.len)*1000;
+      TB_P2.fans.forEach((f0, w) => { const k = (now - base)/1000 - f0; if (k < 0 || k > 2.2) return; const o = tbMove(TB_P2, f0, cyc ? 0 : st.x0, cyc ? 0 : st.y0);
+        for (let j = 0; j < 5; j++){ const a = Math.PI*.15 + j/4*Math.PI*.7 + (w%2)*.3, rr = 60 + k*280; out.push({x:cx + o.x + Math.cos(a)*rr, y:cy + o.y - 120 + Math.sin(a)*rr*.7, a:a + k*5, al:TB.cl(2.2 - k), key:`f${cyc}.${w}`, dmg:TB_DMG.letter}); } });
+      for (const l0 of TB_L2){ const k = (now - base)/1000 - l0; if (k < 0 || k > 1.3) continue; const o = tbMove(TB_P2, l0 - .01, cyc ? 0 : st.x0, cyc ? 0 : st.y0); out.push({ring:1, x:cx + o.x, y:cy + o.y + TB_FEET, k}); } } }
+  return out;
+}
+let tbHands = [], tbHit = {}, tbWaveSeen = '', tbRageSeen = 0;
+function drawToriBoss(c, r, t){
+  const st = toriState(r), now = darkNow(), sec = now/1000;
+  c.save(); if (darkHurtT > 0 && Math.floor(t/60)%2) c.globalAlpha = .6;
+  if (st.ph === 1){ const m0 = tbMove(TB_P1, Math.max(0, st.t - .08)), lag = (st.m.tilt - m0.tilt)*2.2 + st.m.tilt*.6; TB.drawTurn(c, st.x, st.y, TB_S, st.m.th, st.m.th*1.15, st.m.lift, st.m.hop, st.m.tilt, st.m.sqx, st.m.sqy, lag); }
+  else if (st.ph === 'turn'){ const p = TB.turnPose(st.tr), q = TB.turnPose(Math.min(1.8, st.tr + .09)), lag = (p.tilt - TB.turnPose(Math.max(0, st.tr - .08)).tilt)*2.2 + p.tilt*.6; TB.drawTurn(c, st.x, st.y, TB_S, p.th, q.th, p.lift, p.hop, p.tilt, p.sqx, p.sqy, lag); }
+  else if (st.ph === 'open'){ const T = st.tr - TB_TURN; TB.drawBack(c, st.x, st.y, TB_S, TB.ease((T - .5)/1.1), Math.floor(TB.cl((T - .3)/1.0)*9.99), TB.ease((T - 1.4)/.9), sec, null);
+    if (T > .3 && T < 2.3) for (let i = 0; i < 14; i++){ const k2 = T - .3 - i*.1; if (k2 < 0 || k2 > 1.1) continue; const a = (i*2.3)%6.28; c.fillStyle = `rgba(240,232,224,${1 - k2/1.1})`; c.beginPath(); c.arc(st.x + Math.cos(a)*k2*160, st.y - 80 + Math.sin(a)*k2*90 + k2*k2*120, 6, 0, 7); c.fill(); } } // 실이 끊어질 때 솜이 튀어요
+  else TB.drawBack(c, st.x, st.y, TB_S, 1, 9, 1, sec, st.m);
+  c.restore();
+}
+function toriLabel(c, r, t){ const st = toriState(r), frame = Math.floor(t/100), heavy = st.ph === 'turn' || st.ph === 'open' || frame%17 === 0, y = st.y + TB_FEET + 30, w = 190; // 이름표는 발밑 (위는 정보 카드에 가려요)
+  c.save(); c.translate(st.x, y); c.scale(.62, .62); TB.drawName(c, 0, 0, frame, heavy); c.restore();
+  c.fillStyle = 'rgba(60,10,20,.9)'; c.fillRect(st.x - w/2, y + 14, w, 8); const q = c.createLinearGradient(st.x - w/2, 0, st.x + w/2, 0); q.addColorStop(0, '#ff3b6b'); q.addColorStop(1, '#a0102c'); c.fillStyle = q; c.fillRect(st.x - w/2, y + 14, w*Math.max(0, r.hp)/r.max, 8);
+  c.font = 'bold 13px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#ffd0dc'; c.fillText(`${Math.max(0, Math.ceil(r.hp)).toLocaleString()} / ${r.max.toLocaleString()}`, st.x, y + 35); }
+// 바닥 쪽 (예고 원 · 솟는 손 · 쿵 충격파)
+function drawToriFloor(c, r, t){ const now = darkNow();
+  for (const h of tbHands){ const k = (now - h.at)/1000; if (k < 0) continue; if (k < 1) TB.drawWarn(c, h.x, h.y, 60, TB.ease(k)); else if (k < 2.2) TB.drawHand(c, h.x, h.y, TB.cl(k < 1.25 ? (k - 1)/.25 : k < 1.8 ? 1 : 1 - (k - 1.8)/.4), now/1000); }
+  for (const L of toriLetters(r, now)) if (L.ring){ c.save(); c.globalAlpha = TB.cl(1 - L.k/.5)*.7; c.strokeStyle = '#e8d8c8'; c.lineWidth = 4; c.beginPath(); c.ellipse(L.x, L.y, 40 + L.k*260, (40 + L.k*260)*.28, 0, 0, 7); c.stroke(); c.restore(); } }
+function drawToriShots(c, r){ for (const L of toriLetters(r)) if (!L.ring) TB.drawLetter(c, L.x, L.y, L.a, L.al); }
+// 내 캐릭터에 맞는지 (각자 자기 것만 세요)
+function toriAttack(dt, t, r){
+  const st = toriState(r), now = darkNow(), me_ = [pos.x, pos.y - 25];
+  if (r.rageAt && tbRageSeen !== r.rageAt && now - r.rageAt < 3000){ tbRageSeen = r.rageAt; glitchBurst = performance.now(); toast('토리??? 가 등을 돌려요....'); }
+  for (const L of toriLetters(r, now)) if (!L.ring && L.al > .4 && !tbHit[L.key] && Math.hypot(L.x - me_[0], L.y - me_[1]) < 20){ tbHit[L.key] = 1; darkHurt(L.dmg, t); }
+  if (st.ph === 2){ TB_P2.waves.forEach((w0, i) => { const key = `${r.rageAt}.${st.cyc}.${i}`; if (st.t >= w0 && st.t < w0 + .5 && tbWaveSeen.indexOf('|' + key + '|') < 0){ tbWaveSeen = (tbWaveSeen + '|' + key + '|').slice(-400);
+      tbHands.push({x:pos.x, y:pos.y, at:now, mine:1}); for (const o of [...others.values()].filter(o => o.z === zoneId && !o.down).slice(0, 3)) tbHands.push({x:o.x, y:o.y, at:now}); } }); }
+  tbHands = tbHands.filter(h => { const k = (now - h.at)/1000; if (k >= 1 && !h.done){ h.done = 1; if (((pos.x - h.x)/60)**2 + ((pos.y - h.y)/36)**2 < 1) darkHurt(TB_DMG.hand, t); } return k < 2.2; });
+  if (Object.keys(tbHit).length > 200) tbHit = {};
+}
+function darkBossPos(r){ if (Z().dark === 'tori'){ const st = toriState(r); return [st.x, st.y + 40]; } const s = (darkNow() - (r.bossAt || 0)) / 1000, W = DARK_ROOM.W, [cx, cy] = darkRoomOf(Z().dark)?.boss || [W/2, 560]; return [cx + Math.cos(s*.31)*300 + Math.sin(s*.83)*60, cy + Math.sin(s*.47)*150]; } // 모두에게 같은 자리
 function drawDarkBoss(d, npc, r, x, y, t){
   const c = d.ctx, n = NPC[npc], rage = r.hp < r.max/2, pulse = .5 + Math.sin(t/200)*.5;
   c.save(); const g = c.createRadialGradient(x, y-50, 10, x, y-50, 120); g.addColorStop(0, `rgba(${rage ? '255,40,80' : '160,40,200'},${.35 + pulse*.2})`); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x-130, y-180, 260, 220); c.restore();
@@ -4652,7 +4727,7 @@ function drawDarkBoss(d, npc, r, x, y, t){
 }
 function darkSwing(cx, cy, vx, vy, t){
   const z = Z(); if (!z.dark) return; const r = roomOf(z.dark); if (!darkBossUp(r)) return;
-  const [bx, by] = darkBossPos(r); if (Math.hypot(bx-cx, by-cy) > 110) return;
+  const [bx, by] = darkBossPos(r); if (Math.hypot(bx-cx, by-cy) > (z.dark === 'tori' ? 160 : 110)) return;
   const dmg = swordAtk(); darkPending += dmg; darkHurtT = .2; fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
   me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.start||0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
 }
@@ -4666,12 +4741,13 @@ function updateDark(dt, t){
   if (r.clear && darkDown) darkStandUp();
   if (r.start && !r.clear && darkNow() > r.start + DARK_LIMIT_MS){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? {att:(cur.att|0)+1} : undefined); return darkLeave('2 시간이 지났어요.... 방이 처음으로 돌아갔어요. 다시 들어가면 새로 시작해요.'); }
   if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
-    net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; const hp = Math.max(0, cur.hp - dmg); return {...cur, hp, ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
+    net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; const hp = Math.max(0, cur.hp - dmg); return {...cur, hp, ...(npc === 'tori' && !cur.rageAt && hp > 0 && hp <= cur.max/2 ? {rageAt:darkNow()} : {}), ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
   if (!darkBossUp(r)){ darkSlams = []; return; }
   if (darkDown){ darkSlams = []; return; }
   // 보스 공격: 가까이 있으면 할퀴기, 주기적으로 내 발밑에 내려찍기 (빨간 원이 커지면 피해요)
   const [bx, by] = darkBossPos(r), rage = r.hp < r.max/2, k = rage ? 1.3 : 1;
   darkTouchCd -= dt;
+  if (npc === 'tori'){ if (Math.hypot(pos.x-bx, pos.y-by) < 100 && darkTouchCd <= 0 && $('npcPanel').hidden){ darkTouchCd = 1.1; pushPlayer(pos.x-bx, pos.y-by, 50); darkHurt(TB_DMG.touch, t); } toriAttack(dt, t, r); return; } // 토리???: 자기 패턴
   if (Math.hypot(pos.x-bx, pos.y-by) < 80 && darkTouchCd <= 0 && $('npcPanel').hidden){ darkTouchCd = 1.1; pushPlayer(pos.x-bx, pos.y-by, 40); darkHurt(Math.round(DARK_BOSS.touch*k), t); }
   if (t - darkSlamT > DARK_BOSS.slamGap*1000/(rage ? 1.6 : 1) && Math.hypot(pos.x-bx, pos.y-by) < 480){ darkSlamT = t; // 보스 근처에 있을 때만 내려찍어요 darkSlams.push({x:pos.x, y:pos.y, r:DARK_BOSS.slamR*(rage ? 1.15 : 1), at:t});
     if (rage) for (let i = 0; i < 2; i++) darkSlams.push({x:pos.x + (Math.random()-.5)*260, y:pos.y + (Math.random()-.5)*160, r:DARK_BOSS.slamR, at:t + 200}); }
@@ -4694,7 +4770,7 @@ function darkHud(){
   q.hidden = false;
   if (darkDown){ q.hidden = false; q.innerHTML = `<b style="color:#ff4f87">쓰러졌어요</b>다른 사람이 다가와 눌러 주면 일어나요 · 남은 시간 ${time}`; placeTop(); return; }
   q.innerHTML = r.clear ? `<b>${esc(NPC[npc].name)}의 방</b>꿰매진 방이에요 · ${esc(String(r.clear.nick||'').slice(0,8))} 님이 마지막 일격`
-    : `<b style="color:#ff4f87">남은 시간 ${time}</b>${darkBossUp(r) ? `깨어난 ${esc(NPC[npc].name)} ${Math.ceil(r.hp).toLocaleString()} · 다 같이 싸워요!` : `문제 ${darkSolvedN(r)}/${n} · 빛나는 물음표를 찾아요`}`;
+    : `<b style="color:#ff4f87">남은 시간 ${time}</b>${darkBossUp(r) ? `깨어난 ${npc === 'tori' ? '토리???' : esc(NPC[npc].name)} ${Math.ceil(r.hp).toLocaleString()} · 다 같이 싸워요!` : `문제 ${darkSolvedN(r)}/${n} · 빛나는 물음표를 찾아요`}`;
   placeTop();
 }
 // ===== 별빛 언덕 밤 =====
@@ -5459,6 +5535,7 @@ function frameBody(t){
     else { step(dt); moveOthers(dt); aucSheet(); walkFade(t); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
+    if (!admin){ const zf = Z().dark === 'tori' && darkBossUp(roomOf('tori')) && floorOf(pos.y, 3) === 3, wz = view.base * (zf ? .7 : 1); if (Math.abs(view.zoom - wz) > .01) view.zoom = wz; } // 토리??? 와 싸울 땐 한 발 물러서서 봐요
     const z = view.zoom, vw = view.w/z, vh = view.h/z;
     const W = Z().W, H = Z().H;
     // 위 정보바와 아래 버튼에 가려지지 않게: 캐릭터는 그 사이 보이는 칸의 가운데에, 구역 끝에서는 바깥까지 조금 더 보여 줘요
