@@ -224,6 +224,12 @@
       "reloadAt": {
         ".validate": "newData.isNumber()"
       },
+      "meteorAt": {
+        ".validate": "newData.isNumber()"
+      },
+      "fwAt": {
+        ".validate": "newData.isNumber()"
+      },
       "$other": {
         ".validate": false
       }

@@ -174,6 +174,10 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 #swingBtn{position:fixed;z-index:6;right:calc(env(safe-area-inset-right,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:78px!important;height:78px!important;font-size:17px!important}
 #swingBtn::before{inset:-12px}
 #swingBtn:active{transform:scale(.92)}
+#skyFx{position:fixed;left:0;top:0;z-index:1;pointer-events:none}
+#wishBtn{position:fixed;z-index:30;left:50%;transform:translateX(-50%) scale(.6);opacity:0;pointer-events:none;bottom:calc(env(safe-area-inset-bottom,0px) + 112px);border:0;border-radius:999px;padding:12px 26px;font:inherit;font-size:21px;font-weight:bold;color:#5a3346;background:linear-gradient(#fff8d6,#ffe07a);box-shadow:0 4px 0 #e0b84a,0 0 24px rgba(255,224,122,.8);transition:opacity .35s,transform .35s cubic-bezier(.2,1.4,.4,1);touch-action:manipulation}
+#wishBtn.on{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
+#wishBtn:disabled{filter:saturate(.7);color:#8a6a7a}
 body.has-sword #sideBtns{bottom:calc(env(safe-area-inset-bottom,0px) + 176px)!important}
 button,.qk,#bar div{touch-action:manipulation}
 #bar div::before{content:'';position:absolute;inset:-5px}
@@ -587,7 +591,8 @@ function drawPlayer(c, x, y, L, dir, t, walk, s=1, expr='dot'){
 }
 // 표정: 캐릭터를 만들 때 고른 표정을 계속 써요 (상황에 따라 바뀌지 않아요)
 function setExpr(){}
-function myExpr(){ return (me && me.look && me.look.expr) || 'dot'; }
+let prayUntil = 0; // 별똥별에 소원 빌 때: 손 모으고 눈 감는 자세 (다른 사람에게도 보여요)
+function myExpr(){ if (prayUntil && performance.now() < prayUntil) return 'pray'; return (me && me.look && me.look.expr) || 'dot'; }
 // 동물 주민: 걷기 8 단계, 서 있기 4 단계
 function drawCritter(c, x, y, v, t, walk, s=1, flip=false){
   if (v && v.a1) return drawPlayer(c, x, y, v.a1, walk ? (flip ? 'left' : 'right') : 'down', t, walk, s, 'dot');
@@ -2360,7 +2365,8 @@ function showFishBag(){
 
 // ===== 가방 =====
 // 아이템 키: 'crop:c01' 작물, 'seed:c01' 씨앗, 'fish:f01_3' 물고기(별 3), 'ore:o01' 광석, 'loot:m01' 전리품
-const CATS = {seed:'seeds', crop:'crops', fish:'fish', ore:'ores', loot:'loot', forage:'forage', dish:'dishes', furn:'furn', wear:'wear', umb:'umbrellas', wall:'walls', floor:'floors'};
+const STAR_PRICE = 50000; // 별 조각: 시세와 상관없이 늘 5 만 G
+const CATS = {seed:'seeds', crop:'crops', fish:'fish', ore:'ores', loot:'loot', forage:'forage', dish:'dishes', furn:'furn', wear:'wear', umb:'umbrellas', wall:'walls', floor:'floors', star:'stars'};
 function bagOf(cat){ me.inv[CATS[cat]] = me.inv[CATS[cat]] || {}; return me.inv[CATS[cat]]; }
 function invCount(key){ const [cat, id] = key.split(':'); return bagOf(cat)[id] || 0; }
 // 가방: 같은 물건은 한 칸에 겹쳐 쌓여요. 한 칸 최대 500 개 — 넘치는 만큼은 버려지고 알려 줘요
@@ -2388,6 +2394,7 @@ function itemName(key){
   if (cat==='umb') return (UMB[id]?.name || '') + ' 우산';
   if (cat==='wall') return (WALLS[id]?.name || '') + ' 벽지';
   if (cat==='floor') return (FLOORS[id]?.name || '') + ' 바닥';
+  if (cat==='star') return '별 조각';
   return key;
 }
 function itemPrice(key){
@@ -2403,6 +2410,7 @@ function itemPrice(key){
   if (cat==='wear') return Math.round((CH.ITEM(id.split(/[~#]/)[0])?.price || 0)/2);
   if (cat==='umb') return Math.round((UMB[id]?.price || 0)/2);
   if (cat==='wall' || cat==='floor') return Math.round(((cat==='wall' ? WALLS : FLOORS)[id]?.price || 0)/2);
+  if (cat==='star') return STAR_PRICE;
   return 0;
 }
 function itemsOf(cat){ return Object.entries(bagOf(cat)).filter(([,n])=>n>0).map(([id,n])=>[cat+':'+id, n]); }
@@ -2552,6 +2560,7 @@ const RING_LIST = [
   ['r08','꽃잎 방패 반지',300,350000,[['ore:o36',3],['ore:o38',2]],{shield:20},'#ffb3d9'],
   ['r09','불사조 깃털 반지',400,450000,[['ore:o38',1],['ore:o30',3]],{phoenix:1},'#ff7a2f'],
   ['r10','별고래의 맹세',500,600000,[['loot:m35',1],['ore:o38',2]],{dr:.12, bossDr:.2},'#d9c9ff'],
+  ['r11','소원의 별 반지',700,500000,[['star:shard',5],['ore:o38',2]],{dr:.15, bossDr:.25, regen:1.5},'#ffe07a'],
 ];
 const RING_OPEN = true; // 반지 그림·이름표가 정해지면 공방에 열어요
 const RINGS = Object.fromEntries(RING_LIST.map(r=>[r[0], {name:r[1], hp:r[2], gold:r[3], need:r[4], fx:r[5], color:r[6]}]));
@@ -2737,6 +2746,7 @@ function mobReward(zone, slot, d){
   toast(`${m.name}을(를) ${crew > 1 ? `${crew} 명이 함께 ` : ''}물리쳤어요! ${m.drop} · ${gold} G${first ? ' · 처음 물리친 몬스터!' : ''}`, 'loot:'+d.id);
 }
 function syncMobs(){
+  if (skyQuiet()){ if (mobSub) mobSub(); mobSub = null; mobSubZone = ''; mobMap = {}; mobs = []; return 0; } // 별똥별 이벤트 동안 별빛 언덕은 조용해요 (끝나면 다시 구독해요)
   const want = (COMBAT_ZONES[zoneId] && (zoneId!=='starhill' || isNight())) ? COMBAT_ZONES[zoneId] : 0;
   if (mobSubZone !== zoneId){
     if (mobSub) mobSub(); mobSub = null; mobSubZone = zoneId; mobMap = {}; mobs = []; mobLoaded = false; mobTry = {};
@@ -2803,6 +2813,7 @@ const WEAPON_LIST = [
   ['w6','루비 검',62,16000,[['ore:o30',3],['ore:o21',3]],'#ff2f4f'],
   ['w7','미스릴 검',80,25000,[['ore:o36',3]],'#bfe3ff'],
   ['w8','별빛 검',110,45000,[['ore:o38',1],['ore:o37',1]],'#d9c9ff'],
+  ['w9','소원의 별검',150,80000,[['star:shard',5],['ore:o38',2]],'#ffe07a'],
 ];
 const WEAPONS = Object.fromEntries(WEAPON_LIST.map(w=>[w[0], {name:w[1], atk:w[2], gold:w[3], need:w[4], color:w[5]}]));
 const weapon = () => WEAPONS[me.inv.weapon] || WEAPONS.w1;
@@ -3907,14 +3918,14 @@ function onMail(m, remove){
 // 판매처: 모모는 뭐든 사 주고, 전문 상인은 자기 분야를 더 비싸게 사 줘요. 친한 친구(♥7)가 되면 +10%
 const BUYERS = {
   bami:{cats:['forage'], bonus:{forage:1.25}, line:'들꽃이랑 열매, 버섯은 내가 제일 잘 알아. 비싸게 사 줄게.'},
-  momo:{cats:['crop','forage','fish','ore','loot','dish','furn'], bonus:{}, line:'뭐든 가져와요~ 다 사 줄게요!'},
+  momo:{cats:['crop','forage','fish','ore','loot','dish','furn','star'], bonus:{}, line:'뭐든 가져와요~ 다 사 줄게요!'},
   hana:{cats:['crop'], bonus:{crop:1.25}, line:'작물이면 내가 제일 비싸게 사 줄게!'},
   pengpeng:{cats:['fish'], bonus:{fish:1.25}, line:'펭! 물고기라면 제일 비싸게 사 줄게!'},
   dodo:{cats:['ore'], bonus:{ore:1.25}, line:'광석이라면 내가 제값 쳐 주지.'},
   kongi:{cats:['loot'], bonus:{loot:1.25}, line:'충성! 전리품은 경비대가 비싸게 사겠습니다!'},
   dandan:{cats:['dish','crop'], bonus:{dish:1.25, crop:1.05}, line:'요리라면 우리 카페에서 사 갈게요.'},
 };
-const SELL_CATS = {crop:'작물', forage:'채집물', fish:'물고기', ore:'광석', loot:'전리품', dish:'요리', furn:'가구'};
+const SELL_CATS = {crop:'작물', forage:'채집물', fish:'물고기', ore:'광석', loot:'전리품', dish:'요리', furn:'가구', star:'별 조각'};
 const baseKey = key => { const [cat, id] = key.split(':'); return cat==='fish' ? 'fish:'+parseFish(id).id : key; };
 // 오늘의 인기 품목: 작물·물고기·광석에서 하나씩, 오늘은 2 배 값
 function hotToday(){
@@ -3933,7 +3944,8 @@ function buyerBonus(n, key){
 // 주민에게 팔 때 값 올림: 직접 캐고·잡고·키우고·만든 것만 1.5 배 (가구는 산 값의 절반 그대로 — 사서 되팔아 남기지 않게)
 const SELL_BOOST = {crop:1.5, forage:1.5, fish:1.5, ore:1.5, loot:1.5, dish:1.5};
 const sellBase = key => itemPrice(key) * (SELL_BOOST[key.split(':')[0]] || 1);
-function unitPrice(key, n, extra=0){ return Math.max(1, Math.round(sellBase(key) * marketMul(key) * glut(key, extra) * (n ? buyerBonus(n, key) : 1))); }
+function unitPrice(key, n, extra=0){ if (key.startsWith('star:')) return STAR_PRICE; // 별 조각은 시세 없이 늘 같은 값
+  return Math.max(1, Math.round(sellBase(key) * marketMul(key) * glut(key, extra) * (n ? buyerBonus(n, key) : 1))); }
 function sellTotal(key, cnt, n){ let s = 0; for (let i=0;i<cnt;i++) s += unitPrice(key, n, i); return s; }
 function sellItem(key, cnt, n){
   cnt = Math.min(cnt, invCount(key)); if (cnt <= 0) return 0;
@@ -4013,7 +4025,7 @@ const listState = {tab:'all', page:0, sel:null};
 const marketFull = () => Object.values(market).filter(l=>l.uid===uid && !l.buyer).length >= MARKET_MAX;
 function marketAdd(){
   if (marketFull()) return toast(`한 번에 ${MARKET_MAX} 개까지 올릴 수 있어요`);
-  const draw = ()=>{ keepScroll(()=>openPanel('거래소에 올리기', `<p class="mnote" style="margin:0 2px">올린 물건은 거래 게시판에 걸리고, 누가 사 가면 수수료 ${Math.round(MARKET_FEE*100)}%를 뺀 골드가 들어와요.</p>${invGrid(['crop','forage','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'], listState)}`));
+  const draw = ()=>{ keepScroll(()=>openPanel('거래소에 올리기', `<p class="mnote" style="margin:0 2px">올린 물건은 거래 게시판에 걸리고, 누가 사 가면 수수료 ${Math.round(MARKET_FEE*100)}%를 뺀 골드가 들어와요.</p>${invGrid(['star','crop','forage','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'], listState)}`));
     invBind(listState, draw, (el,k)=>detailBox(el, k, [['이 물건 올리기', ()=>marketList(k)]]), '올릴 물건을 골라요.'); };
   draw();
 }
@@ -4678,6 +4690,154 @@ function promiseTree(){
   show();
 }
 
+// ===== 밤 이벤트: 오투모가 관리자 화면에서 직접 여는 별똥별 · 불꽃놀이 =====
+// 별똥별: 예약하면 모두에게 "10 분 뒤" 알림 → 별빛 언덕에 10 초 동안 떨어져요. 그동안 [소원 빌기]를 누르면 손 모으고 눈 감는 자세 + 별 조각 (하루 1 개)
+// 예약부터 끝날 때까지 별빛 언덕엔 몬스터가 안 나와요. 불꽃놀이: 따로 열고, 바깥 구역 어디서든 30 초 동안 보여요 (동굴·집·다크 방은 안 보여요)
+const METEOR_LEAD = 600000, METEOR_LEN = 10000, METEOR_TAIL = 60000, FW_LEN = 30000;
+const wNow = () => Date.now() + serverOffset;
+const meteorAt = () => +world.meteorAt || 0;
+function meteorPhase(){ const m = meteorAt(); if (!m) return ''; const n = wNow(); if (n < m) return n > m - METEOR_LEAD - 60000 ? 'wait' : ''; if (n < m + METEOR_LEN) return 'fall'; if (n < m + METEOR_LEN + METEOR_TAIL) return 'after'; return ''; }
+const skyQuiet = () => zoneId === 'starhill' && !!meteorPhase();
+const fwOn = () => { const f = +world.fwAt || 0; return f && wNow() >= f - 2000 && wNow() < f + FW_LEN; };
+const outdoorZone = () => !zoneId.startsWith('house:') && !zoneId.startsWith('dark:') && ZONES[zoneId] && ZONES[zoneId].theme !== 'cave';
+let starShardURL = '';
+function starShardIcon(){ if (starShardURL) return starShardURL; const cv = document.createElement('canvas'); cv.width = cv.height = 96; const c = cv.getContext('2d');
+  const q = c.createRadialGradient(48, 50, 4, 48, 50, 46); q.addColorStop(0, 'rgba(255,240,170,.9)'); q.addColorStop(1, 'rgba(255,240,170,0)'); c.fillStyle = q; c.beginPath(); c.arc(48, 50, 46, 0, 7); c.fill();
+  RT.star(c, 48, 52, 34, '#fff1a8', -.12); RT.star(c, 48, 52, 26, '#ffd23f', -.12); RT.star(c, 42, 44, 8, '#fffbe6', -.12);
+  c.strokeStyle = '#c98a2a'; c.lineWidth = 2; c.globalAlpha = .5; c.beginPath(); for (let k=0;k<10;k++){ const rr = k%2 ? 26*.45 : 26, a = -.12 + k*Math.PI/5 - Math.PI/2; c.lineTo(48 + Math.cos(a)*rr, 52 + Math.sin(a)*rr); } c.closePath(); c.stroke(); c.globalAlpha = 1;
+  RT.sparkle(c, 80, 20, 6, '#fff'); RT.sparkle(c, 16, 74, 4, '#fff6c8');
+  return starShardURL = cv.toDataURL(); }
+// --- 하늘 그림 (게임 화면 위 투명한 캔버스) ---
+let skyCv = null, skyG = null, skyW = 0, skyH = 0, skyRun = false, skyLast = 0, fwRun = 0, fwShape = {};
+const skyP = {meteors:[], sparks:[], rockets:[], flashes:[], glow:[], shapes:[]};
+const FW_PAL = {pink:['#ff5c8d','#ffb3cf','#fff0f6'], gold:['#ffcf4a','#fff1b8','#ff9a3c'], sky:['#5cc8ff','#c8eeff','#ffffff'], violet:['#b07cff','#e2ccff','#ff9fd8'], mint:['#5fe0a8','#d2ffe9','#fff6b8'], red:['#ff4646','#ffb08a','#ffffff']};
+const FW_KINDS = ['peony','chrys','willow','heart','ring','crossette','glitter','peony','chrys','heart'];
+let fwI = 0, fwLastR = 0, meteorLast = 0;
+const rnd = (a, b) => a + Math.random()*(b - a);
+function skySize(){ if (!skyCv) return; const dpr = Math.min(2, devicePixelRatio || 1); skyW = innerWidth; skyH = innerHeight; skyCv.width = skyW*dpr; skyCv.height = skyH*dpr; skyCv.style.width = skyW + 'px'; skyCv.style.height = skyH + 'px'; skyG = skyCv.getContext('2d'); skyG.setTransform(dpr, 0, 0, dpr, 0, 0); }
+function skyStart(){ if (!skyCv){ skyCv = document.createElement('canvas'); skyCv.id = 'skyFx'; document.body.appendChild(skyCv); addEventListener('resize', skySize); skySize(); } if (!skyRun){ skyRun = true; skyLast = performance.now(); requestAnimationFrame(skyFrame); } }
+function spark(x, y, vx, vy, o){ skyP.sparks.push({x, y, px:x, py:y, vx, vy, t:0, life:o.life || 1.4, col:o.col, col2:o.col2 || '#fff', drag:o.drag ?? .985, grav:o.grav ?? 55, w:o.w || 2.2, twinkle:o.twinkle, split:o.split, trail:o.trail || 1}); }
+function fwBurst(x, y, kind, pal){
+  const sc = Math.min(1.25, Math.max(.8, skyW/420));
+  skyP.flashes.push({x, y, t:0, col:pal[0], r:(kind === 'willow' ? 150 : 120)*sc}); skyP.glow.push({t:0, col:pal[0]});
+  const N = {peony:110, chrys:150, willow:120, heart:90, ring:70, crossette:26, glitter:130}[kind] || 100;
+  for (let i = 0; i < N; i++){
+    const a = i / N * 6.283 + rnd(-.04, .04);
+    if (kind === 'heart'){ const tt = i / N * 6.283, hx = 16*Math.sin(tt)**3, hy = -(13*Math.cos(tt) - 5*Math.cos(2*tt) - 2*Math.cos(3*tt) - Math.cos(4*tt)); spark(x, y, hx*6*sc, hy*6*sc, {col:pal[0], col2:pal[2], life:1.5, drag:.965, grav:18, w:2.6}); continue; }
+    if (kind === 'ring'){ const sp = 125*sc; spark(x, y, Math.cos(a)*sp, Math.sin(a)*sp*.75, {col:pal[0], col2:pal[1], life:1.3, drag:.97, grav:20, w:2.6}); if (i % 2) spark(x, y, Math.cos(a)*sp*.45, Math.sin(a)*sp*.35, {col:pal[1], life:1, drag:.97, grav:20}); continue; }
+    const sp = rnd(.55, 1) * ({peony:160, chrys:180, willow:140, crossette:150, glitter:160}[kind]) * sc, vx = Math.cos(a)*sp, vy = Math.sin(a)*sp;
+    if (kind === 'willow') spark(x, y, vx, vy, {col:'#ffd27a', col2:'#a8641e', life:2.6, drag:.955, grav:85, w:1.8, trail:3});
+    else if (kind === 'chrys') spark(x, y, vx, vy, {col:pal[1], col2:pal[0], life:1.9, drag:.975, grav:60, w:1.8, trail:2.2});
+    else if (kind === 'crossette') spark(x, y, vx, vy, {col:pal[0], col2:pal[1], life:.55, drag:.98, grav:30, w:2.6, split:pal});
+    else if (kind === 'glitter') spark(x, y, vx, vy, {col:pal[1], col2:'#fff', life:1.8, drag:.97, grav:50, w:1.6, twinkle:true});
+    else spark(x, y, vx, vy, {col:pal[0], col2:pal[2], life:1.5, drag:.975, grav:55, w:2.4});
+  }
+}
+// 모양 불꽃: 작은 캔버스에 그린 그림을 색 있는 점으로 바꿔요 (오투모 얼굴 · "얘들아 고마워")
+function shapePts(draw, w, h, step){ const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); draw(x, w, h); const d = x.getImageData(0, 0, w, h).data, pts = [];
+  for (let yy = 0; yy < h; yy += step) for (let xx = 0; xx < w; xx += step){ const i = (yy*w + xx)*4; if (d[i+3] > 120) pts.push([xx - w/2, yy - h/2, `rgb(${d[i]},${d[i+1]},${d[i+2]})`]); } return pts; }
+function fwShapes(){ if (fwShape.otumo) return fwShape;
+  fwShape.otumo = shapePts((x, w, h) => { const cx = w/2, cy = h/2 + 6;
+    x.fillStyle = '#ffd23f'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*62, cy - 4, 14, 22, s*.2, 0, 7); x.fill(); }
+    x.fillStyle = '#f4f6ff'; x.beginPath(); x.arc(cx, cy, 58, 0, 7); x.fill();
+    x.strokeStyle = '#4f8bff'; x.lineWidth = 12; x.beginPath(); x.arc(cx, cy, 60, Math.PI*1.08, Math.PI*1.92); x.stroke();
+    x.fillStyle = '#3a3a5a'; x.beginPath(); x.roundRect(cx - 52, cy - 10, 104, 34, 17); x.fill();
+    x.fillStyle = '#7fe8ff'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*17, cy + 7, 6, 8, 0, 0, 7); x.fill(); }
+    x.fillStyle = '#ff9fc4'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*34, cy + 36, 7, 4, 0, 0, 7); x.fill(); } }, 180, 150, 5);
+  fwShape.thanks = shapePts((x, w, h) => { x.font = 'bold 52px "Dongle", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    const gr = x.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ff7fb0'); gr.addColorStop(.5, '#ffe07a'); gr.addColorStop(1, '#9fd8ff'); x.fillStyle = gr; x.fillText('얘들아 고마워', w/2, h/2); x.fillStyle = '#ff5c8d'; x.font = 'bold 40px sans-serif'; x.fillText('♥', w - 14, h/2 - 22); }, 330, 80, 3);
+  return fwShape; }
+function shapeBurst(x, y, pts, scale){ skyP.flashes.push({x, y, t:0, col:'#ffffff', r:150}); skyP.glow.push({t:0, col:'#ffe07a'});
+  for (const [px, py, col] of pts) skyP.shapes.push({sx:x, sy:y, tx:x + px*scale, ty:y + py*scale, col, t:0, hold:2.4 + Math.random()*.4, vy:0});
+  for (let i = 0; i < 60; i++){ const a = Math.random()*6.283, sp = rnd(80, 200); spark(x, y, Math.cos(a)*sp, Math.sin(a)*sp, {col:'#fff6c8', life:.8, drag:.96, grav:40, w:2}); } }
+function fwLaunch(kind, ty, x){ const keys = Object.keys(FW_PAL), k = kind || FW_KINDS[fwI % FW_KINDS.length], pal = FW_PAL[keys[fwI % keys.length]]; fwI++;
+  skyP.rockets.push({x: x ?? rnd(skyW*.15, skyW*.85), y:skyH*.82, ty: ty ?? rnd(Math.max(skyH*.16, 170), skyH*.4), vx: x == null ? rnd(-20, 20) : 0, kind:k, pal, trail:[]}); }
+function skyFrame(now){
+  const dt = Math.min(.05, (now - skyLast)/1000); skyLast = now; const g = skyG;
+  const ph = meteorPhase(), fall = ph === 'fall' && zoneId === 'starhill', fw = fwOn(), out = outdoorZone(), P = skyP;
+  // 불꽃놀이 시간표 (fwAt 기준이라 늦게 들어와도 같은 장면을 봐요)
+  if (fw){ const f = +world.fwAt, t = (wNow() - f)/1000;
+    if (fwRun !== f){ fwRun = f; fwShape.o = fwShape.h = 0; }
+    const wave = (t > .5 && t < 6) || (t > 8 && t < 13) || (t > 15.5 && t < 21) || (t > 22.5 && t < 26.5);
+    if (wave && now - fwLastR > 520){ fwLastR = now; if (out){ fwLaunch(); if (t > 22.5) fwLaunch(); } }
+    if (!fwShape.o && t > 6.5){ fwShape.o = 1; if (out && t < 9) P.rockets.push({x:skyW/2, y:skyH*.82, ty:Math.max(skyH*.28, 228), vx:0, kind:'otumo', pal:FW_PAL.gold, trail:[]}); }
+    if (!fwShape.h && t > 14){ fwShape.h = 1; if (out && t < 16.5) P.rockets.push({x:skyW/2, y:skyH*.82, ty:Math.max(skyH*.28, 210), vx:0, kind:'thanks', pal:FW_PAL.pink, trail:[]}); } }
+  // 별똥별 10 초
+  if (fall && now - meteorLast > 110){ meteorLast = now; const k = skyW/400; P.meteors.push({x:rnd(0, skyW*1.2), y:rnd(-80, -20), vx:rnd(-300, -170)*k, vy:rnd(250, 400)*k, big:Math.random() < .2}); }
+  if (!out || (!fw && !fall)){ if (!out){ P.rockets.length = P.sparks.length = P.flashes.length = P.glow.length = P.shapes.length = 0; } if (zoneId !== 'starhill') P.meteors.length = 0; }
+  const busy = fw || fall || P.meteors.length || P.sparks.length || P.rockets.length || P.shapes.length || P.flashes.length || P.glow.length;
+  g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, skyW, skyH);
+  if (!busy){ skyRun = false; skyCv.style.display = 'none'; return; }
+  skyCv.style.display = '';
+  if (fw && out){ const t = (wNow() - +world.fwAt)/1000, a = Math.max(0, Math.min(1, t, (FW_LEN/1000 - t)/2)); g.fillStyle = `rgba(8,5,26,${((isNight() ? .24 : .42)*a).toFixed(3)})`; g.fillRect(0, 0, skyW, skyH); } // 낮에는 하늘을 조금 더 어둡게 해서 불꽃이 잘 보여요
+  for (let i = P.meteors.length - 1; i >= 0; i--){ const m = P.meteors[i]; m.x += m.vx*dt; m.y += m.vy*dt; if (m.y > skyH*.8){ P.meteors.splice(i, 1); continue; }
+    const L = m.big ? 95 : 55, sp = Math.hypot(m.vx, m.vy), ex = m.x - m.vx/sp*L*1.6, ey = m.y - m.vy/sp*L*1.6, gr = g.createLinearGradient(m.x, m.y, ex, ey); gr.addColorStop(0, '#fffbe0'); gr.addColorStop(1, 'rgba(255,240,180,0)');
+    g.strokeStyle = gr; g.lineWidth = m.big ? 4 : 2.4; g.lineCap = 'round'; g.beginPath(); g.moveTo(m.x, m.y); g.lineTo(ex, ey); g.stroke(); g.fillStyle = '#fff'; g.beginPath(); g.arc(m.x, m.y, m.big ? 4.5 : 3, 0, 7); g.fill(); }
+  g.globalCompositeOperation = 'lighter';
+  for (let i = P.rockets.length - 1; i >= 0; i--){ const r = P.rockets[i]; r.trail.push([r.x, r.y]); if (r.trail.length > 14) r.trail.shift(); r.y -= 560*dt; r.x += r.vx*dt + Math.sin(now/40 + i)*.6;
+    for (let k = 0; k < r.trail.length; k++){ const [tx, ty] = r.trail[k]; g.globalAlpha = k / r.trail.length * .7; g.fillStyle = '#ffd9a0'; g.beginPath(); g.arc(tx + rnd(-1, 1), ty, 1.6, 0, 7); g.fill(); }
+    g.globalAlpha = 1; g.fillStyle = '#fff'; g.beginPath(); g.arc(r.x, r.y, 2.6, 0, 7); g.fill();
+    if (r.y <= r.ty){ const S = fwShapes(); if (r.kind === 'otumo') shapeBurst(r.x, r.y, S.otumo, Math.min(1.4, skyW/390)); else if (r.kind === 'thanks') shapeBurst(r.x, r.y, S.thanks, Math.min(2.2, skyW*.95/330)); else fwBurst(r.x, r.y, r.kind, r.pal); P.rockets.splice(i, 1); } }
+  for (let i = P.shapes.length - 1; i >= 0; i--){ const p = P.shapes[i]; p.t += dt; let x, y, al = 1;
+    if (p.t < .55){ const k = 1 - (1 - p.t/.55)**3; x = p.sx + (p.tx - p.sx)*k; y = p.sy + (p.ty - p.sy)*k; }
+    else if (p.t < p.hold){ x = p.tx + Math.sin(now/300 + p.tx)*.6; y = p.ty + (p.t - .55)*3; al = Math.random() < .08 ? .4 : 1; }
+    else { p.vy += 70*dt; p.ty += p.vy*dt; x = p.tx; y = p.ty + (p.t - .55)*3; al = Math.max(0, 1 - (p.t - p.hold)/1.1); if (al <= 0){ P.shapes.splice(i, 1); continue; } }
+    g.globalAlpha = al; g.fillStyle = p.col; g.beginPath(); g.arc(x, y, 2.4, 0, 7); g.fill(); g.globalAlpha = al*.3; g.beginPath(); g.arc(x, y, 5.5, 0, 7); g.fill(); }
+  g.globalAlpha = 1;
+  for (let i = P.flashes.length - 1; i >= 0; i--){ const f = P.flashes[i]; f.t += dt; if (f.t > .45){ P.flashes.splice(i, 1); continue; } const gr = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r); gr.addColorStop(0, f.col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = .5*(1 - f.t/.45); g.fillStyle = gr; g.fillRect(f.x - f.r, f.y - f.r, f.r*2, f.r*2); }
+  for (let i = P.glow.length - 1; i >= 0; i--){ const f = P.glow[i]; f.t += dt; if (f.t > 1.4){ P.glow.splice(i, 1); continue; } g.globalAlpha = .07*(1 - f.t/1.4); g.fillStyle = f.col; g.fillRect(0, 0, skyW, skyH*.7); }
+  g.globalAlpha = 1;
+  for (let i = P.sparks.length - 1; i >= 0; i--){ const s = P.sparks[i]; s.t += dt; s.px = s.x; s.py = s.y; s.vx *= s.drag; s.vy = s.vy*s.drag + s.grav*dt; s.x += s.vx*dt; s.y += s.vy*dt;
+    if (s.t > s.life){ if (s.split) for (let k = 0; k < 4; k++){ const a = k*1.5708 + .785; spark(s.x, s.y, Math.cos(a)*110, Math.sin(a)*110, {col:s.split[1], col2:s.split[2], life:.8, drag:.97, grav:40, w:2}); } P.sparks.splice(i, 1); continue; }
+    const k = s.t / s.life, al = (1 - k) ** 1.2 * (s.twinkle ? (Math.random() < .5 ? 1 : .15) : 1);
+    g.globalAlpha = al; g.strokeStyle = k < .25 ? s.col2 : s.col; g.lineWidth = s.w; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(s.x - (s.x - s.px)*s.trail*3, s.y - (s.y - s.py)*s.trail*3); g.lineTo(s.x, s.y); g.stroke();
+    g.fillStyle = s.col; g.globalAlpha = al*.35; g.beginPath(); g.arc(s.x, s.y, s.w*2.2, 0, 7); g.fill(); }
+  g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  requestAnimationFrame(skyFrame);
+}
+// --- 알림 · 소원 빌기 버튼 (0.25 초마다 살펴요) ---
+let meteorSeen = null, fwSeen = null, wishedFor = 0;
+function nightTick(){
+  if (!me && !admin) return;
+  const ph = meteorPhase(), m = meteorAt();
+  if (meteorSeen === null){ meteorSeen = ph === 'wait' ? 0 : m; fwSeen = fwOn() ? 0 : (+world.fwAt || 0); } // 처음 들어왔을 때 이미 지난 이벤트는 알리지 않아요
+  if (ph === 'wait' && meteorSeen !== m){ meteorSeen = m;
+    if (!admin && me){ const mins = Math.max(1, Math.ceil((m - wNow())/60000 - .05)); say('🌠 별똥별 예보', `${mins} 분 뒤 별똥별이 떨어져요! 친구들과 함께 소원을 빌어 봐요.`, [['별빛 언덕으로 가기', ()=>{ closeTalk(); if (zoneId !== 'starhill') travelTo('starhill'); }], ['확인', closeTalk]], '별똥별은 별빛 언덕에서만 보여요', true); } }
+  if (fwOn() && fwSeen !== +world.fwAt){ fwSeen = +world.fwAt; if (!admin && me) toast(outdoorZone() ? '🎆 오투모가 불꽃놀이를 열었어요! 하늘을 봐요' : '🎆 오투모가 불꽃놀이를 열었어요! 밖으로 나가면 보여요'); }
+  if ((ph === 'fall' && zoneId === 'starhill') || fwOn()) skyStart();
+  if (ph === 'fall' && !$('talk').hidden && $('talkName').textContent === '🌠 별똥별 예보') closeTalk(); // 떨어지기 시작하면 예보 창은 닫아요
+  // 소원 빌기 버튼: 별똥별이 떨어지는 10 초 동안 별빛 언덕에서만
+  const show = !admin && me && ph === 'fall' && zoneId === 'starhill' && !darkDown;
+  let b = $('wishBtn');
+  if (show && !b){ b = document.createElement('button'); b.id = 'wishBtn'; b.type = 'button'; b.addEventListener('click', wishPress); document.body.appendChild(b); }
+  if (b){ if (show && !b.classList.contains('on')){ const done = wishedFor === m; b.textContent = done ? '소원 비는 중...' : '소원 빌기'; b.disabled = done; requestAnimationFrame(()=>b.classList.add('on')); } else if (!show && b.classList.contains('on')) b.classList.remove('on'); }
+  if (prayUntil && (pos.moving || darkDown)) prayUntil = 0; // 걸으면 기도 자세가 풀려요
+}
+function wishPress(){
+  const m = meteorAt(); if (meteorPhase() !== 'fall' || zoneId !== 'starhill' || wishedFor === m) return;
+  wishedFor = m; prayUntil = performance.now() + Math.max(5000, m + METEOR_LEN - wNow() + 2500);
+  const b = $('wishBtn'); if (b){ b.textContent = '소원 비는 중...'; b.disabled = true; }
+  stat('wishes');
+  if (me.shardDay !== today() && invRoom('star:shard') > 0){ invAdd('star:shard', 1); me.shardDay = today(); saveMe(); renderHud(); toast('소원을 빌었어요! 별 조각 1 개를 받았어요 (하루 1 개)', 'star:shard'); }
+  else toast('소원을 빌었어요! 별 조각은 오늘 이미 받았어요 (하루 1 개)');
+}
+setInterval(nightTick, 250);
+// --- 관리자: 밤 이벤트 열기 ---
+function adminNightSec(){
+  const ph = meteorPhase(), m = meteorAt(), n = wNow(), fw = fwOn();
+  const st = ph === 'wait' ? `별똥별 예약됨 · ${fmtLeft(m - n)} 뒤 (예약부터 끝날 때까지 별빛 언덕 몬스터 없음)` : ph === 'fall' ? '지금 별똥별이 떨어지는 중' : ph === 'after' ? `별똥별 끝 · 몬스터는 ${fmtLeft(m + METEOR_LEN + METEOR_TAIL - n)} 뒤에 다시 나와요` : '예약된 별똥별 없음';
+  return `<div class="adm-sec"><b>🌠 밤 이벤트</b><small>${st}</small>${fw ? `<small>🎆 불꽃놀이 중 · ${fmtLeft(+world.fwAt + FW_LEN - n)} 남음</small>` : ''}
+    ${ph ? (ph === 'wait' ? '<button data-a="meteorcancel" class="adm-btn warn">별똥별 예약 취소</button>' : '') : '<button data-a="meteorgo" class="adm-btn">🌠 별똥별 예약 (10분 뒤)</button>'}
+    <button data-a="fwgo" class="adm-btn"${fw ? ' disabled' : ''}>🎆 불꽃놀이 지금 열기</button></div>`;
+}
+function adminNightClick(a){
+  const fail = ()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요');
+  if (a === 'meteorgo'){ if (confirm('10 분 뒤 별빛 언덕에 별똥별을 떨어뜨릴까요? 지금 바로 모두에게 알림이 가요.')) Promise.resolve(net.setWorld({meteorAt:wNow() + METEOR_LEAD})).then(()=>toast('별똥별을 예약했어요 · 모두에게 알림이 갔어요')).catch(fail); }
+  else if (a === 'meteorcancel'){ if (confirm('별똥별 예약을 취소할까요?')) Promise.resolve(net.setWorld({meteorAt:0})).then(()=>toast('별똥별 예약을 취소했어요')).catch(fail); }
+  else if (a === 'fwgo'){ if (confirm('지금 불꽃놀이를 열까요? 바깥에 있는 모두에게 30 초 동안 보여요.')) Promise.resolve(net.setWorld({fwAt:wNow()})).then(()=>toast('불꽃놀이를 열었어요')).catch(fail); }
+}
+
 // ===== 아이템 그림 (물고기·작물·광석·몬스터는 public/art/ 의 종류별 그림) =====
 const ART = {...ART_FISH_A, ...ART_FISH_B, ...ART_CROPS, ...ART_ORES, ...ART_MON, ...ART_DISH};
 // 작물: 캐릭터와 같은 부드러운 매트 점토로 그려요 (얼굴은 없어요)
@@ -4690,7 +4850,7 @@ function artIdOf(key){
   if (cat==='fish') return parseFish(id).id;
   if (cat==='dish') return 'dish:'+id;
   if (cat==='furn') return 'furn:'+id;
-  if (cat==='wear' || cat==='umb' || cat==='wall' || cat==='floor' || cat==='forage') return key;
+  if (cat==='wear' || cat==='umb' || cat==='wall' || cat==='floor' || cat==='forage' || cat==='star') return key;
   return id; // seed·crop → c00, ore → o00, loot → m00
 }
 function drawArt(d, aid, t=0){
@@ -4726,6 +4886,7 @@ function specialIcon(key){
   if (cat==='forage' && FG[id]) return forageIcon(id);
   if (cat==='wall' && WALLS[id]) return swatchURL('wall', id);
   if (cat==='floor' && FLOORS[id]) return swatchURL('floor', id);
+  if (cat==='star') return starShardIcon();
   return '';
 }
 const iconImg = (key, cls='ic') => { const a = artIdOf(key); return a ? `<img class="${cls}" src="${iconURL(a)}" alt="">` : ''; };
@@ -4748,7 +4909,7 @@ const withIcon = key => { talkIconNext = key; };
 
 // 가방: 아이콘 칸
 // ===== 가방: 6 × 5 칸 격자 (분류 탭 · 빈칸 · 쪽 넘기기). 주민 선물·친구 선물도 같은 창을 써요 =====
-const INV_TABS = [['all','전체'],['crop','작물'],['forage','채집'],['dish','요리'],['fish','물고기'],['ore','광석'],['loot','전리품'],['seed','씨앗'],['wear','옷'],['umb','우산'],['furn','가구'],['wall','벽지'],['floor','바닥']];
+const INV_TABS = [['all','전체'],['star','별'],['crop','작물'],['forage','채집'],['dish','요리'],['fish','물고기'],['ore','광석'],['loot','전리품'],['seed','씨앗'],['wear','옷'],['umb','우산'],['furn','가구'],['wall','벽지'],['floor','바닥']];
 const INV_COLS = 6, INV_PAGE = INV_COLS*5;
 const bagState = {tab:'all', page:0, sel:null};
 function invGrid(cats, st){
@@ -4796,7 +4957,7 @@ function detailBox(el, k, buttons){
 function showBag(sel){
   if (typeof sel==='string'){ bagState.sel = sel; const c = sel.split(':')[0]; if (bagState.tab!=='all' && bagState.tab!==c) bagState.tab = c; }
   const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
-  const cats = ['crop','forage','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'];
+  const cats = ['star','crop','forage','dish','fish','ore','loot','seed','wear','umb','furn','wall','floor'];
   keepScroll(()=>openPanel('가방',
     `<div class="np"><span class="np-name">💰 ${me.inv.gold} G <small>· 체력 ${Math.ceil(playerHp)}/${maxHp()} · 기력 ${Math.floor(playerSta)}/${maxSta()}</small></span><span class="np-day" style="grid-column:1/-1;text-align:left">도구: ${tools}</span></div>${wornRow()}${invGrid(cats, bagState)}
      ${ringRow()}
@@ -5104,6 +5265,7 @@ const RING_TAG = { // 바탕 위·아래 색, 테두리, 글자색
   r01:['#ffffff','#ffe6f0','#f4b6cf','#7a3a58'], r02:['#f1f6f2','#cfdcd6','#8fa69c','#3f5a52'], r03:['#eaf8ff','#b8e6ff','#5fb8ec','#25607e'],
   r04:['#fff0ec','#ffc6c0','#ff8a8f','#8a3240'], r05:['#fff9d6','#ffd6ea','#ffb83f','#8a4a2a'], r06:['#ffe8ee','#ffb3c6','#e0405f','#7a1a34'],
   r07:['#fbfbff','#dcdcf6','#a6a6dc','#4a4a7a'], r08:['#fff0f8','#ffc6e4','#ff86bd','#8a2a5c'], r09:['#fff3d6','#ffb070','#ff6a2f','#7a2a10'], r10:['#3a2a78','#1e1648','#cdb8ff','#fff6ff'],
+  r11:['#2a2466','#0e0a2e','#ffe07a','#fff6d6'],
 };
 function ringTag(c, text, x, y, color, rid, t){
   const pal = RING_TAG[rid]; if (!pal) return false;
@@ -5114,6 +5276,7 @@ function ringTag(c, text, x, y, color, rid, t){
   // 뒤쪽 장식 (날개·후광)
   if (rid==='r07'){ RT.wing(c, L-2, mid, 11, -1, '#ffffff', '#c9c9ee'); RT.wing(c, L+w+2, mid, 11, 1, '#ffffff', '#c9c9ee'); }
   if (rid==='r09'){ const f = 1 + tw(2)*.06; RT.wing(c, L-2, mid, 12*f, -1, '#ffb347', '#ff6a2f'); RT.wing(c, L+w+2, mid, 12*f, 1, '#ffb347', '#ff6a2f'); }
+  if (rid==='r11'){ c.shadowColor='rgba(255,224,122,.95)'; c.shadowBlur=14 + tw()*5; }
   if (rid==='r10'){ c.shadowColor='rgba(200,170,255,.95)'; c.shadowBlur=14 + tw()*4; }
   if (rid==='r09'){ c.shadowColor='rgba(255,140,60,.9)'; c.shadowBlur=10 + tw(2)*4; }
   if (rid==='r01'){ c.fillStyle='#ffffff'; for (let i=0;i<=8;i++){ c.beginPath(); c.arc(L+4+i*(w-8)/8, T, 4.5, 0, 7); c.fill(); c.beginPath(); c.arc(L+4+i*(w-8)/8, T+H, 4.5, 0, 7); c.fill(); } for (const sx of [L, L+w]){ c.beginPath(); c.arc(sx, mid, 6, 0, 7); c.fill(); } }
@@ -5124,6 +5287,10 @@ function ringTag(c, text, x, y, color, rid, t){
   if (rid==='r06'){ c.lineWidth=1; c.strokeStyle='#ffd6e0'; path(2.5); c.stroke(); for (let i=0;i<6;i++){ c.fillStyle='#ffd23f'; c.beginPath(); c.arc(L+8+i*(w-16)/5, T+H+2.5, 1.4, 0, 7); c.fill(); } }
   if (rid==='r10'){ for (let i=0;i<9;i++){ const sx=L+5+((i*41)%(w-10)), sy=T+3+((i*13)%(H-6)); c.globalAlpha=.35+.65*Math.abs(Math.sin(t/260+i)); RT.sparkle(c, sx, sy, i%3?1.2:2, '#fff'); } c.globalAlpha=1;
     const ag = c.createLinearGradient(L, 0, L+w, 0); const h = (t/20)%360; ag.addColorStop(0, `hsl(${h},90%,75%)`); ag.addColorStop(.5, `hsl(${h+90},90%,75%)`); ag.addColorStop(1, `hsl(${h+180},90%,75%)`); c.lineWidth=1.6; c.strokeStyle=ag; path(1.5); c.stroke(); }
+  if (rid==='r11'){ c.save(); path(); c.clip(); // 밤하늘 이름표: 반짝이는 별 + 흘러가는 별똥별
+    for (let i=0;i<10;i++){ const sx=L+4+((i*37)%(w-8)), sy=T+3+((i*11)%(H-6)); c.globalAlpha=.3+.7*Math.abs(Math.sin(t/240+i*1.7)); c.fillStyle=i%3?'#fff':'#ffe9a8'; c.beginPath(); c.arc(sx, sy, i%4?.7:1.1, 0, 7); c.fill(); }
+    for (let i=0;i<2;i++){ const ph=((t/1700)+i*.5)%1, mx=L-10+ph*(w+30), my=T+2+ph*(H-2)+i*3; const g2=c.createLinearGradient(mx, my, mx-16, my-6); g2.addColorStop(0,'rgba(255,246,200,.95)'); g2.addColorStop(1,'rgba(255,246,200,0)'); c.globalAlpha=Math.sin(ph*Math.PI); c.strokeStyle=g2; c.lineWidth=1.4; c.beginPath(); c.moveTo(mx, my); c.lineTo(mx-16, my-6); c.stroke(); c.fillStyle='#fff'; c.beginPath(); c.arc(mx, my, 1.1, 0, 7); c.fill(); }
+    c.restore(); c.globalAlpha=1; c.lineWidth=1.2; c.strokeStyle='rgba(255,233,168,.55)'; path(2); c.stroke(); }
   if (rid==='r05'){ for (let i=0;i<7;i++){ c.fillStyle=['#ff7fb0','#7fd0ff','#ffd23f','#9fe07f'][i%4]; c.save(); c.translate(L+8+i*(w-16)/6, T+H-4); c.rotate(i); c.fillRect(-2,-.7,4,1.4); c.restore(); } }
   // 앞쪽 장식
   switch (rid){
@@ -5142,6 +5309,8 @@ function ringTag(c, text, x, y, color, rid, t){
       for (let i=0;i<3;i++){ const ph=((t/1600)+i/3)%1, px = L + w*(.2+i*.3) + Math.sin(t/400+i)*8, py = T + H + 2 - ph*34; c.globalAlpha = Math.sin(ph*Math.PI); c.fillStyle='#ffb3d9'; c.beginPath(); c.ellipse(px, py, 2, 3.2, t/500+i, 0, 7); c.fill(); } c.globalAlpha=1; break;
     case 'r09': { for (let k=0;k<3;k++){ const fx = x-6+k*6, fh = 7 + Math.sin(t/120+k*2)*2 + (k===1?3:0); c.fillStyle = k===1 ? '#ffd23f' : '#ff7a2f'; c.beginPath(); c.moveTo(fx-3, T); c.quadraticCurveTo(fx-3, T-fh*.6, fx, T-fh); c.quadraticCurveTo(fx+3, T-fh*.6, fx+3, T); c.fill(); }
       for (let i=0;i<5;i++){ const ph=((t/800)+i*.2)%1, ex = L + w*(.1+i*.2) + Math.sin(t/200+i)*3, ey = T - ph*18; c.globalAlpha=1-ph; c.fillStyle=i%2?'#ffd23f':'#ff6a2f'; c.beginPath(); c.arc(ex, ey, 1.6, 0, 7); c.fill(); } c.globalAlpha=1; break; }
+    case 'r11': { const sr = 7.5 + tw(1.5)*.8; RT.star(c, x, T-2, sr+2, 'rgba(255,240,170,.55)', t/3000); RT.star(c, x, T-2, sr, '#ffd23f', t/3000); RT.star(c, x-1.2, T-3.5, sr*.35, '#fffbe6', t/3000);
+      for (let i=0;i<3;i++){ const ph=((t/1100)+i/3)%1, ex=L+w+2+ph*12, ey=T+2-ph*10; c.globalAlpha=1-ph; RT.star(c, ex, ey, 2.4-ph, '#fff1a8', ph*3); } c.globalAlpha=1; RT.sparkle(c, L-4, T+3, 3, '#fff6c8'); RT.sparkle(c, L+w+4, T+H, 2.2, '#ffe07a'); break; }
     case 'r10': { RT.crown(c, x, T-1, 7, '#ffd23f', '#9f7fff'); const wx=L+w+5, wy=mid+Math.sin(t/500)*1.5; c.fillStyle='#d9c9ff'; c.beginPath(); c.moveTo(wx-4, wy+5); c.quadraticCurveTo(wx-1, wy-1, wx-8, wy-5); c.quadraticCurveTo(wx, wy-2, wx+2, wy-8); c.quadraticCurveTo(wx+3, wy, wx-4, wy+5); c.fill(); RT.sparkle(c, L-4, T+2, 3, '#fff'); break; }
   }
   if (color){ c.fillStyle=color; c.beginPath(); c.arc(L+7, mid, 3, 0, 7); c.fill(); }
@@ -5151,7 +5320,7 @@ function ringTag(c, text, x, y, color, rid, t){
 // 반지 그림 (가게·가방 아이콘). s = 크기(px), 가운데 (x, y)
 function ringIcon(c, x, y, s, id, t=0){
   const k = s/100; c.save(); c.translate(x, y); c.scale(k, k);
-  const BAND = {r01:['#ffeef6','#e8b8cc'], r02:['#e6eaee','#9aa2ac'], r03:['#eef6fb','#a8bccb'], r04:['#ffe0d6','#e0a090'], r05:['#fff0a8','#e0a830'], r06:['#ffe08a','#d09020'], r07:['#f4f6ff','#aab4d0'], r08:['#ffe0ec','#e0a0bc'], r09:['#ffd88a','#e07a20'], r10:['#f0ecff','#a898d8']}[id];
+  const BAND = {r01:['#ffeef6','#e8b8cc'], r02:['#e6eaee','#9aa2ac'], r03:['#eef6fb','#a8bccb'], r04:['#ffe0d6','#e0a090'], r05:['#fff0a8','#e0a830'], r06:['#ffe08a','#d09020'], r07:['#f4f6ff','#aab4d0'], r08:['#ffe0ec','#e0a0bc'], r09:['#ffd88a','#e07a20'], r10:['#f0ecff','#a898d8'], r11:['#ffe9a8','#c98a2a']}[id];
   // 그림자
   c.fillStyle='rgba(60,30,50,.18)'; c.beginPath(); c.ellipse(0, 40, 34, 7, 0, 0, 7); c.fill();
   // 고리 (앞뒤 두께가 보이게)
@@ -5176,6 +5345,10 @@ function ringIcon(c, x, y, s, id, t=0){
     case 'r10': setting('#a898d8'); { const q = c.createRadialGradient(-5,-18,1,0,-12,17); q.addColorStop(0,'#c8b8ff'); q.addColorStop(.5,'#5a3ab0'); q.addColorStop(1,'#1e1648'); c.fillStyle=q; c.beginPath(); c.arc(0,-12,15,0,7); c.fill(); for (const [dx,dy,r] of [[-5,-16,1.6],[5,-8,1.2],[3,-19,1],[-7,-7,1],[8,-14,1.4]]){ c.fillStyle='#fff'; c.beginPath(); c.arc(dx,dy,r,0,7); c.fill(); } c.fillStyle='rgba(255,255,255,.8)'; c.beginPath(); c.ellipse(-6,-20,4,2,-.5,0,7); c.fill();
       c.fillStyle='#ffd23f'; c.beginPath(); c.moveTo(-9,-27); c.lineTo(-9,-34); c.lineTo(-4,-30); c.lineTo(0,-37); c.lineTo(4,-30); c.lineTo(9,-34); c.lineTo(9,-27); c.closePath(); c.fill();
       c.fillStyle='#d9c9ff'; c.beginPath(); c.moveTo(18,4); c.quadraticCurveTo(22,-4,16,-8); c.quadraticCurveTo(24,-6,27,-12); c.quadraticCurveTo(28,-2,18,4); c.fill(); } break;
+    case 'r11': setting('#c98a2a'); { const q = c.createRadialGradient(0,-16,2,0,-16,30); q.addColorStop(0,'rgba(255,240,170,.85)'); q.addColorStop(1,'rgba(255,240,170,0)'); c.fillStyle=q; c.beginPath(); c.arc(0,-16,30,0,7); c.fill();
+      RT.star(c, 0, -15, 20, '#fff1a8'); RT.star(c, 0, -15, 15, '#ffd23f'); RT.star(c, -3, -19, 5, '#fffbe6');
+      for (const [dx,dy,r] of [[-24,-30,4],[24,-26,3.2],[18,-40,2.4]]) RT.star(c, dx, dy, r, '#fff6c8');
+      c.strokeStyle='rgba(255,250,220,.85)'; c.lineWidth=1.6; c.lineCap='round'; c.beginPath(); c.moveTo(34,-44); c.lineTo(22,-34); c.stroke(); } break;
   }
   c.restore();
 }
@@ -5184,7 +5357,7 @@ const ringTagCache = {};
 function ringTagURL(nick, rid){ const k = nick+'|'+rid; if (ringTagCache[k]) return ringTagCache[k]; const cv = document.createElement('canvas'); cv.width = 280; cv.height = 90; const x = cv.getContext('2d'); x.scale(2, 2); ringTag(x, nick, 70, 28, null, rid, 300); return ringTagCache[k] = cv.toDataURL(); }
 const ringIconCache = {};
 function ringIconURL(id){ if (ringIconCache[id]) return ringIconCache[id]; const cv = document.createElement('canvas'); cv.width = cv.height = 96; ringIcon(cv.getContext('2d'), 48, 52, 92, id); return ringIconCache[id] = cv.toDataURL(); }
-const RING_TOP = {r05:1, r08:1, r09:1, r10:1, r07:1}; // 이름표 위로 솟는 장식 → 발과 안 겹치게 이름표를 조금 더 내려요
+const RING_TOP = {r05:1, r08:1, r09:1, r10:1, r07:1, r11:1}; // 이름표 위로 솟는 장식 → 발과 안 겹치게 이름표를 조금 더 내려요
 // 이름은 발 밑, 칭호는 머리 위
 const nameDy = rid => RING_TOP[rid] ? 34 : 22;
 function nameTag(c, text, x, y, color, rid, t){ if (!(rid && ringTag(c, text, x, y, color, rid, t))) tag(c, text, x, y, color); }
@@ -5338,6 +5511,7 @@ function renderAdmin(){
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
       ${adminGoalSec()}
+      ${adminNightSec()}
       ${adminAucSec()}
       ${adminMobSec()}
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}
@@ -5536,6 +5710,7 @@ function adminClick(e){
   else if (b.dataset.a==='dkview'){ const npc = darkToday(); if (npc){ admSide = false; cam.follow = null; cam.zone = 'dark:'+npc; enterZone('dark:'+npc, null, DARK_ROOM.W/2, DARK_ROOM.H/2); renderAdmin(); } }
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) Promise.resolve(net.setWorld({dark:v, darkAt:Date.now() + serverOffset, darkShift:0})).then(()=>v && net.darkWipe ? net.darkWipe() : null).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
   else if (b.dataset.a==='aucgo') adminAucGo();
+  else if (['meteorgo','meteorcancel','fwgo'].includes(b.dataset.a)) adminNightClick(b.dataset.a);
   else if (b.dataset.a==='aucend'){ if (confirm('지금 최고가로 낙찰 확정할까요?')) adminAucEnd(false); }
   else if (b.dataset.a==='auccancel'){ if (confirm('경매를 취소할까요? 부른 사람들은 골드를 돌려받아요')) adminAucEnd(true); }
   else if (b.dataset.a==='walkon') admWalkOn();
