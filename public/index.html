@@ -5864,7 +5864,7 @@ const MG = {
     init(){ mgPops.length = 0; mg.s = {cup:0, u:0, dir:1, res:[], show:0, art:'', zone:this.zone()}; },
     zone(){ return .3 + Math.random() * .4; },
     step(dt){ const s = mg.s;
-      if (s.show > 0){ s.show -= dt; if (s.show <= 0){ if (s.cup >= 5){ const p = s.res.filter(r => r === 2).length, gd = s.res.filter(r => r === 1).length; if (p === 5) stat('coffeePerfect'); mgOver(p * 3 + gd, p * 120 + gd * 50 + (p === 5 ? 300 : 0)); } else { s.zone = this.zone(); s.u = 0; s.dir = 1; } } return; }
+      if (s.show > 0){ s.show -= dt; if (s.show <= 0){ if (s.cup >= 5){ const p = s.res.filter(r => r === 2).length, gd = s.res.filter(r => r === 1).length; if (p === 5) stat('coffeePerfect'); mgOver(p * 3 + gd, p * 120 + gd * 50 + (p === 5 ? 300 : 0)); } else { s.show = 0; s.art = ''; s.zone = this.zone(); s.u = 0; s.dir = 1; } } return; } // 0 아래로 내려간 채 두면 바늘이 안 보여요
       const sp = .75 + s.cup * .28; s.u += s.dir * sp * dt; if (s.u > 1){ s.u = 1; s.dir = -1; } if (s.u < 0){ s.u = 0; s.dir = 1; } },
     tap(){ const s = mg.s; if (s.show > 0 || s.cup >= 5) return; const d = Math.abs(s.u - s.zone), r = d < .045 ? 2 : d < .13 ? 1 : 0;
       s.res.push(r); s.cup++; s.art = ['miss', 'good', 'perfect'][r]; s.show = 1;
@@ -5881,11 +5881,11 @@ const MG = {
         else if (s.art === 'good'){ g.beginPath(); g.ellipse(cx, cy, 34 * k, 26 * k, 0, 0, 7); g.fill(); g.fillStyle = '#c9935d'; g.beginPath(); g.ellipse(cx, cy, 16 * k, 10 * k, 0, 0, 7); g.fill(); }
         else if (s.art === 'miss'){ g.globalAlpha = .8; for (let i = 0; i < 5; i++){ g.beginPath(); g.arc(cx - 30 + i * 15, cy - 10 + (i % 2) * 22, 10 * k, 0, 7); g.fill(); } g.globalAlpha = 1; } }
       // 우유 주전자 줄기
-      if (!s.show && mg.st === 'play'){ g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(cx - 3, 40, 6, 60); mgRR(g, cx - 26, 14, 52, 32, 10, '#d9dde6'); }
+      if (s.show <= 0 && mg.st === 'play'){ g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(cx - 3, 40, 6, 60); mgRR(g, cx - 26, 14, 52, 32, 10, '#d9dde6'); }
       // 게이지
       const gx = 30, gw = 270, gy = 320; mgRR(g, gx, gy, gw, 26, 13, '#ead9dc');
       mgRR(g, gx + (s.zone - .13) * gw, gy, .26 * gw, 26, 6, '#ffe59a'); mgRR(g, gx + (s.zone - .045) * gw, gy, .09 * gw, 26, 6, '#8fd8a8');
-      if (!s.show){ g.fillStyle = '#5a3346'; mgRR(g, gx + s.u * gw - 3, gy - 8, 6, 42, 3, '#5a3346'); }
+      if (s.show <= 0){ g.fillStyle = '#5a3346'; mgRR(g, gx + s.u * gw - 3, gy - 8, 6, 42, 3, '#5a3346'); }
       mgTxt(g, '우유를 초록 칸에서 멈춰요!', 165, 382, 16, '#9a6f84', 'center', null);
       for (let i = 0; i < 5; i++){ const r = s.res[i]; g.fillStyle = r === 2 ? '#8fd8a8' : r === 1 ? '#ffd36b' : r === 0 ? '#d8c3cb' : '#fff'; g.beginPath(); g.arc(105 + i * 30, 404, 9, 0, 7); g.fill(); g.strokeStyle = '#e0c8d2'; g.stroke(); }
       mgDrawPops(g); mgTxt(g, `${Math.min(5, s.cup + (s.show > 0 ? 0 : 1))}/5 잔`, 14, 30, 22, '#7a4a2a', 'left'); },
