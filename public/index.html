@@ -4159,13 +4159,16 @@ function checkAchievements(){
 }
 let achToastT = 0;
 function flushAch(){ if (!achQueue.length) return; const a = achQueue.shift(); toast(`${a.icon} 업적 달성! ${a.name} · +${a.reward.gold} G · 칭호 획득`); setExpr('sparkle', 2500); clearTimeout(achToastT); achToastT = setTimeout(flushAch, 2800); }
-const titleOf = id => (ACHIEVEMENTS.find(a=>a.id===id)||{}).reward?.title || '';
+// 업적이 아닌 특별 칭호 (오늘의 섬 목표 기여 1위 등)
+const SPECIAL_TITLES = {goal1:'고급 노동자'};
+const titleOf = id => SPECIAL_TITLES[id] || (ACHIEVEMENTS.find(a=>a.id===id)||{}).reward?.title || '';
 function achPanel(){
   syncStats(); const st = stats(), done = me.ach || [];
-  const rows = ACHIEVEMENTS.map(a=>{ const ok = done.includes(a.id), v = Math.min(st[a.stat]||0, a.n);
+  const sp = (me.stitles||[]).filter(id=>SPECIAL_TITLES[id]).map(id=>`<button class="np" data-id="${id}"><span class="np-name">👑 ${esc(SPECIAL_TITLES[id])} <small>오늘의 섬 목표 기여 1위</small></span><span class="np-place">${me.title===id ? '칭호 사용 중' : '칭호 쓰기'}</span><span class="np-day">특별 칭호</span></button>`).join('');
+  const rows = sp + ACHIEVEMENTS.map(a=>{ const ok = done.includes(a.id), v = Math.min(st[a.stat]||0, a.n);
     return `<button class="np ${ok?'':'dim'}" data-id="${a.id}" style="${ok?'':'opacity:.7'}"><span class="np-name">${a.icon} ${esc(a.name)} <small>${esc(a.desc)}</small></span><span class="np-place">${ok ? (me.title===a.id ? '칭호 사용 중' : '칭호 쓰기') : `${v}/${a.n}`}</span><span class="np-day">${ok ? '달성 · '+a.reward.gold+' G' : ''}</span></button>`; }).join('');
   openPanel(`업적 ${done.length}/${ACHIEVEMENTS.length}`, `<p class="mnote" style="margin-top:0">달성한 업적의 칭호를 고르면 이름 위에 보여요.${me.title ? ` 지금 칭호: <b>${esc(titleOf(me.title))}</b>` : ''}</p><div style="display:flex;gap:6px"><button class="mini" id="achNone">칭호 없음</button></div>${rows}`,
-    b=>{ const id = b.dataset.id; if (!done.includes(id)) return; me.title = me.title===id ? '' : id; saveMe(); achPanel(); });
+    b=>{ const id = b.dataset.id; if (!done.includes(id) && !(me.stitles||[]).includes(id)) return; me.title = me.title===id ? '' : id; saveMe(); achPanel(); });
   $('achNone').onclick = ()=>{ me.title = ''; saveMe(); achPanel(); };
 }
 
@@ -5326,6 +5329,7 @@ function renderAdmin(){
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
+      ${adminGoalSec()}
       ${adminAucSec()}
       ${adminMobSec()}
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}
@@ -5752,14 +5756,14 @@ const GOALS = [
   {k:'monsterKills', what:'몬스터', unit:'마리', verb:'물리치기', n:150, icon:'loot:m01'},
   {k:'foraged', what:'채집물', unit:'개', verb:'줍기', n:120, icon:'forage:g01'},
 ];
-const GOAL_REWARD = 8000;
+const GOAL_REWARD = 8000, GOAL_RANK = [5000, 3000, 1000]; // 달성한 날 기여 1·2·3 위 추가 골드 (1 위는 칭호 '고급 노동자'도)
 const goalOf = day => GOALS[hash('goal' + day) % GOALS.length];
 let goalDay = 0, goalData = {}, goalOff = null, goalPushT = 0, goalPending = false;
 const goalSum = d => Object.values(d || {}).reduce((a, v) => a + (Number(v) || 0), 0);
 function goalWatch(){
   const d = today(); if (d === goalDay || !net || !net.goalWatch) return;
-  goalDay = d; goalData = {}; goalOff && goalOff(); goalOff = net.goalWatch(d, v => { goalData = v || {}; goalPay(d, goalData); renderGoal(); });
-  if (!admin && net.goalGet) net.goalGet(d - 1).then(v => goalPay(d - 1, v || {})).catch(()=>{}); // 어제 못 받은 보상도 챙겨요
+  goalDay = d; goalData = {}; goalOff && goalOff(); goalOff = net.goalWatch(d, v => { goalData = v || {}; goalPay(d, goalData); renderGoal(); if (admin) renderAdmin(); });
+  if (!admin && net.goalGet) net.goalGet(d - 1).then(v => { goalPay(d - 1, v || {}); goalRankPay(d - 1, v || {}); }).catch(()=>{}); // 어제 못 받은 보상 + 어제 순위 보상
 }
 // 목표 활동을 하면 내 기여를 1 씩 올려요 (모아서 1.5 초마다 저장)
 function goalCount(key, n){
@@ -5776,6 +5780,27 @@ function goalPay(day, data){
   me.inv.gold += GOAL_REWARD; me.earned = (me.earned||0) + GOAL_REWARD; saveMe(true); renderHud();
   toast(`🎯 ${day === today() ? '오늘' : '어제'}의 섬 목표 달성! 기여한 보상 ${GOAL_REWARD.toLocaleString()} G 를 받았어요`);
 }
+// 관리자 화면: 오늘의 섬 목표 진행 · 기여 순위
+function adminGoalSec(){
+  goalWatch(); const g = goalOf(today()), sum = goalSum(goalData), rows = goalRank(), pct = Math.min(100, Math.floor(sum / g.n * 100));
+  return `<div class="adm-sec"><b>🎯 오늘의 섬 목표 ${sum >= g.n ? '<span class="adm-state on">달성</span>' : ''}</b><small>${esc(g.what)} ${g.n} ${g.unit} ${g.verb} · ${sum}/${g.n} (${pct}%) · ${goalLeft()}</small>
+    <div class="gl-bar" style="height:10px"><s style="width:${pct}%"></s></div>
+    ${rows.length ? rows.slice(0, 12).map(([id, v], i) => `<small>${i + 1}. ${esc(players[id]?.nick || '누군가')} · ${v}${i < 3 && sum >= g.n ? ` · +${GOAL_RANK[i].toLocaleString()} G${i === 0 ? ' · 고급 노동자' : ''}` : ''}</small>`).join('') : '<small>아직 아무도 기여하지 않았어요</small>'}
+    <small>달성하면 기여자 모두 ${GOAL_REWARD.toLocaleString()} G · 1·2·3 등은 자정에 순위 보상</small></div>`;
+}
+// 하루가 끝나면(다음 날 접속하거나 자정을 넘기면) 순위가 확정돼요. 같은 수면 같은 등수
+function goalRankPay(day, data){
+  if (admin || !me || day >= today()) return; const g = goalOf(day), mine = Number(data[uid]) || 0;
+  if (!(mine > 0) || goalSum(data) < g.n) return;
+  const paid = me.goalRankPaid || (me.goalRankPaid = {}); if (paid[day]) return;
+  const rank = 1 + Object.entries(data).filter(([id, v]) => id !== uid && (Number(v) || 0) > mine).length;
+  paid[day] = 1; for (const k of Object.keys(paid)) if (+k < today() - 3) delete paid[k];
+  const bonus = GOAL_RANK[rank - 1]; if (!bonus){ saveMe(); return; }
+  me.inv.gold += bonus; me.earned = (me.earned||0) + bonus;
+  let msg = `🏅 어제 섬 목표 기여 ${rank}등! 추가 보상 ${bonus.toLocaleString()} G`;
+  if (rank === 1){ me.stitles = [...new Set([...(me.stitles||[]), 'goal1'])]; me.title = 'goal1'; msg += ` · 칭호 '${SPECIAL_TITLES.goal1}'`; }
+  saveMe(true); renderHud(); setTimeout(()=>toast(msg), 1800);
+}
 const goalLeft = () => { const ms = (today() + 1) * 86400000 - (Date.now() + serverOffset + 9*3600000), h = Math.floor(ms/3600000), m = Math.floor(ms%3600000/60000); return `${h}:${String(m).padStart(2,'0')} 남음`; };
 const goalRank = () => Object.entries(goalData).map(([id, v]) => [id, Number(v) || 0]).filter(([,v]) => v > 0).sort((a, b) => b[1] - a[1]);
 function renderGoal(){
@@ -5789,7 +5814,7 @@ function renderGoal(){
 function goalPanel(){
   const g = goalOf(today()), sum = goalSum(goalData), rows = goalRank();
   openPanel('🎯 오늘의 섬 목표', `<div class="np" style="display:block"><b>다 같이 ${esc(g.what)} ${g.n} ${g.unit} ${g.verb}</b><div class="gl-bar" style="margin:6px 0"><s style="width:${Math.min(100, sum / g.n * 100)}%"></s></div><small>${sum}/${g.n} · ${sum >= g.n ? '달성했어요!' : '자정까지 ' + goalLeft().replace(' 남음', '')}</small></div>
-    <p class="mnote">달성하면 <b>한 번이라도 기여한 사람 모두</b> ${GOAL_REWARD.toLocaleString()} G 를 받아요. 목표는 날마다 물고기 · 광석 · 수확 · 요리 · 몬스터 · 채집 중에서 바뀌어요.</p>
+    <p class="mnote">달성하면 <b>한 번이라도 기여한 사람 모두</b> ${GOAL_REWARD.toLocaleString()} G 를 받아요. 하루가 끝나면 기여 순위대로 1 등 +${GOAL_RANK[0].toLocaleString()} G · 2 등 +${GOAL_RANK[1].toLocaleString()} G · 3 등 +${GOAL_RANK[2].toLocaleString()} G 를 더 받고, 1 등은 칭호 '${SPECIAL_TITLES.goal1}'도 받아요. 목표는 날마다 물고기 · 광석 · 수확 · 요리 · 몬스터 · 채집 중에서 바뀌어요.</p>
     <div class="bag-sec"><b>기여 순위</b>${rows.length ? rows.slice(0, 12).map(([id, v], i) => `<div class="np"><span class="np-name">${i + 1}. ${esc(id === uid ? (me.nick + ' (나)') : (players[id]?.nick || '누군가'))}</span><span class="np-place">${v}</span></div>`).join('') : '<p class="mnote">아직 아무도 시작하지 않았어요. 첫 기여자가 되어 봐요!</p>'}</div>`);
 }
 
