@@ -440,7 +440,19 @@ export const TOPS = {
   t23:{name:'하와이안 셔츠', price:71000, draw:(d,g)=>{ torso(d,g,'#7ccfc0'); dots(d,g,'#fffaf2',[[-4.5,4],[2,3.5],[4.5,8.5],[-2,9.5]],1.2); dots(d,g,'#ff9fb0',[[-4.5,4],[2,3.5],[4.5,8.5],[-2,9.5]],.5); collar(d,g,'#6abba9'); bareArms(d,g); }},
   t24:{name:'레이스 블라우스', price:87000, draw:(d,g)=>{ torso(d,g,'#fffaf2'); if(!g.up){ for (let i=-3;i<=3;i++) d.dot(i*2, BY+BH*.62, .9, '#fffaf2'); d.line(k=>{ for (let i=-3;i<=3;i++){ k.moveTo(i*2+.7, BY+BH*.62); k.arc(i*2, BY+BH*.62, .7, 0, 3.2); } }, '#e8dcd2', .4, .9); collar(d,g,'#f3e9e1'); } longArms(d,g,'#fffaf2'); }},
   t25:{name:'퍼프 블라우스', price:82000, draw:(d,g)=>{ torso(d,g,'#f9e0ea'); if (!g.side) d.ell(-g.bw/2-1.4, BY+BH*.2, 3.9, 3.6, '#f9e0ea'); d.ell(g.bw/2+1.4, BY+BH*.2, 3.9, 3.6, '#f9e0ea'); hands(d,g); }},
-  t26:{name:'곰돌이 후드', price:98000, draw:(d,g)=>{ torso(d,g,'#c9a07a'); if(!g.up){ d.ell(0, BY+1, 6.5, 3.2, '#b48a64'); if(!g.side) d.rr(-4,BY+7,8,4.2,2,'#b48a64',{flat:true}); } else { d.ell(0, BY+1.5, 7, 4, '#b48a64'); d.circle(-4.4,BY-.6,1.8,'#b48a64'); d.circle(4.4,BY-.6,1.8,'#b48a64'); } longArms(d,g,'#c9a07a'); }},
+  t26:{name:'곰돌이 후드', price:98000, draw:(d,g)=>{ torso(d,g,'#c9a07a');
+    if (g.up){ // 뒤: 모자에 동그란 곰 귀
+      d.ell(0, BY+1.5, 7.5, 4.4, '#b48a64'); for (const sx of [-1, 1]){ d.circle(sx*5.2, BY-1.6, 2.4, '#b48a64'); d.circle(sx*5.2, BY-1.6, 1.2, '#f1c6b4', {flat:true, noShadow:true}); } d.circle(0, BY+10.2, 2.6, '#9a7250', {noShadow:true}); d.dot(-.8, BY+9.4, .8, '#ffffff', .35); }
+    else { // 앞·옆: 모자 + 가슴에 곰돌이 얼굴
+      d.ell(0, BY+1, 6.5, 3.2, '#b48a64');
+      const fx = g.side ? 2.4 : 0, fy = BY+7.6, ex = g.side ? [1] : [-1, 1];
+      for (const sx of ex) { d.circle(fx + sx*3.3, fy-3.1, 1.9, '#9a7250', {noShadow:true}); d.circle(fx + sx*3.3, fy-3.1, .95, '#f1c6b4', {flat:true, noShadow:true}); }
+      d.circle(fx, fy, 4.1, '#9a7250', {noShadow:true});
+      d.ell(fx + (g.side ? 1 : 0), fy+1.3, 2.2, 1.6, '#f3e2cc', {flat:true, noShadow:true});
+      d.dot(fx + (g.side ? 1.2 : 0), fy+.8, .75, '#3a2430');
+      if (g.side) d.dot(fx + .6, fy-1.1, .62, '#3a2430'); else { d.dot(fx-1.6, fy-1, .62, '#3a2430'); d.dot(fx+1.6, fy-1, .62, '#3a2430'); d.dot(fx-2.6, fy+.6, .8, '#ff9fb8', .75); d.dot(fx+2.6, fy+.6, .8, '#ff9fb8', .75); }
+    }
+    longArms(d,g,'#c9a07a'); }},
   t27:{name:'트위드 재킷', price:118000, draw:(d,g)=>{ torso(d,g,'#e9c9cf'); if(!g.up){ d.line(k=>{ k.moveTo(-2.4,BY+1); k.lineTo(-2.4,BY+BH*.62); k.moveTo(2.4,BY+1); k.lineTo(2.4,BY+BH*.62); }, '#fffaf2', 1, .9); for (const y of [5,8.5]){ d.dot(-3.6,BY+y,.6,'#e0b84a'); d.dot(3.6,BY+y,.6,'#e0b84a'); } } longArms(d,g,'#e9c9cf'); }},
   t28:{name:'니트 조끼',   price:71000, main:'#c9b28a', draw:(d,g)=>{ torso(d,g,'#fffaf2'); collar(d,g,'#f0ece4'); if(!g.up) d.shape(c=>{ c.beginPath(); c.moveTo(-g.bw/2+.6,BY+1.4); c.lineTo(-2.2,BY+1.4); c.lineTo(0,BY+6); c.lineTo(2.2,BY+1.4); c.lineTo(g.bw/2-.6,BY+1.4); c.lineTo(g.bw/2-.6,BY+BH*.6); c.lineTo(-g.bw/2+.6,BY+BH*.6); c.closePath(); }, '#c9b28a', [0,BY+7,7]); else d.rr(-g.bw/2+.6,BY+1,g.bw-1.2,BH*.56,3,'#c9b28a'); longArms(d,g,'#fffaf2'); }},
   t29:{name:'무지개 니트', price:91000, draw:(d,g)=>{ torso(d,g,'#fffaf2'); ['#f6a6a6','#f7cf8f','#f3ec9a','#b5e3b0','#a9c7ef'].forEach((col,i)=>d.rr(-g.bw/2+.3, BY+1.2+i*2.3, g.bw-.6, 2.1, .6, col, {flat:true, noShadow:true})); longArms(d,g,'#fffaf2'); }},
