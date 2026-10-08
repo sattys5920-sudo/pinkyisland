@@ -3798,7 +3798,7 @@ function migrateItems(){
 function clothesPanel(){
   const [slot, label, cat] = CH.CATS.find(c=>c[0]===shopTab);
   const tabs = CH.CATS.map(([k,l])=>`<button class="mini" data-tab="${k}" style="${k===shopTab?'':'background:#fff'}">${l}</button>`).join('');
-  const rows = Object.entries(cat).map(([id,it])=>{
+  const rows = Object.entries(cat).filter(([id,it])=>!it.excl).map(([id,it])=>{ // excl: 오투모 경매·OX 퀴즈 상품으로만 받는 옷
     const own = ownsAny(id), on = wearing(id) || (id==='none' && (slot==='hat' ? me.look.hat==='none' : slot==='acc' ? me.look.acc==='none' : false));
     const cost = it.need ? `${it.price?it.price.toLocaleString()+' G + ':''}${itemName(it.need)} ${invCount(it.need)}/${it.n}` : `${it.price.toLocaleString()} G`;
     const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
@@ -3821,6 +3821,7 @@ function colorPanel(slot, id){
   pn.querySelectorAll('.tile[data-c]').forEach(b=>b.onclick = ()=>{
     const c = +b.dataset.c;
     if (free){ if (owns(id, c)) return toast('기본 옷은 한 벌씩만 받을 수 있어요 · 가방에서 [입기]로 입어요'); invAdd('wear:'+bagKey(id, c), 1); saveMe(); colorPanel(slot, id); return toast(`${it.name}(${c+1} 번 색)을(를) 받았어요 · 가방에 넣었어요`); }
+    if (it.excl) return toast('오투모 경매나 OX 퀴즈 상품으로만 받을 수 있는 옷이에요');
     if (!can) return toast(it.need ? '재료나 돈이 모자라요' : '돈이 모자라요');
     say(it.name, it.need ? `${it.price?it.price+' G와 ':''}${itemName(it.need)} ${it.n} 개로 ${c+1} 번 색을 만들까요?` : `${owns(id, c) ? `이미 ${haveWear(id, c)} 벌 있어요. ` : ''}${c+1} 번 색을 ${it.price.toLocaleString()} G에 살까요? 사면 가방에 들어가요.`, [[it.need ? '만들기' : '사기', ()=>{
       me.inv.gold -= it.price; if (it.need) invAdd(it.need, -it.n); invAdd('wear:'+bagKey(id, c), 1); if (!CLOSET().includes(ownKey(id, c))) CLOSET().push(ownKey(id, c)); stat('bought'); syncStats(); saveMe(true); renderHud(); closeTalk(); colorPanel(slot, id); toast(`${it.name}(${c+1} 번 색)을(를) ${it.need?'만들었어요':'샀어요'} · 가방에서 [입기]로 입어요`); }], ['그만두기', ()=>{ closeTalk(); colorPanel(slot, id); }]], '', true);
