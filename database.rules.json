@@ -134,7 +134,7 @@
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$npc": {
         ".write": "auth != null && $npc.matches(/^[a-z]{2,12}$/) && newData.exists()",
-        ".validate": "(!newData.child('start').exists() || newData.child('start').isNumber()) && (!data.child('start').exists() || newData.child('start').val() === data.child('start').val() || (data.child('start').exists() && now > data.child('start').val() + 7200000 && !data.child('clear').exists())) && (newData.child('att').val() === data.child('att').val() || (data.child('start').exists() && now > data.child('start').val() + 7200000 && !data.child('clear').exists())) && (!data.child('clear').exists() || newData.child('clear').exists()) && (!newData.child('clear').exists() || data.child('clear').exists() || newData.child('hp').val() === 0) && (!newData.child('hp').exists() || (newData.child('hp').isNumber() && newData.child('hp').val() >= 0 && ((data.child('hp').exists() && newData.child('hp').val() <= data.child('hp').val()) || (!data.child('hp').exists() && newData.child('hp').val() === 60000))))"
+        ".validate": "(!newData.child('start').exists() || newData.child('start').isNumber()) && (!data.child('start').exists() || newData.child('start').val() === data.child('start').val() || (data.child('start').exists() && now > data.child('start').val() + 7200000 && !data.child('clear').exists())) && (newData.child('att').val() === data.child('att').val() || (data.child('start').exists() && now > data.child('start').val() + 7200000 && !data.child('clear').exists())) && (!data.child('clear').exists() || newData.child('clear').exists()) && (!newData.child('clear').exists() || data.child('clear').exists() || newData.child('hp').val() === 0) && (!newData.child('hp').exists() || (newData.child('hp').isNumber() && newData.child('hp').val() >= 0 && ((data.child('hp').exists() && newData.child('hp').val() <= data.child('hp').val()) || (!data.child('hp').exists() && newData.child('hp').val() === ($npc === 'tori' ? 300000 : 60000)))))"
       }
     },
     "snowmen": {
@@ -208,6 +208,14 @@
         ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && !newData.child('buyer').exists()) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid) || (data.exists() && !data.child('buyer').exists() && data.child('uid').val() !== auth.uid && newData.child('buyer').val() === auth.uid && newData.child('uid').val() === data.child('uid').val() && newData.child('item').val() === data.child('item').val() && newData.child('n').val() === data.child('n').val() && newData.child('price').val() === data.child('price').val()))",
         ".validate": "newData.child('item').isString() && newData.child('item').val().length <= 16 && newData.child('n').isNumber() && newData.child('n').val() >= 1 && newData.child('n').val() <= 99 && newData.child('price').isNumber() && newData.child('price').val() >= 1 && newData.child('price').val() <= 1000000 && newData.child('nick').isString() && newData.child('nick').val().length <= 8"
       }
+    },
+    "darkQ": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'"
+    },
+    "darkQA": {
+      ".read": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'"
     },
     "world": {
       ".read": "auth != null",

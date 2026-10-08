@@ -398,6 +398,7 @@ body.dlg-on #goal,body.admin #goal{visibility:hidden}
 .adm-msg{display:flex;gap:8px;align-items:baseline;line-height:1.15}.adm-msg small{opacity:.6;font-variant-numeric:tabular-nums;font-size:16px}.adm-msg b{color:#ff9fc4;font-weight:400;white-space:nowrap}.adm-msg i{font-style:normal;font-size:15px;opacity:.55;white-space:nowrap}.adm-msg span{word-break:break-all}
 .adm-wipe{width:min(560px,calc(100% - 20px));gap:8px}.adm-wipe p{margin:0;line-height:1.2}.adm-wipe p small{font-size:17px;opacity:.75}
 .adm-chk{display:flex;gap:8px;align-items:center}.adm-chk input{width:20px;height:20px}
+.adm-qi{display:flex;flex-direction:column;gap:6px;background:rgba(255,255,255,.06);border-radius:12px;padding:10px 12px;margin:4px 0}.adm-qi.done{background:rgba(120,220,160,.08)}.adm-qi label{display:flex;flex-direction:column;gap:2px;font-size:15px;opacity:.95}.adm-qi label small{opacity:.7}.adm-qi input,.adm-qi textarea{font:inherit;font-size:17px;border:0;border-radius:10px;padding:6px 10px;background:#fff8fb;color:#2b2128;resize:vertical}.adm-qed select{font:inherit;font-size:16px;border-radius:8px;padding:2px 6px}
 .adm-wrow{display:flex;gap:8px}.adm-letter textarea{flex:1;min-width:0;min-height:150px;font:inherit;font-size:17px;line-height:1.5;border:0;border-radius:10px;padding:8px 10px;resize:vertical;background:#fff8fb;color:#2b2128}.adm-letter .adm-lhead[data-lt]{cursor:pointer}.adm-letter.fold{gap:0}.adm-lprev{margin:2px 0 0;opacity:.75;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}#admWipeTxt{flex:1;min-width:0;font:inherit;border:0;border-radius:10px;padding:2px 10px}.adm-btn:disabled{opacity:.4;cursor:default}
 #admChatWho{font:inherit;font-size:18px;border-radius:10px;border:0;padding:1px 8px;pointer-events:auto}
 body.admin #stats,body.admin #quest{display:none!important}
@@ -484,7 +485,7 @@ import { drawOtumo, OTUMO_HP } from './art/otumo.js';
 import { PET_SPECIES, PET_DRAW } from './art/pets.js';
 import { FORAGE, FORAGE_DRAW, SPOT_OF, SPOT_NAME, SPOT_DRAW } from './forage.js';
 import { JUKE_SONGS, jukeEngine } from './jukebox.js';
-import { DARK_ORDER, DARK_LIMIT_MS, DARK_ROOM, DARK_BOSS, DARK_REWARD, DARK_ROOMS, placeholderPuzzles } from './dark.js';
+import { DARK_ORDER, DARK_LIMIT_MS, DARK_ROOM, DARK_BOSS, DARK_REWARD, DARK_ROOMS, placeholderPuzzles, FLOOR_H, FLOOR_STEP, floorTop, floorOf } from './dark.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
 import { ART_PART as ART_CROPS } from './art/crops.js';
@@ -863,7 +864,8 @@ function rebuildObstacles(){
   if (zoneId==='home') for (const p of Object.values(players)) if (p.lot!=null){ const L=LOTS[p.lot]; o.rects.push({x:L.x-54,y:L.y-106,w:108,h:108}); const [mx, my] = mailboxPos(p.lot); o.circles.push({x:mx, y:my-2, r:9}); }
   // 남의 울타리(빈 집터 포함)는 못 들어가요. 내 울타리만 드나들 수 있어요
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (me && me.lot===i) return; if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return; o.rects.push({x:L.x-FENCE.w/2, y:L.y+FENCE.top-6, w:FENCE.w, h:FENCE.h+6}); });
-  if (z.dark) for (const pz of darkPuzzles(z.dark)) o.circles.push({x:pz.x, y:pz.y-4, r:26});
+  if (z.dark && z.floors){ const R = darkRoomOf(z.dark); for (const [f, x, y, w, h] of R.walls) o.rects.push({x, y:floorTop(f)+y, w, h}); for (const st of R.stairs){ const [x, y, w, h] = st.rect; o.rects.push({x, y:floorTop(st.f)+y, w, h}); } }
+  else if (z.dark) for (const pz of darkPuzzles(z.dark)) o.circles.push({x:pz.x, y:pz.y-4, r:26});
   if (darkOn() && !z.dark && !z.house) for (const npc of DARK_ORDER) if (darkDoorZone(npc)===zoneId){ const b = darkBldg(npc), [dx, dy] = darkDoorOf(npc); if (b && b.hidden) o.rects.push({x:dx-52, y:dy-70, w:104, h:72}); else if (!b) o.rects.push({x:dx-26, y:dy-70, w:52, h:72}); }
   Object.assign(obstacles, o);
   if (!z.lamps && z.theme!=='room' && z.theme!=='cave'){ placeLamps(z); staticSig = ''; }
@@ -883,6 +885,7 @@ function blocked(x,y){
   if (x<4||y<4||x>z.W-4||y>z.H-4) return true;
   if ((x<M||x>z.W-M||y<M||y>z.H-M) && !inCorridor(x,y)) return true;
   if (z.theme==='room' && y < 250) return true;
+  if (z.floors){ const f = floorOf(y, z.floors), ly = y - floorTop(f, z.floors); if (ly < 262 || (ly > FLOOR_H - 8 && f !== 1)) return true; } // 층 벽 · 층 사이 어둠
   for (const e of obstacles.ells) if (((x-e.x)/(e.rx+6))**2 + ((y-e.y)/(e.ry+6))**2 < 1) return true;
   for (const c of obstacles.circles) if ((x-c.x)**2+(y-c.y)**2 < c.r*c.r) return true;
   for (const r of obstacles.rects) if (x>r.x && x<r.x+r.w && y>r.y && y<r.y+r.h) return true;
@@ -1285,6 +1288,8 @@ function soloNet(){
     bossReset: (gen, max) => { onBoss({hp:max, max, gen}); },
     bossHit: dmg => { onBoss({...boss, hp: boss.hp - dmg}); },
     setWorld: async v => { st.world = {...(st.world||{}), ...v}; onWorld(st.world); },
+    darkQSet: async (npc, pid, pub, plain) => { for (const [k, v] of [['dq', pub], ['dqa', plain]]){ const o = ((st[k] = st[k] || {})[npc] = st[k][npc] || {}); if (v) o[pid] = v; else delete o[pid]; } onDarkQ(structuredClone(st.dq)); st.dqaCb && st.dqaCb(structuredClone(st.dqa)); },
+    darkQA: cb => { st.dqaCb = cb; cb(structuredClone(st.dqa || {})); },
     listen(){ setTimeout(()=>{ onRoofs({}); onPlayers({}); onBoss(null); }); },
   };
 }
@@ -1313,6 +1318,8 @@ function firebaseNet(){
     museumGive: async (cat, id) => { try { const r = await F.runTransaction(F.ref(db, 'museum/'+cat+'/'+id), cur => cur ? undefined : {uid, nick:String(me.nick||'').slice(0,16), at:Date.now() + serverOffset}); return r.committed; } catch(e){ return false; } },
     darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
+    darkQSet: (npc, pid, pub, plain) => F.update(F.ref(db), {[`darkQ/${npc}/${pid}`]: pub || null, [`darkQA/${npc}/${pid}`]: plain || null}),
+    darkQA: cb => F.onValue(F.ref(db, 'darkQA'), s=>cb(s.val() || {}), ()=>{}),
     reviveSend: (id, by) => F.set(F.ref(db, 'revive/'+id), {by:String(by).slice(0,12), at:F.serverTimestamp()}),
     reviveClear: () => F.remove(F.ref(db, 'revive/'+uid)).catch(()=>{}),
     grantDel: id => F.remove(F.ref(db, 'grants/'+uid+'/'+id)).catch(()=>{}),
@@ -1349,6 +1356,7 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'snowmen'), s=>{ snowmen = s.val() || {}; }, ()=>{});
       F.onValue(F.ref(db, 'museum'), s=>onMuseum(s.val()), ()=>{});
       F.onValue(F.ref(db, 'darkRooms'), s=>onDarkRooms(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'darkQ'), s=>onDarkQ(s.val()), ()=>{});
       F.onValue(F.ref(db, 'revive/'+uid), s=>onRevive(s.val()), ()=>{});
       F.onValue(F.ref(db, 'grants/'+uid), s=>onGrants(s.val()), ()=>{});
       F.onValue(F.ref(db, 'lettersOut/'+uid), s=>onLettersOut(s.val()), ()=>{});
@@ -4400,7 +4408,32 @@ const kstDayOf = ms => Math.floor((ms + 9*3600000) / 86400000);
 const darkNow = () => Date.now() + serverOffset;
 function darkIdx(){ return darkOn() ? today() - kstDayOf(world.darkAt || Date.now()) + (world.darkShift|0) : -1; }
 function darkToday(){ const i = darkIdx(); return i >= 0 && i < DARK_ORDER.length ? DARK_ORDER[i] : null; }
-const darkPuzzles = npc => DARK_ROOMS[npc]?.puzzles || (darkPuzzles._ph || (darkPuzzles._ph = placeholderPuzzles()));
+// 관리자가 [문제 편집]에서 바꾼 문제: darkQ/<주민>/<문제 id> = {t 제목, q 문제, h 힌트, ah 정답 해시들}. 정답은 가려서 저장해요 (평문은 관리자만 보는 darkQA)
+let darkQ = {}, darkQv = 0; const darkPzCache = {};
+function onDarkQ(v){ darkQ = v || {}; darkQv++; staticSig = ''; }
+const darkBase = npc => DARK_ROOMS[npc]?.puzzles || (darkBase._ph || (darkBase._ph = placeholderPuzzles()));
+function darkPuzzles(npc){ const base = darkBase(npc), o = darkQ[npc]; if (!o) return base; const c = darkPzCache[npc]; if (c && c.v === darkQv) return c.list;
+  const list = base.map(p => { const e = o[p.id]; if (!e) return p; return {...p, title: e.t || p.title, q: e.q || p.q, hint: e.h ?? p.hint, ...(Array.isArray(e.ah) && e.ah.length ? {ah: e.ah, a: []} : {})}; });
+  darkPzCache[npc] = {v: darkQv, list}; return list; }
+const sha256 = async str => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)))].map(b => b.toString(16).padStart(2, '0')).join('');
+const darkAnsHash = (npc, pid, v) => sha256(`pinky|${npc}|${pid}|${darkNorm(v)}`);
+async function darkCheck(npc, pz, v){ if (pz.ah) return pz.ah.includes(await darkAnsHash(npc, pz.id, v)); return pz.a.some(a => darkNorm(a) === darkNorm(v)); }
+// 여러 층짜리 방 (토리의 우체국): 층 그림 · 계단
+const darkRoomOf = npc => DARK_ROOMS[npc] || null;
+const floorImgs = {};
+function floorImg(npc, f){ const k = npc + f; if (!floorImgs[k]){ const im = new Image(); im.onload = () => { staticSig = ''; }; im.src = darkRoomOf(npc).img + f + '.jpg'; floorImgs[k] = im; } return floorImgs[k]; }
+function drawFloorsStatic(c, z){ c.fillStyle = '#07040a'; c.fillRect(0, 0, z.W, z.H);
+  for (let f = 1; f <= z.floors; f++){ const im = floorImg(z.dark, f), y0 = floorTop(f, z.floors); if (im.complete && im.naturalWidth) c.drawImage(im, 0, y0, z.W, FLOOR_H); else { c.fillStyle = '#2a1e2e'; c.fillRect(0, y0, z.W, FLOOR_H); } } }
+const stairLocked = (npc, s) => !!(s.gate && !((roomOf(npc).solved || {})[s.gate]));
+function darkStair(npc, s){
+  if (stairLocked(npc, s)) return toast('계단이 검은 실로 X 자로 꿰매져 있어요. 이 층 문제를 먼저 풀어요');
+  target = null; pos.x = s.to[0]; pos.y = s.to[1]; pos.dir = s.up ? 'up' : 'down'; glitchBurst = performance.now(); presSig = ''; lastPres = 0;
+  toast(`${floorOf(pos.y, Z().floors)} 층`);
+}
+function drawStairLock(c, npc, s, t){ const y0 = floorTop(s.f), [x, y, w, h] = s.rect;
+  c.save(); c.strokeStyle = '#120810'; c.lineWidth = 5; c.lineCap = 'round'; c.setLineDash([12, 6]);
+  c.beginPath(); c.moveTo(x+8, y0+y+8); c.lineTo(x+w-8, y0+y+h-8); c.moveTo(x+w-8, y0+y+8); c.lineTo(x+8, y0+y+h-8); c.stroke();
+  c.strokeStyle = 'rgba(255,122,168,' + (.55 + Math.sin(t/300)*.2) + ')'; c.lineWidth = 2; c.stroke(); c.restore(); }
 const roomOf = npc => darkRooms[npc] || {};
 const darkSolvedN = r => Object.keys(r.solved || {}).length;
 const darkBossUp = r => r && r.hp > 0 && !r.clear;
@@ -4422,7 +4455,8 @@ function drawHiddenHouse(d, x, y, t){ // 검게 바랜 오두막: 내려앉은 �
 function darkDoorOf(npc){ const b = darkBldg(npc); if (b) return [b.x, b.y]; const n = NPC[npc]; return [Math.round(n.homeX + 64), Math.round(n.homeY - 6)]; }
 const darkZoneCache = {};
 function darkZone(npc){
-  return darkZoneCache[npc] || (darkZoneCache[npc] = {theme:'room', W:DARK_ROOM.W, H:DARK_ROOM.H, grid:[2,1], exits:{s:'out'}, places:[], trees:[], dark:npc, name:`${NPC[npc]?.name || ''}의 방`});
+  const fl = darkRoomOf(npc)?.floors || 0;
+  return darkZoneCache[npc] || (darkZoneCache[npc] = {theme:'room', W:DARK_ROOM.W, H: fl ? (fl-1)*FLOOR_STEP + FLOOR_H : DARK_ROOM.H, floors: fl, grid:[2,1], exits:{s:'out'}, places:[], trees:[], dark:npc, name:`${NPC[npc]?.name || ''}의 방`});
 }
 function onDarkRooms(v){
   darkRooms = v || {};
@@ -4489,11 +4523,17 @@ function darkEntities(d, t){
   for (const n of relicsHere()) out.push({y:n.homeY, draw:()=>drawRelic(d, n, t), label:()=>{}});
   const z = Z(); if (!z.dark) return out;
   const r = roomOf(z.dark);
-  for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawFurn(d, {id:pz.furn}, pz.x, pz.y), label:()=>darkObjLabel(d, pz, r, t)});
+  if (z.floors){ const R = darkRoomOf(z.dark);
+    for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawEvidence(d.ctx, pz), label:()=>darkObjLabel(d, pz, r, t)});
+    for (const st of R.stairs) if (st.gate && stairLocked(z.dark, st)) out.push({y:floorTop(st.f)+st.rect[1]+st.rect[3], draw:()=>drawStairLock(d.ctx, z.dark, st, t), label:()=>{}});
+    for (const st of R.stairs) if (Math.hypot(pos.x-st.at[0], pos.y-st.at[1]) < 160) out.push({y:-1, draw:()=>{}, label:()=>tag(d.ctx, st.label + (st.gate && stairLocked(z.dark, st) ? ' · 꿰매짐' : ''), st.at[0], st.at[1] - 20, st.gate && stairLocked(z.dark, st) ? '#ff4f87' : null)}); }
+  else for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawFurn(d, {id:pz.furn}, pz.x, pz.y), label:()=>darkObjLabel(d, pz, r, t)});
   if (darkBossUp(r)){ const [bx, by] = darkBossPos(r); out.push({y:by, draw:()=>drawDarkBoss(d, z.dark, r, bx, by, t), label:()=>{}}); }
   return out;
 }
 const darkLocked = (pz, r) => (pz.need || []).some(id => !(r.solved || {})[id]);
+// 수사 현장 노란 증거 번호표 (층 방에서는 가구 대신 그림 위에 서 있어요)
+function drawEvidence(c, pz){ const x = pz.x, y = pz.y - 4, n = parseInt(pz.id.slice(1), 10); c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 6; const q = c.createLinearGradient(0, y-30, 0, y); q.addColorStop(0, '#ffe04a'); q.addColorStop(1, '#d6a812'); c.fillStyle = q; c.beginPath(); c.moveTo(x-15, y); c.lineTo(x+15, y); c.lineTo(x+9, y-28); c.lineTo(x-9, y-28); c.closePath(); c.fill(); c.shadowBlur = 0; c.fillStyle = '#111'; c.font = 'bold 15px sans-serif'; c.textAlign = 'center'; c.fillText(n, x, y-9); c.restore(); }
 function darkObjLabel(d, pz, r, t){
   const c = d.ctx, done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), x = pz.x, y = pz.y - 86;
   if (done){ d.circle(x, y, 10, '#59c27a'); d.line(k=>{ k.moveTo(x-5, y); k.lineTo(x-1, y+4); k.lineTo(x+5, y-4); }, '#ffffff', 2.6); return; }
@@ -4529,6 +4569,7 @@ function darkTap(w){
   for (const n of relicsHere()){ const [x, y] = relicPos(n); if (Math.abs(w.x-x) < 28 && w.y > y-38 && w.y < y+10) return {x, y:y+28, act:()=>relicLook(n)}; }
   const z = Z(); if (!z.dark) return null;
   for (const pz of darkPuzzles(z.dark)) if (Math.abs(w.x-pz.x) < 34 && w.y > pz.y-80 && w.y < pz.y+12) return {x:pz.x, y:pz.y+34, act:()=>darkPuzzlePanel(pz)};
+  if (z.floors) for (const st of darkRoomOf(z.dark).stairs){ const y0 = floorTop(st.f), [x, y, w2, h] = st.rect; if (w.x > x && w.x < x+w2 && w.y > y0+y && w.y < y0+y+h+40) return {x:st.at[0], y:st.at[1], act:()=>darkStair(z.dark, st)}; }
   return null;
 }
 async function darkEnter(npc){
@@ -4539,7 +4580,7 @@ async function darkEnter(npc){
   if (st === 'open' && darkBusy) return; darkBusy = true;
   if (st === 'open') await net.darkTx(npc, cur => { const now = darkNow(); cur = cur || {}; if (cur.clear) return undefined; if (!cur.start) return {...cur, start:now}; if (now > cur.start + DARK_LIMIT_MS) return {att:(cur.att|0)+1, start:now}; return undefined; });
   darkBusy = false; darkGuard = 3;
-  enterZone('dark:'+npc, null, DARK_ROOM.door[0], DARK_ROOM.door[1]);
+  { const [ex, ey] = darkRoomOf(npc)?.door || DARK_ROOM.door; enterZone('dark:'+npc, null, ex, ey); }
   if (st === 'clear') toast('이미 꿰매진 방이에요. 조용해요');
   else say(`${n.name}의 방`, '불이 꺼진 방이에요. 빛나는 물음표가 있는 물건에 다가가 문제를 풀어요. 문제 15 개를 다 풀면.... 무언가 깨어나요. 2 시간 안에 끝내야 해요.');
 }
@@ -4581,15 +4622,15 @@ const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLow
 function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of darkPuzzles(z.dark)){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
 function darkPuzzlePanel(pz){
   const npc = Z().dark; if (!npc) return; const r = roomOf(npc), done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), list = darkPuzzles(npc);
-  const body = done ? `<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요 · 정답 <b>${esc(pz.a[0])}</b></p>`
+  const shown = done && (done.ans || pz.a[0] || ''), body = done ? `<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
     : lock ? `<p class="dk-q">이 물건은 아직 열리지 않아요.</p><p class="mnote">먼저 풀어야 하는 것: ${(pz.need||[]).filter(id=>!(r.solved||{})[id]).map(id=>esc(list.find(x=>x.id===id)?.title || id)).join(', ')}</p>`
     : `<p class="dk-q">${esc(pz.q)}</p><div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>`;
   openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body);
   if (done || lock) return;
   const go = async () => {
     const v = $('dkIn').value; if (!darkNorm(v)) return;
-    if (!pz.a.some(a => darkNorm(a) === darkNorm(v))){ $('dkIn').value = ''; $('dkIn').placeholder = '틀렸어요. 다시 생각해 봐요'; setExpr('sad', 1200); return; }
-    const ok = await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; return {...cur, solved:{...(cur.solved||{}), [pz.id]:{uid, nick:me.nick, at:darkNow()}}}; });
+    if (!(await darkCheck(npc, pz, v))){ if ($('dkIn')){ $('dkIn').value = ''; $('dkIn').placeholder = '틀렸어요. 다시 생각해 봐요'; } setExpr('sad', 1200); return; }
+    const ans = String(v).trim().slice(0, 40), ok = await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; return {...cur, solved:{...(cur.solved||{}), [pz.id]:{uid, nick:me.nick, at:darkNow(), ans}}}; });
     $('npcPanel').hidden = true;
     if (ok){ gainExp(20); toast(`${pz.title}: 정답! 문을 여는 소리가 들려요 (${darkSolvedN(roomOf(npc))}/${list.length})`); setExpr('sparkle', 1500); }
     else toast('누군가 먼저 풀었거나 방이 바뀌었어요');
@@ -4599,8 +4640,8 @@ function darkPuzzlePanel(pz){
   setTimeout(()=>$('dkIn')?.focus(), 50);
 }
 // ----- 보스: 문제를 다 풀면 그 주민이 깨어나요. 체력은 모두가 같이 깎아요 -----
-function darkWake(npc){ net.darkTx(npc, cur => cur && cur.start && !cur.clear && !(cur.hp > 0) && darkSolvedN(cur) >= darkPuzzles(npc).length ? {...cur, hp:DARK_BOSS.hp, max:DARK_BOSS.hp, bossAt:darkNow()} : undefined); }
-function darkBossPos(r){ const s = (darkNow() - (r.bossAt || 0)) / 1000, W = DARK_ROOM.W; return [W/2 + Math.cos(s*.31)*300 + Math.sin(s*.83)*60, 560 + Math.sin(s*.47)*150]; } // 모두에게 같은 자리
+function darkWake(npc){ net.darkTx(npc, cur => cur && cur.start && !cur.clear && !(cur.hp > 0) && darkSolvedN(cur) >= darkPuzzles(npc).length ? {...cur, hp:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, max:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, bossAt:darkNow()} : undefined); }
+function darkBossPos(r){ const s = (darkNow() - (r.bossAt || 0)) / 1000, W = DARK_ROOM.W, [cx, cy] = darkRoomOf(Z().dark)?.boss || [W/2, 560]; return [cx + Math.cos(s*.31)*300 + Math.sin(s*.83)*60, cy + Math.sin(s*.47)*150]; } // 모두에게 같은 자리
 function drawDarkBoss(d, npc, r, x, y, t){
   const c = d.ctx, n = NPC[npc], rage = r.hp < r.max/2, pulse = .5 + Math.sin(t/200)*.5;
   c.save(); const g = c.createRadialGradient(x, y-50, 10, x, y-50, 120); g.addColorStop(0, `rgba(${rage ? '255,40,80' : '160,40,200'},${.35 + pulse*.2})`); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x-130, y-180, 260, 220); c.restore();
@@ -5211,7 +5252,7 @@ function buildStatic(){
   staticLayer.width = z.W*s; staticLayer.height = z.H*s;
   const c = staticLayer.getContext('2d'); c.setTransform(s,0,0,s,0,0);
   const d = painter(c);
-  if (z.dark){ drawDarkRoomStatic(c, d, z); return; }
+  if (z.dark){ if (z.floors) drawFloorsStatic(c, z); else drawDarkRoomStatic(c, d, z); return; }
   if (z.theme==='room'){ drawRoomStatic(c, d, z); return; }
   c.fillStyle = T.ground; c.fillRect(0,0,z.W,z.H);
   // 바닥 클레이 질감: 넓은 명암 얼룩 + 고운 입자 + 가장자리 어둡게
@@ -5424,8 +5465,9 @@ function frameBody(t){
     if (t > insetT){ insetT = t + 500; measureInsets(); }
     if (t > mapDrawT && !$('mapPanel').hidden){ mapDrawT = t + 1000; drawMap(); }
     const it = admin ? 0 : insetTop/z, ib = admin ? 0 : insetBot/z, band = vh - it - ib;
-    view.cx = Math.max(0, Math.min(W-vw, pos.x - vw/2)); view.cy = Math.max(-it, Math.min(H-vh+ib, pos.y - 20 - it - band/2));
-    if (vw > W) view.cx = (W-vw)/2; if (band > H) view.cy = H/2 - it - band/2;
+    let Y0 = 0, HH = H; { const zf = Z().floors; if (zf){ Y0 = floorTop(floorOf(pos.y, zf), zf); HH = FLOOR_H; } } // 층 방: 지금 층만 보여요
+    view.cx = Math.max(0, Math.min(W-vw, pos.x - vw/2)); view.cy = Math.max(Y0-it, Math.min(Y0+HH-vh+ib, pos.y - 20 - it - band/2));
+    if (vw > W) view.cx = (W-vw)/2; if (band > HH) view.cy = Y0 + HH/2 - it - band/2;
     ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = Z().theme==='room' ? '#4a3a44' : shade((THEME[Z().theme]||THEME.grass).edge, -.12); ctx.fillRect(0,0,cv.width,cv.height);
     const s = view.dpr*z; ctx.setTransform(s,0,0,s,-view.cx*s,-view.cy*s);
     ctx.drawImage(staticLayer, 0, 0, W, H);
@@ -5483,17 +5525,18 @@ function adminMobSec(){
 }
 function enterAdmin(){
   setTimeout(adminMobWatch, 500);
+  if (net.darkQA && !enterAdmin.dq){ enterAdmin.dq = 1; net.darkQA(v => { darkQAData = v || {}; if (admQ !== null) renderAdmin(); }); }
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
 }
 function renderAdmin(){
   const box = $('adminUi'); if (!box || !admin) return;
-  box.classList.toggle('panel-open', !!(admWipe || admPost || admDm !== null || admTbl !== null || admChat !== null || admLook !== null)); box.classList.toggle('side-open', admSide);
+  box.classList.toggle('panel-open', !!(admWipe || admPost || admDm !== null || admTbl !== null || admChat !== null || admLook !== null || admQ !== null)); box.classList.toggle('side-open', admSide);
   const online = [...others.values()], onIds = new Set(online.map(o=>o.uid)), count = {};
   for (const o of online) count[o.z] = (count[o.z]||0) + 1;
   const regs = Object.entries(players).sort(([,a],[,b])=>String(a.nick).localeCompare(String(b.nick), 'ko'));
@@ -5509,7 +5552,7 @@ function renderAdmin(){
     <div class="adm-side">
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
-        <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}</div>
+        <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}<button data-a="dkq" class="adm-btn">✏️ 방탈출 문제 편집</button></div>
       ${adminGoalSec()}
       ${adminNightSec()}
       ${adminAucSec()}
@@ -5518,7 +5561,7 @@ function renderAdmin(){
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
       <div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
-    </div>${admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : ''}`;
+    </div>${admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : admQ !== null ? adminQEdit() : ''}`;
   for (const [k, y, x] of kept){ const [c, i] = k.split('#'), e = k ? box.getElementsByClassName(c)[+i] : box; if (e){ e.scrollTop = y; e.scrollLeft = x; } }
   if (window.scrollY !== pageY) window.scrollTo(0, pageY);
   const npl = box.querySelector('.adm-post-list'); if (npl) npl.scrollTop = postScroll;
@@ -5644,6 +5687,34 @@ function adminInbox(){
 }
 // 편지함: 답장 안 한 새 편지가 맨 위. 편지 머리를 누르면 접었다 펴요 (답장한 편지는 접힌 채로 시작)
 const admLetterOpen = new Map();
+// ===== 관리자: 다크 모드 문제 편집 (물건 이름 · 문제 · 정답 · 힌트) =====
+// 정답은 플레이어가 볼 수 없게 가려서(해시) darkQ 에, 관리자가 다시 고칠 수 있게 원래 글자는 darkQA 에 저장해요
+let admQ = null, darkQAData = {};
+function adminQEdit(){
+  const npc = admQ, list = darkBase(npc), plain = darkQAData[npc] || {}, pub = darkQ[npc] || {}, R = darkRoomOf(npc);
+  const val = (pid, f, def) => admDrafts[`q|${npc}|${pid}|${f}`] ?? def;
+  const opts = DARK_ORDER.map((n, i) => `<option value="${n}"${n === npc ? ' selected' : ''}>${i+1} 일 차 · ${esc(NPC[n].name)}</option>`).join('');
+  const rows = list.map((p, i) => { const e = plain[p.id], saved = !!pub[p.id], k = f => `q|${npc}|${p.id}|${f}`;
+    const t = val(p.id, 't', e?.t ?? p.title), q = val(p.id, 'q', e?.q ?? p.q), a = val(p.id, 'a', e ? (e.a || []).join(', ') : (p.a || []).join(', ')), h = val(p.id, 'h', e?.h ?? p.hint ?? '');
+    return `<div class="adm-qi${saved ? ' done' : ''}"><div class="adm-lhead"><b>${i+1} 번${R?.floors ? ` · ${p.floor} 층` : ''}</b><span>${p.need?.length ? `먼저 풀 문제: ${p.need.map(x => +x.slice(1)).join(', ')}` : '처음부터 열림'}</span><i class="${saved ? '' : 'unrd'}">${saved ? '저장됨 ✓' : '기본 임시 문제'}</i></div>
+      <label>물건 이름<input data-rk="${k('t')}" value="${esc(t)}" maxlength="30"></label>
+      <label>문제<textarea data-rk="${k('q')}" rows="4" maxlength="800">${esc(q)}</textarea></label>
+      <label>정답 <small>쉼표(,)로 여러 개 · 띄어쓰기·대소문자는 무시</small><input data-rk="${k('a')}" value="${esc(a)}" maxlength="300"></label>
+      <label>힌트<input data-rk="${k('h')}" value="${esc(h)}" maxlength="300"></label>
+      <div class="adm-wrow"><button data-a="dkqsave" data-pid="${p.id}" class="adm-btn">저장</button>${saved ? `<button data-a="dkqreset" data-pid="${p.id}" class="adm-btn warn">기본으로 되돌리기</button>` : ''}</div></div>`; }).join('');
+  return `<div class="adm-tbl adm-chat adm-qed"><div class="adm-tbl-head"><b>✏️ 다크 모드 문제 편집</b><select id="admQWho">${opts}</select><small>${Object.keys(pub).length}/${list.length} 저장됨 · 플레이어에게 정답은 보이지 않아요</small><button data-a="dkqclose" class="adm-btn">닫기</button></div>
+    <div class="adm-chat-list adm-q-list">${rows}</div></div>`;
+}
+async function adminQSave(pid, reset){
+  const npc = admQ; if (!npc) return;
+  if (reset){ if (!confirm(`${pid.slice(1)*1} 번 문제를 기본 임시 문제로 되돌릴까요?`)) return; for (const f of 'tqah') delete admDrafts[`q|${npc}|${pid}|${f}`]; return Promise.resolve(net.darkQSet(npc, pid, null, null)).then(()=>toast('기본 문제로 되돌렸어요')).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); }
+  const box = $('adminUi'), get = f => box.querySelector(`[data-rk="q|${npc}|${pid}|${f}"]`)?.value ?? '';
+  const t = get('t').trim().slice(0, 30), q = get('q').trim().slice(0, 800), h = get('h').trim().slice(0, 300), a = [...new Set(get('a').split(',').map(x => x.trim()).filter(x => darkNorm(x)))].slice(0, 10);
+  if (!q) return toast('문제를 써 주세요'); if (!a.length) return toast('정답을 하나 이상 써 주세요');
+  const ah = await Promise.all(a.map(x => darkAnsHash(npc, pid, x)));
+  try { await net.darkQSet(npc, pid, {t, q, h, ah}, {t, q, h, a}); for (const f of 'tqah') delete admDrafts[`q|${npc}|${pid}|${f}`]; toast(`${pid.slice(1)*1} 번 문제를 저장했어요`); renderAdmin(); }
+  catch(e){ toast('저장하지 못했어요. 관리자 권한을 확인해 주세요'); }
+}
 function adminPost(){
   const list = adminInbox();
   const rows = list.map(({to,id,l})=>{ const rk = to+'|'+id, open = admLetterOpen.has(rk) ? admLetterOpen.get(rk) : !l.replied;
@@ -5707,7 +5778,10 @@ function adminClick(e){
   else if (b.dataset.rv){ net.reviveSend(b.dataset.rv, '관리자').then(()=>toast('깨웠어요')); }
   else if (b.dataset.a==='reloadall'){ if (confirm('지금 접속한 사람 모두의 게임을 새로고침할까요? 진행 상황은 저장한 뒤 새로고침돼요.')) Promise.resolve(net.setWorld({reloadAt:Date.now() + serverOffset})).then(()=>toast('전원 새로고침을 보냈어요')).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.a==='dkreset'){ const npc = darkToday(); if (npc && confirm(`${NPC[npc].name}의 방을 처음 상태로 되돌릴까요? 푼 문제·시간·보스 체력이 모두 지워져요.`)) net.darkWipe(npc); }
-  else if (b.dataset.a==='dkview'){ const npc = darkToday(); if (npc){ admSide = false; cam.follow = null; cam.zone = 'dark:'+npc; enterZone('dark:'+npc, null, DARK_ROOM.W/2, DARK_ROOM.H/2); renderAdmin(); } }
+  else if (b.dataset.a==='dkview'){ const npc = darkToday(); if (npc){ admSide = false; cam.follow = null; cam.zone = 'dark:'+npc; const [vx, vy] = darkRoomOf(npc)?.door || [DARK_ROOM.W/2, DARK_ROOM.H/2]; enterZone('dark:'+npc, null, vx, vy); renderAdmin(); } }
+  else if (b.dataset.a==='dkq'){ admQ = admQ === null ? (darkToday() || DARK_ORDER[0]) : null; if (admQ){ admDm = null; admPost = false; admTbl = null; admChat = null; admWipe = false; admLook = null; admSide = false; } renderAdmin(); }
+  else if (b.dataset.a==='dkqclose'){ admQ = null; renderAdmin(); }
+  else if (b.dataset.a==='dkqsave' || b.dataset.a==='dkqreset') adminQSave(b.dataset.pid, b.dataset.a==='dkqreset');
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) Promise.resolve(net.setWorld({dark:v, darkAt:Date.now() + serverOffset, darkShift:0})).then(()=>v && net.darkWipe ? net.darkWipe() : null).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
   else if (b.dataset.a==='aucgo') adminAucGo();
   else if (['meteorgo','meteorcancel','fwgo'].includes(b.dataset.a)) adminNightClick(b.dataset.a);
