@@ -213,6 +213,16 @@
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'"
     },
+    "balloons": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$ev": {
+        "$i": {
+          ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid && root.child('world/balloon/id').val() === $ev && now < root.child('world/balloon/at').val() + 13000",
+          ".validate": "$i.matches(/^[0-9]{1,2}$/) && newData.child('nick').isString() && newData.child('nick').val().length <= 14 && newData.child('a').isNumber() && newData.child('a').val() >= 10 && newData.child('a').val() <= 5000"
+        }
+      }
+    },
     "darkImg": {
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
@@ -246,6 +256,9 @@
       },
       "fwAt": {
         ".validate": "newData.isNumber()"
+      },
+      "balloon": {
+        ".validate": "newData.hasChildren(['id', 'at', 'seed']) && newData.child('id').isString() && newData.child('at').isNumber() && newData.child('seed').isNumber()"
       },
       "$other": {
         ".validate": false

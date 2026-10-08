@@ -176,6 +176,7 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 #swingBtn::before{inset:-12px}
 #swingBtn:active{transform:scale(.92)}
 #skyFx{position:fixed;left:0;top:0;z-index:1;pointer-events:none}
+#balFx{position:fixed;left:0;top:0;z-index:5;pointer-events:none}
 #wishBtn{position:fixed;z-index:30;left:50%;transform:translateX(-50%) scale(.6);opacity:0;pointer-events:none;bottom:calc(env(safe-area-inset-bottom,0px) + 112px);border:0;border-radius:999px;padding:12px 26px;font:inherit;font-size:21px;font-weight:bold;color:#5a3346;background:linear-gradient(#fff8d6,#ffe07a);box-shadow:0 4px 0 #e0b84a,0 0 24px rgba(255,224,122,.8);transition:opacity .35s,transform .35s cubic-bezier(.2,1.4,.4,1);touch-action:manipulation}
 #wishBtn.on{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
 #wishBtn:disabled{filter:saturate(.7);color:#8a6a7a}
@@ -1292,6 +1293,8 @@ function soloNet(){
     setWorld: async v => { st.world = {...(st.world||{}), ...v}; onWorld(st.world); },
     darkQSet: async (npc, pid, pub, plain) => { for (const [k, v] of [['dq', pub], ['dqa', plain]]){ const o = ((st[k] = st[k] || {})[npc] = st[k][npc] || {}); if (v) o[pid] = v; else delete o[pid]; } onDarkQ(structuredClone(st.dq)); st.dqaCb && st.dqaCb(structuredClone(st.dqa)); },
     darkQA: cb => { st.dqaCb = cb; cb(structuredClone(st.dqa || {})); },
+    balloonPop: async (ev, i, v) => { const o = ((st.bal = st.bal || {})[ev] = st.bal[ev] || {}); if (o[i]) return false; o[i] = v; setTimeout(()=>st.balCb && st.balCb(structuredClone(o))); return true; },
+    balloonWatch: (ev, cb) => { st.balCb = cb; cb(structuredClone(st.bal?.[ev] || {})); return () => { st.balCb = null; }; },
     darkImgSet: async (npc, pid, img, at) => { ((st.dimg = st.dimg || {})[npc] = st.dimg[npc] || {})[pid] = img ? {d:img, at} : null; const o = ((st.dq = st.dq || {})[npc] = st.dq[npc] || {}); if (img) o[pid] = {...(o[pid] || {}), im:at}; else if (o[pid]) delete o[pid].im; onDarkQ(structuredClone(st.dq)); },
     darkImg: async (npc, pid) => st.dimg?.[npc]?.[pid]?.d || '',
     listen(){ setTimeout(()=>{ onRoofs({}); onPlayers({}); onBoss(null); }); },
@@ -1324,6 +1327,8 @@ function firebaseNet(){
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
     darkQSet: (npc, pid, pub, plain) => F.update(F.ref(db), {[`darkQ/${npc}/${pid}`]: pub || null, [`darkQA/${npc}/${pid}`]: plain || null, ...(pub ? {} : {[`darkImg/${npc}/${pid}`]: null})}),
     darkQA: cb => F.onValue(F.ref(db, 'darkQA'), s=>cb(s.val() || {}), ()=>{}),
+    balloonPop: async (ev, i, v) => { try { const r = await F.runTransaction(F.ref(db, `balloons/${ev}/${i}`), cur => cur ? undefined : v); return r.committed; } catch(e){ return false; } },
+    balloonWatch: (ev, cb) => F.onValue(F.ref(db, `balloons/${ev}`), s=>cb(s.val() || {}), ()=>{}),
     darkImgSet: (npc, pid, img, at) => F.update(F.ref(db), {[`darkImg/${npc}/${pid}`]: img ? {d:img, at} : null, [`darkQ/${npc}/${pid}/im`]: img ? at : null}),
     darkImg: async (npc, pid) => (await F.get(F.ref(db, `darkImg/${npc}/${pid}/d`))).val() || '',
     reviveSend: (id, by) => F.set(F.ref(db, 'revive/'+id), {by:String(by).slice(0,12), at:F.serverTimestamp()}),
@@ -4959,10 +4964,80 @@ setInterval(nightTick, 250);
 function adminNightSec(){
   const ph = meteorPhase(), m = meteorAt(), n = wNow(), fw = fwOn();
   const st = ph === 'wait' ? `별똥별 예약됨 · ${fmtLeft(m - n)} 뒤 (예약부터 끝날 때까지 별빛 언덕 몬스터 없음)` : ph === 'fall' ? '지금 별똥별이 떨어지는 중' : ph === 'after' ? `별똥별 끝 · 몬스터는 ${fmtLeft(m + METEOR_LEN + METEOR_TAIL - n)} 뒤에 다시 나와요` : '예약된 별똥별 없음';
-  return `<div class="adm-sec"><b>🌠 밤 이벤트</b><small>${st}</small>${fw ? `<small>🎆 불꽃놀이 중 · ${fmtLeft(+world.fwAt + FW_LEN - n)} 남음</small>` : ''}
+  return `<div class="adm-sec"><b>🌠 이벤트 (별똥별 · 불꽃놀이 · 풍선)</b><small>${st}</small>${fw ? `<small>🎆 불꽃놀이 중 · ${fmtLeft(+world.fwAt + FW_LEN - n)} 남음</small>` : ''}
     ${ph ? (ph === 'wait' ? '<button data-a="meteorcancel" class="adm-btn warn">별똥별 예약 취소</button>' : '') : '<button data-a="meteorgo" class="adm-btn">🌠 별똥별 예약 (10분 뒤)</button>'}
-    <button data-a="fwgo" class="adm-btn"${fw ? ' disabled' : ''}>🎆 불꽃놀이 지금 열기</button></div>`;
+    <button data-a="fwgo" class="adm-btn"${fw ? ' disabled' : ''}>🎆 불꽃놀이 지금 열기</button>
+    <button data-a="balgo" class="adm-btn"${balOn() ? ' disabled' : ''}>🎈 풍선 날리기 (10 초 · 낮 이벤트)</button></div>`;
 }
+// ===== 풍선 시간 (낮 이벤트): 오투모가 열면 10 초 동안 풍선이 화면 아래에서 올라와요 =====
+// 모두 같은 풍선(같은 씨앗)을 봐요. 눌러서 터뜨리면 10~5,000 G, 가장 먼저 누른 한 사람만 받아요 (balloons/<이벤트>/<번호> 먼저 쓴 사람)
+// 하트 풍선에는 연 순간 섬에 있던 사람들 얼굴이 들어가요
+// 금액별 개수: 5,000 G 는 딱 5 개, 낮을수록 많아요 (모두 100 개)
+const BAL_TIERS = [[5000, 5], [2000, 8], [1000, 10], [500, 12], [300, 13], [100, 15], [50, 17], [10, 20]];
+const BAL_LEN = 10000, BAL_N = BAL_TIERS.reduce((a, [, n]) => a + n, 0), BAL_COLS = ['#ff7fae', '#ffd23f', '#7fd0ff', '#9fe07f', '#c9a6ff', '#ff9f6b', '#ff5c8d'];
+let balEv = null, balList = [], balClaims = {}, balUnsub = null, balCv = null, balG = null, balW = 0, balH = 0, balRun = false, balFx = [], balPending = {};
+const balOn = () => { const b = world.balloon; return !!(b && b.id && wNow() >= b.at - 1500 && wNow() < b.at + BAL_LEN + 3000); };
+function balMake(ev){ let s = (ev.seed >>> 0) || 7; const R = () => (s = (s*16807) % 2147483647) / 2147483647; const faces = (ev.faces || []).filter(Boolean); let f = 0;
+  const amts = BAL_TIERS.flatMap(([a, n]) => Array(n).fill(a)); for (let i = amts.length - 1; i > 0; i--){ const j = Math.floor(R()*(i + 1)); [amts[i], amts[j]] = [amts[j], amts[i]]; } // 같은 씨앗이라 모두 같은 순서
+  return amts.map((amt, i) => { const t0 = (i/BAL_N)*6.6 + R()*.5, dur = 2.7 + R()*.8, x = .07 + R()*.86, col = BAL_COLS[Math.floor(R()*BAL_COLS.length)], heart = faces.length && i%7 === 3;
+    return {i, t0, dur, x, col, amt, sway:R()*6.28, face: heart ? faces[f++ % faces.length] : '', otumo: !heart && i%11 === 5}; }); } // 10 초 안에 100 개 · 하트(얼굴) 14 개 · 오투모 얼굴 8 개쯤
+const faceCv = new Map();
+function balFace(id){ if (faceCv.has(id)) return faceCv.get(id); const p = id === uid ? me : players[id]; const L = p && p.look; if (!L) return null;
+  const c = document.createElement('canvas'); c.width = c.height = 96; const x = c.getContext('2d'); x.setTransform(1.8, 0, 0, 1.8, 48, 48 + 1.8*44); try { CH.figure(CH.mattePainter(x), CH.migrateLook ? CH.migrateLook(L) : L, 'down', 0, false, 'happy'); } catch(e){} faceCv.set(id, c); return c; }
+function balPos(b, t){ const k = (t - b.t0)/b.dur; if (k < 0 || k > 1) return null; return [b.x*balW + Math.sin(t*1.6 + b.sway)*16, balH + 50 - k*(balH + 170), k]; }
+function balSize(){ if (!balCv) return; const dpr = Math.min(2, devicePixelRatio || 1); balW = innerWidth; balH = innerHeight; balCv.width = balW*dpr; balCv.height = balH*dpr; balCv.style.width = balW + 'px'; balCv.style.height = balH + 'px'; balG = balCv.getContext('2d'); balG.setTransform(dpr, 0, 0, dpr, 0, 0); }
+function balStart(){ const ev = world.balloon;
+  if (!balEv || balEv.id !== ev.id){ balEv = ev; balList = balMake(ev); balClaims = {}; balFx = []; balPending = {}; if (balUnsub) balUnsub(); balUnsub = net.balloonWatch ? net.balloonWatch(ev.id, v => balOnClaims(v)) : null; }
+  if (!balCv){ balCv = document.createElement('canvas'); balCv.id = 'balFx'; document.body.appendChild(balCv); addEventListener('resize', balSize); balSize(); addEventListener('pointerdown', balTap, true); }
+  if (!balRun){ balRun = true; requestAnimationFrame(balFrame); } }
+function balOnClaims(v){ v = v || {}; const t = (wNow() - balEv.at)/1000;
+  for (const [i, c] of Object.entries(v)) if (!balClaims[i]){ balClaims[i] = c; const b = balList[+i]; const p = b && balPos(b, Math.min(t, b.t0 + b.dur)); if (p) balBurst(p[0], p[1], b, c); } }
+function balBurst(x, y, b, c){ for (let k = 0; k < 14; k++){ const a = k/14*6.283; balFx.push({x, y, vx:Math.cos(a)*(90 + Math.random()*80), vy:Math.sin(a)*(90 + Math.random()*80), t:0, col:b.col}); } balFx.push({x, y, text:`+${b.amt.toLocaleString()} G`, sub:String(c.nick || '').slice(0, 10), t:0, mine:c.uid === uid}); }
+function drawBalloon(g, x, y, b, t){
+  g.save(); g.strokeStyle = 'rgba(90,60,80,.55)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y + 28); g.quadraticCurveTo(x + Math.sin(t*3 + b.i)*8, y + 48, x - 2, y + 70); g.stroke();
+  if (b.otumo){ // 오투모 얼굴 풍선: 하얀 헬멧 + 파란 머리띠 + 노란 귀 + 까만 바이저 + 하늘색 눈
+    g.fillStyle = '#ffb627'; for (const s2 of [-1, 1]){ g.beginPath(); g.ellipse(x + s2*29, y - 2, 7, 11, s2*.2, 0, 7); g.fill(); }
+    const q = g.createRadialGradient(x - 9, y - 12, 3, x, y, 34); q.addColorStop(0, '#ffffff'); q.addColorStop(1, '#dfe3ee'); g.fillStyle = q; g.beginPath(); g.arc(x, y, 28, 0, 7); g.fill();
+    g.strokeStyle = '#3f6fe0'; g.lineWidth = 6; g.beginPath(); g.arc(x, y, 28.5, Math.PI*1.08, Math.PI*1.92); g.stroke();
+    g.fillStyle = '#2b2b36'; g.beginPath(); g.roundRect(x - 23, y - 5, 46, 16, 8); g.fill();
+    g.fillStyle = '#9fe8ff'; for (const s2 of [-1, 1]){ g.beginPath(); g.ellipse(x + s2*8, y + 3, 2.6, 3.6, 0, 0, 7); g.fill(); }
+    g.fillStyle = '#ff9fb8'; for (const s2 of [-1, 1]){ g.beginPath(); g.ellipse(x + s2*16, y + 17, 3.6, 2.2, 0, 0, 7); g.fill(); }
+    g.fillStyle = '#2b3a6a'; g.beginPath(); g.roundRect(x - 6, y - 31, 12, 5, 2.5); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.8)'; g.beginPath(); g.ellipse(x - 12, y - 16, 5, 3, -.6, 0, 7); g.fill();
+    g.fillStyle = '#c9cfdd'; g.beginPath(); g.moveTo(x - 5, y + 31); g.lineTo(x + 5, y + 31); g.lineTo(x, y + 26); g.closePath(); g.fill();
+  } else if (b.face){ // 하트 풍선 + 얼굴
+    const heart = () => { g.beginPath(); g.moveTo(x, y + 28); g.bezierCurveTo(x - 46, y + 2, x - 34, y - 34, x, y - 16); g.bezierCurveTo(x + 34, y - 34, x + 46, y + 2, x, y + 28); g.closePath(); };
+    const q = g.createRadialGradient(x - 10, y - 14, 3, x, y, 40); q.addColorStop(0, '#ffd0e2'); q.addColorStop(1, '#ff4f87'); g.fillStyle = q; heart(); g.fill();
+    const fc = balFace(b.face); if (fc){ g.save(); heart(); g.clip(); g.drawImage(fc, x - 24, y - 26, 48, 48); g.restore(); }
+    g.strokeStyle = '#ff2f6f'; g.lineWidth = 2; heart(); g.stroke(); g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.ellipse(x - 18, y - 14, 6, 3.5, -.6, 0, 7); g.fill();
+  } else { const q = g.createRadialGradient(x - 9, y - 12, 3, x, y, 34); q.addColorStop(0, '#ffffff'); q.addColorStop(.25, b.col); q.addColorStop(1, shade(b.col, -.25)); g.fillStyle = q; g.beginPath(); g.ellipse(x, y, 24, 29, 0, 0, 7); g.fill();
+    g.fillStyle = shade(b.col, -.2); g.beginPath(); g.moveTo(x - 5, y + 32); g.lineTo(x + 5, y + 32); g.lineTo(x, y + 27); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(x - 9, y - 12, 5, 8, -.4, 0, 7); g.fill(); }
+  g.restore(); }
+function balFrame(now){
+  const g = balG, t = (wNow() - (balEv?.at || 0))/1000, live = balEv && world.balloon && world.balloon.id === balEv.id && balOn();
+  g.clearRect(0, 0, balW, balH);
+  const show = live && !zoneId.startsWith('dark:') && !mg;
+  if (show) for (const b of balList){ if (balClaims[b.i] || balPending[b.i]) continue; const p = balPos(b, t); if (p) drawBalloon(g, p[0], p[1], b, t); }
+  const dt = 1/60; balFx = balFx.filter(f => { f.t += dt; if (f.text){ if (f.t > 1.4) return false; g.save(); g.globalAlpha = Math.min(1, 2.2 - f.t*1.6); g.font = 'bold 22px "Dongle",sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.95)'; const yy = f.y - f.t*40; g.strokeText(f.text, f.x, yy); g.fillStyle = f.mine ? '#e0457b' : '#7a5a6a'; g.fillText(f.text, f.x, yy); g.font = 'bold 15px "Dongle",sans-serif'; g.strokeText(f.sub, f.x, yy + 18); g.fillStyle = '#5a3346'; g.fillText(f.sub, f.x, yy + 18); g.restore(); return true; }
+    if (f.t > .6) return false; f.x += f.vx*dt; f.y += f.vy*dt; f.vy += 300*dt; g.globalAlpha = 1 - f.t/.6; g.fillStyle = f.col; g.beginPath(); g.arc(f.x, f.y, 3.5, 0, 7); g.fill(); g.globalAlpha = 1; return true; });
+  if (!live && !balFx.length){ balRun = false; g.clearRect(0, 0, balW, balH); if (balUnsub && (!world.balloon || wNow() > (world.balloon.at || 0) + BAL_LEN + 3000)){ balUnsub(); balUnsub = null; } return; }
+  requestAnimationFrame(balFrame); }
+// 화면을 누르면: 풍선에 맞으면 터뜨리고(게임 쪽으로는 안 넘겨요), 아니면 그냥 게임 조작
+function balTap(e){ if (!balRun || admin || !me || !balEv || zoneId.startsWith('dark:') || mg) return; const t = (wNow() - balEv.at)/1000;
+  let hit = null; for (const b of balList){ if (balClaims[b.i] || balPending[b.i]) continue; const p = balPos(b, t); if (p && Math.hypot(e.clientX - p[0], e.clientY - p[1]) < 36) hit = [b, p]; }
+  if (!hit) return; e.preventDefault(); e.stopPropagation(); const [b, p] = hit, ev = balEv; balPending[b.i] = 1; balBurst(p[0], p[1], b, {uid, nick:me.nick});
+  Promise.resolve(net.balloonPop(ev.id, b.i, {uid, nick:me.nick.slice(0, 14), a:b.amt, at:wNow()})).then(ok => {
+    if (ok){ me.inv.gold += b.amt; me.earned = (me.earned||0) + b.amt; stat('balloons'); saveMe(); renderHud(); toast(`🎈 풍선을 터뜨렸어요! +${b.amt.toLocaleString()} G`); }
+    else { balFx = balFx.filter(f => !(f.mine && f.x === p[0])); toast('앗, 누가 한발 먼저 터뜨렸어요'); } }).catch(() => {}); }
+let balSeen = null;
+function balTick(){ if (!world.balloon) return; const b = world.balloon;
+  if (balSeen === null) balSeen = balOn() ? '' : b.id;
+  if (balOn()){ if (balSeen !== b.id){ balSeen = b.id; if (!admin && me) toast('🎈 오투모가 풍선을 날렸어요! 눌러서 터뜨려요 (10 초)'); } balStart(); } }
+setInterval(balTick, 250);
+function adminBalloon(){ if (balOn()) return toast('풍선이 아직 날아가는 중이에요');
+  if (!confirm('지금 풍선을 날릴까요? 10 초 동안 모두의 화면에 풍선이 올라가요.')) return;
+  const at = wNow() + 1500, faces = [...new Set([...others.values()].filter(o => !o.adm && o.uid).map(o => o.uid))].slice(0, 12);
+  Promise.resolve(net.setWorld({balloon:{id:'b' + at.toString(36), at, seed:(Math.random()*2e9)|0, faces}})).then(()=>toast('풍선을 날렸어요')).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
 function adminNightClick(a){
   const fail = ()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요');
   if (a === 'meteorgo'){ if (confirm('10 분 뒤 별빛 언덕에 별똥별을 떨어뜨릴까요? 지금 바로 모두에게 알림이 가요.')) Promise.resolve(net.setWorld({meteorAt:wNow() + METEOR_LEAD})).then(()=>toast('별똥별을 예약했어요 · 모두에게 알림이 갔어요')).catch(fail); }
@@ -5883,6 +5958,7 @@ function adminClick(e){
   else if (b.dataset.a==='dark'){ const v = !world.dark; if (!v || confirm('다크 모드로 바꿀까요? 접속한 모든 사람에게 적용돼요.')) Promise.resolve(net.setWorld({dark:v, darkAt:Date.now() + serverOffset, darkShift:0})).then(()=>v && net.darkWipe ? net.darkWipe() : null).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요.')); }
   else if (b.dataset.a==='aucgo') adminAucGo();
   else if (['meteorgo','meteorcancel','fwgo'].includes(b.dataset.a)) adminNightClick(b.dataset.a);
+  else if (b.dataset.a==='balgo') adminBalloon();
   else if (b.dataset.a==='aucend'){ if (confirm('지금 최고가로 낙찰 확정할까요?')) adminAucEnd(false); }
   else if (b.dataset.a==='auccancel'){ if (confirm('경매를 취소할까요? 부른 사람들은 골드를 돌려받아요')) adminAucEnd(true); }
   else if (b.dataset.a==='walkon') admWalkOn();
