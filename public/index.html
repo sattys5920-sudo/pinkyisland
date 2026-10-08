@@ -4972,15 +4972,15 @@ function adminNightSec(){
 // ===== 풍선 시간 (낮 이벤트): 오투모가 열면 10 초 동안 풍선이 화면 아래에서 올라와요 =====
 // 모두 같은 풍선(같은 씨앗)을 봐요. 눌러서 터뜨리면 10~5,000 G, 가장 먼저 누른 한 사람만 받아요 (balloons/<이벤트>/<번호> 먼저 쓴 사람)
 // 하트 풍선에는 연 순간 섬에 있던 사람들 얼굴이 들어가요
-// 금액별 개수: 5,000 G 는 딱 5 개, 낮을수록 많아요 (모두 100 개)
-const BAL_TIERS = [[5000, 5], [2000, 8], [1000, 10], [500, 12], [300, 13], [100, 15], [50, 17], [10, 20]];
+// 금액별 개수: 5,000 G 는 3 개, 낮을수록 많아요 (모두 60 개)
+const BAL_TIERS = [[5000, 3], [2000, 5], [1000, 6], [500, 7], [300, 8], [100, 9], [50, 10], [10, 12]];
 const BAL_LEN = 10000, BAL_N = BAL_TIERS.reduce((a, [, n]) => a + n, 0), BAL_COLS = ['#ff7fae', '#ffd23f', '#7fd0ff', '#9fe07f', '#c9a6ff', '#ff9f6b', '#ff5c8d'];
 let balEv = null, balList = [], balClaims = {}, balUnsub = null, balCv = null, balG = null, balW = 0, balH = 0, balRun = false, balFx = [], balPending = {};
 const balOn = () => { const b = world.balloon; return !!(b && b.id && wNow() >= b.at - 1500 && wNow() < b.at + BAL_LEN + 3000); };
 function balMake(ev){ let s = (ev.seed >>> 0) || 7; const R = () => (s = (s*16807) % 2147483647) / 2147483647; const faces = (ev.faces || []).filter(Boolean); let f = 0;
   const amts = BAL_TIERS.flatMap(([a, n]) => Array(n).fill(a)); for (let i = amts.length - 1; i > 0; i--){ const j = Math.floor(R()*(i + 1)); [amts[i], amts[j]] = [amts[j], amts[i]]; } // 같은 씨앗이라 모두 같은 순서
   return amts.map((amt, i) => { const t0 = (i/BAL_N)*6.6 + R()*.5, dur = 2.7 + R()*.8, x = .07 + R()*.86, col = BAL_COLS[Math.floor(R()*BAL_COLS.length)], heart = faces.length && i%7 === 3;
-    return {i, t0, dur, x, col, amt, sway:R()*6.28, face: heart ? faces[f++ % faces.length] : '', otumo: !heart && i%11 === 5}; }); } // 10 초 안에 100 개 · 하트(얼굴) 14 개 · 오투모 얼굴 8 개쯤
+    return {i, t0, dur, x, col, amt, sway:R()*6.28, face: heart ? faces[f++ % faces.length] : '', otumo: !heart && i%11 === 5}; }); } // 10 초 안에 60 개 · 하트(얼굴) 9 개 · 오투모 얼굴 5 개쯤
 const faceCv = new Map();
 function balFace(id){ if (faceCv.has(id)) return faceCv.get(id); const p = id === uid ? me : players[id]; const L = p && p.look; if (!L) return null;
   const c = document.createElement('canvas'); c.width = c.height = 96; const x = c.getContext('2d'); x.setTransform(1.8, 0, 0, 1.8, 48, 48 + 1.8*44); try { CH.figure(CH.mattePainter(x), CH.migrateLook ? CH.migrateLook(L) : L, 'down', 0, false, 'happy'); } catch(e){} faceCv.set(id, c); return c; }
