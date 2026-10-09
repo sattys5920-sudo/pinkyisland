@@ -3916,7 +3916,7 @@ function drawUmbrella(c, x, y, key, dir, t, walk, part, sk){
   const col = UMB_COLS[ci|0][1], d = painter(c), light = ['#ffd84d','#f6efe6','#9ad66b'].includes(col), ink = light ? '#ff8fb6' : '#fff8f0';
   const sw = walk ? Math.sin(t/1000*9)*1.5 : Math.sin(t/1000*1.6)*.8, side = dir==='left' ? -1 : 1;
   const sideV = dir==='left' || dir==='right', hx = x + side*(sideV ? 7.8 : 9.4), hy = y - 11, K = .7, R = 34;
-  const tx = hx + side*2 + sw*.6, ty = y - 70; // 지붕 가운데
+  const tx = hx + side*1.5 + sw*.5, ty = y - 59; // 지붕 가운데: 머리 바로 위
   const stroke = (fn, ws) => { for (const [w, k] of ws){ c.save(); c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = k; c.lineWidth = w; c.beginPath(); fn(); c.stroke(); c.restore(); } }, wood = [[3.4, '#6b4a3c'], [1.6, '#a9806a']];
   if (part !== 'front') stroke(() => { c.moveTo(tx, ty); c.lineTo(hx, hy - 4); }, wood); // 막대: 머리 뒤로 지나가요
   if (part === 'back') return;
