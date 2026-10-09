@@ -6908,7 +6908,7 @@ function adminOxEnd(cancel){
 //  · 가위바위보 토너먼트: [가위바위...] 동안 하나를 고르고 [보!]에 모두 공개 · 안 내면 져요 · 비기면 다시
 //  · 오투모와 동심일체: 오투모가 고를 포즈를 맞혀요. 다른 걸 고르면 탈락 (아무도 못 맞히면 다시)
 //  · 낚시 대회: 축제장 연못에서 가장 큰 물고기를 낚은 사람이 이겨요
-const FEST_ACTS = new Set(['mggo','mgstart','mgword','mgend','mgcancel','notice','festopen','festclose','festgo','ftab','gbgo','gbq','gbend','gbcancel','huhide','hudel','hustart','huend','hureset','rpgo','rpdraw','rppick','rpreveal','rpnext','rpshow','rpcancel','sygo','systart','sypose','syreveal','syend','sycancel','figo','fiend','ficancel']);
+const FEST_ACTS = new Set(['mgready','mggo','mgstart','mgword','mgend','mgcancel','notice','festopen','festclose','festgo','ftab','gbgo','gbq','gbend','gbcancel','huhide','hudel','hustart','huend','hureset','rpgo','rpdraw','rppick','rpreveal','rpnext','rpshow','rpcancel','sygo','systart','sypose','syreveal','syend','sycancel','figo','fiend','ficancel']);
 const FEST_W = 2200, FEST_H = 1600, FEST_POND = {x:1720, y:1230, rx:300, ry:160};
 let fest = {}, festBarSig = '', festSeen = {};
 const festOpen = () => !!world.festOpen;
@@ -7073,7 +7073,8 @@ function festBar(){
       if (!mm) body = mgG.phase === 'join' ? '<button class="mini" id="mgJoin">참가하기</button>' : '구경 중';
       else if (!mm.alive) body = '<b class="ox-out">탈락</b> · 구경 중';
       else if (mm.arrived) body = '<b class="ox-ok">도착!</b> 끝날 때까지 기다려요';
-      else if (mgG.phase === 'join') body = '<b class="ox-ok">참가 중</b> · 곧 시작해요';
+      else if (mgG.phase === 'join') body = '<b class="ox-ok">참가 중</b> · 곧 출발선으로 모여요';
+      else if (mgG.phase === 'ready') body = '<b class="ox-ok">출발선!</b> 오투모가 시작하면 동쪽 끝 오투모까지 걸어가요';
       else body = mgG.phase === 'freeze' ? '<b class="ox-out">멈춰!</b> 움직이면 탈락' : `<b class="ox-ok">${esc(mgG.word || '')}</b> · 지금 움직여요! 오투모를 터치하면 도착`;
       rows.push(['mg', `<div class="ox-h">🌺 <b>무궁화 꽃이 피었습니다</b><small>남은 ${mgAlive().length}명 · 상품 ${esc(prizeName(mgG.meta))}</small></div><div class="ox-f">${body}</div>`, [mgG.phase, mgG.seq, mm?.alive, mm?.arrived, mgAlive().length].join()]);
     }
@@ -7180,12 +7181,21 @@ function festBunting(d, x0, x1, y, sag){ const c = d.ctx, cols = ['#ff8fb6','#ff
   const n = Math.floor((x1 - x0)/46); for (let i = 1; i < n; i++){ const t = i/n, x = x0 + (x1 - x0)*t, yy = y + sag*4*t*(1 - t); d.tri([[x - 14, yy], [x, yy + 26], [x + 14, yy]], cols[i % 5]); }
 }
 function drawFestGround(c, d, z){
+  // 무궁화 길: 출발선 → 오투모 자리
+  d.rr(MG_START.x - 90, MG_START.y - 70, MG_GOAL.x - MG_START.x + 180, 140, 70, '#f3d2b4'); d.rr(MG_START.x - 80, MG_START.y - 60, MG_GOAL.x - MG_START.x + 160, 120, 60, '#f8dfc6');
+  c.save(); c.setLineDash([22, 18]); c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 5; c.beginPath(); c.moveTo(MG_START.x + 40, MG_START.y); c.lineTo(MG_GOAL.x - 70, MG_GOAL.y); c.stroke(); c.restore();
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 2; j++){ c.fillStyle = (i + j) % 2 ? '#3a3440' : '#ffffff'; c.fillRect(MG_START.x + j*10, MG_START.y - 60 + i*15, 10, 15); }
+  d.ell(MG_GOAL.x, MG_GOAL.y, 74, 40, '#ffe3ec'); c.save(); c.strokeStyle = '#ff8fb6'; c.lineWidth = 4; c.setLineDash([10, 8]); c.beginPath(); c.ellipse(MG_GOAL.x, MG_GOAL.y, 74, 40, 0, 0, 7); c.stroke(); c.restore();
+  for (let i = 0; i < 12; i++){ const a = i/12*Math.PI*2; d.dot(MG_GOAL.x + Math.cos(a)*86, MG_GOAL.y + Math.sin(a)*48, 6, ['#ff8fb6','#ffe066','#fffaf2'][i % 3]); }
   d.ell(1100, 760, 560, 330, 'path'); d.ell(1100, 760, 470, 260, '#f6d9c2');
   for (let i = 0; i < 16; i++){ const a = i*Math.PI/8; d.dot(1100 + Math.cos(a)*400, 760 + Math.sin(a)*220, 10, ['#ff8fb6','#ffd35c','#7cc8ff','#9fe0b0'][i % 4]); }
   d.rr(120, 760, 760, 80, 40, 'path'); d.rr(1380, 1000, 260, 70, 35, 'path');
   for (const [x, y] of [[300,1380],[520,1460],[1100,1470],[200,620],[1950,760]]) for (let i = 0; i < 5; i++) d.dot(x + (i*31 % 70) - 35, y + (i*17 % 30) - 15, 7, ['#ff9fc4','#ffe066','#fff','#c9a6ff','#ff8fb0'][i]);
 }
 function drawFestTop(c, d){
+  // 출발선 아치 · 오투모 자리 팻말
+  { const x = MG_START.x + 5, y = MG_START.y; d.rr(x - 8, y - 150, 14, 90, 7, '#ff8fb6'); d.rr(x - 8, y + 60, 14, 50, 7, '#ff8fb6'); d.rr(x - 60, y - 190, 120, 44, 18, '#fffaf2'); c.font = 'bold 22px "Maple",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#e2486a'; c.fillText('🌺 출발', x, y - 167); c.textBaseline = 'alphabetic'; }
+  { const x = MG_GOAL.x, y = MG_GOAL.y - 70; d.rr(x - 4, y - 50, 8, 50, 4, '#9a6a45'); d.rr(x - 74, y - 96, 148, 50, 16, '#fffaf2'); c.font = 'bold 19px "Maple",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#3f6fe0'; c.fillText('🤖 오투모 자리', x, y - 71); c.textBaseline = 'alphabetic'; }
   // 무대
   d.rr(780, 150, 640, 40, 14, '#ff8fb6'); c.font = 'bold 30px "Maple",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fffaf2'; c.fillText('🎪 핑크 축제 무대', 1100, 171); c.textBaseline = 'alphabetic';
   d.rr(760, 190, 680, 190, 16, '#ffd0dc'); for (let i = 0; i < 8; i++) d.rr(780 + i*82, 205, 60, 150, 26, i % 2 ? '#ffc0d0' : '#ffb3c6');
@@ -7200,8 +7210,8 @@ function drawFestTop(c, d){
   for (let i = 0; i < 6; i++) d.tri([[mx - 170 + i*57, my - 132], [mx - 141 + i*57, my - 104], [mx - 113 + i*57, my - 132]], i % 2 ? '#fffaf2' : '#ff8fb6');
   d.circle(mx, my - 232, 12, '#ffd35c');
   // 노점 천막
-  festHeartArch(d, 420, 1220); festBear(d, 780, 1330); festRainbow(d, 1110, 1330); festGifts(d, 1440, 1330);
-  festCupcake(d, 620, 1080, '#ffc4d6'); festCupcake(d, 1580, 1060, '#d9c8f5'); festGifts(d, 170, 1180);
+  festHeartArch(d, 420, 1450); festBear(d, 780, 1330); festRainbow(d, 1110, 1330); festGifts(d, 1440, 1330);
+  festCupcake(d, 600, 1480, '#ffc4d6'); festCupcake(d, 1310, 1500, '#d9c8f5'); festGifts(d, 170, 1180);
   for (const [x, gy, col] of [[1960, 300, '#ff8fb6'], [2040, 360, '#7cc8ff'], [1900, 900, '#ffd35c'], [640, 600, '#9fe0b0'], [1560, 640, '#c9a6ff']]) festLolli(d, x, gy, col);
   for (const [x, gy] of [[700, 900], [1500, 900], [880, 520], [1320, 520]]) festCane(d, x, gy);
   for (let i = 0; i < 26; i++){ const x = 80 + (i*97) % 2050, y = 1500 + (i*37) % 70; d.dot(x, y, 4, ['#fff3a0','#ffb3cd','#9fd8ff'][i % 3], .8); }
@@ -7216,8 +7226,8 @@ function drawFestTop(c, d){
 }
 function festObstacles(o){
   o.rects.push({x:740, y:190, w:720, h:240}); o.circles.push({x:330, y:640, r:90}); o.rects.push({x:1660, y:430, w:320, h:170});
-  o.rects.push({x:330, y:1150, w:180, h:70}); o.ells.push({x:780, y:1300, rx:80, ry:40}); o.rects.push({x:930, y:1290, w:360, h:50}); o.rects.push({x:1380, y:1290, w:120, h:40}); o.rects.push({x:110, y:1140, w:120, h:40});
-  for (const [x, gy] of [[620, 1080], [1580, 1060]]) o.ells.push({x, y:gy - 20, rx:40, ry:22});
+  o.rects.push({x:330, y:1380, w:180, h:70}); o.ells.push({x:780, y:1300, rx:80, ry:40}); o.rects.push({x:930, y:1290, w:360, h:50}); o.rects.push({x:1380, y:1290, w:120, h:40}); o.rects.push({x:110, y:1140, w:120, h:40});
+  for (const [x, gy] of [[600, 1480], [1310, 1500]]) o.ells.push({x, y:gy - 20, rx:40, ry:22});
   for (const [x, gy] of [[1960, 300], [2040, 360], [1900, 900], [640, 600], [1560, 640], [700, 900], [1500, 900], [880, 520], [1320, 520]]) o.circles.push({x, y:gy - 4, r:10});
 }
 
@@ -7227,6 +7237,7 @@ function festObstacles(o){
 // 오투모 곁에 닿으면(터치) 도착 · 끝내면 도착한 사람(없으면 살아남은 사람)이 상품을 받아요
 const MG_WORDS = ['무궁화', '꽃이', '피었', '습', '니', '다!'];
 const MG_GRACE = 500; // '다!'를 본 뒤 멈출 시간 (0.5 초)
+const MG_START = {x:250, y:980}, MG_GOAL = {x:1950, y:980}; // 축제장을 가로지르는 긴 길: 서쪽 출발선 → 동쪽 오투모 자리
 const mgPlayers = () => fest.mg?.players || {};
 const mgMine = () => mgPlayers()[uid];
 const mgAlive = () => Object.entries(mgPlayers()).filter(([, p]) => p && p.alive);
@@ -7234,13 +7245,14 @@ let mgWatch = null; // {seq, at, x, y}
 function otumoHere(){ for (const o of others.values()) if (o.adm && o.z === zoneId) return o; return null; }
 function mgTick(){
   const g = fest.mg, m = mgMine(); if (!festLive(g) || !m || !m.alive || m.arrived) { mgWatch = null; return; }
+  if (g.readyAt && mgTick.ready !== g.id + g.readyAt && zoneId === 'fest'){ mgTick.ready = g.id + g.readyAt; target = null; keys.arrowright = keys.d = false; pos.x = MG_START.x - 30 - Math.random()*50; pos.y = MG_START.y - 55 + Math.random()*110; pos.dir = 'right'; toast('🌺 출발선에 섰어요! 오투모가 [다!]라고 할 땐 멈춰요'); return; }
   if (g.phase === 'freeze'){
     if (!mgWatch || mgWatch.seq !== g.seq) mgWatch = {seq:g.seq, at:performance.now() + MG_GRACE, x:null, y:null};
     if (performance.now() < mgWatch.at) return;
     if (mgWatch.x == null){ mgWatch.x = pos.x; mgWatch.y = pos.y; return; }
     if (Math.hypot(pos.x - mgWatch.x, pos.y - mgWatch.y) > 4 && !mgTick.out){ mgTick.out = true; target = null; net.mgSet({alive:false}).then(()=>{ toast('🌺 움직였어요! 탈락.......'); setExpr('sad', 2500); }).catch(()=>{}).finally(()=>{ mgTick.out = false; }); }
   } else { mgWatch = null;
-    const o = otumoHere(); if (g.phase === 'go' && o && Math.hypot(pos.x - o.x, pos.y - o.y) < 70 && !mgTick.arr){ mgTick.arr = true; net.mgSet({arrived:true}).then(()=>toast('🌺 터치! 오투모에게 도착했어요')).catch(()=>{}).finally(()=>{ mgTick.arr = false; }); } }
+    const o = otumoHere(), near = (o && Math.hypot(pos.x - o.x, pos.y - o.y) < 70) || Math.hypot(pos.x - MG_GOAL.x, pos.y - MG_GOAL.y) < 70; if (g.phase === 'go' && near && !mgTick.arr){ mgTick.arr = true; net.mgSet({arrived:true}).then(()=>toast('🌺 터치! 오투모에게 도착했어요')).catch(()=>{}).finally(()=>{ mgTick.arr = false; }); } }
 }
 // 화면 가운데 큰 글자 (오투모가 말한 마디)
 let mgSeen = null;
@@ -7304,10 +7316,11 @@ function adminFestSec(){
       else h += `${sy.phase === 'reveal' ? `<small>${sy.r}번째: 오투모 ${FEST_POSES[sy.ans]?.[1] || ''} · ${esc(sy.note || '')}</small>` : ''}<button data-a="systart" class="adm-btn" ${alive.length ? '' : 'disabled'}>${(sy.r || 0) + 1}번째 시작 (고르기)</button><button data-a="syend" class="adm-btn">끝내고 상품 주기</button>`;
       h += `<button data-a="sycancel" class="adm-btn warn">취소</button>`; } }
   if (t === 'mg'){ const g = fest.mg;
-    if (!festLive(g)) h += `<small>오투모가 한 마디씩 누르는 동안 움직이고, [다!]를 누르면 멈춰요 · 다! 뒤 0.5 초가 지나서 움직이면 탈락 · 오투모를 터치하면 도착</small>${prizeInputs('fmgK','fmgN')}<button data-a="mggo" class="adm-btn">참가 받기 시작</button>`;
+    if (!festLive(g)) h += `<small>서쪽 출발선에서 동쪽 끝 오투모까지 긴 길을 걸어가요 · 오투모가 한 마디씩 누르는 동안 움직이고 [다!]에 멈춰요 (0.5 초 뒤 움직이면 탈락) · 오투모를 터치하면 도착</small>${prizeInputs('fmgK','fmgN')}<button data-a="mggo" class="adm-btn">참가 받기 시작</button>`;
     else { const pl = Object.entries(mgPlayers()), alive = mgAlive(), arr = alive.filter(([, p]) => p.arrived), out = pl.filter(([, p]) => p && !p.alive);
       h += `<small>상품 ${esc(prizeName(g.meta))} · 참가 ${pl.length}명 · 살아남은 ${alive.length}명 · 도착 ${arr.length}명</small><small>🏁 ${arr.map(([, p]) => esc(p.nick)).join(', ') || '-'}</small><small>🙂 ${alive.filter(([, p]) => !p.arrived).map(([, p]) => esc(p.nick)).join(', ') || '-'}</small><small>❌ ${out.map(([, p]) => esc(p.nick)).join(', ') || '-'}</small>`;
-      if (g.phase === 'join') h += `<button data-a="mgstart" class="adm-btn" ${pl.length ? '' : 'disabled'}>시작! (오투모는 무대 쪽에서 뒤돌아 서요)</button>`;
+      if (g.phase === 'join') h += `<button data-a="mgready" class="adm-btn" ${pl.length ? '' : 'disabled'}>출발선으로 모으기 (오투모는 길 끝 자리로)</button>`;
+      else if (g.phase === 'ready') h += `<small>참가자는 서쪽 출발선, 오투모는 동쪽 끝 🤖 자리에 서요</small><button data-a="mgready" class="adm-btn">한 번 더 출발선으로</button><button data-a="mgstart" class="adm-btn">시작!</button>`;
       else h += `<small>지금: <b>${g.phase === 'freeze' ? '멈춤 (다!)' : esc(g.word || '준비')}</b></small><div class="adm-tabs">${MG_WORDS.map((w, i) => `<button data-a="mgword" data-t="${i}" class="mini${i === 5 ? ' on' : ''}">${w}</button>`).join('')}</div>`;
       h += `<button data-a="mgend" class="adm-btn">끝내고 상품 주기</button><button data-a="mgcancel" class="adm-btn warn">취소</button>`; } }
   if (t === 'fish'){ const fi = fest.fish;
@@ -7366,8 +7379,9 @@ function adminFestClick(b){
     net.festSet(a === 'syend' ? {'sync/done':1, 'sync/win': Object.keys(win).length ? win : null, 'sync/phase':'done'} : {'sync/cancel':1}).then(()=>toast('끝났어요')).catch(fail); }
   // 낚시 대회
   else if (a === 'mggo'){ const m = prizeOf(admFest.fmgK, admFest.fmgN); if (!confirm(`상품 ${prizeName(m)} · 무궁화 꽃이 피었습니다 참가를 받을까요?`)) return; net.festSet({mg:{id:festNewId('m'), meta:m, at:now, phase:'join', seq:0}}).then(()=>toast('참가를 받고 있어요')).catch(fail); }
-  else if (a === 'mgstart'){ if (admWalk) pos.dir = 'up'; net.festSet({'mg/phase':'go', 'mg/word':'시작!', 'mg/seq': (fest.mg.seq || 0) + 1}).then(()=>toast('시작!')).catch(fail); }
-  else if (a === 'mgword'){ const i = +b.dataset.t, w = MG_WORDS[i], stop = i === 5; if (admWalk) pos.dir = stop ? 'down' : 'up'; net.festSet({'mg/phase': stop ? 'freeze' : 'go', 'mg/word': w, 'mg/seq': (fest.mg.seq || 0) + 1}).catch(fail); }
+  else if (a === 'mgready'){ if (admWalk){ if (zoneId !== 'fest') enterZone('fest', null, MG_GOAL.x, MG_GOAL.y); pos.x = MG_GOAL.x + 10; pos.y = MG_GOAL.y; pos.dir = 'left'; target = null; } net.festSet({'mg/phase':'ready', 'mg/readyAt':now}).then(()=>toast('참가자를 출발선으로 모았어요')).catch(fail); }
+  else if (a === 'mgstart'){ if (admWalk) pos.dir = 'right'; net.festSet({'mg/phase':'go', 'mg/word':'시작!', 'mg/seq': (fest.mg.seq || 0) + 1}).then(()=>toast('시작!')).catch(fail); }
+  else if (a === 'mgword'){ const i = +b.dataset.t, w = MG_WORDS[i], stop = i === 5; if (admWalk) pos.dir = stop ? 'left' : 'right'; /* 말할 땐 뒤돌고, 다! 하면 참가자 쪽을 봐요 */ net.festSet({'mg/phase': stop ? 'freeze' : 'go', 'mg/word': w, 'mg/seq': (fest.mg.seq || 0) + 1}).catch(fail); }
   else if (a === 'mgend' || a === 'mgcancel'){ if (a === 'mgend' ? !confirm('끝낼까요? 도착한 사람(없으면 살아남은 사람)이 상품을 받아요') : !confirm('취소할까요?')) return; const alive = mgAlive(), arr = alive.filter(([, p]) => p.arrived), win = Object.fromEntries((arr.length ? arr : alive).map(([u]) => [u, true]));
     net.festSet(a === 'mgend' ? {'mg/done':1, 'mg/phase':'done', 'mg/win': Object.keys(win).length ? win : null} : {'mg/cancel':1}).then(()=>toast(a === 'mgend' ? `끝! ${Object.keys(win).length}명이 상품을 받아요` : '취소했어요')).catch(fail); }
   else if (a === 'notice'){ const t = String(admFest.fNotice || '').trim().slice(0, 80); if (!t) return toast('할 말을 적어 주세요'); admFest.fNotice = ''; Promise.resolve(net.setWorld({notice:{t, at:now}})).then(()=>{ toast('모두에게 말했어요'); renderAdmin(); }).catch(fail); }
