@@ -415,30 +415,11 @@
           }
         }
       },
-      "bp": {
-        "popped": {
-          "$bid": {
-            ".write": "auth != null && !data.exists() && newData.val() === auth.uid && root.child('fest/bp/id').exists() && !root.child('fest/bp/done').exists() && !root.child('fest/bp/cancel').exists() && now >= root.child('fest/bp/startAt').val() - 1000 && now <= root.child('fest/bp/startAt').val() + root.child('fest/bp/dur').val() + 3000"
-          }
-        },
-        "scores": {
+      "tc": {
+        "presses": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid && root.child('fest/bp/id').exists() && !root.child('fest/bp/done').exists() && !root.child('fest/bp/cancel').exists()",
-            ".validate": "newData.hasChildren(['nick','s']) && newData.child('s').isNumber() && newData.child('s').val() >= -99 && newData.child('s').val() <= 999 && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
-          }
-        }
-      },
-      "fs": {
-        "players": {
-          "$uid": {
-            ".write": "auth != null && auth.uid === $uid && root.child('fest/fs/phase').val() === 'join' && !root.child('fest/fs/done').exists() && !root.child('fest/fs/cancel').exists()",
-            ".validate": "newData.hasChildren(['nick']) && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
-          }
-        },
-        "votes": {
-          "$uid": {
-            ".write": "auth != null && auth.uid === $uid && root.child('fest/fs/phase').val() === 'vote' && !root.child('fest/fs/done').exists()",
-            ".validate": "newData.isString() && newData.val() !== $uid && root.child('fest/fs/players/' + newData.val()).exists()"
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('fest/tc/phase').val() === 'go' && !root.child('fest/tc/done').exists() && !root.child('fest/tc/cancel').exists()",
+            ".validate": "newData.hasChildren(['nick','ms']) && newData.child('ms').isNumber() && newData.child('ms').val() >= 0 && newData.child('ms').val() <= 600000 && newData.child('ms').val() % 1 === 0 && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
           }
         }
       }
