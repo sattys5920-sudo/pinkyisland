@@ -398,6 +398,49 @@
             }
           }
         }
+      },
+      "mc": {
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('fest/mc/phase').val() === 'join' && !root.child('fest/mc/done').exists() && !root.child('fest/mc/cancel').exists() && newData.child('alive').val() === true",
+            ".validate": "newData.hasChildren(['nick','alive']) && newData.child('nick').isString() && newData.child('nick').val().length <= 16",
+            "alive": {
+              ".write": "auth != null && auth.uid === $uid && data.exists() && newData.val() === false"
+            }
+          }
+        },
+        "cushions": {
+          "$c": {
+            ".write": "auth != null && root.child('fest/mc/phase').val() === 'grab' && root.child('fest/mc/players/' + auth.uid + '/alive').val() === true && data.exists() && !data.child('by').exists() && newData.child('by').val() === auth.uid && newData.child('x').val() === data.child('x').val() && newData.child('y').val() === data.child('y').val() && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
+          }
+        }
+      },
+      "bp": {
+        "popped": {
+          "$bid": {
+            ".write": "auth != null && !data.exists() && newData.val() === auth.uid && root.child('fest/bp/id').exists() && !root.child('fest/bp/done').exists() && !root.child('fest/bp/cancel').exists() && now >= root.child('fest/bp/startAt').val() - 1000 && now <= root.child('fest/bp/startAt').val() + root.child('fest/bp/dur').val() + 3000"
+          }
+        },
+        "scores": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('fest/bp/id').exists() && !root.child('fest/bp/done').exists() && !root.child('fest/bp/cancel').exists()",
+            ".validate": "newData.hasChildren(['nick','s']) && newData.child('s').isNumber() && newData.child('s').val() >= -99 && newData.child('s').val() <= 999 && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
+          }
+        }
+      },
+      "fs": {
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('fest/fs/phase').val() === 'join' && !root.child('fest/fs/done').exists() && !root.child('fest/fs/cancel').exists()",
+            ".validate": "newData.hasChildren(['nick']) && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
+          }
+        },
+        "votes": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('fest/fs/phase').val() === 'vote' && !root.child('fest/fs/done').exists()",
+            ".validate": "newData.isString() && newData.val() !== $uid && root.child('fest/fs/players/' + newData.val()).exists()"
+          }
+        }
       }
     }
   }
