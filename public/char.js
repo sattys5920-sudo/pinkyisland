@@ -707,12 +707,12 @@ export const ACCS = {
       if (!back){ d.ell(...P(0, 3.4), 5*S, 5.2*S, b); d.ell(...P(0, 4), 3*S, 3.2*S, m, ff); for (const sx of [-1,1]) d.ell(...P(sx*3.4, 8), 2*S, 1.6*S, b); }
       for (const sx of [-1,1]){ d.circle(...P(sx*3.7, -6.6), 1.9*S, b); if (!back) d.circle(...P(sx*3.7, -6.6), 1*S, '#f0b8c4', ff); }
       d.circle(...P(0, -2.6), 4.8*S, b); if (back) return;
-      d.ell(...P(0, -1.2), 2.2*S, 1.6*S, m, ff); d.dot(...P(-1.8, -3.4), .75, k); d.dot(...P(1.8, -3.4), .75, k); d.dot(...P(-1.6, -3.75), .28, '#fff'); d.dot(...P(2, -3.75), .28, '#fff'); d.ell(...P(0, -1.7), .9, .6, k, ff);
-      const [mx, my] = P(0, -.6); d.line(c=>{ c.moveTo(mx-1, my); c.quadraticCurveTo(mx, my+.8, mx+1, my); }, k, .38); d.ell(...P(-3.2, -1.4), 1.1, .65, '#f4a3b6', ff); d.ell(...P(3.2, -1.4), 1.1, .65, '#f4a3b6', ff);
+      d.ell(...P(0, -1.2), 2.2*S, 1.6*S, m, ff); d.dot(...P(-2, -2.9), .62, k); d.dot(...P(2, -2.9), .62, k); d.ell(...P(0, -1.75), .7, .5, k, ff); // 콕 박힌 점 눈 · 작은 코
+      const [mx, my] = P(0, -.9); d.line(c=>{ c.moveTo(mx-.8, my); c.quadraticCurveTo(mx-.4, my+.5, mx, my); c.quadraticCurveTo(mx+.4, my+.5, mx+.8, my); }, k, .3); d.ell(...P(-3.2, -1.4), 1.1, .65, '#f4a3b6', ff); d.ell(...P(3.2, -1.4), 1.1, .65, '#f4a3b6', ff);
       for (const sx of [-1,1]) d.shape(c=>{ const [ax, ay] = P(0, 1.6); c.beginPath(); c.moveTo(ax, ay); c.lineTo(ax+sx*2.8*S, ay-1.3*S); c.lineTo(ax+sx*2.8*S, ay+1.3*S); c.closePath(); }, '#ff8fb0', [...P(0, 1.6), 2], ff); d.circle(...P(0, 1.6), .85, '#ff6f99', ff); };
     if (g.up){ bear(-g.bw/2-2.4, BY+BH*.42, true); return; } // 뒤에서는 옆구리 너머로 곰 머리
     const [hx, hy] = handPos(g).at(-1), x = g.side ? hx + 1 : hx - 3.4, y = hy - 1.6; bear(x, y); // 곰은 몸 안쪽으로 쏙
-    d.ell(g.side ? x + 3.6 : hx, hy + 1.2, 2.9, 3.2, g.sk); // 손은 곰 바깥에서 감싸 안아요
+    d.ell(g.side ? x + 3.6 : hx, g.side ? hy + 1.2 : hy, 3.1, 3.7, g.sk); // 손은 곰 바깥에서 감싸 안아요
   }},
   balloon:{excl:1, name:'하트 풍선', price:42000, draw:(d,g)=>{ const [hx,hy] = handPos(g).at(-1), bx = hx + 5, by = HY - R*1.3; d.line(k=>{ k.moveTo(hx,hy); k.quadraticCurveTo(hx+4,hy-16,bx,by+6); }, '#9a8a94', .5, .9); if (g.up) return; heart(d,bx,by,4.4,'#ff6f9f',{}); d.dot(bx-2.4,by-1.2,1,'#fff',.7); }},
   foxtail:{excl:1, name:'여우 꼬리', price:86000, draw:(d,g)=>{ const o='#f2944a'; if (g.up){ d.ell(0,BY+BH*.62,4.4,6.8,o); d.ell(0,BY+BH*.62+5,2.6,2.4,'#fffaf2'); return; } if (g.side){ d.ell(-g.bw/2-3.6,BY+BH*.56,3,6,o); d.ell(-g.bw/2-4,BY+BH*.56-4,1.8,2,'#fffaf2'); return; } d.ell(g.bw/2+3.6,BY+BH*.62,2.4,4.6,o); d.ell(g.bw/2+4.2,BY+BH*.62-3.4,1.4,1.6,'#fffaf2'); }},
