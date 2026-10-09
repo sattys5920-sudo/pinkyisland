@@ -384,6 +384,20 @@
             ".validate": "newData.hasChildren(['nick','size','fid']) && newData.child('size').isNumber() && newData.child('size').val() > 0 && newData.child('size').val() < 1000 && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
           }
         }
+      },
+      "mg": {
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('fest/mg/phase').val() === 'join' && !root.child('fest/mg/done').exists() && !root.child('fest/mg/cancel').exists() && newData.child('alive').val() === true",
+            ".validate": "newData.hasChildren(['nick','alive']) && newData.child('nick').isString() && newData.child('nick').val().length <= 16",
+            "alive": {
+              ".write": "auth != null && auth.uid === $uid && data.exists() && newData.val() === false"
+            },
+            "arrived": {
+              ".write": "auth != null && auth.uid === $uid && data.parent().child('alive').val() === true && root.child('fest/mg/phase').val() === 'go' && newData.val() === true"
+            }
+          }
+        }
       }
     }
   }
