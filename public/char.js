@@ -543,7 +543,23 @@ export const SETS = {
   s01:{name:'멜빵바지',    price:98000,   draw:(d,g)=>{ torso(d,g,'#fffaf2'); bareArms(d,g); pants(d,g,'#f29ab8',.5); legs(d,g,'#f29ab8'); if(!g.up){ d.rr(-5.5,BY,2.2,BH*.55,1,'#f29ab8',{flat:true}); d.rr(3.3,BY,2.2,BH*.55,1,'#f29ab8',{flat:true}); d.rr(-4,BY+5,8,5,1.5,'#f29ab8',{flat:true}); d.dot(-4.4,BY+5.5,.8,'#ffe08a'); d.dot(4.4,BY+5.5,.8,'#ffe08a'); } }},
   s02:{name:'핑크 원피스', price:204000, draw:(d,g)=>{ legs(d,g,g.sk); dress(d,g,'#f6c6d3','#fffaf2'); if(!g.up) collar(d,g,'#fffaf2'); sleeves(d,g,'#f6c6d3'); hands(d,g); }},
   s03:{name:'여자 교복',   price:282000, draw:(d,g)=>{ torso(d,g,'#5c6a92'); front(d,g,'#fffaf2'); collar(d,g,'#fffaf2'); if(!g.up) d.rr(-1,BY+3.5,2,5,1,'#e85d7a',{flat:true,noShadow:true}); sleeves(d,g,'#5c6a92'); hands(d,g); legs(d,g,g.sk); skirt(d,g,'#8a93b5',1.15,.4); pleats(d,g,'#6f789a',.4); }},
-  s04:{name:'공룡 잠옷',   price:301000, draw:(d,g)=>{ torso(d,g,'#9fd9a8'); pants(d,g,'#9fd9a8',.5); legs(d,g,'#9fd9a8'); sleeves(d,g,'#9fd9a8'); hands(d,g); if(!g.up) d.ell(0,BY+6,4,5,'#e8f6d8',{flat:true}); for (const [sx,sy] of [[-3,BY-1],[0,BY-2.2],[3,BY-1]]) d.shape(c=>{ c.beginPath(); c.moveTo(sx-1.6,sy+1); c.lineTo(sx,sy-2.2); c.lineTo(sx+1.6,sy+1); c.closePath(); }, '#6fc47a', [sx,sy,2], {flat:true}); }},
+  s04:{name:'공룡 잠옷',   price:301000, draw:(d,g)=>{ const gr='#9fd9a8', dk='#6fc47a', bl='#e8f6d8';
+    if (g.side || g.up){ const tx = g.up ? 0 : -g.bw/2-2; d.shape(c=>{ c.beginPath(); c.moveTo(tx+(g.up?-5:2), BY+8); c.quadraticCurveTo(tx+(g.up?0:-8), BY+20, tx+(g.up?0:-13), BY+21); c.quadraticCurveTo(tx+(g.up?0:-6), BY+15, tx+(g.up?5:2), BY+15); c.closePath(); }, gr, [tx-4,BY+16,6]); for (const k of [0,1]) d.shape(c=>{ const x0 = g.up ? 0 : tx-3-k*4.5, y0 = BY+12+k*4; c.beginPath(); c.moveTo(x0-1.6,y0+.6); c.lineTo(x0,y0-2.2); c.lineTo(x0+1.6,y0+.6); c.closePath(); }, dk, [tx,BY+14,2], {flat:true}); } // 꼬리
+    d.ell(0, HY-1.5, R*1.36, R*1.3, gr); // 후드 뒤
+    torso(d,g,gr); pants(d,g,gr,.5); legs(d,g,gr); longArms(d,g,gr); if(!g.up) d.ell(0,BY+6,4,5,bl,{flat:true});
+    if (g.up) for (const y of [BY+1, BY+5, BY+9]) d.shape(c=>{ c.beginPath(); c.moveTo(-1.8,y+1); c.lineTo(0,y-2.2); c.lineTo(1.8,y+1); c.closePath(); }, dk, [0,y,2], {flat:true}); },
+    // 머리카락 위로: 공룡 얼굴 후드 (등뼈 가시 · 눈 · 이빨)
+    over:(d,g)=>{ const gr='#9fd9a8', dk='#6fc47a', cy = HY-1.5, ox = g.side ? R*.12 : 0;
+      const sp = g.side ? [-2.95,-2.55,-2.15,-1.75] : g.up ? [-2.5,-2.05,-1.57,-1.09,-.64] : [-2.45,-2.0,-1.57,-1.14,-.69];
+      for (const a of sp){ const cx = Math.cos(a), sy = Math.sin(a), x = cx*R*1.3, y = cy+sy*R*1.24, s = Math.abs(a+1.57) < .1 ? 5 : 4; d.shape(c=>{ c.beginPath(); c.moveTo(x-sy*3, y+cx*3); c.lineTo(x+cx*s, y+sy*s); c.lineTo(x+sy*3, y-cx*3); c.closePath(); }, dk, [x,y,3]); }
+      if (g.up){ d.ell(0, cy, R*1.3, R*1.24, gr); for (const y of [cy-R*.6, cy-R*.1, cy+R*.4]) d.shape(c=>{ c.beginPath(); c.moveTo(-2.4,y+1.4); c.lineTo(0,y-2.6); c.lineTo(2.4,y+1.4); c.closePath(); }, dk, [0,y,3]); return; }
+      // 윗턱: 이마를 덮는 초승달
+      d.shape(c=>{ c.beginPath(); c.ellipse(ox, cy, R*1.3, R*1.24, 0, Math.PI*1.04, Math.PI*1.96); c.ellipse(ox, cy+R*.12, R*1.02, R*.78, 0, Math.PI*1.9, Math.PI*1.1, true); c.closePath(); }, gr, [ox,cy-R*.9,8]);
+      // 이빨 (아래로 톡톡)
+      d.shape(c=>{ c.beginPath(); for (let i = 0; i < 7; i++){ const a = Math.PI*(1.2 + i*.087), a2 = a + Math.PI*.0435; const x0 = ox+Math.cos(a)*R*1.02, y0 = cy+R*.12+Math.sin(a)*R*.78; c.moveTo(x0, y0); c.lineTo(ox+Math.cos(a2)*R*.9, cy+R*.12+Math.sin(a2)*R*.62); c.lineTo(ox+Math.cos(a + Math.PI*.087)*R*1.02, cy+R*.12+Math.sin(a + Math.PI*.087)*R*.78); } }, '#fffaf2', [ox,cy-R*.6,4], {noShadow:true});
+      // 눈 · 콧구멍
+      for (const sx of (g.side ? [.55] : [-1, 1])){ const ex = ox + sx*R*.5, ey = cy - R*1.02; d.circle(ex, ey, 3, '#fffaf2', {noShadow:true}); d.dot(ex + (g.side ? .8 : 0), ey + .3, 1.4, '#2b2228'); d.dot(ex + .5, ey - .6, .5, '#fff'); }
+      if (!g.side){ d.dot(-1.6, cy - R*.72, .55, dk); d.dot(1.6, cy - R*.72, .55, dk); } } },
   s05:{name:'세일러복',    price:243000, draw:(d,g)=>{ torso(d,g,'#fffaf2'); if(!g.up){ d.shape(c=>{ c.beginPath(); c.moveTo(-6,BY); c.lineTo(0,BY+5); c.lineTo(6,BY); c.lineTo(6,BY+3); c.lineTo(0,BY+7.5); c.lineTo(-6,BY+3); c.closePath(); }, '#6f86b8', [0,BY+3,6], {flat:true}); d.dot(0,BY+6.5,1.1,'#e85d7a'); } sleeves(d,g,'#fffaf2'); hands(d,g); legs(d,g,g.sk); skirt(d,g,'#6f86b8',1.15,.4); }},
   s06:{name:'트레이닝 세트', price:223000, draw:(d,g)=>{ torso(d,g,'#f28c8c'); if(!g.up) d.line(k=>{ k.moveTo(-g.bw/2+1, BY+4); k.lineTo(g.bw/2-1, BY+4); }, '#fffaf2', 1.4, .9); sleeves(d,g,'#f28c8c'); hands(d,g); pants(d,g,'#f28c8c',.42); legs(d,g,'#f28c8c'); if(!g.side) d.line(k=>{ k.moveTo(-3.3,-8.3); k.lineTo(-3.3,-1.2); k.moveTo(3.3,-8.3); k.lineTo(3.3,-1.2); }, '#fffaf2', 1, .9); }},
   s07:{name:'파티 드레스', price:395000, draw:(d,g)=>{ legs(d,g,g.sk); dress(d,g,'#d2b8ff','#fff'); skirt(d,g,'#c4a6f5',1.5,.55); if(!g.up){ d.dot(-3,BY+BH*.75,1,'#fff',.9); d.dot(2,BY+BH*.85,.8,'#fff',.9); d.dot(5,BY+BH*.7,.8,'#fff',.9); d.ell(0,BY+2,3,1.8,'#fff',{flat:true}); } bareArms(d,g); }},
@@ -756,6 +772,7 @@ export function figure(d, L, dir, t, walk, expr){
   if (!up) face(d, side ? R*.22 : 0, HY+R*.28, L, side, expr);
   if (AN?.snout && !up) AN.snout(AP);
   hair(d, 0, HY, L, side, R, 'front', up);
+  if (set?.over) set.over(P('set', L.set), g); // 후드 앞자락처럼 머리카락 위로 덮는 부분
   if (AN?.over) AN.over(AP);
   acc.draw(P('acc', L.acc), g); hat.draw(P('hat', L.hat), g);
   if (AN?.top) AN.top(AP);
