@@ -260,6 +260,15 @@
       "balloon": {
         ".validate": "newData.hasChildren(['id', 'at', 'seed']) && newData.child('id').isString() && newData.child('at').isNumber() && newData.child('seed').isNumber()"
       },
+      "festOpen": {
+        ".validate": "newData.isBoolean()"
+      },
+      "festAt": {
+        ".validate": "newData.isNumber()"
+      },
+      "notice": {
+        ".validate": "newData.hasChildren(['t','at']) && newData.child('t').isString() && newData.child('t').val().length <= 80 && newData.child('at').isNumber()"
+      },
       "$other": {
         ".validate": false
       }
