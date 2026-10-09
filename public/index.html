@@ -6787,7 +6787,11 @@ const oxMine = () => oxPlayers()[uid];
 const oxAlive = () => Object.values(oxPlayers()).filter(p => p && p.alive);
 const oxIn = () => oxLive() && zoneId === ox.meta.z && Math.hypot(pos.x - ox.meta.x, (pos.y - ox.meta.y) / .6) < OX_R;
 const oxPrizeName = m => m.k === 'gold' ? `${Number(m.n).toLocaleString()} G` : `${m.name}${m.n > 1 ? ' ' + m.n + '개' : ''}`;
-const oxCounting = () => { const c = ox && ox.cur; return !!(c && c.r && !c.ans && Date.now() + serverOffset < c.endAt); };
+// 문제 시간: 참가자는 '내 화면에 문제가 뜬 순간'부터 10 초를 세요. 폰 시계가 서버와 조금 달라도 모두 똑같이 10 초를 받아요
+const qClock = {};
+function qLeftMs(key, endAt, dur){ let e = qClock[key]; if (e == null){ const left = endAt - (Date.now() + serverOffset); e = qClock[key] = performance.now() + (Math.abs(left - dur) < 3000 ? dur : Math.max(0, Math.min(dur, left))); } return e - performance.now(); }
+const oxLeftMs = () => { const c = ox && ox.cur; if (!c || !c.r || c.ans) return 0; return admin ? c.endAt - (Date.now() + serverOffset) : qLeftMs('ox' + ox.meta.id + c.r, c.endAt, OX_SEC*1000); };
+const oxCounting = () => { const c = ox && ox.cur; return !!(c && c.r && !c.ans && oxLeftMs() > 0); };
 function onOx(v){
   ox = v || null; const m = ox && ox.meta;
   if (m && oxLive() && oxSeen !== m.id){ oxSeen = m.id;
@@ -6807,14 +6811,14 @@ function oxTick(){
   oxBar();
   if (!oxLive()) return; const now = Date.now() + serverOffset, c = ox.cur, id = ox.meta.id;
   if (admin){
-    if (c && c.r && !c.ans && admOx.r === c.r && admOx.ans && now > c.endAt + 600 && !oxTick.busy){ oxTick.busy = true; net.oxSet({'cur/ans': admOx.ans}).catch(()=>{}).finally(()=>setTimeout(()=>{ oxTick.busy = false; }, 1500)); }
+    if (c && c.r && !c.ans && admOx.r === c.r && admOx.ans && now > c.endAt + 1800 && !oxTick.busy){ oxTick.busy = true; net.oxSet({'cur/ans': admOx.ans}).catch(()=>{}).finally(()=>setTimeout(()=>{ oxTick.busy = false; }, 1500)); }
     const ph = c ? c.r + (c.ans ? 'a' : now < c.endAt ? 'q' : 'w') : '-'; if (oxTick.ph !== ph){ oxTick.ph = ph; renderAdmin(); }
     return;
   }
   if (!me || !c || !c.r) return;
   const key = id + '|' + c.r;
-  if (c.r === 1 && !c.ans && now < c.endAt && oxIn() && !oxMine() && !oxTick.joining){ oxTick.joining = true; net.oxJoin(id, {nick:String(me.nick).slice(0, 16), alive:true}).catch(()=>{}).finally(()=>{ oxTick.joining = false; }); }
-  if (now >= c.endAt && !(key in oxSide)) oxSide[key] = oxIn() ? (pos.x < ox.meta.x ? 'O' : 'X') : '-';
+  if (c.r === 1 && oxCounting() && oxIn() && !oxMine() && !oxTick.joining){ oxTick.joining = true; net.oxJoin(id, {nick:String(me.nick).slice(0, 16), alive:true}).catch(()=>{}).finally(()=>{ oxTick.joining = false; }); }
+  if ((c.ans || oxLeftMs() <= 0) && !(key in oxSide)) oxSide[key] = oxIn() ? (pos.x < ox.meta.x ? 'O' : 'X') : '-'; // 내 10 초가 끝난 순간 서 있는 쪽
   if (c.ans && !oxJudged[key] && (key in oxSide)){ oxJudged[key] = 1; const mine = oxMine();
     if (mine && mine.alive){ const side = oxSide[key];
       if (side === c.ans){ toast(`⭕ 정답은 ${c.ans}! 살아남았어요`); setExpr('happy', 2000); }
@@ -6826,7 +6830,7 @@ function oxBar(){
   if (!show){ if (el && !el.hidden){ el.hidden = true; oxBarSig = ''; } return; }
   if (!el){ el = document.createElement('div'); el.id = 'oxBar'; document.body.appendChild(el); }
   el.hidden = false;
-  const m = ox.meta, c = ox.cur, now = Date.now() + serverOffset, left = c && c.r && !c.ans ? Math.max(0, Math.ceil((c.endAt - now) / 1000)) : 0, mine = oxMine(), alive = oxAlive().length, all = Object.keys(oxPlayers()).length;
+  const m = ox.meta, c = ox.cur, now = Date.now() + serverOffset, left = c && c.r && !c.ans ? Math.max(0, Math.ceil(oxLeftMs() / 1000)) : 0, mine = oxMine(), alive = oxAlive().length, all = Object.keys(oxPlayers()).length;
   const st = admin ? '' : mine ? (mine.alive ? '<b class="ox-ok">참가 중</b>' : '<b class="ox-out">탈락</b>') : c && c.r > 1 ? '구경 중' : c && c.r === 1 && left ? (oxIn() ? '<b class="ox-ok">판 안 · 참가해요</b>' : '판으로 들어와요!') : '첫 문제를 기다려요';
   const sig = [m.id, c && c.r, c && c.ans, left, alive, all, st].join('|'); if (sig === oxBarSig) return; oxBarSig = sig;
   el.innerHTML = `<div class="ox-h">❓ <b>OX 퀴즈</b><small>상품 ${esc(oxPrizeName(m))}</small></div>
@@ -6963,7 +6967,8 @@ const gbPlayers = () => (fest.gb && fest.gb.players && fest.gb.players[fest.gb.i
 const gbMine = () => gbPlayers()[uid];
 const gbAlive = () => Object.values(gbPlayers()).filter(p => p && p.alive);
 const gbNorm = s => String(s || '').toLowerCase().replace(/[\s.,!?~'"·]/g, '');
-const gbCounting = () => { const c = fest.gb?.cur; return !!(festLive(fest.gb) && c && c.r && !c.ans && fNow() < c.endAt); };
+const gbLeftMs = () => { const g = fest.gb, c = g?.cur; if (!festLive(g) || !c || !c.r || c.ans) return 0; return admin ? c.endAt - fNow() : qLeftMs('gb' + g.id + c.r, c.endAt, 10000); };
+const gbCounting = () => gbLeftMs() > 0;
 function gbSubmit(){
   const inp = $('gbIn'); if (!inp) return; const a = inp.value.trim().slice(0, 30); if (!a) return;
   const g = fest.gb, c = g?.cur; if (!gbCounting() || !gbMine()?.alive) return toast('지금은 정답을 낼 수 없어요');
@@ -6996,7 +7001,7 @@ function festTick(){
   if (admin){
     // 골든벨: 시간이 끝나면 오투모 화면이 채점해요
     const g = fest.gb, c = g?.cur;
-    if (festLive(g) && c && c.r && !c.ans && admFest.gbR === c.r && admFest.gbAns && now > c.endAt + 1500 && !festTick.gbBusy){
+    if (festLive(g) && c && c.r && !c.ans && admFest.gbR === c.r && admFest.gbAns && now > c.endAt + 3500 && !festTick.gbBusy){
       festTick.gbBusy = true; const ok = admFest.gbAns.split('/').map(gbNorm).filter(Boolean), upd = {'gb/cur/ans': admFest.gbAns}; let alive = 0;
       for (const [u, p] of Object.entries(gbPlayers())){ if (!p || !p.alive) continue; const right = p.ar === c.r && ok.includes(gbNorm(p.a)); if (!right) upd[`gb/players/${g.id}/${u}/alive`] = false; else alive++; }
       net.festSet(upd).then(()=>toast(`${c.r}번 채점 끝 · 살아남은 ${alive}명`)).catch(()=>{}).finally(()=>setTimeout(()=>{ festTick.gbBusy = false; }, 1500));
@@ -7006,8 +7011,10 @@ function festTick(){
   }
   if (!me) return;
   const g = fest.gb, c = g?.cur;
-  if (festLive(g) && c && c.r === 1 && !c.ans && now < c.endAt && zoneId === 'fest' && !gbMine() && !festTick.joining){ festTick.joining = true; net.gbJoin(g.id, {nick:String(me.nick).slice(0, 16), alive:true}).catch(()=>{}).finally(()=>{ festTick.joining = false; }); }
+  if (festLive(g) && c && c.r === 1 && gbCounting() && zoneId === 'fest' && !gbMine() && !festTick.joining){ festTick.joining = true; net.gbJoin(g.id, {nick:String(me.nick).slice(0, 16), alive:true}).catch(()=>{}).finally(()=>{ festTick.joining = false; }); }
   if (festLive(g) && c && c.ans && festSeen.gbj !== g.id + c.r && gbMine()){ festSeen.gbj = g.id + c.r; const m = gbMine(); toast(m.alive ? `⭕ 정답은 "${c.ans}"! 살아남았어요` : `❌ 정답은 "${c.ans}" · 탈락했어요`); }
+  // 골든벨: 적어 놓고 [제출]을 안 눌렀으면 시간 끝나기 직전에 저절로 내요
+  if (gbCounting() && gbLeftMs() < 400 && $('gbIn')?.value.trim() && festSeen.gbauto !== g.id + c.r){ festSeen.gbauto = g.id + c.r; gbSubmit(); }
   // 보물: 가까이 가면 주워요
   if (huntVisible() && !festTick.claiming) for (const [tid, it] of huntItems()){
     if (it.z === zoneId && Math.hypot(pos.x - it.x, pos.y - it.y) < 46){ festTick.claiming = true;
@@ -7020,7 +7027,7 @@ function festBar(){
   const g = fest.gb, c = g?.cur, hu = fest.hunt, rp = fest.rps, sy = fest.sync, fi = fest.fish, here = zoneId === 'fest';
   if (!admin && me){
     if (festLive(g) && (here || gbMine())){
-      const m = gbMine(), left = c && c.r && !c.ans ? Math.max(0, Math.ceil((c.endAt - now)/1000)) : 0, st = m ? (m.alive ? '<b class="ox-ok">참가 중</b>' : '<b class="ox-out">탈락</b>') : c && c.r > 1 ? '구경 중' : '첫 문제 때 축제장에 있으면 참가해요';
+      const m = gbMine(), left = c && c.r && !c.ans ? Math.max(0, Math.ceil(gbLeftMs()/1000)) : 0, st = m ? (m.alive ? '<b class="ox-ok">참가 중</b>' : '<b class="ox-out">탈락</b>') : c && c.r > 1 ? '구경 중' : '첫 문제 때 축제장에 있으면 참가해요';
       const mine = m && m.ar === c?.r && m.a ? ` · 낸 답: <b>${esc(m.a)}</b>` : '';
       rows.push(['gb', `<div class="ox-h">🔔 <b>도전 골든벨</b><small>상품 ${esc(prizeName(g.meta))}</small></div>${c && c.r ? `<div class="ox-q"><span>${c.r}번</span>${esc(c.q || '')}</div>` : '<div class="ox-q">곧 첫 문제가 나와요</div>'}
         <div class="ox-f">${c && c.r ? (c.ans ? `정답 <b class="ox-a">${esc(c.ans)}</b>` : left ? `<b class="ox-t">${left}</b>초${mine}` : '채점 중…') : ''}<span>남은 사람 ${gbAlive().length}</span><span>${st}</span></div>
@@ -7201,6 +7208,7 @@ function adminFestSec(){
     else { const rk = fishRank(); h += `<small>상품 ${esc(prizeName(fi.meta))} · 기록 ${rk.length}명</small>${rk.slice(0, 8).map(([, b], i) => `<small>${i+1}등 ${esc(b.nick)} · ${esc(FISH[b.fid]?.name || '')} ${b.size} cm</small>`).join('')}<button data-a="fiend" class="adm-btn">끝내고 1등에게 상품</button><button data-a="ficancel" class="adm-btn warn">취소</button>`; } }
   return h + '</div>';
 }
+function adminRpsReveal(){ adminFestClick({dataset:{a:'rpreveal_'}}); }
 function adminFestClick(b){
   const a = b.dataset.a, fail = () => toast('하지 못했어요'), now = fNow();
   if (a === 'festopen'){ if (confirm('핑크 축제장을 열까요? 모두 들어갈 수 있게 돼요')) Promise.resolve(net.setWorld({festOpen:true, festAt:now})).then(()=>toast('축제장을 열었어요')).catch(fail); }
@@ -7228,7 +7236,8 @@ function adminFestClick(b){
   else if (a === 'rpdraw'){ const ids = Object.keys(fest.rps?.players || {}).sort(() => Math.random() - .5); if (ids.length < 2) return; const ms = []; for (let i = 0; i < ids.length; i += 2) ms.push({a:ids[i], b:ids[i+1] || '', w: ids[i+1] ? '' : ids[i]});
     net.festSet({'rps/rounds': {1: ms}, 'rps/round':1, 'rps/phase':'ready', 'rps/picks':null}).then(()=>toast('대진표를 만들었어요')).catch(fail); }
   else if (a === 'rppick') net.festSet({'rps/phase':'pick', 'rps/picks':null}).then(()=>toast('가위바위...! 모두 고르는 중')).catch(fail);
-  else if (a === 'rpreveal'){ const rp = fest.rps, r = rp.round, picks = rp.picks || {}, ms = (rpsRound()).map(m => { if (!m || m.w) return m; const pa = picks[m.a], pb = picks[m.b]; let w = '';
+  else if (a === 'rpreveal'){ if (festTick.revealing) return; festTick.revealing = true; toast('보!...'); setTimeout(()=>{ festTick.revealing = false; adminRpsReveal(); }, 1000); }
+  else if (a === 'rpreveal_'){ const rp = fest.rps, r = rp.round, picks = rp.picks || {}, ms = (rpsRound()).map(m => { if (!m || m.w) return m; const pa = picks[m.a], pb = picks[m.b]; let w = '';
       if (pa && !pb) w = m.a; else if (pb && !pa) w = m.b; else if (pa && pb && pa !== pb) w = rpsBeats(pa, pb) ? m.a : m.b; return {...m, w, d:(m.d || 0) + (w ? 0 : 1)}; });
     net.festSet({['rps/rounds/' + r]: ms, 'rps/phase':'reveal'}).then(()=>toast('보! 결과를 공개했어요')).catch(fail); }
   else if (a === 'rpnext'){ const rp = fest.rps, wins = rpsRound().filter(m => m && m.w).map(m => m.w);
@@ -7241,7 +7250,8 @@ function adminFestClick(b){
   else if (a === 'sygo'){ const m = prizeOf(admFest.fsyK, admFest.fsyN); if (!confirm(`상품 ${prizeName(m)} · 오투모와 동심일체 참가를 받을까요?`)) return; admFest.syPose = -1; net.festSet({sync:{id:festNewId('s'), meta:m, at:now, phase:'join', r:0}}).then(()=>toast('참가를 받고 있어요')).catch(fail); }
   else if (a === 'systart'){ admFest.syPose = -1; net.festSet({'sync/phase':'pick', 'sync/r': (fest.sync.r || 0) + 1, 'sync/picks':null, 'sync/ans':null, 'sync/note':null}).then(()=>toast('포즈를 고르는 중!')).catch(fail); }
   else if (a === 'sypose'){ admFest.syPose = +b.dataset.t; renderAdmin(); }
-  else if (a === 'syreveal'){ const sy = fest.sync, ans = admFest.syPose; if (ans < 0) return; const picks = sy.picks || {}, alive = syAlive(), hit = alive.filter(([u]) => picks[u] === ans), upd = {'sync/phase':'reveal', 'sync/ans':ans};
+  else if (a === 'syreveal'){ if (admFest.syPose < 0 || festTick.revealing) return; festTick.revealing = true; toast('공개!...'); setTimeout(()=>{ festTick.revealing = false; adminFestClick({dataset:{a:'syreveal_'}}); }, 1000); }
+  else if (a === 'syreveal_'){ const sy = fest.sync, ans = admFest.syPose; if (ans < 0) return; const picks = sy.picks || {}, alive = syAlive(), hit = alive.filter(([u]) => picks[u] === ans), upd = {'sync/phase':'reveal', 'sync/ans':ans};
     if (!hit.length) upd['sync/note'] = '아무도 못 맞혀서 모두 살아남아요';
     else { for (const [u] of alive) if (picks[u] !== ans) upd[`sync/players/${u}/alive`] = false; upd['sync/note'] = `${hit.length}명 통과`; }
     net.festSet(upd).then(()=>toast(`공개! ${upd['sync/note']}`)).catch(fail); }

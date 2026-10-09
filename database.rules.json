@@ -331,11 +331,11 @@
               ".write": "auth != null && auth.uid === $uid && !data.exists() && $id === root.child('fest/gb/id').val() && !root.child('fest/gb/done').exists() && !root.child('fest/gb/cancel').exists() && root.child('fest/gb/cur/r').val() === 1 && now <= root.child('fest/gb/cur/endAt').val() + 3000 && newData.child('alive').val() === true",
               ".validate": "newData.hasChildren(['nick','alive']) && newData.child('nick').isString() && newData.child('nick').val().length <= 16",
               "a": {
-                ".write": "auth != null && auth.uid === $uid && data.parent().child('alive').val() === true && $id === root.child('fest/gb/id').val() && !root.child('fest/gb/cur/ans').exists() && now <= root.child('fest/gb/cur/endAt').val() + 1000",
+                ".write": "auth != null && auth.uid === $uid && data.parent().child('alive').val() === true && $id === root.child('fest/gb/id').val() && !root.child('fest/gb/cur/ans').exists() && now <= root.child('fest/gb/cur/endAt').val() + 3000",
                 ".validate": "newData.isString() && newData.val().length <= 30"
               },
               "ar": {
-                ".write": "auth != null && auth.uid === $uid && data.parent().child('alive').val() === true && $id === root.child('fest/gb/id').val() && now <= root.child('fest/gb/cur/endAt').val() + 1000",
+                ".write": "auth != null && auth.uid === $uid && data.parent().child('alive').val() === true && $id === root.child('fest/gb/id').val() && now <= root.child('fest/gb/cur/endAt').val() + 3000",
                 ".validate": "newData.val() === root.child('fest/gb/cur/r').val()"
               }
             }
