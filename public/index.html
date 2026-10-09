@@ -1324,7 +1324,7 @@ function soloNet(){
     mcJoin: nick => net.festSet({['mc/players/' + uid]: {nick, alive:true}}),
     tcPress: v => net.festSet({['tc/presses/' + uid]: v}),
     bombJoin: nick => net.festSet({['bomb/players/' + uid]: {nick, alive:true}}),
-    bombPass: to => net.festSet({'bomb/holder':to, 'bomb/prev':uid, 'bomb/passAt':Date.now()}),
+    bombRef: (to, from) => net.festSet({'bomb/holder':to, 'bomb/prev':from, 'bomb/passAt':Date.now()}),
     mcSet: v => net.festSet(Object.fromEntries(Object.entries(v).map(([k, x]) => ['mc/players/' + uid + '/' + k, x]))),
     mcSit: async (cid, nick) => { const c = soloNet.fest?.mc?.cushions?.[cid]; if (!c || c.by) return false; await net.festSet({[`mc/cushions/${cid}/by`]: uid, [`mc/cushions/${cid}/nick`]: nick}); return true; },
     mgSet: v => net.festSet(Object.fromEntries(Object.entries(v).map(([k, x]) => ['mg/players/' + uid + '/' + k, x]))),
@@ -1483,7 +1483,7 @@ function firebaseNet(){
     mcJoin: nick => F.set(F.ref(db, 'fest/mc/players/' + uid), {nick, alive:true}),
     tcPress: v => F.set(F.ref(db, 'fest/tc/presses/' + uid), v),
     bombJoin: nick => F.set(F.ref(db, 'fest/bomb/players/' + uid), {nick, alive:true}),
-    bombPass: to => F.update(F.ref(db, 'fest/bomb'), {holder:to, prev:uid, passAt:F.serverTimestamp()}),
+    bombRef: (to, from) => F.update(F.ref(db, 'fest/bomb'), {holder:to, prev:from, passAt:F.serverTimestamp()}),
     mcSet: v => F.update(F.ref(db, 'fest/mc/players/' + uid), v),
     mcSit: async (cid, nick) => { try { const r = await F.runTransaction(F.ref(db, 'fest/mc/cushions/' + cid), cur => (cur && !cur.by) ? {...cur, by:uid, nick} : undefined, {applyLocally:false}); return !!(r.committed && r.snapshot.val()?.by === uid); } catch(e){ return false; } },
     mgSet: v => F.update(F.ref(db, 'fest/mg/players/' + uid), v),
@@ -7041,6 +7041,7 @@ function festTick(){
       for (const [u, p] of Object.entries(gbPlayers())){ if (!p || !p.alive) continue; const right = p.ar === c.r && ok.includes(gbNorm(p.a)); if (!right) upd[`gb/players/${g.id}/${u}/alive`] = false; else alive++; }
       net.festSet(upd).then(()=>toast(`${c.r}번 채점 끝 · 살아남은 ${alive}명`)).catch(()=>{}).finally(()=>setTimeout(()=>{ festTick.gbBusy = false; }, 1500));
     }
+    bbReferee();
     { const b = fest.bomb; if (festLive(b) && b.phase === 'play' && admFest.bbAt && now >= admFest.bbAt && !festTick.boom){ festTick.boom = true; adminFestClick({dataset:{a:'bbboom'}}); setTimeout(()=>{ festTick.boom = false; }, 1500); } if (festLive(b) && b.phase === 'play' && admFest.tab === 'bomb' && Math.floor(now/1000) !== festTick.bbS){ festTick.bbS = Math.floor(now/1000); renderAdmin(); } }
     const ph = [c && c.r, c && c.ans, c && now < c.endAt].join('|'); if (festTick.ph !== ph){ festTick.ph = ph; renderAdmin(); }
     return;
@@ -7418,8 +7419,8 @@ const BB_C = {x:1100, y:740}, BB_RX = 360, BB_RY = 190, BB_FAST = 1.1;
 const bbPlayers = () => fest.bomb?.players || {};
 const bbAlive = () => Object.entries(bbPlayers()).filter(([, p]) => p && p.alive);
 const bbMine = () => bbPlayers()[uid];
-let bbLocalHolder = null, bbGotAt = 0; // 내가 넘긴 직후엔 서버 답을 기다리지 않고 바로 '안 가짐'으로 봐요
-const bbHolder = () => bbLocalHolder && bbLocalHolder.key === fest.bomb?.passAt ? bbLocalHolder.h : fest.bomb?.holder;
+let bbGotAt = 0;
+const bbHolder = () => fest.bomb?.holder;
 const bbIHold = () => festLive(fest.bomb) && fest.bomb.phase === 'play' && bbHolder() === uid;
 const bbFenced = () => !admin && zoneId === 'fest' && festLive(fest.bomb) && ['ready','play','boom'].includes(fest.bomb.phase) && bbMine()?.alive;
 const bbOut = (x, y) => Math.hypot((x - BB_C.x)/BB_RX, (y - BB_C.y)/BB_RY) > 1;
@@ -7427,11 +7428,19 @@ function bbTick(){
   const g = fest.bomb, m = bbMine(); if (!festLive(g) || !m || !m.alive || zoneId !== 'fest') return;
   if (g.readyAt && bbTick.ready !== g.id + g.readyAt){ bbTick.ready = g.id + g.readyAt; target = null; const a = Math.random()*Math.PI*2, r = .3 + Math.random()*.55; pos.x = BB_C.x + Math.cos(a)*BB_RX*r; pos.y = BB_C.y + Math.sin(a)*BB_RY*r; toast('💣 둥근 필드에 들어왔어요! 폭탄을 가진 사람을 피해요'); return; }
   if (bbOut(pos.x, pos.y)){ const a = Math.atan2((pos.y - BB_C.y)/BB_RY, (pos.x - BB_C.x)/BB_RX); pos.x = BB_C.x + Math.cos(a)*BB_RX*.97; pos.y = BB_C.y + Math.sin(a)*BB_RY*.97; }
-  if (g.holder === uid && bbTick.got !== g.passAt){ bbTick.got = g.passAt; bbGotAt = performance.now(); if (g.prev && g.prev !== uid) toast('💣 폭탄을 받았어요! 다른 사람을 터치해서 넘겨요'); }
-  if (!bbIHold() || bbTick.passing || performance.now() - bbGotAt < 700) return; // 받자마자 바로 되넘기기는 못 해요
-  for (const [id, o] of others){ if (o.z !== 'fest' || !bbPlayers()[id]?.alive || id === g.prev && performance.now() - bbGotAt < 1500) continue;
-    if (Math.hypot(pos.x - o.x, pos.y - o.y) < 34){ bbTick.passing = true; bbLocalHolder = {key:g.passAt, h:id};
-      net.bombPass(id).then(()=>toast(`💣 ${bbPlayers()[id]?.nick || ''} 님에게 넘겼어요!`)).catch(()=>{ bbLocalHolder = null; }).finally(()=>setTimeout(()=>{ bbTick.passing = false; }, 400)); break; } }
+  if (g.passAt && bbTick.got !== g.passAt){ bbTick.got = g.passAt; bbGotAt = performance.now(); if (g.holder === uid && g.prev && g.prev !== uid) toast('💣 폭탄을 받았어요! 다른 사람을 터치해서 넘겨요'); else if (g.prev === uid) toast(`💣 ${bbPlayers()[g.holder]?.nick || ''} 님에게 넘겼어요!`); }
+  // 넘기기 판정은 오투모 화면 하나가 모두의 위치를 같은 기준으로 보고 정해요 (bbReferee)
+}
+// 심판: 오투모 화면이 폭탄 가진 사람과 다른 참가자의 거리를 재서 닿으면 넘겨요 (모두에게 같은 판정)
+const BB_TOUCH = 44;
+function bbReferee(){
+  const g = fest.bomb; if (!festLive(g) || g.phase !== 'play' || !g.holder) return;
+  const t = performance.now(); if (bbReferee.h !== g.holder){ bbReferee.h = g.holder; bbReferee.at = t; }
+  if (bbReferee.busy || t - bbReferee.at < 700) return; // 받자마자 바로 넘기기는 못 해요
+  const ho = others.get(g.holder); if (!ho || ho.z !== 'fest') return;
+  for (const [id, o] of others){ if (id === g.holder || o.z !== 'fest' || !bbPlayers()[id]?.alive) continue; if (id === g.prev && t - bbReferee.at < 1500) continue; // 넘겨준 사람에게 바로 되넘기기 금지
+    if (Math.hypot(ho.x - o.x, ho.y - o.y) < BB_TOUCH){ bbReferee.busy = true; const from = g.holder;
+      net.bombRef(id, from).catch(()=>{}).finally(()=>setTimeout(()=>{ bbReferee.busy = false; }, 300)); break; } }
 }
 function drawBombStuff(c, t){
   const g = fest.bomb; if (!festLive(g) || zoneId !== 'fest') return; const d = painter(c);
@@ -7505,7 +7514,7 @@ function adminFestSec(){
       h += g.phase === 'ready' ? `<button data-a="tcstart" class="adm-btn">시작! (3·2·1)</button>` : `<button data-a="tcend" class="adm-btn">결과 발표</button><button data-a="tcagain" class="adm-btn">같은 목표로 한 판 더</button>`;
       h += `<button data-a="tccancel" class="adm-btn warn">취소</button>`; } }
   if (t === 'bomb'){ const g = fest.bomb;
-    if (!festLive(g)) h += `<small>광장의 둥근 필드 안에서만 움직여요 · 폭탄을 가진 사람은 10% 빨라지고, 터치하면 넘겨요 · 오투모가 몰래 정한 시간에 펑! 가진 사람이 탈락</small>${prizeInputs('fbbK','fbbN')}<button data-a="bbgo" class="adm-btn">참가 받기 시작</button>`;
+    if (!festLive(g)) h += `<small>광장의 둥근 필드 안에서만 움직여요 · 폭탄을 가진 사람은 10% 빨라지고, 터치하면 넘겨요 (닿았는지는 이 오투모 화면이 심판) · 오투모가 몰래 정한 시간에 펑! 가진 사람이 탈락</small>${prizeInputs('fbbK','fbbN')}<button data-a="bbgo" class="adm-btn">참가 받기 시작</button>`;
     else { const pl = Object.entries(bbPlayers()), alive = bbAlive(), left = admFest.bbAt ? Math.max(0, Math.ceil((admFest.bbAt - now)/1000)) : 0;
       h += `<small>상품 ${esc(prizeName(g.meta))} · 참가 ${pl.length}명 · 남은 ${alive.length}명${g.round ? ' · ' + g.round + '판' : ''}</small><small>🙂 ${alive.map(([u, p]) => esc(p.nick) + (u === g.holder && g.phase === 'play' ? '💣' : '')).join(', ') || '-'}</small>`;
       if (g.phase === 'join') h += `<button data-a="bbready" class="adm-btn" ${pl.length >= 2 ? '' : 'disabled'}>필드로 모으기</button>`;
