@@ -6050,7 +6050,6 @@ function renderAdmin(){
       ${adminGoalSec()}
       ${adminNightSec()}
       ${adminAucSec()}
-      ${adminOxSec()}
       ${adminFestSec()}
       ${adminMobSec()}
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}
@@ -7118,13 +7117,38 @@ function festFerris(d, cx, cy, R){ const c = d.ctx;
   for (let i = 0; i < 12; i++){ const a = i*Math.PI/6, x = cx + Math.cos(a)*R, y = cy + Math.sin(a)*R; d.rr(x - 15, y + 2, 30, 24, 9, cols[i % 6]); d.rr(x - 10, y + 6, 20, 9, 4, '#fffaf2'); d.dot(x, y, 3, '#9a8a94'); }
   d.circle(cx, cy, 18, '#ffd35c'); d.circle(cx, cy, 8, '#fff3c4');
 }
-function festTent(d, x, gy, col, label){ const c = d.ctx;
-  d.rr(x - 90, gy - 70, 180, 70, 10, '#fffaf2'); d.rr(x - 80, gy - 62, 160, 22, 6, '#f6ead2');
-  for (let i = 0; i < 6; i++){ const sw = 200/6, sx = x - 100 + i*sw; d.shape(()=>{ c.beginPath(); c.moveTo(sx, gy - 150); c.lineTo(sx + sw, gy - 150); c.lineTo(sx + sw, gy - 120); c.arc(sx + sw/2, gy - 120, sw/2, 0, Math.PI); c.closePath(); }, i % 2 ? '#fffaf2' : col, [sx + sw/2, gy - 132, sw/2]); }
-  d.shape(()=>{ c.beginPath(); c.moveTo(x - 104, gy - 150); c.lineTo(x, gy - 210); c.lineTo(x + 104, gy - 150); c.closePath(); }, col, [x, gy - 170, 90]);
-  d.rr(x - 96, gy - 150, 8, 82, 4, '#c98e5b'); d.rr(x + 88, gy - 150, 8, 82, 4, '#c98e5b');
-  d.rr(x - 60, gy - 238, 120, 30, 15, '#fffaf2'); c.font = 'bold 18px "Maple",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#e2486a'; c.fillText(label, x, gy - 222); c.textBaseline = 'alphabetic';
+// 귀여운 꾸밈들
+function festHeartArch(d, x, gy){ const c = d.ctx;
+  d.rr(x - 92, gy - 150, 16, 150, 8, '#ffb3cd'); d.rr(x + 76, gy - 150, 16, 150, 8, '#ffb3cd');
+  c.save(); c.translate(x, gy - 190); c.lineWidth = 16; c.strokeStyle = '#ff8fb6'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(0, 50); c.bezierCurveTo(-120, -20, -60, -110, 0, -50); c.bezierCurveTo(60, -110, 120, -20, 0, 50); c.stroke(); c.restore();
+  const cols = ['#fffaf2','#ffe066','#c9a6ff','#ffffff','#ffb3cd'];
+  for (let i = 0; i < 18; i++){ const t = i/18*Math.PI*2, hx = 16*Math.pow(Math.sin(t), 3), hy = -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)); d.dot(x + hx*5.4, gy - 200 + hy*5.4, 7, cols[i % 5]); d.dot(x + hx*5.4, gy - 200 + hy*5.4, 2.6, '#ffd35c'); }
+  d.rr(x - 50, gy - 40, 100, 30, 15, '#fffaf2'); c.font = 'bold 18px "Maple",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#e2486a'; c.fillText('💕 포토존', x, gy - 25); c.textBaseline = 'alphabetic';
 }
+function festBear(d, x, gy){ const b = '#d9a87a', l = '#f3d9bc';
+  d.ell(x, gy - 40, 62, 50, b); d.ell(x, gy - 34, 36, 32, l); d.ell(x - 52, gy - 10, 22, 16, b); d.ell(x + 52, gy - 10, 22, 16, b); d.ell(x - 52, gy - 8, 11, 8, l); d.ell(x + 52, gy - 8, 11, 8, l);
+  d.ell(x - 58, gy - 64, 16, 26, b); d.ell(x + 58, gy - 64, 16, 26, b);
+  for (const sx of [-1, 1]) d.circle(x + sx*44, gy - 158, 20, b), d.circle(x + sx*44, gy - 158, 10, l);
+  d.circle(x, gy - 118, 54, b); d.ell(x, gy - 104, 24, 18, l); d.ell(x, gy - 112, 7, 5, '#5a3a44');
+  d.dot(x - 20, gy - 128, 5, '#3a2430'); d.dot(x + 20, gy - 128, 5, '#3a2430'); d.dot(x - 34, gy - 110, 8, '#ffb3c6', .7); d.dot(x + 34, gy - 110, 8, '#ffb3c6', .7);
+  d.ell(x - 14, gy - 72, 13, 9, '#ff8fb6'); d.ell(x + 14, gy - 72, 13, 9, '#ff8fb6'); d.circle(x, gy - 72, 6, '#f2759b');
+}
+function festGifts(d, x, gy){ const list = [[-50, 0, 70, 56, '#7cc8ff', '#ffe066'], [26, 0, 60, 48, '#ff8fb6', '#fffaf2'], [-14, -50, 54, 46, '#9fe0b0', '#ff8fb6'], [44, -44, 36, 32, '#ffd35c', '#c9a6ff']];
+  for (const [dx, dy, w, h, col, rib] of list){ const bx = x + dx - w/2, by = gy + dy - h; d.rr(bx, by, w, h, 6, col); d.rr(bx + w/2 - 5, by, 10, h, 3, rib); d.rr(bx, by + h*.38, w, 9, 3, rib); d.ell(bx + w/2 - 9, by - 4, 10, 7, rib); d.ell(bx + w/2 + 9, by - 4, 10, 7, rib); }
+}
+function festRainbow(d, x, gy){ const c = d.ctx, cols = ['#ff8f9a','#ffb36b','#ffe070','#8fd68a','#7cbcff','#b49bff'];
+  c.save(); c.lineCap = 'round'; cols.forEach((col, i) => { c.strokeStyle = col; c.lineWidth = 14; c.beginPath(); c.arc(x, gy - 10, 150 - i*14, Math.PI, 0); c.stroke(); }); c.restore();
+  for (const sx of [-1, 1]){ const cx = x + sx*120; d.circle(cx - 28, gy - 14, 26, '#ffffff'); d.circle(cx, gy - 30, 34, '#ffffff'); d.circle(cx + 30, gy - 14, 26, '#ffffff'); d.rr(cx - 52, gy - 22, 104, 26, 13, '#ffffff'); }
+}
+function festCupcake(d, x, gy, col){ const c = d.ctx;
+  d.shape(()=>{ c.beginPath(); c.moveTo(x - 46, gy - 70); c.lineTo(x + 46, gy - 70); c.lineTo(x + 34, gy); c.lineTo(x - 34, gy); c.closePath(); }, '#f3c27a', [x, gy - 35, 46]);
+  for (let i = -3; i <= 3; i++) d.rr(x + i*12 - 2, gy - 66, 4, 62, 2, '#e0a85e');
+  d.circle(x - 30, gy - 82, 24, col); d.circle(x + 30, gy - 82, 24, col); d.circle(x, gy - 100, 32, col); d.circle(x, gy - 126, 20, col);
+  for (const [dx, dy, k] of [[-22, -90, '#7cc8ff'], [16, -104, '#ffe066'], [-6, -118, '#9fe0b0'], [28, -84, '#c9a6ff'], [-30, -76, '#ffffff']]) d.rr(x + dx - 4, gy + dy - 2, 8, 4, 2, k);
+  d.circle(x + 4, gy - 150, 11, '#e8364f'); d.dot(x + 1, gy - 153, 3, '#fff', .7);
+}
+function festLolli(d, x, gy, col){ d.rr(x - 3, gy - 110, 6, 110, 3, '#fffaf2'); d.circle(x, gy - 124, 30, col); d.ctx.save(); d.ctx.strokeStyle = 'rgba(255,255,255,.85)'; d.ctx.lineWidth = 5; d.ctx.beginPath(); for (let a = 0; a < 12; a += .2){ const r = a*2.4; d.ctx.lineTo(x + Math.cos(a)*r, gy - 124 + Math.sin(a)*r); } d.ctx.stroke(); d.ctx.restore(); }
+function festCane(d, x, gy){ const c = d.ctx; c.save(); c.lineCap = 'round'; for (const [w, k] of [[14, '#ffffff'], [14, '#e8364f']]){ c.strokeStyle = k; c.lineWidth = w; if (k !== '#ffffff') c.setLineDash([10, 12]); c.beginPath(); c.moveTo(x, gy); c.lineTo(x, gy - 100); c.arc(x + 18, gy - 100, 18, Math.PI, 0); c.stroke(); c.setLineDash([]); } c.restore(); }
 function festBunting(d, x0, x1, y, sag){ const c = d.ctx, cols = ['#ff8fb6','#ffd35c','#7cc8ff','#9fe0b0','#c9a6ff'];
   c.save(); c.strokeStyle = '#9a6a45'; c.lineWidth = 2; c.beginPath(); c.moveTo(x0, y); c.quadraticCurveTo((x0 + x1)/2, y + sag*2, x1, y); c.stroke(); c.restore();
   const n = Math.floor((x1 - x0)/46); for (let i = 1; i < n; i++){ const t = i/n, x = x0 + (x1 - x0)*t, yy = y + sag*4*t*(1 - t); d.tri([[x - 14, yy], [x, yy + 26], [x + 14, yy]], cols[i % 5]); }
@@ -7150,7 +7174,11 @@ function drawFestTop(c, d){
   for (let i = 0; i < 6; i++) d.tri([[mx - 170 + i*57, my - 132], [mx - 141 + i*57, my - 104], [mx - 113 + i*57, my - 132]], i % 2 ? '#fffaf2' : '#ff8fb6');
   d.circle(mx, my - 232, 12, '#ffd35c');
   // 노점 천막
-  festTent(d, 420, 1180, '#ff8fb6', '솜사탕'); festTent(d, 760, 1290, '#7cc8ff', '츄러스'); festTent(d, 1100, 1240, '#9fe0b0', '풍선 다트'); festTent(d, 1440, 1290, '#ffd35c', '구슬 뽑기');
+  festHeartArch(d, 420, 1220); festBear(d, 780, 1330); festRainbow(d, 1110, 1330); festGifts(d, 1440, 1330);
+  festCupcake(d, 620, 1080, '#ffc4d6'); festCupcake(d, 1580, 1060, '#d9c8f5'); festGifts(d, 170, 1180);
+  for (const [x, gy, col] of [[1960, 300, '#ff8fb6'], [2040, 360, '#7cc8ff'], [1900, 900, '#ffd35c'], [640, 600, '#9fe0b0'], [1560, 640, '#c9a6ff']]) festLolli(d, x, gy, col);
+  for (const [x, gy] of [[700, 900], [1500, 900], [880, 520], [1320, 520]]) festCane(d, x, gy);
+  for (let i = 0; i < 26; i++){ const x = 80 + (i*97) % 2050, y = 1500 + (i*37) % 70; d.dot(x, y, 4, ['#fff3a0','#ffb3cd','#9fd8ff'][i % 3], .8); }
   // 입구 아치
   const gx = 120, gy = 800; d.rr(gx - 14, gy - 190, 24, 150, 10, '#ff8fb6'); d.rr(gx - 14, gy + 50, 24, 150, 10, '#ff8fb6');
   // 풍선 다발
@@ -7162,17 +7190,20 @@ function drawFestTop(c, d){
 }
 function festObstacles(o){
   o.rects.push({x:740, y:190, w:720, h:240}); o.circles.push({x:330, y:640, r:90}); o.rects.push({x:1660, y:430, w:320, h:170});
-  for (const [x, gy] of [[420,1180],[760,1290],[1100,1240],[1440,1290]]) o.rects.push({x:x - 100, y:gy - 80, w:200, h:80});
+  o.rects.push({x:330, y:1150, w:180, h:70}); o.ells.push({x:780, y:1300, rx:80, ry:40}); o.rects.push({x:930, y:1290, w:360, h:50}); o.rects.push({x:1380, y:1290, w:120, h:40}); o.rects.push({x:110, y:1140, w:120, h:40});
+  for (const [x, gy] of [[620, 1080], [1580, 1060]]) o.ells.push({x, y:gy - 20, rx:40, ry:22});
+  for (const [x, gy] of [[1960, 300], [2040, 360], [1900, 900], [640, 600], [1560, 640], [700, 900], [1500, 900], [880, 520], [1320, 520]]) o.circles.push({x, y:gy - 4, r:10});
 }
 
 // ----- 오투모 축제 관리 -----
-const admFest = {tab:'gb', fgbK:'gold', fgbN:'10000', fgbQ:'', fgbA:'', gbR:0, gbAns:'', fhuK:'gold', fhuN:'5000', frpK:'gold', frpN:'20000', fsyK:'gold', fsyN:'10000', ffiK:'gold', ffiN:'10000', syPose:-1};
+const admFest = {tab:'ox', fgbK:'gold', fgbN:'10000', fgbQ:'', fgbA:'', gbR:0, gbAns:'', fhuK:'gold', fhuN:'5000', frpK:'gold', frpN:'20000', fsyK:'gold', fsyN:'10000', ffiK:'gold', ffiN:'10000', syPose:-1};
 function adminFestSec(){
-  const open = festOpen(), tabs = [['gb','🔔 골든벨'],['hunt','💎 보물찾기'],['rps','✊ 가위바위보'],['sync','🤖 동심일체'],['fish','🎣 낚시']];
+  const open = festOpen(), tabs = [['ox','❓ OX 퀴즈'],['gb','🔔 골든벨'],['hunt','💎 보물찾기'],['rps','✊ 가위바위보'],['sync','🤖 동심일체'],['fish','🎣 낚시']];
   let h = `<div class="adm-sec adm-auc"><b>🎪 핑크 축제장 ${open ? '<span class="adm-on">열림</span>' : '· 닫힘 (들어갈 수 없어요)'}</b>
     <button data-a="${open ? 'festclose' : 'festopen'}" class="adm-btn${open ? ' warn' : ''}">${open ? '축제 닫기' : '축제 열기'}</button><button data-a="festgo" class="adm-btn">축제장 보기</button>
     <div class="adm-tabs">${tabs.map(([k, l]) => `<button data-a="ftab" data-t="${k}" class="mini${admFest.tab === k ? ' on' : ''}">${l}</button>`).join('')}</div>`;
   const t = admFest.tab, now = fNow();
+  if (t === 'ox') h += adminOxSec().replace(/^<div class="adm-sec[^"]*">/, '').replace(/<\/div>\s*$/, '');
   if (t === 'gb'){ const g = fest.gb, c = g?.cur;
     if (!festLive(g)) h += `<small>첫 문제 10 초 동안 축제장에 있는 사람이 참가해요 · 정답을 틀리거나 안 적으면 탈락</small>${prizeInputs('fgbK','fgbN')}<button data-a="gbgo" class="adm-btn">골든벨 열기</button>`;
     else { const counting = c && c.r && !c.ans, left = counting ? Math.max(0, Math.ceil((c.endAt - now)/1000)) : 0, alive = gbAlive();
