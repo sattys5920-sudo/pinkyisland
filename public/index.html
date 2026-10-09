@@ -27,6 +27,7 @@ html,body{height:100%;overscroll-behavior:none;-webkit-tap-highlight-color:trans
 @font-face{font-family:"Dongle";font-weight:600 900;font-display:swap;size-adjust:70%;src:url("fonts/Maplestory_Bold.woff2") format("woff2")}
 @font-face{font-family:"Maple";font-weight:100 500;font-display:swap;src:url("fonts/Maplestory_Light.woff2") format("woff2")}
 @font-face{font-family:"Maple";font-weight:600 900;font-display:swap;src:url("fonts/Maplestory_Bold.woff2") format("woff2")}
+@font-face{font-family:"HoodHand";font-weight:100 900;font-display:swap;src:url("fonts/HoodHand.woff2") format("woff2")} /* 단체 후드티 가슴 글씨: 개구쟁이체 Bold (OFL) 12 글자만 */
 body{margin:0;background:var(--sea);color:var(--ink);font:700 21px/1.15 "Dongle",system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 #kicked{position:fixed;inset:0;z-index:50;background:rgba(60,30,50,.45);display:grid;place-items:center;padding:16px}#kicked .pill{max-width:340px;padding:18px 20px;text-align:center}#kicked b{font-size:24px}#kicked p{font-size:18px;color:var(--soft)}
 #game{position:fixed;inset:0;width:100%;height:100%;display:block}
@@ -1648,7 +1649,7 @@ function jukePanel(){
 document.addEventListener('visibilitychange', ()=>{ if (!jukeOn) return; if (document.visibilityState==='hidden') juke.pause(); else juke.resume(); });
 async function logout(){ if (solo) return toast('혼자 보기 모드에서는 로그아웃이 없어요'); if (saveTimer) await flushSave(); try { if (net && net.presenceLeave) await net.presenceLeave(); } catch(e){} try { await F.signOut(F.getAuth(app)); } catch(e){} location.reload(); } // 로그아웃 전에 접속 표시를 지워요 (나간 뒤엔 권한이 없어서 못 지워요)
 // 글꼴이 다 내려받히기 전에 그린 캔버스(지형·스프라이트)는 기본 글꼴로 굳어 버려요. 먼저 기다리고, 늦게 오면 캐시를 지워 다시 그려요.
-const fontReady = (async()=>{ try { await Promise.race([document.fonts.load('700 20px "Dongle"', '핑키 디저트 아일랜드 가나다 ABC 123'), new Promise(r=>setTimeout(r, 3000))]); } catch(e){} })();
+const fontReady = (async()=>{ try { document.fonts.load('700 20px "HoodHand"', '꽁솔월걔냥움멍돈영째쭈하').catch(()=>{}); await Promise.race([document.fonts.load('700 20px "Dongle"', '핑키 디저트 아일랜드 가나다 ABC 123'), new Promise(r=>setTimeout(r, 3000))]); } catch(e){} })();
 if (document.fonts) document.fonts.addEventListener('loadingdone', ()=>{ staticSig = ''; spriteCache.clear(); });
 const configured = firebaseConfig && firebaseConfig.apiKey && !String(firebaseConfig.apiKey).startsWith('YOUR');
 if (!configured) solo = true; // 모듈 끝의 디버그 API(__pinky)가 바로 알 수 있게 await 전에 정해요
