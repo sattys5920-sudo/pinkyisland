@@ -702,7 +702,7 @@ export const ACCS = {
   devilwing:{excl:1, name:'작은 악마 날개', price:92000, draw:(d,g)=>{ for (const sx of (g.side?[-1]:[-1,1])){ const ox = g.up ? sx*2.4 : sx*(g.bw/2+1), y = BY+1, k = 1.5; d.shape(c=>{ c.beginPath(); c.moveTo(ox,y); c.quadraticCurveTo(ox+sx*4*k,y-5*k,ox+sx*8*k,y-4.4*k); c.quadraticCurveTo(ox+sx*7.2*k,y-1.4*k,ox+sx*8.2*k,y+.8*k); c.quadraticCurveTo(ox+sx*6*k,y,ox+sx*5.6*k,y+2.6*k); c.quadraticCurveTo(ox+sx*4*k,y+1.4*k,ox+sx*2.6*k,y+3.8*k); c.closePath(); }, '#5a3a6a', [ox+sx*6,y,7]); d.line(k2=>{ k2.moveTo(ox+sx*2,y+.4); k2.lineTo(ox+sx*10,y-4.6); }, '#8a5a9a', .6, .8); } }},
   butterfly:{excl:1, name:'나비 날개', price:128000, draw:(d,g)=>{ for (const sx of (g.side?[-1]:[-1,1])){ const ox = g.up ? sx*1.2 : sx*(g.bw/2+.6), y = BY+2; g.c.save(); g.c.globalAlpha=.92; g.c.translate(ox,y); g.c.rotate(sx*-.35); d.ell(sx*6,-5,6.4,5,'#c9a6ff'); d.ell(sx*4.6,3.4,4.2,3.4,'#9fd8ff'); g.c.restore(); g.c.save(); g.c.translate(ox,y); g.c.rotate(sx*-.35); d.dot(sx*7,-6,1.6,'#fffaf2',.8); d.dot(sx*4.2,-3,.9,'#ffe08a',.9); d.dot(sx*5.2,3.6,1,'#fffaf2',.8); g.c.restore(); } }},
   crossbag:{excl:1, name:'크로스백', price:64000, draw:(d,g)=>{ if (g.up){ d.line(k=>{ k.moveTo(-4.6,BY+.6); k.lineTo(5,BY+BH*.5); }, '#a8744f', 1.1); return; } d.line(k=>{ k.moveTo(g.side?-3:-4.4,BY+.4); k.lineTo(g.side?2.6:4.8,BY+BH*.5); }, '#a8744f', 1.1); const x = g.side ? 3.6 : 6.4, y = BY+BH*.5; d.rr(x-3.2,y-1.4,6.4,5.2,2,'#ffb3cd'); d.rr(x-3.2,y-1.4,6.4,2.4,1.2,'#ff9fbe'); d.dot(x,y+1,.6,'#f3c64f'); }},
-  teddy:{excl:1, name:'곰인형 안기', price:72000, draw:(d,g)=>{ const b='#c9a07a', m='#f3dcc0', k='#3a2430', S = 1.02;
+  teddy:{excl:1, name:'곰인형 안기', price:72000, draw:(d,g)=>{ const b='#c9a07a', m='#f3dcc0', k='#3a2430', S = .88;
     const bear = (x, y, back) => { const P = (dx, dy) => [x+dx*S, y+dy*S];
       if (!back){ d.ell(...P(0, 3.4), 5*S, 5.2*S, b); d.ell(...P(0, 4), 3*S, 3.2*S, m, ff); for (const sx of [-1,1]) d.ell(...P(sx*3.4, 8), 2*S, 1.6*S, b); }
       for (const sx of [-1,1]){ d.circle(...P(sx*3.7, -6.6), 1.9*S, b); if (!back) d.circle(...P(sx*3.7, -6.6), 1*S, '#f0b8c4', ff); }
@@ -711,8 +711,8 @@ export const ACCS = {
       const [mx, my] = P(0, -.6); d.line(c=>{ c.moveTo(mx-1, my); c.quadraticCurveTo(mx, my+.8, mx+1, my); }, k, .38); d.ell(...P(-3.2, -1.4), 1.1, .65, '#f4a3b6', ff); d.ell(...P(3.2, -1.4), 1.1, .65, '#f4a3b6', ff);
       for (const sx of [-1,1]) d.shape(c=>{ const [ax, ay] = P(0, 1.6); c.beginPath(); c.moveTo(ax, ay); c.lineTo(ax+sx*2.8*S, ay-1.3*S); c.lineTo(ax+sx*2.8*S, ay+1.3*S); c.closePath(); }, '#ff8fb0', [...P(0, 1.6), 2], ff); d.circle(...P(0, 1.6), .85, '#ff6f99', ff); };
     if (g.up){ bear(-g.bw/2-2.4, BY+BH*.42, true); return; } // 뒤에서는 옆구리 너머로 곰 머리
-    const [hx, hy] = handPos(g).at(-1), x = g.side ? hx + 1.2 : hx - 4, y = hy - 2; bear(x, y); // 곰은 몸 안쪽으로 쏙
-    d.ell(g.side ? x + 4.2 : hx + .2, hy + 1.4, 2.9, 3.2, g.sk); // 손은 곰 바깥에서 감싸 안아요
+    const [hx, hy] = handPos(g).at(-1), x = g.side ? hx + 1 : hx - 3.4, y = hy - 1.6; bear(x, y); // 곰은 몸 안쪽으로 쏙
+    d.ell(g.side ? x + 3.6 : hx, hy + 1.2, 2.9, 3.2, g.sk); // 손은 곰 바깥에서 감싸 안아요
   }},
   balloon:{excl:1, name:'하트 풍선', price:42000, draw:(d,g)=>{ const [hx,hy] = handPos(g).at(-1), bx = hx + 5, by = HY - R*1.3; d.line(k=>{ k.moveTo(hx,hy); k.quadraticCurveTo(hx+4,hy-16,bx,by+6); }, '#9a8a94', .5, .9); if (g.up) return; heart(d,bx,by,4.4,'#ff6f9f',{}); d.dot(bx-2.4,by-1.2,1,'#fff',.7); }},
   foxtail:{excl:1, name:'여우 꼬리', price:86000, draw:(d,g)=>{ const o='#f2944a'; if (g.up){ d.ell(0,BY+BH*.62,4.4,6.8,o); d.ell(0,BY+BH*.62+5,2.6,2.4,'#fffaf2'); return; } if (g.side){ d.ell(-g.bw/2-3.6,BY+BH*.56,3,6,o); d.ell(-g.bw/2-4,BY+BH*.56-4,1.8,2,'#fffaf2'); return; } d.ell(g.bw/2+3.6,BY+BH*.62,2.4,4.6,o); d.ell(g.bw/2+4.2,BY+BH*.62-3.4,1.4,1.6,'#fffaf2'); }},
