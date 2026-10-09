@@ -433,6 +433,45 @@ const robe = (d, g, col, hem=-2.4, flare=.74) => d.shape(c=>{ c.beginPath(); c.m
 const bigSleeves = (d, g, col, cuff) => { if (g.pray){ praySleeves(d, g, col); return prayHands(d, g); } for (const sx of (g.side ? [1] : [-1, 1])){ d.ell(sx*(g.bw/2+2), BY+BH*.4, 3.9, 5.8, col); if (cuff) d.ell(sx*(g.bw/2+2), BY+BH*.4+4.6, 3.4, 1.2, cuff, {flat:true, noShadow:true}); } hands(d, g); };
 const capSleeve = (d, g, col) => { bareArms(d, g); if (g.pray) return; for (const sx of (g.side ? [1] : [-1, 1])) d.ell(sx*(g.bw/2+1.2), BY+BH*.2, 3.2, 3, col); };
 const mandarin = (d, col, edge) => { d.rr(-3.4, BY-2.2, 6.8, 2.8, 1.2, col); if (edge) d.rr(-3.4, BY-2.4, 6.8, .7, .35, edge, {flat:true, noShadow:true}); };
+// ===== 단체 후드티 12 벌: 폭닥한 플리스 + 후드에 동물 · 가슴에 이름 =====
+const lighten = (h, a) => mixHex(h, '#ffffff', a), darken = (h, a) => mixHex(h, '#3a2430', a);
+const fluffRow = (d, x0, x1, y, r, col) => { for (let x = x0; x <= x1 + .01; x += r*1.5) d.circle(x, y, r, col, {noShadow:true}); };
+const topEyes = (d, g, y = HY-R*1.2, gap = R*.42, r = 1.15) => { if (g.up) return; for (const sx of (g.side ? [.5] : [-1, 1])) d.dot(sx*gap + (g.side ? R*.2 : 0), y, r, '#2b2228'); };
+const eyes2 = (d, g, cy, gap = R*.5, r = 1.15) => { for (const sx of (g.side ? [.55] : [-1, 1])) d.dot(sx*gap + (g.side ? R*.12 : 0), cy, r, '#2b2228'); };
+const ANI = { // back: 후드 뒤·위로 솟는 것 (귀 · 지느러미 · 볏) / face: 앞자락 위 얼굴
+  turtle:{ back:(d,g,c)=>{ const sh = darken(c,.3); d.ell(0, HY-R*1.32, R*.8, R*.34, sh); d.line(k=>{ k.moveTo(-R*.32,HY-R*1.5); k.lineTo(-R*.4,HY-R*1.2); k.moveTo(R*.32,HY-R*1.5); k.lineTo(R*.4,HY-R*1.2); k.moveTo(-R*.2,HY-R*1.34); k.lineTo(R*.2,HY-R*1.34); }, lighten(sh,.4), .55); }, face:(d,g,c,cy)=>{ eyes2(d,g,cy); if (!g.side) d.line(k=>{ k.moveTo(-1,cy+2); k.quadraticCurveTo(0,cy+2.8,1,cy+2); }, '#2b2228', .4); } },
+  goldfish:{ back:(d,g,c)=>{ const f = lighten(c,.3); for (const sx of (g.side?[-1]:[-1,1])) d.shape(k=>{ k.beginPath(); k.moveTo(sx*R*1.15,HY-R*.5); k.quadraticCurveTo(sx*R*1.9,HY-R*1.1,sx*R*1.8,HY-R*.05); k.quadraticCurveTo(sx*R*1.5,HY-R*.25,sx*R*1.15,HY-R*.05); k.closePath(); }, f, [sx*R*1.5,HY-R*.5,4]); d.shape(k=>{ k.beginPath(); k.moveTo(-R*.45,HY-R*1.25); k.quadraticCurveTo(0,HY-R*2.05,R*.5,HY-R*1.22); k.closePath(); }, f, [0,HY-R*1.5,4]); }, face:(d,g,c,cy)=>{ eyes2(d,g,cy,R*.52,1.3); if (!g.side) d.ell(0, cy+2.2, 1.1, .8, darken(c,.35), ff); } },
+  puppy:{ back:(d,g,c)=>{ const e = darken(c,.32); for (const sx of (g.side?[-1]:[-1,1])) d.shape(k=>{ k.beginPath(); k.ellipse(sx*R*1.18, HY-R*.45, R*.34, R*.66, sx*.35, 0, 7); }, e, [sx*R*1.15,HY-R*.45,5]); }, face:(d,g,c,cy)=>{ eyes2(d,g,cy); if (!g.side) d.ell(0, cy+1.8, 1, .75, '#3a2430', ff); } },
+  hedgehog:{ back:(d,g,c)=>{ const sp = darken(c,.42); for (let i = 0; i < 9; i++){ const a = Math.PI*(1.06 + i*.11), cx = Math.cos(a), cy = Math.sin(a), x = cx*R*1.32, y = HY-1+cy*R*1.26; d.shape(k=>{ k.beginPath(); k.moveTo(x-cy*2,y+cx*2); k.lineTo(x+cx*3.8,y+cy*3.8); k.lineTo(x+cy*2,y-cx*2); k.closePath(); }, sp, [x,y,2]); } }, face:(d,g,c,cy)=>{ eyes2(d,g,cy); if (!g.side) d.dot(0, cy+1.8, .8, '#3a2430'); for (const sx of (g.side?[.6]:[-1,1])) d.circle(sx*R*.85 + (g.side?R*.1:0), cy-1.4, 1.7, lighten(c,.25), {noShadow:true}); } },
+  ferret:{ back:(d,g,c)=>{ for (const sx of (g.side?[-.2]:[-1,1])){ d.circle(sx*R*.86, HY-R*1.16, 3, '#a88a74'); d.circle(sx*R*.86, HY-R*1.16, 1.6, '#f6c3cf', ff); } }, face:(d,g,c,cy)=>{ if (!g.side) d.shape(k=>{ k.beginPath(); k.ellipse(0, cy+.2, R*.72, 2.1, 0, 0, 7); }, '#a88a74', [0,cy,4], ff); eyes2(d,g,cy); if (!g.side) d.dot(0, cy+2.1, .75, '#f39aae'); } },
+  guinea:{ back:(d,g,c)=>{ const e = darken(c,.35); for (const sx of (g.side?[-.2]:[-1,1])) d.shape(k=>{ k.beginPath(); k.ellipse(sx*R*1.02, HY-R*1.0, 2.8, 1.9, sx*-.5, 0, 7); }, e, [sx*R,HY-R,3]); }, face:(d,g,c,cy)=>{ if (!g.side) d.ell(R*.42, cy-.6, R*.36, 2.2, '#fff6ea', ff); eyes2(d,g,cy); if (!g.side) d.dot(0, cy+1.9, .7, '#c47a6a'); } },
+  lizard:{ back:(d,g,c)=>{ const k2 = darken(c,.25); for (const sx of (g.side?[.55]:[-1,1])) d.circle(sx*R*.5 + (g.side?R*.12:0), HY-R*1.3, 3, k2); }, face:(d,g,c,cy)=>{ for (const sx of (g.side?[.55]:[-1,1])){ const ex = sx*R*.5 + (g.side?R*.12:0); d.circle(ex, cy-1.6, 2, '#fffbe8', {noShadow:true}); d.dot(ex, cy-1.5, 1.1, '#2b2228'); } if (!g.side){ d.line(k=>{ k.moveTo(-2,cy+1.8); k.quadraticCurveTo(0,cy+2.8,2,cy+1.8); }, '#2b2228', .4); for (const [x, y] of [[-R*.95,cy+.5],[R*.9,cy+1],[R*.25,cy-1.8]]) d.dot(x, y, .75, darken(c,.25)); } } },
+  cat:{ back:(d,g,c)=>{ for (const sx of (g.side?[-.3]:[-1,1])){ d.shape(k=>{ k.beginPath(); k.moveTo(sx*R*.42,HY-R*1.12); k.lineTo(sx*R*.88,HY-R*1.78); k.lineTo(sx*R*1.1,HY-R*.92); k.closePath(); }, c, [sx*R*.75,HY-R*1.3,4]); d.shape(k=>{ k.beginPath(); k.moveTo(sx*R*.6,HY-R*1.18); k.lineTo(sx*R*.86,HY-R*1.58); k.lineTo(sx*R*.95,HY-R*1.08); k.closePath(); }, '#f6b8c8', [sx*R*.78,HY-R*1.25,1.5], ff); } }, face:(d,g,c,cy)=>{ eyes2(d,g,cy); if (!g.side){ d.dot(0, cy+1.6, .6, '#f39aae'); d.line(k=>{ k.moveTo(-1.1,cy+2.3); k.quadraticCurveTo(-.5,cy+2.9,0,cy+2.3); k.quadraticCurveTo(.5,cy+2.9,1.1,cy+2.3); }, '#2b2228', .35); } } },
+  hamster:{ back:(d,g,c)=>{ for (const sx of (g.side?[-.2]:[-1,1])){ d.circle(sx*R*.8, HY-R*1.2, 2.8, c); d.circle(sx*R*.8, HY-R*1.2, 1.5, '#f6b8c8', ff); } }, face:(d,g,c,cy)=>{ eyes2(d,g,cy); if (!g.side){ d.dot(0, cy+1.6, .6, '#f39aae'); for (const sx of [-1,1]) d.ell(sx*R*.88, cy+1, 1.6, 1, '#ffb3c4', ff); } } },
+  parrot:{ back:(d,g,c)=>{ ['#ff8a8a','#ffd56b','#7fd38f'].forEach((cc, i) => d.shape(k=>{ const x = (i-1)*2.5; k.beginPath(); k.moveTo(x-1.4, HY-R*1.25); k.quadraticCurveTo(x-2+i, HY-R*2.0, x+1.2, HY-R*1.82); k.quadraticCurveTo(x+.6, HY-R*1.45, x+1.4, HY-R*1.25); k.closePath(); }, cc, [(i-1)*2.5,HY-R*1.5,3])); }, face:(d,g,c,cy)=>{ eyes2(d,g,cy,R*.56); d.shape(k=>{ const bx = g.side ? R*.85 : 0; k.beginPath(); k.moveTo(bx-1.6,cy+.6); k.quadraticCurveTo(bx+(g.side?2.4:0),cy+.2,bx+1.6,cy+.6); k.quadraticCurveTo(bx+(g.side?1.6:0),cy+3.4,bx-1.6,cy+.6); k.closePath(); }, '#ffb347', [0,cy+1,2]); } },
+  bunny:{ back:(d,g,c)=>{ for (const sx of (g.side?[-.3,.2]:[-1,1])){ d.shape(k=>{ k.beginPath(); k.ellipse(sx*R*.48, HY-R*1.8, 2.9, 6.6, sx*.15, 0, 7); }, c, [sx*R*.48,HY-R*1.8,6]); d.shape(k=>{ k.beginPath(); k.ellipse(sx*R*.48, HY-R*1.77, 1.3, 4.5, sx*.15, 0, 7); }, '#ff9fbb', [sx*R*.48,HY-R*1.77,4], ff); } }, face:(d,g,c,cy)=>{ eyes2(d,g,cy); if (!g.side){ d.dot(0, cy+1.6, .6, '#f39aae'); d.line(k=>{ k.moveTo(0,cy+1.9); k.lineTo(0,cy+2.6); }, '#2b2228', .35); } } },
+  chick:{ back:(d,g,c)=>{ d.shape(k=>{ k.beginPath(); k.moveTo(-1,HY-R*1.26); k.quadraticCurveTo(-2.6,HY-R*1.85,0,HY-R*1.68); k.quadraticCurveTo(2.4,HY-R*1.95,1.2,HY-R*1.26); k.closePath(); }, darken(c,.06), [0,HY-R*1.5,3]); }, face:(d,g,c,cy)=>{ eyes2(d,g,cy); const bx = g.side ? R*.85 : 0; d.shape(k=>{ k.beginPath(); k.moveTo(bx-1.6,cy+1); k.lineTo(bx+1.6,cy+1); k.lineTo(bx+(g.side?2:0),cy+2.8); k.closePath(); }, '#ff9a3c', [bx,cy+1.6,2]); if (!g.side) for (const sx of [-1,1]) d.ell(sx*R*.85, cy+1.2, 1.4, .9, '#ffb3a4', ff); } },
+};
+const groupHood = (name, col, ani) => ({ main:col,
+  draw:(d, g) => { const lt = lighten(col, .45), dk = darken(col, .14), ctx = d.ctx;
+    d.ell(0, HY-1, R*1.34, R*1.26, col); // 후드 뒤
+    torso(d, g, col);
+    if (g.up){ d.ell(0, BY+2.2, 7.6, 4.6, dk); fluffRow(d, -g.bw/2+1, g.bw/2-1, BY+BH*.62, 1.5, lt); }
+    else {
+      fluffRow(d, -g.bw/2+1.2, g.bw/2-1.2, BY+BH*.62, 1.5, lt); // 밑단 뽀글이
+      if (!g.side){ d.rr(-5, BY+BH*.38, 10, 4.6, 2, dk, {flat:true}); d.line(k=>{ k.moveTo(-2.2, BY+1.4); k.lineTo(-2.6, BY+5.4); k.moveTo(2.2, BY+1.4); k.lineTo(2.6, BY+5.4); }, lt, .8); d.circle(-2.6, BY+5.7, .7, lt, ff); d.circle(2.6, BY+5.7, .7, lt, ff);
+        d.circle(0, BY+4.6, 3, '#fffaf2', {noShadow:true}); if (ctx && ctx.fillText){ ctx.save(); ctx.fillStyle = darken(col, .6); ctx.font = 'bold 4.2px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(name, 0, BY+4.8); ctx.restore(); } } // 가슴 이름
+      else d.rr(g.bw*.05, BY+BH*.38, g.bw*.4, 4.6, 2, dk, {flat:true});
+    }
+    for (let i = 0; i < 6; i++) d.dot(-g.bw/2+2 + (i*37%10)*1.2, BY+2 + (i*53%9)*1.1, .35, lt, .7); // 플리스 결
+    sleeves(d, g, col); for (const [hx, hy] of handPos(g)) d.circle(hx, hy-2.6, 1.6, lt, {noShadow:true}); hands(d, g); },
+  // 머리카락 위: 동물 얼굴 후드 (귀·볏은 뒤에서, 앞자락과 얼굴은 위에서)
+  over:(d, g) => { const lt = lighten(col, .45), cy = HY-1.5, ox = g.side ? R*.12 : 0, A = ANI[ani];
+    A.back(d, g, col);
+    if (g.up){ d.ell(0, cy, R*1.32, R*1.24, col); return; }
+    d.shape(c=>{ c.beginPath(); c.ellipse(ox, cy, R*1.32, R*1.24, 0, Math.PI*1.03, Math.PI*1.97); c.ellipse(ox, cy+R*.14, R*1.04, R*.8, 0, Math.PI*1.92, Math.PI*1.08, true); c.closePath(); }, col, [ox,cy-R*.9,8]);
+    const fl = lighten(col, .22); for (let i = 0; i <= 16; i++){ const a = Math.PI*(1.1 + i*.05); d.circle(ox+Math.cos(a)*R*1.04, cy+R*.14+Math.sin(a)*R*.8, 1.35, fl, {noShadow:true}); } // 폭닥한 앞자락 테두리 (털처럼 촘촘히)
+    A.face(d, g, col, cy - R*1.0); } });
 export const TOPS = {
   t01:{name:'기본 티셔츠', price:0,   draw:(d,g)=>{ torso(d,g,'#fffaf2'); bareArms(d,g); }},
   t02:{name:'줄무늬 티',   price:0,   draw:(d,g)=>{ torso(d,g,'#fffaf2'); stripe(d,g,'#8fb9e8',3); bareArms(d,g); }},
@@ -491,6 +530,18 @@ export const TOPS = {
   t43:{excl:1, name:'하트 집업 후드', price:88000, draw:(d,g)=>{ const v='#ffb3cd'; torso(d,g,v); if(!g.up){ d.ell(0,BY+1,6.5,3.2,'#ff9fbe'); d.line(k=>{ k.moveTo(0,BY+3); k.lineTo(0,BY+BH*.62); }, '#e87a9c', .8, .95); d.dot(0,BY+4,.6,'#c9ced8'); if(!g.side) heart(d,-3.4,BY+7.4,1.3,'#fffaf2'); } else { d.ell(0,BY+1.5,7,4,'#ff9fbe'); heart(d,0,BY+8,1.8,'#fffaf2'); } d.rr(-g.bw/2+.4,BY+BH*.58,g.bw-.8,1.5,.7,'#ff9fbe',ff); longArms(d,g,v); }},
   t44:{excl:1, name:'반짝이 시퀸 탑', price:96000, draw:(d,g)=>{ const v='#f3d27a'; torso(d,g,v); for (let i=0;i<14;i++){ const x = -g.bw/2+1.2 + (i*3.7)%(g.bw-2.4), y = BY+1.4 + ((i*5.3)%11); d.dot(x, y, .55, i%3 ? '#fff8d8' : '#ffffff', .9); } capSleeve(d,g,v); }},
   t45:{excl:1, name:'체크 조끼 셔츠', price:92000, draw:(d,g)=>{ torso(d,g,'#fffaf2'); collar(d,g,'#fffaf2'); const v='#8a8f9e'; if(!g.up){ d.shape(c=>{ c.beginPath(); c.moveTo(-g.bw/2+.6,BY+1.4); c.lineTo(-2.2,BY+1.4); c.lineTo(0,BY+6.4); c.lineTo(2.2,BY+1.4); c.lineTo(g.bw/2-.6,BY+1.4); c.lineTo(g.bw/2-.6,BY+BH*.62); c.lineTo(-g.bw/2+.6,BY+BH*.62); c.closePath(); }, v, [0,BY+7,7]); checks(d,g,'#b3b7c4',BY+6.6,BY+BH*.6,3); d.rr(-.8,BY+1.4,1.6,4.6,.6,'#c9384f',ff); for (const y of [8,11]) d.dot(0,BY+y,.55,'#3a3440'); } else d.rr(-g.bw/2+.6,BY+1,g.bw-1.2,BH*.6,3,v); longArms(d,g,'#fffaf2'); }},
+  t46:{excl:1, name:'꽁 후드티 (거북이)', price:118000, ...groupHood('꽁','#a6dba8','turtle')},
+  t47:{excl:1, name:'솔 후드티 (금붕어)', price:118000, ...groupHood('솔','#ffad8f','goldfish')},
+  t48:{excl:1, name:'월 후드티 (강아지)', price:118000, ...groupHood('월','#f1dcb8','puppy')},
+  t49:{excl:1, name:'걔 후드티 (고슴도치)', price:118000, ...groupHood('걔','#c9ab92','hedgehog')},
+  t50:{excl:1, name:'냥 후드티 (페럿)', price:118000, ...groupHood('냥','#f7f3ea','ferret')},
+  t51:{excl:1, name:'움 후드티 (기니피그)', price:118000, ...groupHood('움','#e8b77d','guinea')},
+  t52:{excl:1, name:'멍 후드티 (도마뱀)', price:118000, ...groupHood('멍','#8fd3c8','lizard')},
+  t53:{excl:1, name:'돈 후드티 (고양이)', price:118000, ...groupHood('돈','#cfc3ea','cat')},
+  t54:{excl:1, name:'영 후드티 (햄스터)', price:118000, ...groupHood('영','#ffd6c0','hamster')},
+  t55:{excl:1, name:'째 후드티 (앵무새)', price:118000, ...groupHood('째','#a9d3ff','parrot')},
+  t56:{excl:1, name:'쭈 후드티 (토끼)', price:118000, ...groupHood('쭈','#ffc3d5','bunny')},
+  t57:{excl:1, name:'하 후드티 (병아리)', price:118000, ...groupHood('하','#fff1a0','chick')},
 };
 export const BOTTOMS = {
   b01:{name:'청바지',      price:0,   draw:(d,g)=>{ pants(d,g,'#7d8ab0'); legs(d,g,'#7d8ab0'); }},
@@ -787,7 +838,7 @@ export function figure(d, L, dir, t, walk, expr){
   if (!up) face(d, side ? R*.22 : 0, HY+R*.28, L, side, expr);
   if (AN?.snout && !up) AN.snout(AP);
   hair(d, 0, HY, L, side, R, 'front', up);
-  if (set?.over) set.over(P('set', L.set), g); // 후드 앞자락처럼 머리카락 위로 덮는 부분
+  if (set?.over) set.over(P('set', L.set), g); else if (!set && top.over) top.over(P('top', L.top), g); // 후드 앞자락처럼 머리카락 위로 덮는 부분
   if (AN?.over) AN.over(AP);
   acc.draw(P('acc', L.acc), g); hat.draw(P('hat', L.hat), g);
   if (AN?.top) AN.top(AP);
