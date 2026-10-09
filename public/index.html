@@ -5146,7 +5146,7 @@ function fwBurst(x, y, kind, pal){
     else spark(x, y, vx, vy, {col:pal[0], col2:pal[2], life:1.5, drag:.975, grav:55, w:2.4});
   }
 }
-// 모양 불꽃: 작은 캔버스에 그린 그림을 색 있는 점으로 바꿔요 (오투모 얼굴 · "얘들아 고마워")
+// 모양 불꽃: 작은 캔버스에 그린 그림을 색 있는 점으로 바꿔요 (오투모 얼굴 · "다른 애들 하라고 영업 좀 해 줘")
 function shapePts(draw, w, h, step){ const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); draw(x, w, h); const d = x.getImageData(0, 0, w, h).data, pts = [];
   for (let yy = 0; yy < h; yy += step) for (let xx = 0; xx < w; xx += step){ const i = (yy*w + xx)*4; if (d[i+3] > 120) pts.push([xx - w/2, yy - h/2, `rgb(${d[i]},${d[i+1]},${d[i+2]})`]); } return pts; }
 function fwShapes(){ if (fwShape.otumo) return fwShape;
@@ -5157,8 +5157,8 @@ function fwShapes(){ if (fwShape.otumo) return fwShape;
     x.fillStyle = '#3a3a5a'; x.beginPath(); x.roundRect(cx - 52, cy - 10, 104, 34, 17); x.fill();
     x.fillStyle = '#7fe8ff'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*17, cy + 7, 6, 8, 0, 0, 7); x.fill(); }
     x.fillStyle = '#ff9fc4'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*34, cy + 36, 7, 4, 0, 0, 7); x.fill(); } }, 180, 150, 5);
-  fwShape.thanks = shapePts((x, w, h) => { x.font = 'bold 52px "Dongle", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    const gr = x.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ff7fb0'); gr.addColorStop(.5, '#ffe07a'); gr.addColorStop(1, '#9fd8ff'); x.fillStyle = gr; x.fillText('얘들아 고마워', w/2, h/2); x.fillStyle = '#ff5c8d'; x.font = 'bold 40px sans-serif'; x.fillText('♥', w - 14, h/2 - 22); }, 330, 80, 3);
+  fwShape.thanks = shapePts((x, w, h) => { let fs = 52; do { x.font = `bold ${fs}px "Dongle", sans-serif`; } while (x.measureText('다른 애들 하라고').width > w - 24 && --fs > 20); x.textAlign = 'center'; x.textBaseline = 'middle';
+    const gr = x.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ff7fb0'); gr.addColorStop(.5, '#ffe07a'); gr.addColorStop(1, '#9fd8ff'); x.fillStyle = gr; x.fillText('다른 애들 하라고', w/2, h*.3); const l2 = x.measureText('영업 좀 해 줘').width; x.fillText('영업 좀 해 줘', w/2 - 14, h*.74); x.fillStyle = '#ff5c8d'; x.font = `bold ${Math.round(fs*.75)}px sans-serif`; x.fillText('♥', w/2 - 14 + l2/2 + fs*.4, h*.72); }, 330, 130, 3);
   return fwShape; }
 function shapeBurst(x, y, pts, scale){ skyP.flashes.push({x, y, t:0, col:'#ffffff', r:150}); skyP.glow.push({t:0, col:'#ffe07a'});
   for (const [px, py, col] of pts) skyP.shapes.push({sx:x, sy:y, tx:x + px*scale, ty:y + py*scale, col, t:0, hold:2.4 + Math.random()*.4, vy:0});
