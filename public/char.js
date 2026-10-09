@@ -460,7 +460,7 @@ const groupHood = (name, col, ani) => ({ main:col,
     else {
       fluffRow(d, -g.bw/2+1.2, g.bw/2-1.2, BY+BH*.62, 1.5, lt); // 밑단 뽀글이
       if (!g.side){ d.line(k=>{ k.moveTo(-2.4, BY+.8); k.lineTo(-2.8, BY+3.4); k.moveTo(2.4, BY+.8); k.lineTo(2.8, BY+3.4); }, lt, .7);
-        if (ctx && ctx.fillText){ ctx.save(); ctx.font = '700 13px "HoodHand", "Dongle", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 1.6; ctx.strokeStyle = '#fffaf2'; ctx.strokeText(name, 0, BY+BH*.36); ctx.fillStyle = darken(col, .62); ctx.fillText(name, 0, BY+BH*.36); ctx.restore(); } } // 가슴에 크게 손글씨 이름
+        if (ctx && ctx.fillText){ ctx.save(); ctx.font = '700 7.4px "HoodHand", "Dongle", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 1.1; ctx.strokeStyle = '#fffaf2'; ctx.strokeText(name, 0, BY+BH*.31); ctx.fillStyle = darken(col, .62); ctx.fillText(name, 0, BY+BH*.31); ctx.restore(); } } // 가슴에 크게 손글씨 이름
       else d.rr(g.bw*.05, BY+BH*.38, g.bw*.4, 4.6, 2, dk, {flat:true});
     }
     for (let i = 0; i < 6; i++) d.dot(-g.bw/2+2 + (i*37%10)*1.2, BY+2 + (i*53%9)*1.1, .35, lt, .7); // 플리스 결
