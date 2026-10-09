@@ -711,8 +711,8 @@ export const ACCS = {
       const [mx, my] = P(0, -.6); d.line(c=>{ c.moveTo(mx-1, my); c.quadraticCurveTo(mx, my+.8, mx+1, my); }, k, .38); d.ell(...P(-3.2, -1.4), 1.1, .65, '#f4a3b6', ff); d.ell(...P(3.2, -1.4), 1.1, .65, '#f4a3b6', ff);
       for (const sx of [-1,1]) d.shape(c=>{ const [ax, ay] = P(0, 1.6); c.beginPath(); c.moveTo(ax, ay); c.lineTo(ax+sx*2.8*S, ay-1.3*S); c.lineTo(ax+sx*2.8*S, ay+1.3*S); c.closePath(); }, '#ff8fb0', [...P(0, 1.6), 2], ff); d.circle(...P(0, 1.6), .85, '#ff6f99', ff); };
     if (g.up){ bear(-g.bw/2-2.4, BY+BH*.42, true); return; } // 뒤에서는 옆구리 너머로 곰 머리
-    const x = g.bw/2 + (g.side ? 3.6 : 2.6), y = BY+BH*.4; bear(x, y);
-    d.ell(x - 1.4, y + 6.6*S, 3, 2.6, g.sk); // 한 팔로 받쳐 안은 손 (원래 오른손 자리)
+    const [hx, hy] = handPos(g).at(-1), x = hx + 4.6, y = hy - 3; bear(x, y);
+    d.ell(hx, hy, 3, 3.4, g.sk); // 원래 손 자리 그대로: 팔이 곰을 감싸 안아요
   }},
   balloon:{excl:1, name:'하트 풍선', price:42000, draw:(d,g)=>{ const [hx,hy] = handPos(g).at(-1), bx = hx + 5, by = HY - R*1.3; d.line(k=>{ k.moveTo(hx,hy); k.quadraticCurveTo(hx+4,hy-16,bx,by+6); }, '#9a8a94', .5, .9); if (g.up) return; heart(d,bx,by,4.4,'#ff6f9f',{}); d.dot(bx-2.4,by-1.2,1,'#fff',.7); }},
   foxtail:{excl:1, name:'여우 꼬리', price:86000, draw:(d,g)=>{ const o='#f2944a'; if (g.up){ d.ell(0,BY+BH*.62,4.4,6.8,o); d.ell(0,BY+BH*.62+5,2.6,2.4,'#fffaf2'); return; } if (g.side){ d.ell(-g.bw/2-3.6,BY+BH*.56,3,6,o); d.ell(-g.bw/2-4,BY+BH*.56-4,1.8,2,'#fffaf2'); return; } d.ell(g.bw/2+3.6,BY+BH*.62,2.4,4.6,o); d.ell(g.bw/2+4.2,BY+BH*.62-3.4,1.4,1.6,'#fffaf2'); }},
