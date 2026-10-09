@@ -941,6 +941,7 @@ function blocked(x,y){
   const z = Z();
   if (x<4||y<4||x>z.W-4||y>z.H-4) return true;
   if ((x<M||x>z.W-M||y<M||y>z.H-M) && !inCorridor(x,y)) return true;
+  if (zoneId==='fest' && bbFenced() && bbOut(x, y)) return true; // 폭탄 돌리기: 둥근 필드 밖으로 못 나가요
   if (z.theme==='room' && y < 250) return true;
   if (z.floors){ const f = floorOf(y, z.floors), ly = y - floorTop(f, z.floors); if (ly < 262 || (ly > FLOOR_H - 8 && f !== 1)) return true; } // 층 벽 · 층 사이 어둠
   for (const e of obstacles.ells) if (((x-e.x)/(e.rx+6))**2 + ((y-e.y)/(e.ry+6))**2 < 1) return true;
@@ -1322,6 +1323,8 @@ function soloNet(){
     mgJoin: nick => net.festSet({['mg/players/' + uid]: {nick, alive:true}}),
     mcJoin: nick => net.festSet({['mc/players/' + uid]: {nick, alive:true}}),
     tcPress: v => net.festSet({['tc/presses/' + uid]: v}),
+    bombJoin: nick => net.festSet({['bomb/players/' + uid]: {nick, alive:true}}),
+    bombPass: to => net.festSet({'bomb/holder':to, 'bomb/prev':uid, 'bomb/passAt':Date.now()}),
     mcSet: v => net.festSet(Object.fromEntries(Object.entries(v).map(([k, x]) => ['mc/players/' + uid + '/' + k, x]))),
     mcSit: async (cid, nick) => { const c = soloNet.fest?.mc?.cushions?.[cid]; if (!c || c.by) return false; await net.festSet({[`mc/cushions/${cid}/by`]: uid, [`mc/cushions/${cid}/nick`]: nick}); return true; },
     mgSet: v => net.festSet(Object.fromEntries(Object.entries(v).map(([k, x]) => ['mg/players/' + uid + '/' + k, x]))),
@@ -1479,6 +1482,8 @@ function firebaseNet(){
     mgJoin: nick => F.set(F.ref(db, 'fest/mg/players/' + uid), {nick, alive:true}),
     mcJoin: nick => F.set(F.ref(db, 'fest/mc/players/' + uid), {nick, alive:true}),
     tcPress: v => F.set(F.ref(db, 'fest/tc/presses/' + uid), v),
+    bombJoin: nick => F.set(F.ref(db, 'fest/bomb/players/' + uid), {nick, alive:true}),
+    bombPass: to => F.update(F.ref(db, 'fest/bomb'), {holder:to, prev:uid, passAt:F.serverTimestamp()}),
     mcSet: v => F.update(F.ref(db, 'fest/mc/players/' + uid), v),
     mcSit: async (cid, nick) => { try { const r = await F.runTransaction(F.ref(db, 'fest/mc/cushions/' + cid), cur => (cur && !cur.by) ? {...cur, by:uid, nick} : undefined, {applyLocally:false}); return !!(r.committed && r.snapshot.val()?.by === uid); } catch(e){ return false; } },
     mgSet: v => F.update(F.ref(db, 'fest/mg/players/' + uid), v),
@@ -5664,7 +5669,7 @@ function step(dt){
   if (!len) return;
   vx/=len; vy/=len;
   pos.dir = Math.abs(vx) > Math.abs(vy) ? (vx>0?'right':'left') : (vy>0?'down':'up');
-  const ox = pos.x, oy = pos.y, spd = SPEED * (performance.now() < playerSlowUntil ? .5 : 1) * (1 + tfx('speed')), nx = pos.x + vx*spd*dt, ny = pos.y + vy*spd*dt;
+  const ox = pos.x, oy = pos.y, spd = SPEED * (performance.now() < playerSlowUntil ? .5 : 1) * (1 + tfx('speed')) * (bbIHold() ? BB_FAST : 1), nx = pos.x + vx*spd*dt, ny = pos.y + vy*spd*dt;
   const stuck = blocked(pos.x, pos.y); // 이미 막힌 곳에 서 있으면(새 울타리가 생긴 자리 등) 빠져나갈 수 있게
   if (stuck || !blocked(nx, pos.y)) pos.x = nx;
   if (stuck || !blocked(pos.x, ny)) pos.y = ny;
@@ -6044,7 +6049,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; if (e.target.id && e.target.id in admFest) admFest[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK' || ['fgbK','fhuK','frpK','fsyK','ffiK','fmgK','fmcK','ftcK'].includes(e.target.id)){ e.target.blur(); renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; if (e.target.id && e.target.id in admFest) admFest[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK' || ['fgbK','fhuK','frpK','fsyK','ffiK','fmgK','fmcK','ftcK','fbbK'].includes(e.target.id)){ e.target.blur(); renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -6917,7 +6922,7 @@ function adminOxEnd(cancel){
 //  · 가위바위보 토너먼트: [가위바위...] 동안 하나를 고르고 [보!]에 모두 공개 · 안 내면 져요 · 비기면 다시
 //  · 오투모와 동심일체: 오투모가 고를 포즈를 맞혀요. 다른 걸 고르면 탈락 (아무도 못 맞히면 다시)
 //  · 낚시 대회: 축제장 연못에서 가장 큰 물고기를 낚은 사람이 이겨요
-const FEST_ACTS = new Set(['tcgo','tcstart','tcagain','tcend','tccancel','mcgo','mcready','mcmusic','mcstop','mcjudge','mcend','mccancel','mgready','mggo','mgstart','mgword','mgend','mgcancel','notice','festopen','festclose','festgo','ftab','gbgo','gbq','gbend','gbcancel','huhide','hudel','hustart','huend','hureset','rpgo','rpdraw','rppick','rpreveal','rpnext','rpshow','rpcancel','sygo','systart','sypose','syreveal','syend','sycancel','figo','fiend','ficancel']);
+const FEST_ACTS = new Set(['bbgo','bbready','bbstart','bbboom','bbend','bbcancel','tcgo','tcstart','tcagain','tcend','tccancel','mcgo','mcready','mcmusic','mcstop','mcjudge','mcend','mccancel','mgready','mggo','mgstart','mgword','mgend','mgcancel','notice','festopen','festclose','festgo','ftab','gbgo','gbq','gbend','gbcancel','huhide','hudel','hustart','huend','hureset','rpgo','rpdraw','rppick','rpreveal','rpnext','rpshow','rpcancel','sygo','systart','sypose','syreveal','syend','sycancel','figo','fiend','ficancel']);
 const FEST_W = 2200, FEST_H = 1600, FEST_POND = {x:1720, y:1230, rx:300, ry:160};
 let fest = {}, festBarSig = '', festSeen = {};
 const festOpen = () => !!world.festOpen;
@@ -6956,7 +6961,7 @@ function onFest(v){
   const gb = fest.gb, hu = fest.hunt, rp = fest.rps, sy = fest.sync, fi = fest.fish;
   if (!admin && me){
     // 새 게임 알림 (열린 지 3 분 안에만)
-    for (const [k, g, label] of [['mc', fest.mc, '🪑 방석 뺏기'], ['tc', fest.tc, '⏱️ 시간 세기'], ['mg', fest.mg, '🌺 무궁화 꽃이 피었습니다'], ['gb', gb, '🔔 도전 골든벨'], ['rps', rp, '✊ 가위바위보 토너먼트'], ['sync', sy, '🤖 오투모와 동심일체'], ['fish', fi, '🎣 낚시 대회']]){
+    for (const [k, g, label] of [['mc', fest.mc, '🪑 방석 뺏기'], ['tc', fest.tc, '⏱️ 시간 세기'], ['bomb', fest.bomb, '💣 폭탄 돌리기'], ['mg', fest.mg, '🌺 무궁화 꽃이 피었습니다'], ['gb', gb, '🔔 도전 골든벨'], ['rps', rp, '✊ 가위바위보 토너먼트'], ['sync', sy, '🤖 오투모와 동심일체'], ['fish', fi, '🎣 낚시 대회']]){
       if (festLive(g) && festSeen[k] !== g.id){ festSeen[k] = g.id; if (fNow() - (g.at || 0) < 180000) toast(`${label}가 열렸어요! 상품 ${prizeName(g.meta)} · 핑크 축제장으로!`); }
     }
     if (hu && hu.id && hu.on && !hu.done && festSeen.hunt !== hu.id){ festSeen.hunt = hu.id; if (fNow() - (hu.onAt || 0) < 180000) say('💎 보물찾기 시작!', '오투모가 섬 곳곳에 보물을 숨겼어요!\n먼저 찾는 사람이 가져가요. 가까이 가면 반짝여요', [['찾으러 가기', closeTalk]]); }
@@ -6973,6 +6978,9 @@ function onFest(v){
     if (sy && sy.done && sy.win && sy.win[uid]) festWin('sy' + sy.id, sy.meta, '🤖 동심일체 성공!', '오투모와 마음이 통했어요!');
     if (rp && rp.done && rp.win === uid) festWin('rp' + rp.id, rp.meta, '🏆 가위바위보 최종 우승!', '토너먼트 1 위예요!');
     { const g = fest.mc; if (g && g.done && g.win && g.win[uid]) festWin('mc' + g.id, g.meta, '🪑 방석 뺏기 우승!', '마지막 방석의 주인이에요!'); }
+    { const g = fest.bomb; if (g && g.phase === 'boom' && old.bomb?.phase !== 'boom' && zoneId === 'fest' && fNow() - (g.boomAt || 0) < 5000) bigWord(`<b>펑!</b><small>${esc(bbPlayers()[g.loser]?.nick || '')} 탈락</small>`, 'stop', 2200);
+      if (g && g.phase === 'play' && old.bomb?.phase !== 'play' && zoneId === 'fest' && bbMine()?.alive) bigWord(`<b>💣</b><small>${g.round}판 시작! 폭탄: ${esc(bbPlayers()[g.holder]?.nick || '')}</small>`, '', 1600);
+      if (g && g.done && g.win && g.win[uid]) festWin('bb' + g.id, g.meta, '💣 폭탄 돌리기 우승!', '끝까지 안 터졌어요!'); }
     { const g = fest.tc; if (g && g.phase === 'go' && (old.tc?.phase !== 'go' || old.tc?.goAt !== g.goAt) && zoneId === 'fest' && fNow() - (g.goAt || 0) < 4000) tcStartLocal(g);
       if (g && g.done && g.win && g.win[uid]) festWin('tc' + g.id, g.meta, '⏱️ 시간 세기 우승!', `${tcFmt(g.target)}초에 가장 가까웠어요! (${tcFmt(tcPresses()[uid]?.ms || 0)}초)`);
       if (g && g.done && !g.cancel && festSeen.tcd !== g.id && zoneId === 'fest'){ festSeen.tcd = g.id; const w = tcRank()[0]; if (w) bigWord(`<b>🏆</b><small>${esc(w[1].nick)} · ${tcFmt(w[1].ms)}초 (목표 ${tcFmt(g.target)}초)</small>`, '', 3500); } }
@@ -7022,7 +7030,7 @@ function festFishSubmit(id, size){
 
 // ----- 매 프레임 -----
 function festTick(){
-  festBar(); festGateTick(); noticeTick(); mgWordShow(); if (!admin && me){ mgTick(); mcTick(); } else mcMusic(false);
+  festBar(); festGateTick(); noticeTick(); mgWordShow(); if (!admin && me){ mgTick(); mcTick(); bbTick(); } else mcMusic(false);
   if (festOpen() !== festTick.open){ if (festOpen() && !admin && me && fNow() - (+world.festAt || 0) < 180000) say('🎪 핑크 축제장이 열렸어요!', '오투모가 축제를 열었어요!\n핑크 시장 동쪽(→)으로 가면 축제장이에요.\n골든벨 · 보물찾기 · 가위바위보 · 동심일체 · 낚시 대회', [['좋아요', closeTalk]]); festTick.open = festOpen(); }
   const now = fNow();
   if (admin){
@@ -7033,6 +7041,7 @@ function festTick(){
       for (const [u, p] of Object.entries(gbPlayers())){ if (!p || !p.alive) continue; const right = p.ar === c.r && ok.includes(gbNorm(p.a)); if (!right) upd[`gb/players/${g.id}/${u}/alive`] = false; else alive++; }
       net.festSet(upd).then(()=>toast(`${c.r}번 채점 끝 · 살아남은 ${alive}명`)).catch(()=>{}).finally(()=>setTimeout(()=>{ festTick.gbBusy = false; }, 1500));
     }
+    { const b = fest.bomb; if (festLive(b) && b.phase === 'play' && admFest.bbAt && now >= admFest.bbAt && !festTick.boom){ festTick.boom = true; adminFestClick({dataset:{a:'bbboom'}}); setTimeout(()=>{ festTick.boom = false; }, 1500); } if (festLive(b) && b.phase === 'play' && admFest.tab === 'bomb' && Math.floor(now/1000) !== festTick.bbS){ festTick.bbS = Math.floor(now/1000); renderAdmin(); } }
     const ph = [c && c.r, c && c.ans, c && now < c.endAt].join('|'); if (festTick.ph !== ph){ festTick.ph = ph; renderAdmin(); }
     return;
   }
@@ -7102,6 +7111,16 @@ function festBar(){
       else body = mcG.phase === 'ready' ? '<b class="ox-ok">둥근 길 위!</b> 음악을 기다려요' : '<b class="ox-ok">참가 중</b> · 곧 시작해요';
       rows.push(['mc', `<div class="ox-h">🪑 <b>방석 뺏기</b><small>${mcG.round ? mcG.round + '판 · ' : ''}남은 ${mcAlive().length}명 · 상품 ${esc(prizeName(mcG.meta))}</small></div><div class="ox-f">${body}</div>`, [mcG.phase, mcG.round, mm?.alive, !!seat, mcAlive().length].join()]);
     }
+    const bbG = fest.bomb;
+    if (festLive(bbG) && (here || bbMine())){
+      const mm = bbMine(), h = bbHolder(); let body = '';
+      if (!mm) body = bbG.phase === 'join' ? '<button class="mini" id="bbJoin">참가하기</button>' : '구경 중';
+      else if (!mm.alive) body = '<b class="ox-out">탈락</b> · 구경 중';
+      else if (bbG.phase === 'play') body = h === uid ? '<b class="ox-out">💣 내가 폭탄!</b> 다른 사람을 터치해서 넘겨요 (조금 빨라져요)' : `<b class="ox-ok">도망쳐요!</b> 폭탄: ${esc(bbPlayers()[h]?.nick || '?')}`;
+      else if (bbG.phase === 'boom') body = bbG.loser === uid ? '<b class="ox-out">펑! 탈락.......</b>' : `<b class="ox-ok">살았다!</b> ${esc(bbPlayers()[bbG.loser]?.nick || '')} 님 탈락 · 다음 판을 기다려요`;
+      else body = bbG.phase === 'ready' ? '<b class="ox-ok">필드 안!</b> 곧 폭탄이 돌아요' : '<b class="ox-ok">참가 중</b> · 곧 필드로 모여요';
+      rows.push(['bb', `<div class="ox-h">💣 <b>폭탄 돌리기</b><small>${bbG.round ? bbG.round + '판 · ' : ''}남은 ${bbAlive().length}명 · 상품 ${esc(prizeName(bbG.meta))}</small></div><div class="ox-f">${body}</div>`, [bbG.phase, bbG.round, mm?.alive, h, bbG.loser, bbAlive().length].join()]);
+    }
     const tcG = fest.tc;
     if (tcG && tcG.id && !tcG.cancel && here && (festLive(tcG) || fNow() - (tcG.doneAt || 0) < 60000)){
       const L = tcLocal && tcLocal.key === tcG.id + tcG.goAt ? tcLocal : null, mine = tcPresses()[uid]; let body = '';
@@ -7127,6 +7146,7 @@ function festBar(){
       else if (b.id === 'rpShow') rpsBracketPanel();
       else if (b.id === 'mcJoin') net.mcJoin(String(me.nick).slice(0, 16)).then(()=>toast('방석 뺏기에 참가했어요')).catch(()=>toast('지금은 참가할 수 없어요'));
       else if (b.id === 'tcNow') tcPressNow(e);
+      else if (b.id === 'bbJoin') net.bombJoin(String(me.nick).slice(0, 16)).then(()=>toast('폭탄 돌리기에 참가했어요')).catch(()=>toast('지금은 참가할 수 없어요'));
       else if (b.id === 'mgJoin') net.mgJoin(String(me.nick).slice(0, 16)).then(()=>toast('무궁화 꽃이 피었습니다에 참가했어요')).catch(()=>toast('지금은 참가할 수 없어요'));
       else if (b.id === 'syJoin') net.syncJoin(String(me.nick).slice(0, 16)).then(()=>toast('동심일체에 참가했어요')).catch(()=>toast('지금은 참가할 수 없어요'));
       else if (b.dataset.pose) net.syncPick(+b.dataset.pose).then(()=>toast(`${FEST_POSES[+b.dataset.pose][1]} 골랐어요!`)).catch(()=>toast('지금은 고를 수 없어요'));
@@ -7164,6 +7184,7 @@ function festBubbleText(id){
 function festOtumoBubble(c, x, y){ if (noticeLive()){ bubble(c, String(world.notice.t), x, y - 96); return; } const sy = fest.sync; if (zoneId === 'fest' && sy && sy.phase === 'reveal' && FEST_POSES[sy.ans]) bubble(c, FEST_POSES[sy.ans][1], x, y - 96); }
 // 보물 상자 (오투모는 숨긴 자리를 늘 봐요)
 function drawFestDyn(c, t){
+  drawBombStuff(c, t);
   { const g = fest.mc; if (festLive(g) && zoneId === 'fest'){ const d = painter(c);
     c.save(); c.strokeStyle = g.phase === 'music' ? `rgba(255,111,159,${.55 + .3*Math.sin(t/150)})` : 'rgba(255,143,182,.6)'; c.lineWidth = 6; c.setLineDash([18, 14]); c.lineDashOffset = -t/30; c.beginPath(); c.ellipse(MC_C.x, MC_C.y, MC_RX, MC_RY, 0, 0, 7); c.stroke(); c.restore();
     for (let i = 0; i < 8; i++){ const a = i/8*Math.PI*2 + t/2000, x = MC_C.x + Math.cos(a)*MC_RX, y = MC_C.y + Math.sin(a)*MC_RY; c.save(); c.fillStyle = '#ff8fb6'; c.font = 'bold 18px sans-serif'; c.textAlign = 'center'; c.fillText('♪', x, y - 8); c.restore(); }
@@ -7389,10 +7410,41 @@ function tcPressNow(e){
   L.pressed = true; const ms = Math.round(t - L.goT); L.ms = ms; festBarSig = '';
   net.tcPress({nick:String(me.nick).slice(0, 16), ms}).then(()=>toast(`⏱️ ${tcFmt(ms)}초에 눌렀어요!`)).catch(()=>{ toast('기록을 보내지 못했어요'); });
 }
+
+// ----- 💣 폭탄 돌리기 -----
+// 둥근 필드 안에서만 움직여요. 폭탄을 가진 사람은 아주 조금 빨라지고, 다른 사람을 터치하면 폭탄을 넘겨요
+// 오투모가 몰래 정한 시간이 되면 펑! 그 순간 폭탄을 가진 사람이 탈락. 다음 판은 탈락한 사람에게 폭탄을 넘겼던 사람부터 시작
+const BB_C = {x:1100, y:740}, BB_RX = 360, BB_RY = 190, BB_FAST = 1.1;
+const bbPlayers = () => fest.bomb?.players || {};
+const bbAlive = () => Object.entries(bbPlayers()).filter(([, p]) => p && p.alive);
+const bbMine = () => bbPlayers()[uid];
+let bbLocalHolder = null, bbGotAt = 0; // 내가 넘긴 직후엔 서버 답을 기다리지 않고 바로 '안 가짐'으로 봐요
+const bbHolder = () => bbLocalHolder && bbLocalHolder.key === fest.bomb?.passAt ? bbLocalHolder.h : fest.bomb?.holder;
+const bbIHold = () => festLive(fest.bomb) && fest.bomb.phase === 'play' && bbHolder() === uid;
+const bbFenced = () => !admin && zoneId === 'fest' && festLive(fest.bomb) && ['ready','play','boom'].includes(fest.bomb.phase) && bbMine()?.alive;
+const bbOut = (x, y) => Math.hypot((x - BB_C.x)/BB_RX, (y - BB_C.y)/BB_RY) > 1;
+function bbTick(){
+  const g = fest.bomb, m = bbMine(); if (!festLive(g) || !m || !m.alive || zoneId !== 'fest') return;
+  if (g.readyAt && bbTick.ready !== g.id + g.readyAt){ bbTick.ready = g.id + g.readyAt; target = null; const a = Math.random()*Math.PI*2, r = .3 + Math.random()*.55; pos.x = BB_C.x + Math.cos(a)*BB_RX*r; pos.y = BB_C.y + Math.sin(a)*BB_RY*r; toast('💣 둥근 필드에 들어왔어요! 폭탄을 가진 사람을 피해요'); return; }
+  if (bbOut(pos.x, pos.y)){ const a = Math.atan2((pos.y - BB_C.y)/BB_RY, (pos.x - BB_C.x)/BB_RX); pos.x = BB_C.x + Math.cos(a)*BB_RX*.97; pos.y = BB_C.y + Math.sin(a)*BB_RY*.97; }
+  if (g.holder === uid && bbTick.got !== g.passAt){ bbTick.got = g.passAt; bbGotAt = performance.now(); if (g.prev && g.prev !== uid) toast('💣 폭탄을 받았어요! 다른 사람을 터치해서 넘겨요'); }
+  if (!bbIHold() || bbTick.passing || performance.now() - bbGotAt < 700) return; // 받자마자 바로 되넘기기는 못 해요
+  for (const [id, o] of others){ if (o.z !== 'fest' || !bbPlayers()[id]?.alive || id === g.prev && performance.now() - bbGotAt < 1500) continue;
+    if (Math.hypot(pos.x - o.x, pos.y - o.y) < 34){ bbTick.passing = true; bbLocalHolder = {key:g.passAt, h:id};
+      net.bombPass(id).then(()=>toast(`💣 ${bbPlayers()[id]?.nick || ''} 님에게 넘겼어요!`)).catch(()=>{ bbLocalHolder = null; }).finally(()=>setTimeout(()=>{ bbTick.passing = false; }, 400)); break; } }
+}
+function drawBombStuff(c, t){
+  const g = fest.bomb; if (!festLive(g) || zoneId !== 'fest') return; const d = painter(c);
+  c.save(); c.fillStyle = 'rgba(255,111,111,.08)'; c.beginPath(); c.ellipse(BB_C.x, BB_C.y, BB_RX, BB_RY, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(232,68,90,.75)'; c.lineWidth = 6; c.setLineDash([14, 10]); c.beginPath(); c.ellipse(BB_C.x, BB_C.y, BB_RX, BB_RY, 0, 0, 7); c.stroke(); c.restore();
+  if (g.phase === 'boom' && g.loser && fNow() - (g.boomAt || 0) < 2500){ const o = g.loser === uid ? pos : others.get(g.loser); if (o){ const k = (fNow() - g.boomAt)/2500; c.save(); c.globalAlpha = 1 - k; for (let i = 0; i < 10; i++){ const a = i/10*Math.PI*2; d.circle(o.x + Math.cos(a)*k*90, o.y - 30 + Math.sin(a)*k*60, 14*(1 - k) + 4, ['#ffd35c','#ff8f5c','#e8445a'][i % 3]); } c.restore(); } }
+}
+function drawBombOn(c, x, y, t){ const d = painter(c), b = y - 92 + Math.sin(t/120)*2;
+  d.circle(x, b, 11, '#3a3440'); d.dot(x - 4, b - 4, 3, '#8a8494', .8); c.save(); c.strokeStyle = '#c9a07a'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(x + 6, b - 8); c.quadraticCurveTo(x + 12, b - 16, x + 9, b - 20); c.stroke(); c.restore();
+  const f = .5 + .5*Math.sin(t/60); d.circle(x + 9, b - 21, 3 + f*2.5, '#ffd35c'); d.dot(x + 9, b - 21, 2, '#fff8d0'); }
 // ----- 오투모 축제 관리 -----
-const admFest = {tab:'ox', fgbK:'gold', fgbN:'10000', fgbQ:'', fgbA:'', gbR:0, gbAns:'', fhuK:'gold', fhuN:'5000', frpK:'gold', frpN:'20000', fsyK:'gold', fsyN:'10000', ffiK:'gold', ffiN:'10000', fmgK:'gold', fmgN:'10000', fmcK:'gold', fmcN:'10000', ftcK:'gold', ftcN:'10000', ftcS:'10', fNotice:'', syPose:-1};
+const admFest = {tab:'ox', fgbK:'gold', fgbN:'10000', fgbQ:'', fgbA:'', gbR:0, gbAns:'', fhuK:'gold', fhuN:'5000', frpK:'gold', frpN:'20000', fsyK:'gold', fsyN:'10000', ffiK:'gold', ffiN:'10000', fmgK:'gold', fmgN:'10000', fmcK:'gold', fmcN:'10000', ftcK:'gold', ftcN:'10000', ftcS:'10', fbbK:'gold', fbbN:'10000', fbbS:'', bbAt:0, bbSec:0, fNotice:'', syPose:-1};
 function adminFestSec(){
-  const open = festOpen(), tabs = [['ox','❓ OX 퀴즈'],['gb','🔔 골든벨'],['hunt','💎 보물찾기'],['rps','✊ 가위바위보'],['sync','🤖 동심일체'],['mg','🌺 무궁화'],['mc','🪑 방석'],['tc','⏱️ 시간'],['fish','🎣 낚시']];
+  const open = festOpen(), tabs = [['ox','❓ OX 퀴즈'],['gb','🔔 골든벨'],['hunt','💎 보물찾기'],['rps','✊ 가위바위보'],['sync','🤖 동심일체'],['mg','🌺 무궁화'],['mc','🪑 방석'],['tc','⏱️ 시간'],['bomb','💣 폭탄'],['fish','🎣 낚시']];
   let h = `<div class="adm-sec adm-auc"><b>🎪 핑크 축제장 ${open ? '<span class="adm-on">열림</span>' : '· 닫힘 (들어갈 수 없어요)'}</b>
     <button data-a="${open ? 'festclose' : 'festopen'}" class="adm-btn${open ? ' warn' : ''}">${open ? '축제 닫기' : '축제 열기'}</button><button data-a="festgo" class="adm-btn">축제장 보기</button>
     <div class="adm-say"><input id="fNotice" data-rk="fest|fNotice" maxlength="80" placeholder="📢 오투모가 모두에게 할 말 (5 초 동안 떠요)" value="${esc(admFest.fNotice)}"><button data-a="notice" class="mini">말하기</button></div>
@@ -7452,6 +7504,15 @@ function adminFestSec(){
       h += `<small>목표 <b>${tcFmt(g.target)}초</b> · 상품 ${esc(prizeName(g.meta))} · 누른 사람 ${rk.length}명</small>${rk.slice(0, 10).map(([, p, d], i) => `<small>${i+1}. ${esc(p.nick)} · ${tcFmt(p.ms)}초 (${p.ms >= g.target ? '+' : '-'}${tcFmt(d)})</small>`).join('')}`;
       h += g.phase === 'ready' ? `<button data-a="tcstart" class="adm-btn">시작! (3·2·1)</button>` : `<button data-a="tcend" class="adm-btn">결과 발표</button><button data-a="tcagain" class="adm-btn">같은 목표로 한 판 더</button>`;
       h += `<button data-a="tccancel" class="adm-btn warn">취소</button>`; } }
+  if (t === 'bomb'){ const g = fest.bomb;
+    if (!festLive(g)) h += `<small>광장의 둥근 필드 안에서만 움직여요 · 폭탄을 가진 사람은 10% 빨라지고, 터치하면 넘겨요 · 오투모가 몰래 정한 시간에 펑! 가진 사람이 탈락</small>${prizeInputs('fbbK','fbbN')}<button data-a="bbgo" class="adm-btn">참가 받기 시작</button>`;
+    else { const pl = Object.entries(bbPlayers()), alive = bbAlive(), left = admFest.bbAt ? Math.max(0, Math.ceil((admFest.bbAt - now)/1000)) : 0;
+      h += `<small>상품 ${esc(prizeName(g.meta))} · 참가 ${pl.length}명 · 남은 ${alive.length}명${g.round ? ' · ' + g.round + '판' : ''}</small><small>🙂 ${alive.map(([u, p]) => esc(p.nick) + (u === g.holder && g.phase === 'play' ? '💣' : '')).join(', ') || '-'}</small>`;
+      if (g.phase === 'join') h += `<button data-a="bbready" class="adm-btn" ${pl.length >= 2 ? '' : 'disabled'}>필드로 모으기</button>`;
+      else if (g.phase === 'play') h += `<small>🤫 몰래 정한 시간 <b>${admFest.bbSec}초</b> · 펑까지 <b>${left}초</b> (오투모만 보여요)</small><button data-a="bbboom" class="adm-btn warn">지금 바로 펑!</button>`;
+      else if (alive.length <= 1) h += `<button data-a="bbend" class="adm-btn">🏆 우승 확정!</button>`;
+      else h += `<label>몰래 정할 시간(초) <input id="fbbS" data-rk="fest|fbbS" type="text" inputmode="numeric" maxlength="3" value="${esc(admFest.fbbS)}" placeholder="비우면 15~45초 랜덤"></label><button data-a="bbstart" class="adm-btn">${(g.round || 0) + 1}판 시작!</button>`;
+      h += `<button data-a="bbcancel" class="adm-btn warn">취소</button>`; } }
   if (t === 'fish'){ const fi = fest.fish;
     if (!festLive(fi)) h += `<small>축제장 연못에서 낚은 물고기 중 가장 큰 것(cm)으로 겨뤄요 · 낚싯대가 있어야 해요</small>${prizeInputs('ffiK','ffiN')}<button data-a="figo" class="adm-btn">낚시 대회 시작</button>`;
     else { const rk = fishRank(); h += `<small>상품 ${esc(prizeName(fi.meta))} · 기록 ${rk.length}명</small>${rk.slice(0, 8).map(([, b], i) => `<small>${i+1}등 ${esc(b.nick)} · ${esc(FISH[b.fid]?.name || '')} ${b.size} cm</small>`).join('')}<button data-a="fiend" class="adm-btn">끝내고 1등에게 상품</button><button data-a="ficancel" class="adm-btn warn">취소</button>`; } }
@@ -7513,6 +7574,13 @@ function adminFestClick(b){
   else if (a === 'mcstop') net.festSet({'mc/phase':'grab', 'mc/grabAt':now}).then(()=>toast('멈춰! 방석으로!')).catch(fail);
   else if (a === 'mcjudge'){ const upd = {'mc/phase':'judge'}; let n = 0; for (const [u] of mcAlive()) if (!mcSeatOf(u)){ upd[`mc/players/${u}/alive`] = false; n++; } net.festSet(upd).then(()=>toast(`${n}명 탈락`)).catch(fail); }
   else if (a === 'mcend' || a === 'mccancel'){ if (a === 'mccancel' && !confirm('취소할까요?')) return; const win = Object.fromEntries(mcAlive().map(([u]) => [u, true])); net.festSet(a === 'mcend' ? {'mc/done':1, 'mc/phase':'done', 'mc/win': Object.keys(win).length ? win : null} : {'mc/cancel':1}).then(()=>toast(a === 'mcend' ? '방석 뺏기 끝!' : '취소했어요')).catch(fail); }
+  else if (a === 'bbgo'){ const m = prizeOf(admFest.fbbK, admFest.fbbN); if (!confirm(`상품 ${prizeName(m)} · 폭탄 돌리기 참가를 받을까요?`)) return; admFest.bbAt = 0; net.festSet({bomb:{id:festNewId('o'), meta:m, at:now, phase:'join', round:0}}).then(()=>toast('참가를 받고 있어요')).catch(fail); }
+  else if (a === 'bbready') net.festSet({'bomb/phase':'ready', 'bomb/readyAt':now}).then(()=>toast('필드로 모았어요')).catch(fail);
+  else if (a === 'bbstart'){ const g = fest.bomb, alive = bbAlive().map(([u]) => u); if (alive.length < 2) return; const sec = parseInt(String(admFest.fbbS).replace(/[^0-9]/g, ''), 10), secs = sec >= 3 && sec <= 300 ? sec : 15 + Math.floor(Math.random()*31);
+    const holder = g.prev && alive.includes(g.prev) && g.prev !== g.loser ? g.prev : alive[Math.floor(Math.random()*alive.length)];
+    admFest.bbSec = secs; admFest.bbAt = now + secs*1000; net.festSet({'bomb/phase':'play', 'bomb/round': (g.round || 0) + 1, 'bomb/holder': holder, 'bomb/prev': null, 'bomb/passAt': now, 'bomb/loser': null}).then(()=>toast(`${(g.round || 0) + 1}판 시작! (몰래 ${secs}초)`)).catch(fail); }
+  else if (a === 'bbboom'){ const g = fest.bomb; if (!g || g.phase !== 'play') return; const loser = g.holder; admFest.bbAt = 0; net.festSet({'bomb/phase':'boom', 'bomb/boomAt':now, 'bomb/loser':loser, [`bomb/players/${loser}/alive`]: false}).then(()=>toast(`펑! ${bbPlayers()[loser]?.nick || ''} 탈락`)).catch(fail); }
+  else if (a === 'bbend' || a === 'bbcancel'){ if (a === 'bbcancel' && !confirm('취소할까요?')) return; admFest.bbAt = 0; const win = Object.fromEntries(bbAlive().map(([u]) => [u, true])); net.festSet(a === 'bbend' ? {'bomb/done':1, 'bomb/phase':'done', 'bomb/win': Object.keys(win).length ? win : null} : {'bomb/cancel':1}).then(()=>toast(a === 'bbend' ? '폭탄 돌리기 끝!' : '취소했어요')).catch(fail); }
   else if (a === 'tcgo'){ const sec = parseFloat(String(admFest.ftcS).replace(/[^0-9.]/g, '')); if (!(sec >= 1 && sec <= 120)) return toast('1 ~ 120 초 사이로 적어 주세요'); const m = prizeOf(admFest.ftcK, admFest.ftcN); if (!confirm(`목표 ${sec.toFixed(3)}초 · 상품 ${prizeName(m)} · 시간 세기를 준비할까요?`)) return; net.festSet({tc:{id:festNewId('t'), meta:m, at:now, target:Math.round(sec*1000), phase:'ready'}}).then(()=>toast('목표 시간을 알렸어요')).catch(fail); }
   else if (a === 'tcstart' || a === 'tcagain'){ if (a === 'tcagain' && !confirm('기록을 지우고 같은 목표로 다시 할까요?')) return; net.festSet({'tc/phase':'go', 'tc/goAt':now, 'tc/presses':null}).then(()=>toast('시작! 3·2·1')).catch(fail); }
   else if (a === 'tcend' || a === 'tccancel'){ if (a === 'tccancel' && !confirm('취소할까요?')) return; const rk = tcRank(), best = rk.length ? rk[0][2] : null, win = Object.fromEntries(rk.filter(([, , d]) => d === best).map(([u]) => [u, true])); net.festSet(a === 'tcend' ? {'tc/done':1, 'tc/doneAt':now, 'tc/phase':'done', 'tc/win': Object.keys(win).length ? win : null} : {'tc/cancel':1}).then(()=>toast(a === 'tcend' ? (rk.length ? `🏆 ${rk[0][1].nick} ${tcFmt(rk[0][1].ms)}초` : '기록이 없어요') : '취소했어요')).catch(fail); }
@@ -7694,6 +7762,7 @@ function petPanel(pt){
       petPanel(pt); });
 }
 function talkBubble(key, x, y, t){
+  if (zoneId === 'fest' && fest.bomb && fest.bomb.phase === 'play' && festLive(fest.bomb) && bbHolder() === (key === 'me' ? uid : key)) drawBombOn(ctx, x, y, t);
   { const fb = festBubbleText(key === 'me' ? uid : key); if (fb){ bubble(ctx, fb, x, y-80); return; } }
   const e = bubbles.get(key+'-emo'), b = bubbles.get(key);
   if (b && t-b.at < 5000) bubble(ctx, b.text, x, y-80);

@@ -422,6 +422,24 @@
             ".validate": "newData.hasChildren(['nick','ms']) && newData.child('ms').isNumber() && newData.child('ms').val() >= 0 && newData.child('ms').val() <= 600000 && newData.child('ms').val() % 1 === 0 && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
           }
         }
+      },
+      "bomb": {
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('fest/bomb/phase').val() === 'join' && !root.child('fest/bomb/done').exists() && !root.child('fest/bomb/cancel').exists() && newData.child('alive').val() === true",
+            ".validate": "newData.hasChildren(['nick','alive']) && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
+          }
+        },
+        "holder": {
+          ".write": "auth != null && root.child('fest/bomb/phase').val() === 'play' && data.val() === auth.uid && newData.isString() && newData.val() !== auth.uid && root.child('fest/bomb/players/' + newData.val() + '/alive').val() === true"
+        },
+        "prev": {
+          ".write": "auth != null && root.child('fest/bomb/phase').val() === 'play' && root.child('fest/bomb/holder').val() === auth.uid && newData.val() === auth.uid"
+        },
+        "passAt": {
+          ".write": "auth != null && root.child('fest/bomb/phase').val() === 'play' && root.child('fest/bomb/holder').val() === auth.uid",
+          ".validate": "newData.val() === now"
+        }
       }
     }
   }
