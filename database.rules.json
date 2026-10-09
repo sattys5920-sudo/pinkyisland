@@ -320,6 +320,71 @@
           }
         }
       }
+    },
+    "fest": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "gb": {
+        "players": {
+          "$id": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && !data.exists() && $id === root.child('fest/gb/id').val() && !root.child('fest/gb/done').exists() && !root.child('fest/gb/cancel').exists() && root.child('fest/gb/cur/r').val() === 1 && now <= root.child('fest/gb/cur/endAt').val() + 3000 && newData.child('alive').val() === true",
+              ".validate": "newData.hasChildren(['nick','alive']) && newData.child('nick').isString() && newData.child('nick').val().length <= 16",
+              "a": {
+                ".write": "auth != null && auth.uid === $uid && data.parent().child('alive').val() === true && $id === root.child('fest/gb/id').val() && !root.child('fest/gb/cur/ans').exists() && now <= root.child('fest/gb/cur/endAt').val() + 1000",
+                ".validate": "newData.isString() && newData.val().length <= 30"
+              },
+              "ar": {
+                ".write": "auth != null && auth.uid === $uid && data.parent().child('alive').val() === true && $id === root.child('fest/gb/id').val() && now <= root.child('fest/gb/cur/endAt').val() + 1000",
+                ".validate": "newData.val() === root.child('fest/gb/cur/r').val()"
+              }
+            }
+          }
+        }
+      },
+      "hunt": {
+        "items": {
+          "$tid": {
+            ".write": "auth != null && root.child('fest/hunt/on').val() === true && !root.child('fest/hunt/done').exists() && data.exists() && !data.child('by').exists() && newData.child('by').val() === auth.uid && newData.child('k').val() === data.child('k').val() && newData.child('n').val() === data.child('n').val() && newData.child('name').val() === data.child('name').val() && newData.child('x').val() === data.child('x').val() && newData.child('y').val() === data.child('y').val() && newData.child('z').val() === data.child('z').val()"
+          }
+        }
+      },
+      "rps": {
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('fest/rps/phase').val() === 'join' && !root.child('fest/rps/done').exists() && !root.child('fest/rps/cancel').exists()",
+            ".validate": "newData.isString() && newData.val().length <= 16"
+          }
+        },
+        "picks": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('fest/rps/phase').val() === 'pick' && root.child('fest/rps/players/' + $uid).exists()",
+            ".validate": "newData.isString() && (newData.val() === 'r' || newData.val() === 'p' || newData.val() === 's')"
+          }
+        }
+      },
+      "sync": {
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('fest/sync/phase').val() === 'join' && !root.child('fest/sync/done').exists() && !root.child('fest/sync/cancel').exists() && newData.child('alive').val() === true",
+            ".validate": "newData.hasChildren(['nick','alive']) && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
+          }
+        },
+        "picks": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('fest/sync/phase').val() === 'pick' && root.child('fest/sync/players/' + $uid + '/alive').val() === true",
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5 && newData.val() % 1 === 0"
+          }
+        }
+      },
+      "fish": {
+        "best": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('fest/fish/on').val() === true && !root.child('fest/fish/done').exists() && !root.child('fest/fish/cancel').exists() && (!data.exists() || newData.child('size').val() > data.child('size').val())",
+            ".validate": "newData.hasChildren(['nick','size','fid']) && newData.child('size').isNumber() && newData.child('size').val() > 0 && newData.child('size').val() < 1000 && newData.child('nick').isString() && newData.child('nick').val().length <= 16"
+          }
+        }
+      }
     }
   }
 }

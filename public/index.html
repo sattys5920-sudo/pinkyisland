@@ -392,6 +392,16 @@ body.dlg-on #dlvChip,body.typing #dlvChip,body.mg-on #dlvChip,body.admin #dlvChi
 }
 #goal.done .gl-bar s{background:linear-gradient(90deg,#9fe0b4,#4fbf7f)}
 body.dlg-on #goal,body.admin #goal{visibility:hidden}
+#festBar{position:fixed;z-index:21;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 112px);width:min(440px,calc(100vw - 20px));display:flex;flex-direction:column;gap:6px;color:#5a3346;font-size:16px}#festBar[hidden]{display:none!important}
+#festBar .fb-card{background:#fff8fb;border:3px solid #ffc4d6;border-radius:18px;box-shadow:0 4px 0 #f1c6d8,0 8px 20px rgba(80,30,60,.18);padding:7px 12px 9px}
+#festBar .ox-h{display:flex;align-items:center;gap:6px}#festBar .ox-h small{margin-left:auto;color:#b07a92;font-size:13px}
+#festBar .ox-q{margin:5px 0;font-size:19px;line-height:1.25;word-break:keep-all}#festBar .ox-q span{display:inline-block;background:#ff8fb2;color:#fff;border-radius:10px;padding:0 7px;margin-right:6px;font-size:14px}
+#festBar .ox-f{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px;color:#9a6f84}#festBar .ox-t{font-size:22px;color:#e0507a}#festBar .ox-a{font-size:20px;color:#4f9cff}#festBar .ox-ok{color:#3aa76d}#festBar .ox-out{color:#e0507a}
+#festBar .fb-in{display:flex;gap:6px;margin-top:6px}#festBar .fb-in input{flex:1;min-width:0;border:2px solid #ffc4d6;border-radius:12px;padding:6px 10px;font:inherit;font-size:17px}
+#festBar .fb-rps{display:flex;flex-wrap:wrap;gap:5px;width:100%;margin-top:4px}#festBar .fb-rps .mini{font-size:15px}#festBar .mini.on{background:#ff8fb2;color:#fff}
+.fest-br{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 8px}.fest-col{display:flex;flex-direction:column;gap:8px;justify-content:space-around;min-width:110px}.fest-col>b{font-size:14px;color:#b07a92;text-align:center}
+.fest-m{background:#fff;border-radius:10px;box-shadow:inset 0 -2px 0 #f6e6ec;padding:4px 8px;display:flex;flex-direction:column;font-size:15px}.fest-m.now{outline:2px solid #ffb3cd}.fest-m .w{color:#e0507a;font-weight:bold}.fest-m .l{color:#c9b3bc;text-decoration:line-through}
+#adminUi .adm-tabs{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}#adminUi .adm-tabs .mini.on{background:#ff8fb2;color:#fff}#adminUi .adm-on{color:#7fe3a0}#adminUi .fest-m{background:#3a3440;box-shadow:none}#adminUi .fest-col>b{color:#c9b3bc}
 #oxBar{position:fixed;z-index:22;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 112px);width:min(420px,calc(100vw - 20px));background:#fff8fb;border:3px solid #ff9fc4;border-radius:18px;box-shadow:0 4px 0 #f1c6d8,0 8px 20px rgba(80,30,60,.2);padding:8px 12px 10px;color:#5a3346;font-size:16px;pointer-events:none}#oxBar[hidden]{display:none!important}
 #oxBar .ox-h{display:flex;align-items:center;gap:6px}#oxBar .ox-h small{margin-left:auto;color:#b07a92;font-size:13px}
 #oxBar .ox-q{margin:5px 0;font-size:19px;line-height:1.25;word-break:keep-all}#oxBar .ox-q span{display:inline-block;background:#ff8fb2;color:#fff;border-radius:10px;padding:0 7px;margin-right:6px;font-size:14px}
@@ -621,7 +631,7 @@ function drawPlayer(c, x, y, L, dir, t, walk, s=1, expr='dot'){
 // 표정: 캐릭터를 만들 때 고른 표정을 계속 써요 (상황에 따라 바뀌지 않아요)
 function setExpr(){}
 let prayUntil = 0; // 별똥별에 소원 빌 때: 손 모으고 눈 감는 자세 (다른 사람에게도 보여요)
-function myExpr(){ if (prayUntil && performance.now() < prayUntil) return 'pray'; return (me && me.look && me.look.expr) || 'dot'; }
+function myExpr(){ if (prayUntil && performance.now() < prayUntil) return 'pray'; if (festExpr && performance.now() < festExprUntil) return festExpr; return (me && me.look && me.look.expr) || 'dot'; }
 // 동물 주민: 걷기 8 단계, 서 있기 4 단계
 function drawCritter(c, x, y, v, t, walk, s=1, flip=false){
   if (v && v.a1) return drawPlayer(c, x, y, v.a1, walk ? (flip ? 'left' : 'right') : 'down', t, walk, s, 'dot');
@@ -704,6 +714,8 @@ const ZONES = {
   ], trees:[[260,220],[1340,220],[1300,880],[300,900]]},
   // 핑크 시장: 친구들 가게 터 12 곳 (크기는 줄이지 않아요)
   bazaar:    {name:'핑크 시장', theme:'grass', W:1800, H:1520, grid:[2,4], places:[], trees:[], lamps:[]},
+  // 핑크 축제장: 시장 동쪽 · 오투모가 열어야 들어가요 (크기는 줄이지 않아요)
+  fest:      {name:'핑크 축제장', theme:'grass', W:2200, H:1600, grid:[3,4], places:[{kind:'pond', x:1720, y:1230, rx:300, ry:160}], trees:[[2100,250],[2120,1470],[110,1490],[1990,1000]], lamps:[]},
   minegate:  {name:'광산 입구', theme:'grass', W:1600, H:1100, grid:[1,3], places:[
     {kind:'mine'},
     {kind:'sign', x:1060, y:420, text:'바위를 눌러 캐요'},
@@ -736,7 +748,7 @@ const ZONES = {
 delete ZONES.bazaar.exits.w; delete ZONES.cave.exits.e;
 // 넓기만 하고 빈 곳이 많던 구역을 3/4 크기로 줄여요 (집터는 12 집이 들어가야 해서 그대로). 위 숫자는 줄이기 전 기준
 const ZK = 0.75, zk = v => Math.round(v*ZK);
-for (const [id,z] of Object.entries(ZONES)){ if (id==='home' || id==='bazaar') continue; z.k = ZK; z.W = zk(z.W); z.H = zk(z.H); z.trees = z.trees.map(([x,y])=>[zk(x), zk(y)]); for (const p of z.places){ if (p.x!=null){ p.x = zk(p.x); p.y = zk(p.y); } if (p.rx){ p.rx = zk(p.rx); p.ry = zk(p.ry); } } }
+for (const [id,z] of Object.entries(ZONES)){ if (id==='home' || id==='bazaar' || id==='fest') continue; z.k = ZK; z.W = zk(z.W); z.H = zk(z.H); z.trees = z.trees.map(([x,y])=>[zk(x), zk(y)]); for (const p of z.places){ if (p.x!=null){ p.x = zk(p.x); p.y = zk(p.y); } if (p.rx){ p.rx = zk(p.rx); p.ry = zk(p.ry); } } }
 const DIRS = {n:'북', s:'남', e:'동', w:'서'};
 const THEME = {
   grass:{ground:'#b5e6a3', ground2:'#9fdb8c', path:'#ffe0bf', edge:'#7cc46a'},
@@ -894,6 +906,7 @@ function rebuildObstacles(){
     if (p.kind==='logs') o.rects.push({x:p.x-60, y:p.y-30, w:120, h:40});
   }
   if (zoneId==='bazaar') bazaarObstacles(o);
+  if (zoneId==='fest') festObstacles(o);
   if (zoneId==='home') for (const p of Object.values(players)) if (p.lot!=null){ const L=LOTS[p.lot]; o.rects.push({x:L.x-54,y:L.y-106,w:108,h:108}); const [mx, my] = mailboxPos(p.lot); o.circles.push({x:mx, y:my-2, r:9}); }
   // 남의 울타리(빈 집터 포함)는 못 들어가요. 내 울타리만 드나들 수 있어요
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (me && me.lot===i) return; if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return; o.rects.push({x:L.x-FENCE.w/2, y:L.y+FENCE.top-6, w:FENCE.w, h:FENCE.h+6}); });
@@ -932,6 +945,7 @@ function checkExit(){
   else if (ex.w && pos.x < 30) side = 'w'; else if (ex.e && pos.x > z.W-30) side = 'e';
   if (side && z.dark){ const [dx, dy] = darkDoorOf(z.dark); return enterZone(darkDoorZone(z.dark), null, dx, dy + 44); }
   if (side && z.house){ const p = z.house===uid ? me : players[z.house], L = LOTS[(p && p.lot!=null) ? p.lot : me.lot]; return enterZone('home', null, L.x, L.y + 24); }
+  if (side && ex[side]==='fest' && !festOpen() && !admin){ festBlockMsg(); pos.x = Math.min(pos.x, z.W-90); return; }
   if (side) enterZone(ex[side], {n:'s', s:'n', w:'e', e:'w'}[side]);
 }
 function freeSpot(x, y){
@@ -942,6 +956,7 @@ function freeSpot(x, y){
 let fadeT = 0;
 function enterZone(id, from, x, y){
   if (!zoneOk(id)) id = 'home';
+  if (id==='fest' && !admin && me && !festOpen()){ festBlockMsg(); id = 'bazaar'; from = null; x = ZONES.bazaar.W - 120; y = ZONES.bazaar.H/2; }
   decorating = null;
   if (me && obStep == null && zoneId && zoneId !== id) stat('zoneMoves');
   if (me){ const v = (me.visited||'home').split(',').filter(Boolean); const zid = id.includes(':') ? id.split(':')[0] : id; if (!v.includes(zid)){ v.push(zid); me.visited = v.join(','); syncStats(); } }
@@ -1284,6 +1299,15 @@ function soloNet(){
     goalWatch: (d, cb) => { const g = soloNet.goals || (soloNet.goals = {}); setTimeout(()=>cb(g[d] || {})); return ()=>{}; },
     goalGet: async d => (soloNet.goals || {})[d] || {},
     goalSet: async (d, v) => { const g = soloNet.goals || (soloNet.goals = {}); (g[d] = g[d] || {})[uid] = v; },
+    festSet: async v => { const o = soloNet.fest || (soloNet.fest = {}); for (const [k, val] of Object.entries(v)){ const ks = k.split('/'); let t = o; for (const q of ks.slice(0, -1)) t = t[q] = (t[q] && typeof t[q] === 'object') ? t[q] : {}; if (val === null) delete t[ks.at(-1)]; else t[ks.at(-1)] = structuredClone(val); } setTimeout(()=>onFest(structuredClone(o))); },
+    gbJoin: (id, p) => net.festSet({[`gb/players/${id}/${uid}`]: p}),
+    gbAnswer: (id, a, r) => net.festSet({[`gb/players/${id}/${uid}/a`]: a, [`gb/players/${id}/${uid}/ar`]: r}),
+    huntClaim: async (tid, nick) => { const it = soloNet.fest?.hunt?.items?.[tid]; if (!it || it.by || !soloNet.fest.hunt.on) return false; await net.festSet({[`hunt/items/${tid}/by`]: uid, [`hunt/items/${tid}/nick`]: nick}); return true; },
+    rpsJoin: nick => net.festSet({['rps/players/' + uid]: nick}),
+    rpsPick: v => net.festSet({['rps/picks/' + uid]: v}),
+    syncJoin: nick => net.festSet({['sync/players/' + uid]: {nick, alive:true}}),
+    syncPick: i => net.festSet({['sync/picks/' + uid]: i}),
+    fishBest: b => net.festSet({['fish/best/' + uid]: b}),
     oxOpen: async m => { soloNet.ox = {meta:m}; onOx(structuredClone(soloNet.ox)); },
     oxSet: async v => { const o = soloNet.ox || (soloNet.ox = {}); for (const [k, val] of Object.entries(v)){ const ks = k.split('/'); let t = o; for (const q of ks.slice(0, -1)) t = t[q] = t[q] || {}; if (val === null) delete t[ks.at(-1)]; else t[ks.at(-1)] = structuredClone(val); } onOx(structuredClone(o)); },
     oxJoin: async (id, p) => { const o = soloNet.ox || (soloNet.ox = {}); ((o.players = o.players || {})[id] = o.players[id] || {})[uid] = p; onOx(structuredClone(o)); },
@@ -1389,7 +1413,7 @@ function firebaseNet(){
     // 장소마다 100 줄만 남기고 오래된 줄은 지워요
     chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ox:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ox:null, fest:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -1414,6 +1438,7 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'world'), s=>onWorld(s.val()), ()=>{});
       F.onValue(F.ref(db, 'auction'), s=>onAuction(s.val()), ()=>{});
       F.onValue(F.ref(db, 'ox'), s=>onOx(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'fest'), s=>onFest(s.val()), ()=>{});
       F.onValue(F.ref(db, 'bazaar'), s=>onBazaar(s.val()), ()=>{});
     },
     setWorld: v => F.update(F.ref(db, 'world'), v),
@@ -1425,6 +1450,15 @@ function firebaseNet(){
     goalWatch: (d, cb) => F.onValue(F.ref(db, 'goals/'+d), s=>cb(s.val()), ()=>{}),
     goalGet: async d => (await F.get(F.ref(db, 'goals/'+d))).val(),
     goalSet: (d, v) => F.set(F.ref(db, 'goals/'+d+'/'+uid), v),
+    festSet: v => F.update(F.ref(db, 'fest'), v),
+    gbJoin: (id, p) => F.set(F.ref(db, 'fest/gb/players/' + id + '/' + uid), p),
+    gbAnswer: (id, a, r) => F.update(F.ref(db, 'fest/gb/players/' + id + '/' + uid), {a, ar:r}),
+    huntClaim: async (tid, nick) => { try { const r = await F.runTransaction(F.ref(db, 'fest/hunt/items/' + tid), cur => (cur && !cur.by) ? {...cur, by:uid, nick} : undefined, {applyLocally:false}); return !!(r.committed && r.snapshot.val()?.by === uid); } catch(e){ return false; } },
+    rpsJoin: nick => F.set(F.ref(db, 'fest/rps/players/' + uid), nick),
+    rpsPick: v => F.set(F.ref(db, 'fest/rps/picks/' + uid), v),
+    syncJoin: nick => F.set(F.ref(db, 'fest/sync/players/' + uid), {nick, alive:true}),
+    syncPick: i => F.set(F.ref(db, 'fest/sync/picks/' + uid), i),
+    fishBest: b => F.set(F.ref(db, 'fest/fish/best/' + uid), b),
     oxOpen: m => F.set(F.ref(db, 'ox'), {meta:m}),
     oxSet: v => F.update(F.ref(db, 'ox'), v),
     oxJoin: (id, p) => F.set(F.ref(db, 'ox/players/' + id + '/' + uid), p),
@@ -2181,7 +2215,7 @@ function renderNpcPanel(){
 }
 // ===== 섬 지도 (미니맵) =====
 // 구역 칸을 실제 배치 그대로 그리고, 집·연못·나무·주민·친구·나를 점으로 보여 줘요. 가 본 구역은 눌러서 바로 갈 수 있어요 (기력 10)
-const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', bazaar:'핑크 시장', minegate:'광산 입구', cave:'의문의 동굴', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층', cave4:'지하 4층'};
+const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', bazaar:'핑크 시장', fest:'축제장', minegate:'광산 입구', cave:'의문의 동굴', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층', cave4:'지하 4층'};
 let mapSel = null, mapGeo = null, mapDrawT = 0;
 const visitedZones = () => (me.visited||'home').split(',');
 function renderMap(){
@@ -2202,6 +2236,7 @@ function mapInfo(){
   const go = $('mapGo'); if (go) go.onclick = ()=>travelTo(id);
 }
 function travelTo(id){
+  if (id==='fest' && !festOpen()) return festBlockMsg();
   if (darkDown) return toast('기절해 있어서 움직일 수 없어요');
   if (fishing) return toast('낚시 중에는 갈 수 없어요');
   if (nearFoe(260)) return toast('몬스터가 가까이 있어서 지금은 못 가요');
@@ -2283,7 +2318,7 @@ const FISH_LIST = [
   ['보석가오리','seacave',3,197,0.88,60,150,'#bf8cff','any'], ['실러캔스','seacave',1,414,0.97,120,200,'#4a5a7a','any'],
 ];
 const FISH = Object.fromEntries(FISH_LIST.map((f,i)=>['f'+String(i+1).padStart(2,'0'), {name:f[0], zone:f[1], weight:f[2], price:f[3], diff:f[4], min:f[5], max:f[6], color:f[7], time:f[8]}]));
-const FISH_ZONES = {pond:1, beach:1, seacave:1};
+const FISH_ZONES = {pond:1, beach:1, seacave:1, fest:1};
 const STAR_MULT = [0, 1, 1.5, 2.5];
 const isNight = () => { const h = kstHour(); return h >= 19 || h < 5; };
 const fishKey = (id, st) => `${id}_${st}`;
@@ -2300,7 +2335,7 @@ function isWater(x, y){
 let fishing = null; // {phase:'wait'|'bite'|'game', bx, by, biteAt, biteEnd, id}
 function rollFish(){
   const night = isNight();
-  const list = Object.entries(FISH).filter(([,f])=>f.zone===zoneId && (f.time==='any' || (f.time==='night')===night));
+  const list = Object.entries(FISH).filter(([,f])=>f.zone===(zoneId==='fest' ? 'pond' : zoneId) && (f.time==='any' || (f.time==='night')===night));
   const w = f => f.weight * (isRain() && f.weight <= 8 ? 2.2 : 1) * (f.weight <= 8 ? 1 + tfx('fish') : 1); // 칭호: 희귀 물고기 +%
   const total = list.reduce((a,[,f])=>a+w(f),0);
   let r = Math.random()*total; for (const [id,f] of list){ if ((r-=w(f)) < 0) return id; } return list[0][0];
@@ -2372,7 +2407,7 @@ function catchFish(){
   invAdd('fish:'+k, 1);
   me.dex = me.dex || {}; const dx = me.dex[id] || {n:0, best:0, st:0};
   const record = size > dx.best; me.dex[id] = {n:dx.n+1, best:Math.max(dx.best,size), st:Math.max(dx.st,st)};
-  saveMe(); renderHud(); contestSubmit(id, size);
+  saveMe(); renderHud(); contestSubmit(id, size); festFishSubmit(id, size);
   withIcon('fish:'+k); say('낚시', `${f.name}을(를) 낚았어요! ${'★'.repeat(st)}${'☆'.repeat(3-st)}\n크기 ${size} cm${dx.n===0 ? ' · 처음 낚은 물고기!' : record ? ' · 최고 기록!' : ''}`, [], `도감 ${Object.keys(me.dex).length}/50 · 모모 케이크에서 ${fishPrice(k)} G에 팔 수 있어요`);
   if (f.weight <= 2) { if (net && net.sendChat) net.sendChat(`(전설의 ${f.name}을 낚았다! ${size} cm)`).catch(()=>{}); }
 }
@@ -3470,7 +3505,7 @@ function bzRemovePaths(id){ const o = {['bazaar/owners/'+id]: null}; for (const 
 
 // ===== 공통 패널 =====
 function openPanel(title, body, onClick){
-  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.bz; bzView = null; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv; delete p.dataset.museum;
+  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.fest; delete p.dataset.bz; bzView = null; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv; delete p.dataset.museum;
   p.innerHTML = deEmoji(`<div class="np-head"><b>${title}</b><button class="mini" id="pnClose">닫기</button></div>${body}`);
   $('pnClose').onclick = ()=>{ p.hidden = true; };
   if (onClick) p.querySelectorAll('.np[data-id]').forEach(b=>b.onclick = ()=>onClick(b));
@@ -5715,6 +5750,7 @@ function buildStatic(){
   if (z.theme==='flower') for (let i=0;i<120;i++) d.dot(M+(i*173)%(z.W-2*M), M+(i*97)%(z.H-2*M), 2.6, ['#ff8fc4','#ffe066','#ffffff','#c9a6ff'][i%4]);
   if (z.theme==='night') for (let i=0;i<70;i++) d.dot((i*223)%z.W, (i*137)%z.H, 1.6, '#fff6b0', .8);
   if (zoneId==='bazaar') drawBazaarGround(c, d, z);
+  if (zoneId==='fest') drawFestGround(c, d, z);
   // 구역 길: 출구에서 가운데로
   const cx = z.W/2, cy = z.H/2, ex = z.exits;
   d.shape(()=>{ c.beginPath(); if (ex.n) c.roundRect(cx-17,-10,34,cy+27,17); if (ex.s) c.roundRect(cx-17,cy-17,34,z.H/2+27,17); if (ex.w) c.roundRect(-10,cy-17,cx+27,34,17); if (ex.e) c.roundRect(cx-17,cy-17,z.W/2+27,34,17); }, T.path, [cx,cy,Math.max(z.W,z.H)/2]);
@@ -5727,6 +5763,7 @@ function buildStatic(){
   for (const [x,y] of z.trees) drawTree(d,x,y,x+y);
   for (const l of (z.lamps||[])) drawLamp(d, l.x, l.y);
   if (zoneId==='bazaar') drawBazaarTop(c, d);
+  if (zoneId==='fest') drawFestTop(c, d);
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return;
     const owner = Object.values(players).find(p=>p.lot===i);
     drawFence(d, L);
@@ -5909,8 +5946,8 @@ function frameBody(t){
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,110); c.scale(1.45,1.45); CH.figure(d, L, dir, t/1000, true, L.expr); c.restore(); } } }
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
-    if (admin){ moveOthers(dt); if (admWalk){ step(dt); admWalkTick(t); } else adminCam(); adminMobs(dt); updateBossFx(dt, t); aucTick(); oxTick(); }
-    else { step(dt); moveOthers(dt); aucSheet(); oxTick(); walkFade(t); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
+    if (admin){ moveOthers(dt); if (admWalk){ step(dt); admWalkTick(t); } else adminCam(); adminMobs(dt); updateBossFx(dt, t); aucTick(); oxTick(); festTick(); }
+    else { step(dt); moveOthers(dt); aucSheet(); oxTick(); festTick(); walkFade(t); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
     if (!admin){ const zf = Z().dark === 'tori' && darkBossUp(roomOf('tori')) && floorOf(pos.y, 3) === 3, wz = view.base * (zf ? .7 : 1); if (Math.abs(view.zoom - wz) > .01) view.zoom = wz; } // 토리??? 와 싸울 땐 한 발 물러서서 봐요
@@ -5928,7 +5965,7 @@ function frameBody(t){
     ctx.drawImage(staticLayer, 0, 0, W, H);
     const d = painter(ctx), now = Date.now();
     if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const g = id===uid ? me.gardens : (p.gardens||[]); slotsOf(p.lot, id===uid ? me.plots : p.plots).forEach((sl,i)=>drawSlot(d, sl, g[i], now, id===uid)); }
-    drawRocks(d, t); drawAucRing(ctx, t); drawOxField(ctx, t);
+    drawRocks(d, t); drawAucRing(ctx, t); drawOxField(ctx, t); drawFestDyn(ctx, t);
     if (target && !target.act){ const a = (t-target.mark)/600; ctx.save(); ctx.globalAlpha = Math.max(0,1-a*.5); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(target.x,target.y,10,5,0,0,7); ctx.stroke(); ctx.restore(); }
     const ents = [
       ...darkEntities(d, t),
@@ -5984,7 +6021,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK'){ e.target.blur(); renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; if (e.target.id && e.target.id in admFest) admFest[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK' || ['fgbK','fhuK','frpK','fsyK','ffiK'].includes(e.target.id)){ e.target.blur(); renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -6014,6 +6051,7 @@ function renderAdmin(){
       ${adminNightSec()}
       ${adminAucSec()}
       ${adminOxSec()}
+      ${adminFestSec()}
       ${adminMobSec()}
       ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}
       <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
@@ -6258,6 +6296,7 @@ function adminClick(e){
   else if (b.dataset.a==='aucgo') adminAucGo();
   else if (b.dataset.a==='oxgo') adminOxGo(); else if (b.dataset.a==='oxq') adminOxQ();
   else if (b.dataset.a==='oxend'){ if (confirm('끝내고 살아남은 사람에게 상품을 줄까요?')) adminOxEnd(false); }
+  else if (FEST_ACTS.has(b.dataset.a)) adminFestClick(b);
   else if (b.dataset.a==='oxcancel'){ if (confirm('OX 퀴즈를 취소할까요?')) adminOxEnd(true); }
   else if (['meteorgo','meteorcancel','fwgo'].includes(b.dataset.a)) adminNightClick(b.dataset.a);
   else if (b.dataset.a==='balgo') adminBalloon();
@@ -6845,6 +6884,377 @@ function adminOxEnd(cancel){
   net.oxSet(cancel ? {'meta/cancel': 1} : {'meta/done': 1, 'meta/win': Object.keys(win).length ? win : null}).then(()=>toast(cancel ? 'OX 퀴즈를 취소했어요' : `끝! ${Object.keys(win).length}명이 상품을 받아요`)).catch(()=>toast('끝내지 못했어요'));
 }
 
+// ===== 핑크 축제장: 오투모가 [축제 열기]를 눌러야 들어갈 수 있어요 =====
+// 축제 게임 다섯 가지 (모두 오투모가 진행하고 상품을 골라요)
+//  · 도전 골든벨: 문제마다 10 초 안에 정답을 적어요. 틀리거나 안 적으면 탈락
+//  · 보물찾기: 오투모가 서 있는 자리에 보물을 숨기고 [시작]을 누르면 보여요. 한 명이 찾으면 사라져요
+//  · 가위바위보 토너먼트: [가위바위...] 동안 하나를 고르고 [보!]에 모두 공개 · 안 내면 져요 · 비기면 다시
+//  · 오투모와 동심일체: 오투모가 고를 포즈를 맞혀요. 다른 걸 고르면 탈락 (아무도 못 맞히면 다시)
+//  · 낚시 대회: 축제장 연못에서 가장 큰 물고기를 낚은 사람이 이겨요
+const FEST_ACTS = new Set(['festopen','festclose','festgo','ftab','gbgo','gbq','gbend','gbcancel','huhide','hudel','hustart','huend','hureset','rpgo','rpdraw','rppick','rpreveal','rpnext','rpshow','rpcancel','sygo','systart','sypose','syreveal','syend','sycancel','figo','fiend','ficancel']);
+const FEST_W = 2200, FEST_H = 1600, FEST_POND = {x:1720, y:1230, rx:300, ry:160};
+let fest = {}, festBarSig = '', festSeen = {};
+const festOpen = () => !!world.festOpen;
+const fNow = () => Date.now() + serverOffset;
+const festLive = g => !!(g && g.id && !g.done && !g.cancel);
+const FEST_POSES = [['v','✌️','브이','wink'],['hands','🙌','만세','laugh'],['heart','🫶','하트','love'],['pray','🙏','소원','pray'],['muscle','💪','힘!','angry'],['shy','🙈','부끄','shy']];
+const RPS = {r:['✊','바위'], p:['🖐️','보'], s:['✌️','가위']};
+const rpsBeats = (a, b) => (a==='r' && b==='s') || (a==='s' && b==='p') || (a==='p' && b==='r');
+let festExpr = null, festExprUntil = 0;
+// 상품 (골드 · 반지 · 물건 · 옷)
+const prizeName = m => !m ? '' : m.k === 'gold' ? `${Number(m.n).toLocaleString()} G` : `${m.name}${m.n > 1 ? ' ' + m.n + '개' : ''}`;
+function givePrize(m){
+  if (!m || !me) return;
+  if (m.k === 'gold') me.inv.gold += Number(m.n) || 0;
+  else if (m.k.startsWith('ring:')){ const id = m.k.slice(5); if (!(me.inv.rings || []).includes(id)) me.inv.rings = [...(me.inv.rings || []), id]; else me.inv.gold += RINGS[id]?.gold || 0; }
+  else { invAdd(m.k, m.n || 1); if (m.k.startsWith('wear:')){ const id = m.k.slice(5).replace('~', '#'); if (!CLOSET().includes(id)) CLOSET().push(id); } }
+  saveMe(true); renderHud();
+}
+function festWin(key, m, title, text){ // 한 번만 받아요
+  me.festGot = me.festGot || {}; if (me.festGot[key]) return; me.festGot[key] = 1;
+  const ks = Object.keys(me.festGot); if (ks.length > 40) for (const k of ks.slice(0, ks.length - 40)) delete me.festGot[k];
+  givePrize(m); setExpr('sparkle', 3000); say(title, `${text}\n상품 ${prizeName(m)}을(를) 받았어요`, [['좋아요', closeTalk]]);
+}
+function prizeOf(k, nStr){
+  const num = v => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0; k = k || 'gold';
+  const n = k === 'gold' ? Math.max(100, num(nStr)) : k.startsWith('ring:') ? 1 : Math.max(1, Math.min(99, num(nStr)));
+  return {k, n, name: k === 'gold' ? '골드' : k.startsWith('ring:') ? (RINGS[k.slice(5)]?.name || '반지') : itemName(k)};
+}
+const prizeSelect = (id, cur) => `<select id="${id}"><optgroup label="골드"><option value="gold"${cur === 'gold' ? ' selected' : ''}>골드</option></optgroup>${aucItems().replace(/ selected/g, '').replace(`value="${cur}"`, `value="${cur}" selected`)}</select>`;
+const prizeInputs = (kId, nId) => `${prizeSelect(kId, admFest[kId])}<label>${admFest[kId] === 'gold' ? '골드' : '개수'} <input id="${nId}" data-rk="fest|${nId}" type="text" inputmode="numeric" maxlength="9" value="${esc(admFest[nId])}"></label>`;
+const festNewId = p => p + fNow().toString(36);
+
+// ----- 받기 -----
+function onFest(v){
+  const old = fest; fest = v || {};
+  const gb = fest.gb, hu = fest.hunt, rp = fest.rps, sy = fest.sync, fi = fest.fish;
+  if (!admin && me){
+    // 새 게임 알림 (열린 지 3 분 안에만)
+    for (const [k, g, label] of [['gb', gb, '🔔 도전 골든벨'], ['rps', rp, '✊ 가위바위보 토너먼트'], ['sync', sy, '🤖 오투모와 동심일체'], ['fish', fi, '🎣 낚시 대회']]){
+      if (festLive(g) && festSeen[k] !== g.id){ festSeen[k] = g.id; if (fNow() - (g.at || 0) < 180000) toast(`${label}가 열렸어요! 상품 ${prizeName(g.meta)} · 핑크 축제장으로!`); }
+    }
+    if (hu && hu.id && hu.on && !hu.done && festSeen.hunt !== hu.id){ festSeen.hunt = hu.id; if (fNow() - (hu.onAt || 0) < 180000) say('💎 보물찾기 시작!', '오투모가 섬 곳곳에 보물을 숨겼어요!\n먼저 찾는 사람이 가져가요. 가까이 가면 반짝여요', [['찾으러 가기', closeTalk]]); }
+    // 보물: 누가 찾았는지 알림
+    for (const [tid, it] of Object.entries(hu?.items || {})){ const was = old.hunt?.items?.[tid]; if (it && it.by && was && !was.by && it.by !== uid) toast(`💎 ${it.nick || '누군가'} 님이 보물(${prizeName(it)})을 찾았어요!`); }
+    // 골든벨 문제
+    const c = gb?.cur; if (festLive(gb) && c && c.r && !c.ans && festSeen.gbq !== gb.id + c.r){ festSeen.gbq = gb.id + c.r; if (zoneId === 'fest' || gbMine()) toast(`🔔 ${c.r}번 문제! 10 초 안에 정답을 적어요`); }
+    // 동심일체 공개: 내 포즈를 보여요
+    if (sy && sy.phase === 'reveal' && old.sync?.phase !== 'reveal'){ const p = sy.picks?.[uid]; if (p != null && FEST_POSES[p]){ festExpr = FEST_POSES[p][3]; festExprUntil = performance.now() + 6000; } }
+    // 가위바위보 공개
+    if (rp && rp.phase === 'reveal' && old.rps?.phase !== 'reveal' && rp.picks?.[uid]){ const m = rpsMyMatch(); if (m) toast(m.w === uid ? '이겼어요! 다음 판으로 올라가요' : m.w ? '졌어요.......' : '비겼어요! 한 번 더'); }
+    // 상품
+    if (gb && gb.done && gb.win && gb.win[uid]) festWin('gb' + gb.id, gb.meta, '🔔 골든벨 우승!', '끝까지 살아남았어요!');
+    if (sy && sy.done && sy.win && sy.win[uid]) festWin('sy' + sy.id, sy.meta, '🤖 동심일체 성공!', '오투모와 마음이 통했어요!');
+    if (rp && rp.done && rp.win === uid) festWin('rp' + rp.id, rp.meta, '🏆 가위바위보 최종 우승!', '토너먼트 1 위예요!');
+    if (fi && fi.done && fi.win === uid) festWin('fi' + fi.id, fi.meta, '🎣 낚시 대회 우승!', `가장 큰 물고기를 낚았어요! (${fi.best?.[uid]?.size || ''} cm)`);
+    if (rp && rp.show && !old.rps?.show && (zoneId === 'fest' || rp.players?.[uid])) rpsBracketPanel();
+  }
+  festBarSig = ''; if (admin) renderAdmin(); else if (!$('npcPanel').hidden && $('npcPanel').dataset.fest) rpsBracketPanel();
+}
+// 축제가 닫히면 안에 있던 사람은 시장으로
+function festGateTick(){
+  if (admin || !me) return;
+  if (zoneId === 'fest' && !festOpen()){ toast('축제가 끝났어요 · 핑크 시장으로 나가요'); enterZone('bazaar', null, ZONES.bazaar.W - 120, ZONES.bazaar.H/2); }
+}
+const festBlockMsg = () => toast('🎪 핑크 축제장은 아직 준비 중이에요');
+
+// ----- 골든벨 -----
+const gbPlayers = () => (fest.gb && fest.gb.players && fest.gb.players[fest.gb.id]) || {};
+const gbMine = () => gbPlayers()[uid];
+const gbAlive = () => Object.values(gbPlayers()).filter(p => p && p.alive);
+const gbNorm = s => String(s || '').toLowerCase().replace(/[\s.,!?~'"·]/g, '');
+const gbCounting = () => { const c = fest.gb?.cur; return !!(festLive(fest.gb) && c && c.r && !c.ans && fNow() < c.endAt); };
+function gbSubmit(){
+  const inp = $('gbIn'); if (!inp) return; const a = inp.value.trim().slice(0, 30); if (!a) return;
+  const g = fest.gb, c = g?.cur; if (!gbCounting() || !gbMine()?.alive) return toast('지금은 정답을 낼 수 없어요');
+  net.gbAnswer(g.id, a, c.r).then(()=>{ toast(`"${a}" 제출! 시간 안에 다시 적으면 바꿀 수 있어요`); }).catch(()=>toast('제출하지 못했어요'));
+  inp.value = ''; inp.blur();
+}
+// ----- 보물찾기 -----
+const huntItems = () => Object.entries(fest.hunt?.items || {}).filter(([, it]) => it && !it.by);
+const huntVisible = () => !!(fest.hunt && fest.hunt.on && !fest.hunt.done);
+// ----- 가위바위보 -----
+const rpsRound = () => (fest.rps?.rounds?.[fest.rps.round] || []);
+const rpsMyMatch = () => rpsRound().find(m => m && (m.a === uid || m.b === uid));
+const rpsNick = id => (id && fest.rps?.players?.[id]) || (id ? '?' : '부전승');
+// ----- 동심일체 -----
+const syPlayers = () => fest.sync?.players || {};
+const syAlive = () => Object.entries(syPlayers()).filter(([, p]) => p && p.alive);
+// ----- 낚시 대회 -----
+const fishRank = () => Object.entries(fest.fish?.best || {}).filter(([, b]) => b && b.size).sort((a, b) => b[1].size - a[1].size);
+function festFishSubmit(id, size){
+  const f = fest.fish; if (zoneId !== 'fest' || !festLive(f) || !f.on) return;
+  const cur = f.best?.[uid]; if (cur && cur.size >= size) return;
+  net.fishBest({nick:String(me.nick).slice(0, 16), size, fid:id}).then(()=>toast(`🎣 낚시 대회 기록! ${FISH[id]?.name || ''} ${size} cm`)).catch(()=>{});
+}
+
+// ----- 매 프레임 -----
+function festTick(){
+  festBar(); festGateTick();
+  if (festOpen() !== festTick.open){ if (festOpen() && !admin && me && fNow() - (+world.festAt || 0) < 180000) say('🎪 핑크 축제장이 열렸어요!', '오투모가 축제를 열었어요!\n핑크 시장 동쪽(→)으로 가면 축제장이에요.\n골든벨 · 보물찾기 · 가위바위보 · 동심일체 · 낚시 대회', [['좋아요', closeTalk]]); festTick.open = festOpen(); }
+  const now = fNow();
+  if (admin){
+    // 골든벨: 시간이 끝나면 오투모 화면이 채점해요
+    const g = fest.gb, c = g?.cur;
+    if (festLive(g) && c && c.r && !c.ans && admFest.gbR === c.r && admFest.gbAns && now > c.endAt + 1500 && !festTick.gbBusy){
+      festTick.gbBusy = true; const ok = admFest.gbAns.split('/').map(gbNorm).filter(Boolean), upd = {'gb/cur/ans': admFest.gbAns}; let alive = 0;
+      for (const [u, p] of Object.entries(gbPlayers())){ if (!p || !p.alive) continue; const right = p.ar === c.r && ok.includes(gbNorm(p.a)); if (!right) upd[`gb/players/${g.id}/${u}/alive`] = false; else alive++; }
+      net.festSet(upd).then(()=>toast(`${c.r}번 채점 끝 · 살아남은 ${alive}명`)).catch(()=>{}).finally(()=>setTimeout(()=>{ festTick.gbBusy = false; }, 1500));
+    }
+    const ph = [c && c.r, c && c.ans, c && now < c.endAt].join('|'); if (festTick.ph !== ph){ festTick.ph = ph; renderAdmin(); }
+    return;
+  }
+  if (!me) return;
+  const g = fest.gb, c = g?.cur;
+  if (festLive(g) && c && c.r === 1 && !c.ans && now < c.endAt && zoneId === 'fest' && !gbMine() && !festTick.joining){ festTick.joining = true; net.gbJoin(g.id, {nick:String(me.nick).slice(0, 16), alive:true}).catch(()=>{}).finally(()=>{ festTick.joining = false; }); }
+  if (festLive(g) && c && c.ans && festSeen.gbj !== g.id + c.r && gbMine()){ festSeen.gbj = g.id + c.r; const m = gbMine(); toast(m.alive ? `⭕ 정답은 "${c.ans}"! 살아남았어요` : `❌ 정답은 "${c.ans}" · 탈락했어요`); }
+  // 보물: 가까이 가면 주워요
+  if (huntVisible() && !festTick.claiming) for (const [tid, it] of huntItems()){
+    if (it.z === zoneId && Math.hypot(pos.x - it.x, pos.y - it.y) < 46){ festTick.claiming = true;
+      net.huntClaim(tid, String(me.nick).slice(0, 16)).then(ok => { if (ok) festWin('hu' + fest.hunt.id + tid, it, '💎 보물 발견!', '숨겨진 보물을 찾았어요!'); else toast('아깝다! 누가 먼저 찾았어요'); }).catch(()=>{}).finally(()=>setTimeout(()=>{ festTick.claiming = false; }, 800)); break; }
+  }
+}
+// 위쪽 축제 알림판
+function festBar(){
+  let el = $('festBar'); const rows = [], now = fNow();
+  const g = fest.gb, c = g?.cur, hu = fest.hunt, rp = fest.rps, sy = fest.sync, fi = fest.fish, here = zoneId === 'fest';
+  if (!admin && me){
+    if (festLive(g) && (here || gbMine())){
+      const m = gbMine(), left = c && c.r && !c.ans ? Math.max(0, Math.ceil((c.endAt - now)/1000)) : 0, st = m ? (m.alive ? '<b class="ox-ok">참가 중</b>' : '<b class="ox-out">탈락</b>') : c && c.r > 1 ? '구경 중' : '첫 문제 때 축제장에 있으면 참가해요';
+      const mine = m && m.ar === c?.r && m.a ? ` · 낸 답: <b>${esc(m.a)}</b>` : '';
+      rows.push(['gb', `<div class="ox-h">🔔 <b>도전 골든벨</b><small>상품 ${esc(prizeName(g.meta))}</small></div>${c && c.r ? `<div class="ox-q"><span>${c.r}번</span>${esc(c.q || '')}</div>` : '<div class="ox-q">곧 첫 문제가 나와요</div>'}
+        <div class="ox-f">${c && c.r ? (c.ans ? `정답 <b class="ox-a">${esc(c.ans)}</b>` : left ? `<b class="ox-t">${left}</b>초${mine}` : '채점 중…') : ''}<span>남은 사람 ${gbAlive().length}</span><span>${st}</span></div>
+        ${m && m.alive && gbCounting() ? '<div class="fb-in"><input id="gbIn" maxlength="30" placeholder="정답 적기" autocomplete="off"><button class="mini" id="gbGo">제출</button></div>' : ''}`, [c?.r, c?.ans, left, m?.alive, m?.a, gbAlive().length].join()]);
+    }
+    if (huntVisible() && huntItems().length) rows.push(['hu', `<div class="ox-h">💎 <b>보물찾기</b><small>남은 보물 ${huntItems().length}개</small></div><div class="ox-f">섬 곳곳에 숨어 있어요 · 가까이 가면 반짝여요</div>`, huntItems().length]);
+    if (festLive(rp) && (here || rp.players?.[uid])){
+      const m = rpsMyMatch(), opp = m ? (m.a === uid ? m.b : m.a) : null, joined = !!rp.players?.[uid], myPick = rp.picks?.[uid];
+      let body = '';
+      if (rp.phase === 'join') body = joined ? '참가 완료! 대진표를 기다려요' : '<button class="mini" id="rpJoin">참가하기</button>';
+      else if (!m) body = joined ? '탈락 · 구경 중' : '구경 중';
+      else if (m.w) body = m.w === uid ? '이겼어요! 다음 판을 기다려요' : '탈락 · 구경 중';
+      else if (rp.phase === 'pick') body = `상대: <b>${esc(rpsNick(opp))}</b> · ${myPick ? `${RPS[myPick][0]} 냈어요` : '가위바위...!'}<div class="fb-rps">${['s','r','p'].map(k => `<button class="mini${myPick === k ? ' on' : ''}" data-rps="${k}">${RPS[k][0]} ${RPS[k][1]}</button>`).join('')}</div>`;
+      else body = `상대: <b>${esc(rpsNick(opp))}</b> · 오투모가 [가위바위...]를 외치면 골라요`;
+      rows.push(['rp', `<div class="ox-h">✊ <b>가위바위보 토너먼트</b><small>${rp.round ? rp.round + ' 라운드 · ' : ''}상품 ${esc(prizeName(rp.meta))}</small></div><div class="ox-f">${body}${rp.show ? '<button class="mini" id="rpShow">대진표</button>' : ''}</div>`, [rp.phase, rp.round, m?.w, myPick, joined, rp.show].join()]);
+    }
+    if (festLive(sy) && (here || syPlayers()[uid])){
+      const me_ = syPlayers()[uid], myPick = sy.picks?.[uid]; let body = '';
+      if (!me_) body = sy.phase === 'join' ? '<button class="mini" id="syJoin">참가하기</button>' : '구경 중';
+      else if (!me_.alive) body = '<b class="ox-out">탈락</b> · 구경 중';
+      else if (sy.phase === 'pick') body = `오투모가 고를 포즈를 맞혀요!<div class="fb-rps">${FEST_POSES.map(([k, e, n], i) => `<button class="mini${myPick === i ? ' on' : ''}" data-pose="${i}">${e} ${n}</button>`).join('')}</div>`;
+      else if (sy.phase === 'reveal') body = `오투모는 <b>${FEST_POSES[sy.ans]?.[1] || ''} ${FEST_POSES[sy.ans]?.[2] || ''}</b>! ${me_.alive ? '<b class="ox-ok">통했어요!</b>' : ''}`;
+      else body = '<b class="ox-ok">참가 중</b> · 오투모가 시작하면 포즈를 골라요';
+      rows.push(['sy', `<div class="ox-h">🤖 <b>오투모와 동심일체</b><small>${sy.r ? sy.r + '번째 · ' : ''}남은 ${syAlive().length}명 · 상품 ${esc(prizeName(sy.meta))}</small></div><div class="ox-f">${body}</div>`, [sy.phase, sy.r, me_?.alive, myPick, sy.ans, syAlive().length].join()]);
+    }
+    if (festLive(fi) && fi.on && here){
+      const rk = fishRank().slice(0, 3), mine = fi.best?.[uid];
+      rows.push(['fi', `<div class="ox-h">🎣 <b>낚시 대회</b><small>상품 ${esc(prizeName(fi.meta))}</small></div><div class="ox-f">연못에서 가장 큰 물고기를 낚아요${rk.length ? ' · ' + rk.map(([, b], i) => `${i+1}등 ${esc(b.nick)} ${b.size}cm`).join(' · ') : ''}${mine ? ` · 내 기록 <b>${mine.size} cm</b>` : ''}</div>`, JSON.stringify(rk) + (mine?.size || '')]);
+    }
+  }
+  if (!rows.length){ if (el && !el.hidden){ el.hidden = true; festBarSig = ''; } return; }
+  if (!el){ el = document.createElement('div'); el.id = 'festBar'; document.body.appendChild(el);
+    el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+      if (b.id === 'gbGo') gbSubmit();
+      else if (b.id === 'rpJoin') net.rpsJoin(String(me.nick).slice(0, 16)).then(()=>toast('가위바위보 토너먼트에 참가했어요')).catch(()=>toast('지금은 참가할 수 없어요'));
+      else if (b.dataset.rps) net.rpsPick(b.dataset.rps).then(()=>toast(`${RPS[b.dataset.rps][0]} ${RPS[b.dataset.rps][1]}! [보!]에 공개돼요`)).catch(()=>toast('지금은 낼 수 없어요'));
+      else if (b.id === 'rpShow') rpsBracketPanel();
+      else if (b.id === 'syJoin') net.syncJoin(String(me.nick).slice(0, 16)).then(()=>toast('동심일체에 참가했어요')).catch(()=>toast('지금은 참가할 수 없어요'));
+      else if (b.dataset.pose) net.syncPick(+b.dataset.pose).then(()=>toast(`${FEST_POSES[+b.dataset.pose][1]} 골랐어요!`)).catch(()=>toast('지금은 고를 수 없어요'));
+    });
+    el.addEventListener('keydown', e => { if (e.target.id === 'gbIn' && e.key === 'Enter'){ e.preventDefault(); gbSubmit(); } });
+  }
+  el.hidden = false;
+  const sig = rows.map(r => r[0] + r[2]).join('|'); if (sig === festBarSig) return; festBarSig = sig;
+  const typed = $('gbIn')?.value || '', focused = document.activeElement?.id === 'gbIn';
+  el.innerHTML = rows.map(r => `<div class="fb-card">${r[1]}</div>`).join('');
+  const inp = $('gbIn'); if (inp){ inp.value = typed; if (focused) inp.focus(); }
+}
+// 대진표 (오투모가 [대진표 공개]를 누르면 모두에게 보여요)
+function rpsBracketHTML(){
+  const rp = fest.rps; if (!rp || !rp.rounds) return '<small>아직 대진표가 없어요</small>';
+  const rs = Object.keys(rp.rounds).filter(k => rp.rounds[k]).map(Number).sort((a, b) => a - b);
+  return `<div class="fest-br">${rs.map(r => `<div class="fest-col"><b>${r} 라운드</b>${(rp.rounds[r] || []).map(m => m ? `<div class="fest-m${m.w ? ' done' : ''}${r === rp.round ? ' now' : ''}"><span class="${m.w && m.w === m.a ? 'w' : m.w ? 'l' : ''}">${esc(rpsNick(m.a))}</span><span class="${m.w && m.w === m.b ? 'w' : m.w && m.b ? 'l' : ''}">${m.b ? esc(rpsNick(m.b)) : '<i>부전승</i>'}</span></div>` : '').join('')}</div>`).join('')}${rp.done && rp.win ? `<div class="fest-col"><b>우승</b><div class="fest-m done"><span class="w">🏆 ${esc(rpsNick(rp.win))}</span></div></div>` : ''}</div>`;
+}
+function rpsBracketPanel(){
+  const rp = fest.rps; if (!rp || (!rp.show && !admin)) return;
+  openPanel('✊ 가위바위보 대진표', `<p class="mnote">상품 ${esc(prizeName(rp.meta))}</p>${rpsBracketHTML()}`); $('npcPanel').dataset.fest = '1';
+}
+// 말풍선: 가위바위보·동심일체 공개, 골든벨 답
+function festBubbleText(id){
+  if (zoneId !== 'fest') return '';
+  const rp = fest.rps, sy = fest.sync, g = fest.gb;
+  if (festLive(rp) && rp.phase === 'reveal' && rp.picks?.[id]) return RPS[rp.picks[id]][0];
+  if (festLive(sy) && sy.phase === 'reveal' && sy.picks?.[id] != null && FEST_POSES[sy.picks[id]]) return FEST_POSES[sy.picks[id]][1];
+  const c = g?.cur, p = gbPlayers()[id]; if (festLive(g) && c && c.ans && p && p.ar === c.r && p.a && fNow() - c.endAt < 12000) return (p.alive ? '⭕ ' : '❌ ') + p.a;
+  return '';
+}
+function festOtumoBubble(c, x, y){ const sy = fest.sync; if (zoneId === 'fest' && sy && sy.phase === 'reveal' && FEST_POSES[sy.ans]) bubble(c, FEST_POSES[sy.ans][1], x, y - 96); }
+// 보물 상자 (오투모는 숨긴 자리를 늘 봐요)
+function drawFestDyn(c, t){
+  const hu = fest.hunt; if (!hu || hu.done) return;
+  for (const [, it] of Object.entries(hu.items || {})){ if (!it || it.by || it.z !== zoneId) continue; if (!admin && !hu.on) continue;
+    const near = !admin && Math.hypot(pos.x - it.x, pos.y - it.y) < 220, a = admin && !hu.on ? .55 : 1, bob = Math.sin(t/300 + it.x)*2;
+    c.save(); c.globalAlpha = a; const d = painter(c), x = it.x, y = it.y + bob;
+    if (near || admin){ c.save(); c.globalAlpha = a*(.35 + .25*Math.sin(t/200)); c.fillStyle = '#fff3a0'; c.beginPath(); c.arc(x, y - 12, 30, 0, 7); c.fill(); c.restore(); }
+    d.rr(x - 15, y - 20, 30, 20, 4, '#c98e5b'); d.rr(x - 16, y - 29, 32, 11, 6, '#e0a86a'); d.rr(x - 16, y - 21, 32, 3, 1.5, '#f3c64f'); d.rr(x - 3, y - 23, 6, 7, 2, '#f3c64f');
+    if (near) for (let i = 0; i < 3; i++){ const ang = t/400 + i*2.1; d.dot(x + Math.cos(ang)*22, y - 16 + Math.sin(ang)*12, 1.8, '#fffbe0'); }
+    if (admin){ c.font = 'bold 13px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#5a3346'; c.fillText(prizeName(it), x, y + 14); }
+    c.restore(); }
+}
+
+// ----- 축제장 그림 -----
+function festFerris(d, cx, cy, R){ const c = d.ctx;
+  d.shape(()=>{ c.beginPath(); c.moveTo(cx - 90, cy + R + 70); c.lineTo(cx, cy); c.lineTo(cx + 90, cy + R + 70); c.lineTo(cx + 70, cy + R + 70); c.lineTo(cx, cy + 30); c.lineTo(cx - 70, cy + R + 70); c.closePath(); }, '#e8e2f0', [cx, cy + R/2, R]);
+  c.save(); c.strokeStyle = '#ff9fc4'; c.lineWidth = 10; c.beginPath(); c.arc(cx, cy, R, 0, 7); c.stroke(); c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath(); c.arc(cx, cy, R - 10, 0, 7); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 3; for (let i = 0; i < 12; i++){ const a = i*Math.PI/6; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a)*R, cy + Math.sin(a)*R); c.stroke(); } c.restore();
+  const cols = ['#ff8fb6','#ffd35c','#7cc8ff','#9fe0b0','#c9a6ff','#ffa94d'];
+  for (let i = 0; i < 12; i++){ const a = i*Math.PI/6, x = cx + Math.cos(a)*R, y = cy + Math.sin(a)*R; d.rr(x - 15, y + 2, 30, 24, 9, cols[i % 6]); d.rr(x - 10, y + 6, 20, 9, 4, '#fffaf2'); d.dot(x, y, 3, '#9a8a94'); }
+  d.circle(cx, cy, 18, '#ffd35c'); d.circle(cx, cy, 8, '#fff3c4');
+}
+function festTent(d, x, gy, col, label){ const c = d.ctx;
+  d.rr(x - 90, gy - 70, 180, 70, 10, '#fffaf2'); d.rr(x - 80, gy - 62, 160, 22, 6, '#f6ead2');
+  for (let i = 0; i < 6; i++){ const sw = 200/6, sx = x - 100 + i*sw; d.shape(()=>{ c.beginPath(); c.moveTo(sx, gy - 150); c.lineTo(sx + sw, gy - 150); c.lineTo(sx + sw, gy - 120); c.arc(sx + sw/2, gy - 120, sw/2, 0, Math.PI); c.closePath(); }, i % 2 ? '#fffaf2' : col, [sx + sw/2, gy - 132, sw/2]); }
+  d.shape(()=>{ c.beginPath(); c.moveTo(x - 104, gy - 150); c.lineTo(x, gy - 210); c.lineTo(x + 104, gy - 150); c.closePath(); }, col, [x, gy - 170, 90]);
+  d.rr(x - 96, gy - 150, 8, 82, 4, '#c98e5b'); d.rr(x + 88, gy - 150, 8, 82, 4, '#c98e5b');
+  d.rr(x - 60, gy - 238, 120, 30, 15, '#fffaf2'); c.font = 'bold 18px "Maple",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#e2486a'; c.fillText(label, x, gy - 222); c.textBaseline = 'alphabetic';
+}
+function festBunting(d, x0, x1, y, sag){ const c = d.ctx, cols = ['#ff8fb6','#ffd35c','#7cc8ff','#9fe0b0','#c9a6ff'];
+  c.save(); c.strokeStyle = '#9a6a45'; c.lineWidth = 2; c.beginPath(); c.moveTo(x0, y); c.quadraticCurveTo((x0 + x1)/2, y + sag*2, x1, y); c.stroke(); c.restore();
+  const n = Math.floor((x1 - x0)/46); for (let i = 1; i < n; i++){ const t = i/n, x = x0 + (x1 - x0)*t, yy = y + sag*4*t*(1 - t); d.tri([[x - 14, yy], [x, yy + 26], [x + 14, yy]], cols[i % 5]); }
+}
+function drawFestGround(c, d, z){
+  d.ell(1100, 760, 560, 330, 'path'); d.ell(1100, 760, 470, 260, '#f6d9c2');
+  for (let i = 0; i < 16; i++){ const a = i*Math.PI/8; d.dot(1100 + Math.cos(a)*400, 760 + Math.sin(a)*220, 10, ['#ff8fb6','#ffd35c','#7cc8ff','#9fe0b0'][i % 4]); }
+  d.rr(120, 760, 760, 80, 40, 'path'); d.rr(1380, 1000, 260, 70, 35, 'path');
+  for (const [x, y] of [[300,1380],[520,1460],[1100,1470],[200,620],[1950,760]]) for (let i = 0; i < 5; i++) d.dot(x + (i*31 % 70) - 35, y + (i*17 % 30) - 15, 7, ['#ff9fc4','#ffe066','#fff','#c9a6ff','#ff8fb0'][i]);
+}
+function drawFestTop(c, d){
+  // 무대
+  d.rr(780, 150, 640, 40, 14, '#ff8fb6'); c.font = 'bold 30px "Maple",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fffaf2'; c.fillText('🎪 핑크 축제 무대', 1100, 171); c.textBaseline = 'alphabetic';
+  d.rr(760, 190, 680, 190, 16, '#ffd0dc'); for (let i = 0; i < 8; i++) d.rr(780 + i*82, 205, 60, 150, 26, i % 2 ? '#ffc0d0' : '#ffb3c6');
+  d.shape(()=>{ c.beginPath(); c.moveTo(760, 190); c.quadraticCurveTo(840, 300, 800, 380); c.lineTo(760, 380); c.closePath(); }, '#e2486a', [790, 280, 60]);
+  d.shape(()=>{ c.beginPath(); c.moveTo(1440, 190); c.quadraticCurveTo(1360, 300, 1400, 380); c.lineTo(1440, 380); c.closePath(); }, '#e2486a', [1410, 280, 60]);
+  d.rr(740, 370, 720, 60, 14, '#c98e5b'); d.rr(740, 370, 720, 14, 7, '#e0a86a');
+  for (let i = 0; i < 14; i++) d.dot(770 + i*50, 186, 6, ['#fff3a0','#ffb3cd','#9fd8ff'][i % 3]);
+  // 관람차 · 회전목마
+  festFerris(d, 330, 420, 210);
+  const mx = 1820, my = 560; d.rr(mx - 150, my - 20, 300, 60, 26, '#c9a6ff'); for (let i = 0; i < 5; i++){ d.rr(mx - 120 + i*60, my - 130, 8, 120, 4, '#f3c64f'); d.ell(mx - 116 + i*60, my - 50 + (i % 2)*16, 22, 14, ['#fffaf2','#ffd0dc','#bfe4ff','#fff3c4','#d9f5e0'][i]); }
+  d.shape(()=>{ c.beginPath(); c.moveTo(mx - 170, my - 130); c.quadraticCurveTo(mx, my - 260, mx + 170, my - 130); c.closePath(); }, '#ff8fb6', [mx, my - 170, 160]);
+  for (let i = 0; i < 6; i++) d.tri([[mx - 170 + i*57, my - 132], [mx - 141 + i*57, my - 104], [mx - 113 + i*57, my - 132]], i % 2 ? '#fffaf2' : '#ff8fb6');
+  d.circle(mx, my - 232, 12, '#ffd35c');
+  // 노점 천막
+  festTent(d, 420, 1180, '#ff8fb6', '솜사탕'); festTent(d, 760, 1290, '#7cc8ff', '츄러스'); festTent(d, 1100, 1240, '#9fe0b0', '풍선 다트'); festTent(d, 1440, 1290, '#ffd35c', '구슬 뽑기');
+  // 입구 아치
+  const gx = 120, gy = 800; d.rr(gx - 14, gy - 190, 24, 150, 10, '#ff8fb6'); d.rr(gx - 14, gy + 50, 24, 150, 10, '#ff8fb6');
+  // 풍선 다발
+  for (const [bx, by] of [[200, 600], [200, 1000], [1000, 1060], [1600, 900]]) for (let i = 0; i < 5; i++){ const x = bx + (i - 2)*14, y = by - 60 - (i % 2)*16; c.save(); c.strokeStyle = '#9a8a94'; c.lineWidth = 1; c.beginPath(); c.moveTo(bx, by); c.lineTo(x, y + 14); c.stroke(); c.restore(); d.ell(x, y, 12, 15, ['#ff8fb6','#ffd35c','#7cc8ff','#9fe0b0','#c9a6ff'][i]); d.dot(x - 4, y - 5, 3, '#fff', .7); }
+  // 깃발 줄
+  festBunting(d, 60, 2140, 90, 40); festBunting(d, 620, 1580, 560, 30); festBunting(d, 620, 1580, 980, 30);
+  // 연못 낚시터 표지
+  d.rr(FEST_POND.x - 360, FEST_POND.y - 230, 10, 60, 5, '#9a6a45'); d.rr(FEST_POND.x - 430, FEST_POND.y - 280, 150, 50, 12, '#fffaf2'); c.font = 'bold 18px "Maple",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#4f8ac0'; c.fillText('🎣 축제 낚시터', FEST_POND.x - 355, FEST_POND.y - 248);
+}
+function festObstacles(o){
+  o.rects.push({x:740, y:190, w:720, h:240}); o.circles.push({x:330, y:640, r:90}); o.rects.push({x:1660, y:430, w:320, h:170});
+  for (const [x, gy] of [[420,1180],[760,1290],[1100,1240],[1440,1290]]) o.rects.push({x:x - 100, y:gy - 80, w:200, h:80});
+}
+
+// ----- 오투모 축제 관리 -----
+const admFest = {tab:'gb', fgbK:'gold', fgbN:'10000', fgbQ:'', fgbA:'', gbR:0, gbAns:'', fhuK:'gold', fhuN:'5000', frpK:'gold', frpN:'20000', fsyK:'gold', fsyN:'10000', ffiK:'gold', ffiN:'10000', syPose:-1};
+function adminFestSec(){
+  const open = festOpen(), tabs = [['gb','🔔 골든벨'],['hunt','💎 보물찾기'],['rps','✊ 가위바위보'],['sync','🤖 동심일체'],['fish','🎣 낚시']];
+  let h = `<div class="adm-sec adm-auc"><b>🎪 핑크 축제장 ${open ? '<span class="adm-on">열림</span>' : '· 닫힘 (들어갈 수 없어요)'}</b>
+    <button data-a="${open ? 'festclose' : 'festopen'}" class="adm-btn${open ? ' warn' : ''}">${open ? '축제 닫기' : '축제 열기'}</button><button data-a="festgo" class="adm-btn">축제장 보기</button>
+    <div class="adm-tabs">${tabs.map(([k, l]) => `<button data-a="ftab" data-t="${k}" class="mini${admFest.tab === k ? ' on' : ''}">${l}</button>`).join('')}</div>`;
+  const t = admFest.tab, now = fNow();
+  if (t === 'gb'){ const g = fest.gb, c = g?.cur;
+    if (!festLive(g)) h += `<small>첫 문제 10 초 동안 축제장에 있는 사람이 참가해요 · 정답을 틀리거나 안 적으면 탈락</small>${prizeInputs('fgbK','fgbN')}<button data-a="gbgo" class="adm-btn">골든벨 열기</button>`;
+    else { const counting = c && c.r && !c.ans, left = counting ? Math.max(0, Math.ceil((c.endAt - now)/1000)) : 0, alive = gbAlive();
+      h += `<small>상품 ${esc(prizeName(g.meta))} · 참가 ${Object.keys(gbPlayers()).length}명 · 살아남은 ${alive.length}명</small><small>${alive.map(p => esc(p.nick) + (counting && p.ar === c.r ? ` (${esc(p.a)})` : '')).join(', ') || '-'}</small>`;
+      h += counting ? `<small><b>${c.r}번 진행 중</b> · ${left ? left + '초' : '채점 중…'} · 정답 ${esc(admFest.gbAns)}<br>${esc(c.q)}</small>`
+        : `${c && c.ans ? `<small>${c.r}번 정답 <b>${esc(c.ans)}</b></small>` : ''}<label>${(c?.r || 0) + 1}번 문제<textarea id="fgbQ" data-rk="fest|fgbQ" rows="2" maxlength="120">${esc(admFest.fgbQ)}</textarea></label><label>정답 (여러 개면 / 로) <input id="fgbA" data-rk="fest|fgbA" maxlength="40" value="${esc(admFest.fgbA)}"></label><button data-a="gbq" class="adm-btn">문제 내기 (10초)</button>`;
+      h += `<button data-a="gbend" class="adm-btn" ${counting ? 'disabled' : ''}>끝내고 상품 주기</button><button data-a="gbcancel" class="adm-btn warn">취소</button>`; } }
+  if (t === 'hunt'){ const hu = fest.hunt, items = Object.entries(hu?.items || {}).filter(([, it]) => it), left = items.filter(([, it]) => !it.by);
+    h += `<small>오투모로 걸어 다니며 숨길 자리에 서서 [여기에 숨기기] · [시작]을 누르기 전까지 아무도 못 봐요 · 한 명이 찾으면 사라져요</small>`;
+    if (hu?.done) h += `<small>지난 보물찾기 끝 · 찾은 보물 ${items.length - left.length}개</small><button data-a="hureset" class="adm-btn">새 보물찾기 준비</button>`;
+    else { h += admWalk ? `${prizeInputs('fhuK','fhuN')}<button data-a="huhide" class="adm-btn">여기(${esc(zoneName(zoneId))})에 숨기기</button>` : '<small>보물을 숨기려면 [오투모로 들어가기]를 눌러요</small>';
+      h += `<small>숨긴 보물 ${items.length}개 · 남은 ${left.length}개</small>${items.map(([tid, it]) => `<small>${it.by ? '✔' : '💎'} ${esc(zoneName(it.z))} · ${esc(prizeName(it))}${it.by ? ` · ${esc(it.nick || '')} 찾음` : hu?.on ? '' : ` <button data-a="hudel" data-t="${tid}" class="mini">빼기</button>`}</small>`).join('')}`;
+      h += hu?.on ? `<button data-a="huend" class="adm-btn warn">보물찾기 끝내기</button>` : `<button data-a="hustart" class="adm-btn" ${items.length ? '' : 'disabled'}>보물찾기 시작!</button>`; } }
+  if (t === 'rps'){ const rp = fest.rps;
+    if (!festLive(rp)) h += `<small>축제장에서 [참가하기]를 누른 사람끼리 토너먼트 · 안 내면 져요 · 비기면 다시</small>${prizeInputs('frpK','frpN')}<button data-a="rpgo" class="adm-btn">참가 받기 시작</button>`;
+    else { const pl = Object.values(rp.players || {}), rd = rpsRound(), open_ = rd.filter(m => m && !m.w);
+      h += `<small>상품 ${esc(prizeName(rp.meta))} · 참가 ${pl.length}명${rp.round ? ` · ${rp.round} 라운드 (남은 판 ${open_.length})` : ''}</small>`;
+      if (rp.phase === 'join') h += `<small>${pl.map(esc).join(', ') || '아직 없어요'}</small><button data-a="rpdraw" class="adm-btn" ${pl.length >= 2 ? '' : 'disabled'}>대진표 만들기</button>`;
+      else { h += rpsBracketHTML();
+        if (rp.phase === 'pick') h += `<small>고른 사람 ${Object.keys(rp.picks || {}).length}명</small><button data-a="rpreveal" class="adm-btn">보! (공개)</button>`;
+        else if (open_.length) h += `<button data-a="rppick" class="adm-btn">가위바위...</button>`;
+        else h += `<button data-a="rpnext" class="adm-btn">${rd.filter(m => m && m.w).length <= 1 ? '우승 확정!' : '다음 라운드'}</button>`; }
+      h += `<button data-a="rpshow" class="adm-btn">${rp.show ? '대진표 숨기기' : '대진표 모두에게 공개'}</button><button data-a="rpcancel" class="adm-btn warn">취소</button>`; } }
+  if (t === 'sync'){ const sy = fest.sync;
+    if (!festLive(sy)) h += `<small>참가자가 포즈를 하나 고르고, 오투모가 고른 포즈와 같으면 살아남아요 (아무도 못 맞히면 다시)</small>${prizeInputs('fsyK','fsyN')}<button data-a="sygo" class="adm-btn">참가 받기 시작</button>`;
+    else { const alive = syAlive(), picked = Object.keys(sy.picks || {}).length;
+      h += `<small>상품 ${esc(prizeName(sy.meta))} · 참가 ${Object.keys(syPlayers()).length}명 · 살아남은 ${alive.length}명</small><small>${alive.map(([, p]) => esc(p.nick)).join(', ') || '-'}</small>`;
+      if (sy.phase === 'pick') h += `<small>고른 사람 ${picked}명 · 오투모의 포즈를 골라요 (공개 전까지 아무도 몰라요)</small><div class="adm-tabs">${FEST_POSES.map(([, e, n], i) => `<button data-a="sypose" data-t="${i}" class="mini${admFest.syPose === i ? ' on' : ''}">${e} ${n}</button>`).join('')}</div><button data-a="syreveal" class="adm-btn" ${admFest.syPose >= 0 ? '' : 'disabled'}>공개!</button>`;
+      else h += `${sy.phase === 'reveal' ? `<small>${sy.r}번째: 오투모 ${FEST_POSES[sy.ans]?.[1] || ''} · ${esc(sy.note || '')}</small>` : ''}<button data-a="systart" class="adm-btn" ${alive.length ? '' : 'disabled'}>${(sy.r || 0) + 1}번째 시작 (고르기)</button><button data-a="syend" class="adm-btn">끝내고 상품 주기</button>`;
+      h += `<button data-a="sycancel" class="adm-btn warn">취소</button>`; } }
+  if (t === 'fish'){ const fi = fest.fish;
+    if (!festLive(fi)) h += `<small>축제장 연못에서 낚은 물고기 중 가장 큰 것(cm)으로 겨뤄요 · 낚싯대가 있어야 해요</small>${prizeInputs('ffiK','ffiN')}<button data-a="figo" class="adm-btn">낚시 대회 시작</button>`;
+    else { const rk = fishRank(); h += `<small>상품 ${esc(prizeName(fi.meta))} · 기록 ${rk.length}명</small>${rk.slice(0, 8).map(([, b], i) => `<small>${i+1}등 ${esc(b.nick)} · ${esc(FISH[b.fid]?.name || '')} ${b.size} cm</small>`).join('')}<button data-a="fiend" class="adm-btn">끝내고 1등에게 상품</button><button data-a="ficancel" class="adm-btn warn">취소</button>`; } }
+  return h + '</div>';
+}
+function adminFestClick(b){
+  const a = b.dataset.a, fail = () => toast('하지 못했어요'), now = fNow();
+  if (a === 'festopen'){ if (confirm('핑크 축제장을 열까요? 모두 들어갈 수 있게 돼요')) Promise.resolve(net.setWorld({festOpen:true, festAt:now})).then(()=>toast('축제장을 열었어요')).catch(fail); }
+  else if (a === 'festclose'){ if (confirm('축제장을 닫을까요? 안에 있던 사람은 시장으로 나가요')) Promise.resolve(net.setWorld({festOpen:false})).then(()=>toast('축제장을 닫았어요')).catch(fail); }
+  else if (a === 'festgo'){ admSide = false; cam.follow = null; cam.zone = 'fest'; if (admWalk) enterZone('fest', null, 1100, 900); else enterZone('fest', null, 1100, 800); renderAdmin(); }
+  else if (a === 'ftab'){ admFest.tab = b.dataset.t; renderAdmin(); }
+  // 골든벨
+  else if (a === 'gbgo'){ const m = prizeOf(admFest.fgbK, admFest.fgbN); if (!confirm(`상품 ${prizeName(m)} · 도전 골든벨을 열까요?`)) return; admFest.gbR = 0; admFest.gbAns = ''; net.festSet({gb:{id:festNewId('g'), meta:m, at:now}}).then(()=>toast('골든벨을 열었어요')).catch(fail); }
+  else if (a === 'gbq'){ const g = fest.gb; if (!festLive(g) || gbCounting()) return; const q = admFest.fgbQ.trim().slice(0, 120), ans = admFest.fgbA.trim().slice(0, 40); if (!q || !ans) return toast('문제와 정답을 적어 주세요');
+    const r = (g.cur?.r || 0) + 1; if (r > 1 && !gbAlive().length) return toast('살아남은 사람이 없어요. 끝내기를 눌러요');
+    admFest.gbR = r; admFest.gbAns = ans; admFest.fgbQ = ''; admFest.fgbA = '';
+    net.festSet({'gb/cur': {r, q, endAt: now + 10000}}).then(()=>toast(`${r}번 문제를 냈어요`)).catch(fail); }
+  else if (a === 'gbend' || a === 'gbcancel'){ const g = fest.gb; if (!festLive(g)) return; if (a === 'gbend' ? !confirm('끝내고 살아남은 사람에게 상품을 줄까요?') : !confirm('골든벨을 취소할까요?')) return;
+    const win = Object.fromEntries(Object.entries(gbPlayers()).filter(([, p]) => p && p.alive).map(([u]) => [u, true]));
+    net.festSet(a === 'gbend' ? {'gb/done':1, 'gb/win': Object.keys(win).length ? win : null} : {'gb/cancel':1}).then(()=>toast(a === 'gbend' ? `끝! ${Object.keys(win).length}명이 상품을 받아요` : '취소했어요')).catch(fail); }
+  // 보물찾기
+  else if (a === 'huhide'){ if (!admWalk) return; const m = prizeOf(admFest.fhuK, admFest.fhuN), hu = fest.hunt, tid = 't' + now.toString(36), it = {...m, z:zoneId, x:Math.round(pos.x), y:Math.round(pos.y)};
+    net.festSet(hu && hu.id && !hu.done ? {['hunt/items/' + tid]: it} : {hunt:{id:festNewId('h'), items:{[tid]: it}}}).then(()=>toast(`보물을 숨겼어요 · ${prizeName(m)}`)).catch(fail); }
+  else if (a === 'hudel') net.festSet({['hunt/items/' + b.dataset.t]: null}).catch(fail);
+  else if (a === 'hustart'){ if (confirm('보물찾기를 시작할까요? 이제 모두에게 보물이 보여요')) net.festSet({'hunt/on':true, 'hunt/onAt':now}).then(()=>toast('보물찾기 시작!')).catch(fail); }
+  else if (a === 'huend'){ if (confirm('보물찾기를 끝낼까요? 남은 보물은 모두 사라져요')) net.festSet({'hunt/done':1}).then(()=>toast('보물찾기를 끝냈어요')).catch(fail); }
+  else if (a === 'hureset') net.festSet({hunt:null}).then(()=>renderAdmin()).catch(fail);
+  // 가위바위보
+  else if (a === 'rpgo'){ const m = prizeOf(admFest.frpK, admFest.frpN); if (!confirm(`상품 ${prizeName(m)} · 가위바위보 토너먼트 참가를 받을까요?`)) return; net.festSet({rps:{id:festNewId('r'), meta:m, at:now, phase:'join'}}).then(()=>toast('참가를 받고 있어요 · 축제장에서 [참가하기]')).catch(fail); }
+  else if (a === 'rpdraw'){ const ids = Object.keys(fest.rps?.players || {}).sort(() => Math.random() - .5); if (ids.length < 2) return; const ms = []; for (let i = 0; i < ids.length; i += 2) ms.push({a:ids[i], b:ids[i+1] || '', w: ids[i+1] ? '' : ids[i]});
+    net.festSet({'rps/rounds': {1: ms}, 'rps/round':1, 'rps/phase':'ready', 'rps/picks':null}).then(()=>toast('대진표를 만들었어요')).catch(fail); }
+  else if (a === 'rppick') net.festSet({'rps/phase':'pick', 'rps/picks':null}).then(()=>toast('가위바위...! 모두 고르는 중')).catch(fail);
+  else if (a === 'rpreveal'){ const rp = fest.rps, r = rp.round, picks = rp.picks || {}, ms = (rpsRound()).map(m => { if (!m || m.w) return m; const pa = picks[m.a], pb = picks[m.b]; let w = '';
+      if (pa && !pb) w = m.a; else if (pb && !pa) w = m.b; else if (pa && pb && pa !== pb) w = rpsBeats(pa, pb) ? m.a : m.b; return {...m, w, d:(m.d || 0) + (w ? 0 : 1)}; });
+    net.festSet({['rps/rounds/' + r]: ms, 'rps/phase':'reveal'}).then(()=>toast('보! 결과를 공개했어요')).catch(fail); }
+  else if (a === 'rpnext'){ const rp = fest.rps, wins = rpsRound().filter(m => m && m.w).map(m => m.w);
+    if (wins.length <= 1){ net.festSet({'rps/done':1, 'rps/win': wins[0] || null, 'rps/phase':'done', 'rps/show':true}).then(()=>toast(`🏆 우승: ${rpsNick(wins[0])}`)).catch(fail); return; }
+    const ms = []; for (let i = 0; i < wins.length; i += 2) ms.push({a:wins[i], b:wins[i+1] || '', w: wins[i+1] ? '' : wins[i]});
+    net.festSet({['rps/rounds/' + (rp.round + 1)]: ms, 'rps/round': rp.round + 1, 'rps/phase':'ready', 'rps/picks':null}).then(()=>toast(`${rp.round + 1} 라운드!`)).catch(fail); }
+  else if (a === 'rpshow') net.festSet({'rps/show': !fest.rps?.show}).catch(fail);
+  else if (a === 'rpcancel'){ if (confirm('가위바위보 토너먼트를 취소할까요?')) net.festSet({'rps/cancel':1}).catch(fail); }
+  // 동심일체
+  else if (a === 'sygo'){ const m = prizeOf(admFest.fsyK, admFest.fsyN); if (!confirm(`상품 ${prizeName(m)} · 오투모와 동심일체 참가를 받을까요?`)) return; admFest.syPose = -1; net.festSet({sync:{id:festNewId('s'), meta:m, at:now, phase:'join', r:0}}).then(()=>toast('참가를 받고 있어요')).catch(fail); }
+  else if (a === 'systart'){ admFest.syPose = -1; net.festSet({'sync/phase':'pick', 'sync/r': (fest.sync.r || 0) + 1, 'sync/picks':null, 'sync/ans':null, 'sync/note':null}).then(()=>toast('포즈를 고르는 중!')).catch(fail); }
+  else if (a === 'sypose'){ admFest.syPose = +b.dataset.t; renderAdmin(); }
+  else if (a === 'syreveal'){ const sy = fest.sync, ans = admFest.syPose; if (ans < 0) return; const picks = sy.picks || {}, alive = syAlive(), hit = alive.filter(([u]) => picks[u] === ans), upd = {'sync/phase':'reveal', 'sync/ans':ans};
+    if (!hit.length) upd['sync/note'] = '아무도 못 맞혀서 모두 살아남아요';
+    else { for (const [u] of alive) if (picks[u] !== ans) upd[`sync/players/${u}/alive`] = false; upd['sync/note'] = `${hit.length}명 통과`; }
+    net.festSet(upd).then(()=>toast(`공개! ${upd['sync/note']}`)).catch(fail); }
+  else if (a === 'syend' || a === 'sycancel'){ const sy = fest.sync; if (a === 'syend' ? !confirm('끝내고 살아남은 사람에게 상품을 줄까요?') : !confirm('취소할까요?')) return; const win = Object.fromEntries(syAlive().map(([u]) => [u, true]));
+    net.festSet(a === 'syend' ? {'sync/done':1, 'sync/win': Object.keys(win).length ? win : null, 'sync/phase':'done'} : {'sync/cancel':1}).then(()=>toast('끝났어요')).catch(fail); }
+  // 낚시 대회
+  else if (a === 'figo'){ const m = prizeOf(admFest.ffiK, admFest.ffiN); if (!confirm(`상품 ${prizeName(m)} · 낚시 대회를 시작할까요?`)) return; net.festSet({fish:{id:festNewId('f'), meta:m, at:now, on:true}}).then(()=>toast('낚시 대회 시작!')).catch(fail); }
+  else if (a === 'fiend'){ const rk = fishRank(); if (!confirm(rk.length ? `1등 ${rk[0][1].nick} (${rk[0][1].size} cm)에게 상품을 줄까요?` : '기록이 없어요. 그냥 끝낼까요?')) return; net.festSet({'fish/done':1, 'fish/on':false, 'fish/win': rk[0]?.[0] || null}).then(()=>toast('낚시 대회 끝!')).catch(fail); }
+  else if (a === 'ficancel'){ if (confirm('낚시 대회를 취소할까요?')) net.festSet({'fish/cancel':1, 'fish/on':false}).catch(fail); }
+  else return false;
+  return true;
+}
+
 // ----- 오투모로 걸어 다니기 -----
 // 오투모 이름은 발 밑, 머리 위엔 체력 1 천만 막대와 '관리자' 칭호
 function otumoLabel(c, x, y){
@@ -6853,7 +7263,7 @@ function otumoLabel(c, x, y){
   c.save(); c.fillStyle = 'rgba(40,30,50,.55)'; c.beginPath(); c.roundRect(bx - 1, by - 1, w + 2, 9, 4.5); c.fill();
   const g = c.createLinearGradient(bx, 0, bx + w, 0); g.addColorStop(0, '#7fe3a0'); g.addColorStop(1, '#3fbf7a'); c.fillStyle = g; c.beginPath(); c.roundRect(bx, by, w, 7, 3.5); c.fill();
   c.font = 'bold 9px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(OTUMO_HP.toLocaleString(), x, by + 6.5); c.restore();
-  titleTag(c, '관리자', x, y - 80);
+  titleTag(c, '관리자', x, y - 80); festOtumoBubble(c, x, y);
   aucBubble(c, x, y);
 }
 const ADM_REVIVE_MS = 2000;
@@ -7009,6 +7419,7 @@ function petPanel(pt){
       petPanel(pt); });
 }
 function talkBubble(key, x, y, t){
+  { const fb = festBubbleText(key === 'me' ? uid : key); if (fb){ bubble(ctx, fb, x, y-80); return; } }
   const e = bubbles.get(key+'-emo'), b = bubbles.get(key);
   if (b && t-b.at < 5000) bubble(ctx, b.text, x, y-80);
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-80);
