@@ -5636,7 +5636,7 @@ cv.addEventListener('pointerdown', e=>{
   if (matchMedia('(max-width:640px)').matches && (!$('npcPanel').hidden || !$('mapPanel').hidden)){ $('npcPanel').hidden = true; $('mapPanel').hidden = true; return; }
   if (fishTap()) return;
   if (darkDown) return toast(zoneId.startsWith('dark:') ? '쓰러져 있어요 · 다른 사람이 살려 줄 때까지 기다려요' : '기절해 있어요 · 친구가 깨워 줄 때까지 잠깐 쉬어요');
-  const w = toWorld(e.clientX, e.clientY), t = hitTarget(w) || contentTarget(w) || fishTarget(w);
+  const w = toWorld(e.clientX, e.clientY), t = hitTarget(w) || contentTarget(w) || fishTarget(w) || walkPetTap(w);
   target = t ? t : {x:w.x, y:w.y, act:null, mark:performance.now()};
 });
 ['pointerdown','pointermove'].forEach(ev=>$('fgTrack').addEventListener(ev, e=>{ if (ev==='pointermove' && !e.buttons && e.pointerType!=='mouse') return; setZoneFromPointer(e); }));
@@ -7688,7 +7688,7 @@ function petHomePos(owner, i){
   return {x: a.x + (b.x-a.x)*k, y: a.y + (b.y-a.y)*k, walk: k < 1, flip: b.x < a.x};
 }
 let petClaims = {}; // petClaims/<종> = {uid}: 같은 종을 동시에 데려가지 않게 서버에서 먼저 잡아요
-let petFollow = null, petWalked = 0, petHungryT = 0; // 산책 중인 내 펫의 위치, 걸은 거리
+let petFollow = null, petWalked = 0, petHungryT = 0, petSide = -1; // petSide: 펫은 내가 보는 방향의 반대쪽(뒤)에서 따라와요 // 산책 중인 내 펫의 위치, 걸은 거리
 // 배고픈 펫이 있으면 가끔 알려 줘요
 function petHungerCheck(t){ if (!me || t < petHungryT) return; petHungryT = t + 300000; const h = myPets().filter(p=>fullness(p) < 35); if (h.length) addLog(`🐾 ${h.map(p=>p.name).join(', ')}이(가) 배고파해요. 집에 가서 밥을 주세요 (밥은 공방 거리 보호소)`, true); }
 const othersPets = new Map();
@@ -7696,12 +7696,12 @@ function updatePets(dt){
   petHungerCheck(performance.now());
   const wp = walkingPet();
   if (!wp){ petFollow = null; } else { // 산책 중인 펫은 집 안에서도 나를 따라다녀요
-    const gx = pos.x - 26, gy = pos.y + 4; if (!petFollow || Math.hypot(petFollow.x-gx, petFollow.y-gy) > 300) petFollow = {x:gx, y:gy, walk:false, flip:false};
+    petSide = pos.dir==='left' ? 1 : pos.dir==='right' ? -1 : petSide; const gx = pos.x + petSide*42, gy = pos.y - 8; if (!petFollow || Math.hypot(petFollow.x-gx, petFollow.y-gy) > 300) petFollow = {x:gx, y:gy, walk:false, flip:false};
     const dx = gx-petFollow.x, dy = gy-petFollow.y, dd = Math.hypot(dx, dy); petFollow.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); petFollow.x += dx/dd*sp; petFollow.y += dy/dd*sp; petFollow.flip = dx < 0;
       petWalked += sp; if (petWalked >= PET_WALK_STEP){ petWalked = 0; petSpend(wp, 1); saveMe(); if (fullness(wp) < 15){ wp.walk = false; saveMe(); toast(`${wp.name}이(가) 배고파서 집으로 돌아갔어요. 밥을 챙겨 주세요`); } } }
   }
-  for (const [id,o] of others){ if (!o.pet || o.z!==zoneId){ othersPets.delete(id); continue; } let f = othersPets.get(id); const gx = o.x - 26, gy = o.y + 4;
-    if (!f || Math.hypot(f.x-gx, f.y-gy) > 300) f = {x:gx, y:gy}; const dx = gx-f.x, dy = gy-f.y, dd = Math.hypot(dx,dy); f.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); f.x += dx/dd*sp; f.y += dy/dd*sp; f.flip = dx < 0; } othersPets.set(id, f); }
+  for (const [id,o] of others){ if (!o.pet || o.z!==zoneId){ othersPets.delete(id); continue; } let f = othersPets.get(id); const os = o.dir==='left' ? 1 : o.dir==='right' ? -1 : (f?.side ?? -1), gx = o.x + os*42, gy = o.y - 8;
+    if (!f || Math.hypot(f.x-gx, f.y-gy) > 300) f = {x:gx, y:gy}; const dx = gx-f.x, dy = gy-f.y, dd = Math.hypot(dx,dy); f.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); f.x += dx/dd*sp; f.y += dy/dd*sp; f.flip = dx < 0; } f.side = os; othersPets.set(id, f); }
 }
 function drawPet(c, sp, col, x, y, t, walk, flip){ c.save(); if (flip){ c.translate(x, 0); c.scale(-1, 1); c.translate(-x, 0); } try { PET_DRAW[sp](CH.mattePainter(c), x, y, col, t, walk); } catch(e){} c.restore(); }
 function petEntities(d, t){
@@ -7712,11 +7712,15 @@ function petEntities(d, t){
   for (const [id,f] of othersPets){ const o = others.get(id); if (!o || !o.pet) continue; if (CARRIED.has(o.pet.sp)){ if (!o.down) out.push({y:o.y+1, draw:()=>drawPet(c, o.pet.sp, PET[o.pet.sp].cols[o.pet.col], o.x + (o.dir==='left' ? -15 : 15), o.y - 6, T, false, false), label:()=>{}}); continue; } out.push({y:f.y, draw:()=>drawPet(c, o.pet.sp, PET[o.pet.sp].cols[o.pet.col], f.x, f.y, T, f.walk, f.flip), label:()=>tag(c, `${o.pet.name || PET[o.pet.sp].name} · ${String(o.nick||'').slice(0,8)}의 펫`, f.x, f.y-30, null)}); }
   return out;
 }
+// 산책 중인 내 펫: 따라오는 자리를 누르면 펫 창. 광석·나무·낚시 같은 다른 걸 먼저 찾고, 아무것도 없을 때만 펫을 눌러요 (실수로 밥 주지 않게)
+function walkPetTap(w){
+  const wp = me && walkingPet(); if (!wp || admin) return null;
+  const fx = CARRIED.has(wp.sp) ? pos.x + (pos.dir==='left' ? -15 : 15) : petFollow?.x, fy = CARRIED.has(wp.sp) ? pos.y - 6 : petFollow?.y;
+  if (fx!=null && Math.abs(w.x-fx) < 16 && w.y > fy-26 && w.y < fy+6) return {x:pos.x, y:pos.y, act:()=>petPanel(wp), mark:performance.now()};
+  return null;
+}
 function petTap(w){
   if (!me) return null;
-  // 산책 중인 내 펫: 따라오는 자리를 누르면 펫 창 (산책 그만하기도 여기서)
-  const wp = walkingPet(); if (wp && !admin){ const fx = CARRIED.has(wp.sp) ? pos.x + (pos.dir==='left' ? -15 : 15) : petFollow?.x, fy = CARRIED.has(wp.sp) ? pos.y - 6 : petFollow?.y;
-    if (fx!=null && Math.abs(w.x-fx) < 18 && w.y > fy-30 && w.y < fy+8) return {x:pos.x, y:pos.y, act:()=>petPanel(wp), mark:performance.now()}; }
   if (!Z().house) return null;
   const owner = Z().house, list = petsOf(owner);
   for (const pt of list) if (pt._x!=null && Math.abs(w.x-pt._x) < 16 && w.y > pt._y-28 && w.y < pt._y+6){
