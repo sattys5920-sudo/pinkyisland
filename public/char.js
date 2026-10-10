@@ -1,3 +1,4 @@
+import { otumoHead } from './art/otumo.js';
 // ===== 플레이어·주민 캐릭터: 매트 클레이 피규어 (표정 15 · 머리 39 · 옷·모자·액세서리·신발 126 × 색 5 · 주민 동물 18) =====
 export function mixHex(a, b, k){ const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16); const f=(x,y)=>Math.round(x+(y-x)*k); return '#'+[f(A>>16,B>>16),f(A>>8&255,B>>8&255),f(A&255,B&255)].map(v=>v.toString(16).padStart(2,'0')).join(''); }
 export function mattePainter(ctx){
@@ -917,6 +918,8 @@ const roundEars = (P, col, inner, r=.32, x=.78, y=.86) => { const {d, side, up} 
   for (const sx of (side ? [-.2] : [-1, 1])){ const ex = side ? R*sx : sx*R*x; d.circle(ex, HY - R*y, R*r, col); if (!up && inner) d.circle(ex, HY - R*(y-.04), R*r*.55, inner, {flat:true, noShadow:true}); } };
 const tailBall = (P, col, r=3.4) => { const {d, side, up} = P; if (up) d.circle(0, BY + BH*.58, r, col); else if (side) d.circle(-BW*.42, BY + BH*.6, r, col); };
 export const ANIMALS = {
+  // 옷 입은 오투모: 사람 귀·얼굴·머리카락 위를 오투모 머리로 덮어요 (모자는 그 위에)
+  otumo:{ ears:P=>{}, over:P=>otumoHead(P.d, P.side ? R*.08 : 0, HY - 1, P.side, P.up, .92) },
   // 사슴: 옆으로 뻗은 귀, 작은 뿔, 이마의 흰 점
   deer:{ tail:P=>tailBall(P, '#ffffff', 3),
     ears:P=>{ const {d, side, up, A} = P; for (const sx of (side ? [-.25] : [-1, 1])){ const ex = side ? R*sx : sx*R*1.06; d.shape(k=>{ k.beginPath(); k.ellipse(ex, HY - R*.46, R*.44, R*.2, side ? -.3 : sx*-.42, 0, Math.PI*2); }, A.fur, [ex, HY - R*.46, R*.4]); if (!up && !side) d.shape(k=>{ k.beginPath(); k.ellipse(ex, HY - R*.46, R*.26, R*.09, sx*-.42, 0, Math.PI*2); }, '#ffd2c2', [ex, HY - R*.46, 2], {flat:true, noShadow:true}); } },

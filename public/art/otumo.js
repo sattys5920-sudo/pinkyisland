@@ -65,5 +65,18 @@ export function drawOtumo(d, x, y, dir = 'down', t = 0, moving = false){
   }
   d.dot(x - 8, by - 50, 3, '#ffffff', .8);
 }
+// 옷 입은 오투모: 캐릭터 몸 위에 오투모 머리(귀 · 헬멧 · 바이저)만 얹어요. cy = 머리 가운데, k = 크기
+export function otumoHead(d, x, cy, side, back, k = .9){
+  const r = 18*k, ex = 18*k;
+  if (side){ oval(d, x - 2*k, cy - k, 5*k, 7*k, .1, Y); }
+  else for (const s of [-1, 1]) oval(d, x + s*ex, cy - 2*k, 5*k, 7*k, s*.2, Y);
+  d.circle(x, cy, r, W);
+  d.line(c => c.arc(x, cy, r + .5, PI*1.08, PI*1.92), B, 4.4*k);
+  d.rr(x - 5*k, cy - 18.5*k, 10*k, 4*k, 2*k, NAVY, flat);
+  if (side){ d.circle(x - 2*k, cy - k, 2*k, '#e9a21c', flat); d.rr(x + 2*k, cy - 2*k, 16*k, 11*k, 5.5*k, VIS); d.ell(x + 11*k, cy + 3.5*k, 1.6*k, 2.2*k, EYE, flat); d.ell(x + 12*k, cy + 13*k, 2*k, 1.2*k, '#ff9fb8', flat); }
+  else if (back) d.line(c => c.arc(x, cy + 22*k, 24*k, PI*1.3, PI*1.7), '#d3d7e2', 1.4);
+  else { d.rr(x - 17*k, cy - 2*k, 34*k, 11*k, 5.5*k, VIS); for (const s of [-1, 1]){ d.ell(x + s*5.5*k, cy + 3.5*k, 1.6*k, 2.2*k, EYE, flat); d.dot(x + s*5.5*k + .5, cy + 2.5*k, .5, '#ffffff'); d.ell(x + s*10*k, cy + 13*k, 2.2*k, 1.3*k, '#ff9fb8', flat); } }
+  d.dot(x - 8*k, cy - 10*k, 3*k, '#ffffff', .8);
+}
 // 오투모 체력: 1 천만 (관리자라 줄지 않아요)
 export const OTUMO_HP = 10000000;

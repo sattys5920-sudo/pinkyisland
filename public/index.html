@@ -483,6 +483,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
   .adm-letter .adm-wrow{flex-direction:column}.adm-letter .adm-btn{align-self:flex-end}
   .adm-msg{flex-wrap:wrap;column-gap:6px}.adm-msg span{flex-basis:100%}
 }
+.adm-dress-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0}.adm-dress-grid label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#e8e2f0}.adm-dress-grid select{padding:6px;border-radius:8px;font:inherit}.adm-dress-row{display:flex;gap:8px;justify-content:flex-end}
 </style>
 </head>
 <body>
@@ -1165,6 +1166,11 @@ let admin = false; // 관리자 코드로 들어온 CCTV 모드: 캐릭터 없�
 let admWalk = false, admRevive = null, admPresSig = '', admPresT = 0;
 const OTUMO_NAME = '오투모 the god';
 const OTUMO_LOOK = {skin:'#f9d3b8', hair:'short', hairColor:'#3a3a4a', top:'t01', bottom:'b01', set:'', hat:'robot', acc:'none', shoes:'sh01', expr:'happy', cc:{}};
+// 오투모 옷 입히기: 관리자가 고른 옷 (이 기기에 저장). null 이면 원래 로봇 몸
+let otumoDress = (()=>{ try { return JSON.parse(localStorage.getItem('otumoDress') || 'null'); } catch(e){ return null; } })();
+const otumoDressLook = D => ({skin:'#fbfbfd', hair:'none', hairColor:'#3a3a4a', top:'t01', bottom:'b01', set:'', hat:'none', acc:'none', shoes:'sh01', cc:{}, ...D, animal:{kind:'otumo'}});
+// 오투모 그리기: 옷을 입었으면 캐릭터 몸 + 오투모 머리, 아니면 원래 로봇
+const drawOtumoAny = (d, c, x, y, dir, t, mv, L) => L && L.animal?.kind === 'otumo' ? drawPlayer(c, x, y, L, dir, t, mv, 1, 'dot') : drawOtumo(d, x, y, dir, t, mv);
 const ADMIN_EMAIL = 'pinky-admin@pinkyisland.app'; // 아이디 규칙(영어·숫자·_)으로는 만들 수 없는 주소라 일반 가입과 겹치지 않아요
 let players = {};        // uid -> 플레이어 문서
 let claims = {};         // 'roof-3' -> {uid,nick,at}
@@ -6001,13 +6007,13 @@ function frameBody(t){
       ...mailboxEntities(d, t),
       ...forageEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>{ const ly = n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0); tag(ctx, n.name, n.x, ly, dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null); if (!admin) dlvMark(ctx, n, ly); }})),
-      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.adm) return drawOtumo(d, o.x, o.y, o.dir||'down', t/1000, !!o.mv); if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); const um = o.um && isRain() && snowOutside(); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'back'); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'front', o.look?.skin); }, label:()=>{ if (o.adm){ otumoLabel(ctx, o.x, o.y); talkBubble(k,o.x,o.y,t); return; } if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
+      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.adm) return drawOtumoAny(d, ctx, o.x, o.y, o.dir||'down', t/1000, !!o.mv, o.look); if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); const um = o.um && isRain() && snowOutside(); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'back'); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'front', o.look?.skin); }, label:()=>{ if (o.adm){ otumoLabel(ctx, o.x, o.y); talkBubble(k,o.x,o.y,t); return; } if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{ if (admin) adminMobLabel(ctx, mob); }})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
       ...snowmenHere().map(([,s])=>({y:s.y, draw:()=>drawSnowman(d, s, t), label:()=>{}})),
-      ...(admin && admWalk ? [{y:pos.y, draw:()=>drawOtumo(d, pos.x, pos.y, pos.dir, t/1000, pos.moving), label:()=>{ otumoLabel(ctx, pos.x, pos.y); if (admRevive){ const k = Math.min(1, (t - admRevive.at)/ADM_REVIVE_MS); ctx.save(); ctx.strokeStyle = '#7fe3a0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pos.x, pos.y-104, 9, -Math.PI/2, -Math.PI/2 + k*6.283); ctx.stroke(); ctx.restore(); } }}] : []),
+      ...(admin && admWalk ? [{y:pos.y, draw:()=>drawOtumoAny(d, ctx, pos.x, pos.y, pos.dir, t/1000, pos.moving, otumoDress && otumoDressLook(otumoDress)), label:()=>{ otumoLabel(ctx, pos.x, pos.y); if (admRevive){ const k = Math.min(1, (t - admRevive.at)/ADM_REVIVE_MS); ctx.save(); ctx.strokeStyle = '#7fe3a0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pos.x, pos.y-104, 9, -Math.PI/2, -Math.PI/2 + k*6.283); ctx.stroke(); ctx.restore(); } }}] : []),
       ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); const um = umbKey() && isRain() && snowOutside(); if (um) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving, 'back'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (um) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving, 'front', me.look.skin); }, label:()=>{ if (darkDown){ tag(ctx, `${me.nick} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } nameTag(ctx,me.nick,pos.x,pos.y+nameDy(me.inv?.ring),ROOFS[me.roof][1],me.inv?.ring,t); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-76); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
@@ -6023,6 +6029,14 @@ let admWipe = false, admWipeTxt = '', admWipeChat = false, wiping = false; // �
 let admDm = null, adminDmData = {}; // 메신저 기록 (null 닫힘 / '' 대화 목록 / 대화 id)
 let admSide = false; // 폰에서 [메뉴]로 여닫는 관리 목록
 let admLook = null; // 주민 캐릭터·옷·집 보기 (null 닫힘 / '' 열림)
+let admDressOpen = false; // 오투모 옷 고르기 창
+function adminDress(){
+  const D = otumoDress || {}, opt = (T, cur, none) => (none ? `<option value="none" ${!cur || cur==='none' ? 'selected' : ''}>없음</option>` : '') + Object.entries(T).filter(([id])=>id!=='none').map(([id, it])=>`<option value="${id}" ${cur===id ? 'selected' : ''}>${esc(it.name)}${it.excl ? ' ★' : ''}</option>`).join('');
+  const sel = (sl, l, T, none) => `<label>${l}<select data-od="${sl}">${opt(T, D[sl], none)}</select></label>`;
+  return `<div class="adm-tbl adm-dress"><div class="adm-tbl-head"><b>오투모 옷 입히기</b><small>고르면 바로 섬에 있는 모두에게 보여요 · ★ 은 오투모 전용 옷</small><button data-a="odclose" class="adm-btn">닫기</button></div>
+    <div class="adm-dress-grid">${CH.CATS.map(([sl, l, T])=>sel(sl, l, T, sl==='set' || sl==='hat' || sl==='acc')).join('')}</div>
+    <div class="adm-dress-row"><button data-a="odoff" class="adm-btn warn">원래 로봇 몸으로</button></div></div>`;
+}
 let adminLetterData = {}, admPost = false, admDrafts = {}; // 주민·오투모에게 온 편지 (관리자가 답장)
 let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
 let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
@@ -6050,7 +6064,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; if (e.target.id && e.target.id in admFest) admFest[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK' || ['fgbK','fhuK','frpK','fsyK','ffiK','fmgK','fmcK','ftcK','fbbK'].includes(e.target.id)){ e.target.blur(); renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; if (e.target.id && e.target.id in admFest) admFest[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('change', e=>{ if (e.target.dataset && e.target.dataset.od){ const D = {...(otumoDress || {})}; D[e.target.dataset.od] = e.target.value === 'none' && e.target.dataset.od === 'set' ? '' : e.target.value; if (e.target.dataset.od === 'set' && D.set) {} setOtumoDress(D); e.target.blur(); return; } if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK' || ['fgbK','fhuK','frpK','fsyK','ffiK','fmgK','fmcK','ftcK','fbbK'].includes(e.target.id)){ e.target.blur(); renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -6059,7 +6073,7 @@ function renderAdmin(){
   const box = $('adminUi'); if (!box || !admin) return;
   // 드롭다운을 펼쳐 둔 동안 다시 그리면 목록이 닫혀요: 고르기를 마치고(포커스가 빠지면) 그때 그려요
   { const ae = document.activeElement; if (ae && ae.tagName === 'SELECT' && box.contains(ae)){ if (!ae.dataset.held){ ae.dataset.held = '1'; ae.addEventListener('blur', () => setTimeout(renderAdmin), {once:true}); } return; } }
-  box.classList.toggle('panel-open', !!(admWipe || admPost || admDm !== null || admTbl !== null || admChat !== null || admLook !== null || admQ !== null)); box.classList.toggle('side-open', admSide);
+  box.classList.toggle('panel-open', !!(admDressOpen || admWipe || admPost || admDm !== null || admTbl !== null || admChat !== null || admLook !== null || admQ !== null)); box.classList.toggle('side-open', admSide);
   const online = [...others.values()], onIds = new Set(online.map(o=>o.uid)), count = {};
   for (const o of online) count[o.z] = (count[o.z]||0) + 1;
   const regs = Object.entries(players).sort(([,a],[,b])=>String(a.nick).localeCompare(String(b.nick), 'ko'));
@@ -6070,7 +6084,7 @@ function renderAdmin(){
   const scrollKey = e => { const c = String(e.className||'').trim().split(/\s+/)[0] || e.tagName; return c + '#' + [...box.getElementsByClassName(c)].indexOf(e); };
   const kept = [box, ...box.querySelectorAll('*')].filter(e=>e.scrollTop || e.scrollLeft).map(e=>[e===box ? '' : scrollKey(e), e.scrollTop, e.scrollLeft]), pageY = window.scrollY;
   box.innerHTML = `
-    <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span>${admWalk ? '<button data-a="walkoff" class="adm-btn warn adm-walk">오투모 나가기</button>' : '<button data-a="walkon" class="adm-btn adm-walk">오투모로 들어가기</button>'}<button data-a="side" class="adm-btn adm-menu ${admSide ? 'on' : ''}">메뉴${adminInbox().some(x=>!x.l.replied) ? ' ●' : ''}</button><button data-a="logout" class="adm-btn">로그아웃</button></div>
+    <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span>${admWalk ? '<button data-a="walkoff" class="adm-btn warn adm-walk">오투모 나가기</button><button data-a="odress" class="adm-btn">오투모 옷</button>' : '<button data-a="walkon" class="adm-btn adm-walk">오투모로 들어가기</button>'}<button data-a="side" class="adm-btn adm-menu ${admSide ? 'on' : ''}">메뉴${adminInbox().some(x=>!x.l.replied) ? ' ●' : ''}</button><button data-a="logout" class="adm-btn">로그아웃</button></div>
     <div class="adm-zones">${Object.keys(ZONES).map(z=>`<button data-z="${z}" class="adm-zone ${zoneId===z && !cam.follow ? 'on' : ''}">${esc(ZONES[z].name)}<i>${count[z]||0}</i></button>`).join('')}</div>
     <div class="adm-side">
       <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
@@ -6086,7 +6100,7 @@ function renderAdmin(){
       ${adminShopSec(regs)}
       <div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
       <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
-    </div>${admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : admQ !== null ? adminQEdit() : ''}`;
+    </div>${admDressOpen ? adminDress() : admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : admQ !== null ? adminQEdit() : ''}`;
   for (const [k, y, x] of kept){ const [c, i] = k.split('#'), e = k ? box.getElementsByClassName(c)[+i] : box; if (e){ e.scrollTop = y; e.scrollLeft = x; } }
   if (window.scrollY !== pageY) window.scrollTo(0, pageY);
   const npl = box.querySelector('.adm-post-list'); if (npl) npl.scrollTop = postScroll;
@@ -6114,6 +6128,7 @@ function adminDarkSec(){
     <div class="adm-wrow"><button data-a="dkview" class="adm-btn" ${npc ? '' : 'disabled'}>방 보기</button><button data-a="dkreset" class="adm-btn warn" ${npc ? '' : 'disabled'}>이 방 처음으로</button></div></div>`;
 }
 // 주민 캐릭터·옷·우산·펫·가방 옷, 집(단계·벽지·바닥·가구·텃밭)을 한눈에. [집 안 보기]로 CCTV를 그 집으로
+function setOtumoDress(D){ otumoDress = D; try { D ? localStorage.setItem('otumoDress', JSON.stringify(D)) : localStorage.removeItem('otumoDress'); } catch(e){} admPresSig = ''; }
 function adminLooks(regs){
   const cnt = o => Object.values(o||{}).reduce((a,n)=>a+(n|0), 0);
   const cards = regs.map(([id,p])=>{
@@ -6287,6 +6302,9 @@ function adminClick(e){
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.a==='looks'){ admLook = admLook===null ? '' : null; admDm = null; admPost = false; admTbl = null; admChat = null; admWipe = false; admSide = false; return renderAdmin(); }
   if (b.dataset.a==='lclose'){ admLook = null; return renderAdmin(); }
+  if (b.dataset.a==='odress'){ admDressOpen = !admDressOpen; if (admDressOpen){ admLook = null; admDm = null; admPost = false; admTbl = null; admChat = null; admWipe = false; admSide = false; if (!otumoDress) setOtumoDress({set:'', top:'t01', bottom:'b01', hat:'none', acc:'none', shoes:'sh01'}); } return renderAdmin(); }
+  if (b.dataset.a==='odclose'){ admDressOpen = false; return renderAdmin(); }
+  if (b.dataset.a==='odoff'){ setOtumoDress(null); admDressOpen = false; toast('오투모가 원래 로봇 몸으로 돌아왔어요'); return renderAdmin(); }
   if (b.dataset.hz){ const id = b.dataset.hz, HL = HOUSE_LV[houseOf(players[id]).lv-1]; admLook = null; admSide = false; cam.follow = null; cam.zone = 'house:'+id; enterZone('house:'+id, null, HL.W/2, HL.H/2); toast(`${players[id]?.nick || ''} 님 집 안을 보고 있어요`); return renderAdmin(); }
   if (/^(table|chat|dm|post|side|wipe)$/.test(b.dataset.a || '')) admLook = null;
   if (b.dataset.a==='grant') return adminGrantGo(Object.entries(players).filter(([,p])=>p && p.nick));
@@ -7644,7 +7662,7 @@ function admWalkTick(t){
     else if (o.z !== zoneId || Math.hypot(pos.x-o.x, pos.y-o.y) > 80){ admRevive = null; toast('깨우기가 끊겼어요'); }
     else if (t - admRevive.at > ADM_REVIVE_MS){ const nick = o.nick; net.reviveSend(admRevive.uid, OTUMO_NAME).then(()=>toast(`${nick} 님을 깨웠어요`)).catch(()=>toast('깨우지 못했어요')); admRevive = null; } }
   if (!net || !net.presence) return;
-  const p = {adm:1, z:zoneId, nick:OTUMO_NAME, look:OTUMO_LOOK, roof:0, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, ex:'happy', ti:'관리자', emo:'', emoAt:0};
+  const p = {adm:1, z:zoneId, nick:OTUMO_NAME, look:otumoDress ? otumoDressLook(otumoDress) : OTUMO_LOOK, roof:0, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, ex:'happy', ti:'관리자', emo:'', emoAt:0};
   const sig = JSON.stringify(p);
   if (sig === admPresSig || t - admPresT < (pos.moving ? 250 : 120)) return;
   admPresSig = sig; admPresT = t; net.presence(p).catch(()=>{});
