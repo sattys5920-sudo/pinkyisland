@@ -451,6 +451,7 @@ const ANI = { // back: 후드 뒤·위로 솟는 것 (귀 · 지느러미 · 볏
   hamster:{ back:(d,g,c)=>{ for (const sx of (g.side?[-.2]:[-1,1])){ d.circle(sx*R*.82, HY-R*1.22, 3.3, c); d.circle(sx*R*.82, HY-R*1.22, 1.9, '#f6b8c8', ff); } }, face:(d,g,c,cy)=>{ if (!g.side){ d.ell(0, cy-.4, R*.36, 2.1, '#fff6ea', ff); for (const sx of [-1,1]) d.ell(sx*R*.9, cy+1, 1.8, 1.1, '#ffb3c4', ff); } } },
   parrot:{ back:(d,g,c)=>{ ['#ff7a7a','#ffd14f','#6fcf7f'].forEach((cc, i) => d.shape(k=>{ const x = (i-1)*3; k.beginPath(); k.moveTo(x-1.8, HY-R*1.25); k.quadraticCurveTo(x-2.6+i*1.2, HY-R*2.15, x+1.5, HY-R*1.95); k.quadraticCurveTo(x+.8, HY-R*1.5, x+1.8, HY-R*1.25); k.closePath(); }, cc, [(i-1)*3,HY-R*1.6,4])); }, face:(d,g,c,cy)=>{ const bx = g.side ? R*.85 : 0; d.shape(k=>{ k.beginPath(); k.moveTo(bx-2.2,cy-.6); k.quadraticCurveTo(bx+(g.side?3:0),cy-1.2,bx+2.2,cy-.6); k.quadraticCurveTo(bx+(g.side?2:0),cy+3.6,bx-2.2,cy-.6); k.closePath(); }, '#ffb347', [bx,cy,3]); } },
   bunny:{ back:(d,g,c)=>{ for (const sx of (g.side?[-.3,.2]:[-1,1])){ d.shape(k=>{ k.beginPath(); k.ellipse(sx*R*.5, HY-R*1.85, 3.2, 7.2, sx*.18, 0, 7); }, c, [sx*R*.5,HY-R*1.85,7]); d.shape(k=>{ k.beginPath(); k.ellipse(sx*R*.5, HY-R*1.82, 1.5, 5, sx*.18, 0, 7); }, '#ff9fbb', [sx*R*.5,HY-R*1.82,5], ff); } }, face:(d,g,c,cy)=>{} },
+  robot:{ back:(d,g,c)=>{ d.line(k=>{ k.moveTo(0, HY-R*1.28); k.lineTo(0, HY-R*1.75); }, '#9aa3b4', 1.6); d.circle(0, HY-R*1.82, 2.6, '#ffb627'); d.dot(-.7, HY-R*1.88, .7, '#fff', .8); for (const sx of (g.side?[-1]:[-1,1])){ d.shape(k=>{ k.beginPath(); k.ellipse(sx*R*1.3, HY-R*.35, R*.3, R*.42, sx*.2, 0, 7); }, '#ffb627', [sx*R*1.3,HY-R*.35,5]); d.circle(sx*R*1.3, HY-R*.35, 1.6, '#e9a21c', ff); } }, face:(d,g,c,cy)=>{ if (g.side) return; d.rr(-R*.62, cy-2.4, R*1.24, 4.6, 2.3, '#2b2b36', ff); for (const sx of [-1, 1]) d.dot(sx*R*.75, cy+.2, .9, '#9aa3b4'); } },
   chick:{ back:(d,g,c)=>{ d.shape(k=>{ k.beginPath(); k.moveTo(-1.4,HY-R*1.26); k.quadraticCurveTo(-3.4,HY-R*2.0,0,HY-R*1.78); k.quadraticCurveTo(3.2,HY-R*2.1,1.6,HY-R*1.26); k.closePath(); }, darken(c,.06), [0,HY-R*1.6,4]); for (const sx of (g.side?[-1]:[-1,1])) d.shape(k=>{ k.beginPath(); k.ellipse(sx*R*1.25, HY-R*.2, 2.2, 4, sx*-.6, 0, 7); }, darken(c,.05), [sx*R*1.25,HY-R*.2,4]); }, face:(d,g,c,cy)=>{ const bx = g.side ? R*.85 : 0; d.shape(k=>{ k.beginPath(); k.moveTo(bx-2,cy-.4); k.lineTo(bx+2,cy-.4); k.lineTo(bx+(g.side?2.4:0),cy+2); k.closePath(); }, '#ff9a3c', [bx,cy+.6,2]); } },
 };
 const groupHood = (name, col, ani) => ({ main:col,
@@ -543,6 +544,7 @@ export const TOPS = {
   t55:{excl:1, name:'째 후드티 (앵무새)', price:118000, ...groupHood('째','#a9d3ff','parrot')},
   t56:{excl:1, name:'쭈 후드티 (토끼)', price:118000, ...groupHood('쭈','#ffc3d5','bunny')},
   t57:{excl:1, name:'하 후드티 (병아리)', price:118000, ...groupHood('하','#fff1a0','chick')},
+  t58:{excl:1, name:'투 후드티 (오투모)', price:118000, ...groupHood('투','#bfd2ff','robot')},
 };
 export const BOTTOMS = {
   b01:{name:'청바지',      price:0,   draw:(d,g)=>{ pants(d,g,'#7d8ab0'); legs(d,g,'#7d8ab0'); }},
@@ -850,8 +852,9 @@ export function figure(d, L, dir, t, walk, expr){
   if (!up) face(d, side ? R*.22 : 0, HY+R*.28, L, side, expr);
   if (AN?.snout && !up) AN.snout(AP);
   hair(d, 0, HY, L, side, R, 'front', up);
+  const otu = L.animal?.kind === 'otumo'; if (otu && AN?.over) AN.over(AP); // 오투모 머리는 후드 안쪽에 (후드를 쓰면 위로 덮여요)
   if (set?.over) set.over(P('set', L.set), g); else if (!set && top.over) top.over(P('top', L.top), g); // 후드 앞자락처럼 머리카락 위로 덮는 부분
-  if (AN?.over) AN.over(AP);
+  if (!otu && AN?.over) AN.over(AP);
   acc.draw(P('acc', L.acc), g); hat.draw(P('hat', L.hat), g);
   if (AN?.top) AN.top(AP);
   c.restore();
