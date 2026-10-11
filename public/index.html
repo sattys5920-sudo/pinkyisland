@@ -3021,7 +3021,7 @@ function ringPanel(){
       ringPanel(); });
 }
 // ===== 보물 지도: 구역마다 9 조각 (3 × 3). 다 맞춘 사람만 그 구역에서 [파 보기] =====
-// 조각은 낚시 · 채집 · 광석 · 몬스터에서 가끔 (구역 보스는 꼭 1 개) · 하루 8 개까지. 조각 번호마다 확률이 달라요 (1 번 5% → 9 번 1%)
+// 조각은 낚시 · 채집 · 광석 · 몬스터에서 가끔 (구역 보스는 꼭 1 개) · 하루 8 개까지. 조각 번호마다 확률이 달라요 (1 번 2.5% → 9 번 0.5%)
 // 겹친 조각은 거래소에서만 사고팔아요 (1 개 10,000 G 로 정해져 있어요)
 // 9 조각을 맞추는 순간 보물 자리가 정해지고 지도에 ✕ 가 나타나요. 조각에는 ✕ 가 없어요
 const TMAP = [ // 구역 · 상자에서 나오는 것
@@ -3030,7 +3030,7 @@ const TMAP = [ // 구역 · 상자에서 나오는 것
   ['cave','set','s74'], ['cave1','hat','tmcave1'], ['cave2','set','s75'], ['cave3','acc','tmcave3'], ['cave4','sword','w10'],
 ];
 const TMAP_DAY = 8, TMAP_GOLD = 50000, TMAP_CANDY = 20, TMAP_DIG = 70, TMAP_PRICE = 10000;
-const TMAP_RATE = [.05, .045, .04, .035, .03, .025, .02, .015, .01], TMAP_SUM = TMAP_RATE.reduce((a, b) => a + b, 0); // 조각 1 ~ 9 번이 한 번에 나올 확률
+const TMAP_RATE = [.025, .0225, .02, .0175, .015, .0125, .01, .0075, .005], TMAP_SUM = TMAP_RATE.reduce((a, b) => a + b, 0); // 조각 1 ~ 9 번이 한 번에 나올 확률
 const tmapIdx = z => TMAP.findIndex(t => t[0] === z);
 const tmapKey = (i, p) => `tmap:z${String(i).padStart(2, '0')}_${p}`;
 const tmapParse = id => { const m = /^z(\d\d)_([1-9])$/.exec(id || ''); return m && TMAP[+m[1]] ? {i:+m[1], p:+m[2], zone:TMAP[+m[1]][0]} : null; };
@@ -3051,7 +3051,7 @@ function tmapPieceIcon(id){
   x.fillStyle = '#5a3a20'; x.font = 'bold 22px "Dongle",sans-serif'; x.textAlign = 'center'; x.fillText(String(t.p), -21 + cx*21, -14 + cy*21);
   x.restore(); const url = cv.toDataURL(); iconCache.set(k, url); return url;
 }
-// 조각 줍기: 낚시 · 채집 · 광석 · 몬스터 한 번마다 1 번 조각 5% … 9 번 조각 1% (구역 보스는 꼭 하나, 번호는 같은 비율로)
+// 조각 줍기: 낚시 · 채집 · 광석 · 몬스터 한 번마다 1 번 조각 2.5% … 9 번 조각 0.5% (구역 보스는 꼭 하나, 번호는 같은 비율로)
 function tmapDrop(sure){
   if (admin || !me || darkOn()) return;
   let r = sure ? Math.random() * TMAP_SUM : Math.random(); if (r >= TMAP_SUM) return;
@@ -3117,7 +3117,7 @@ function tmapPanel(){
       <span style="flex:1"><b>${esc(ZONES[zid].name)}</b> <small style="color:#9a7080">${TMAP_KIND[kind]} · ${esc(tmapPrize(i) || '')}</small><br><small>${a ? '✕ 지도 완성 · 보물을 파러 가요' : has >= 9 ? '9/9 · 눌러서 맞추기!' : `${has}/9 조각`}</small></span>
       <span class="mini" style="padding:4px 10px;${a || has >= 9 ? 'background:#ff8fb6;color:#fff' : 'background:#eee;color:#aaa'}">${a ? '지도 보기' : has >= 9 ? '맞추기' : `${has}/9`}</span></button>`; };
   const day = me.tmapDay && me.tmapDay.d === today() ? me.tmapDay.n : 0;
-  openPanel('🗺️ 보물 지도', `<p class="mnote" style="margin-top:0">낚시 · 채집 · 광석 · 몬스터에서 가끔 지도 조각이 나와요 (구역 보스는 꼭 1 개). 오늘 ${day}/${TMAP_DAY} 개.<br>조각 번호가 클수록 귀해요 (1 번 5% → 9 번 1%). 같은 구역 9 조각을 다 모아 맞추면 보물 자리가 ✕ 로 나타나요.<br>겹친 조각은 거래소에서 1 개 ${TMAP_PRICE.toLocaleString()} G 로 사고팔 수 있어요.</p>
+  openPanel('🗺️ 보물 지도', `<p class="mnote" style="margin-top:0">낚시 · 채집 · 광석 · 몬스터에서 가끔 지도 조각이 나와요 (구역 보스는 꼭 1 개). 오늘 ${day}/${TMAP_DAY} 개.<br>조각 번호가 클수록 귀해요 (1 번 2.5% → 9 번 0.5%). 같은 구역 9 조각을 다 모아 맞추면 보물 자리가 ✕ 로 나타나요.<br>겹친 조각은 거래소에서 1 개 ${TMAP_PRICE.toLocaleString()} G 로 사고팔 수 있어요.</p>
     ${TMAP.map(card).join('')}`);
   $('npcPanel').querySelectorAll('.tm-card').forEach(b => b.onclick = () => { const i = +b.dataset.tm; if (act[i]) tmapView(i); else if (tmapHave(i) >= 9) tmapAssemble(i); else toast(`${ZONES[TMAP[i][0]].name} 지도는 ${tmapHave(i)}/9 조각이에요`); });
 }
