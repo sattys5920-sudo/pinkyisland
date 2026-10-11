@@ -2692,7 +2692,7 @@ const MONSTERS = Object.fromEntries(MONSTER_LIST.map((m,i)=>['m'+String(i+1).pad
 const COMBAT_ZONES = {forest:6, deepforest:7, seacave:5, cave:7, starhill:5, cave1:7, cave2:7, cave3:6, cave4:6}; // 구역마다 한 번에 나오는 몬스터 수 (보스 빼고)
 // ===== 체력·기력·레벨 =====
 // 레벨이 오를 때마다 최대 체력·최대 기력이 10 씩 늘어요. 경험치는 퀘스트·몬스터·이야기·채집·낚시·채굴에서 받아요
-const LV_MAX = 50;
+const LV_MAX = 100;
 const lvOf = () => Math.max(1, Math.min(LV_MAX, (me && me.lv) || 1));
 // 반지: 보리 공방에서 만들고 하나만 껴요. 최대 체력을 올리고 막는 힘을 더해 줘요 (되팔 수 없어요)
 // [id, 이름, 최대 체력, 골드, 재료, 효과, 색] · 효과: dr 받는 피해 감소, bossDr 보스 탄막 추가 감소, regen 회복 배수, noSlow 느려짐 무시, sta 최대 기력, kb 밀려남 배수, shield 보호막 주기(초), phoenix 하루 한 번 바로 일어남
@@ -2720,7 +2720,7 @@ const ringKb = n => n * (ringFx().kb || 1);
 // 칭호 효과: 지금 달고 있는 칭호 하나만 (achievements.js 의 TITLE_FX)
 const tfx = k => (me && me.title && TITLE_FX[me.title]?.[k]) || 0;
 const maxHp = () => 100 + (lvOf()-1)*10 + (ring()?.hp || 0) + tfx('hp'), maxSta = () => 100 + (lvOf()-1)*10 + (ringFx().sta || 0) + tfx('sta');
-const expNeed = lv => Math.round(40 + lv*30 + 3*lv*lv); // 뒤로 갈수록 점점 어려워져요 (Lv1→2: 73, Lv10→11: 640, Lv30→31: 3,640, Lv49→50: 8,713)
+const expNeed = lv => Math.round(60 + lv*40 + 5*lv*lv + lv*lv*lv/40); // 레벨마다 계속 늘어나요 (Lv1→2: 105, Lv10→11: 985, Lv30→31: 6,435, Lv50→51: 17,685, Lv99→100: 77,282)
 // 기력: 일할 때마다 조금씩 써요. 천천히 차오르고, 날이 바뀌면 가득, 먹으면 바로 차요
 const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10, snow:2, forage:1};
 let playerSta = 100, tiredToastT = 0, dayChkT = 0;
