@@ -437,6 +437,8 @@ body.dlg-on #goal,body.admin #goal{visibility:hidden}
 .adm-zone i{font-style:normal;background:rgba(255,255,255,.14);border-radius:10px;padding:0 8px}.adm-zone.on{background:#ff9fc4;color:#2a2429}
 .adm-side{position:absolute;right:10px;top:66px;width:270px;max-height:calc(100% - 80px);overflow:auto;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
 .adm-sec{background:rgba(28,22,30,.78);border-radius:16px;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
+#adminUi .adm-mtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:0;position:sticky;top:0;z-index:2;flex:none;background:rgba(18,14,20,.92);border-radius:14px;padding:5px}.adm-tab{border:0;border-radius:10px;padding:6px 2px;font:inherit;font-size:17px;color:#f4e8ee;background:rgba(255,255,255,.08)}.adm-tab.on{background:#ff8fb6;color:#fff;font-weight:700}
+.adm-tm{display:flex;flex-direction:column;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.08)}.adm-tm:last-child{border-bottom:0}.adm-tm b{font-size:19px!important}.adm-chips{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}.adm-chip{font-size:15px;background:rgba(255,255,255,.1);border-radius:8px;padding:0 6px}.adm-chip.on{background:#ff8fb6;color:#fff}.adm-chip i{font-style:normal;opacity:.7}
 .adm-sec b{font-size:22px}.adm-sec small{opacity:.75;font-size:17px;line-height:1.1}
 .adm-btn{background:#f4eef2;color:#2a2429;border:0;border-radius:12px;padding:3px 12px}.adm-btn.warn{background:#ff5a6e;color:#fff}
 .adm-state{font-size:17px;background:rgba(255,255,255,.14);border-radius:10px;padding:0 8px;margin-left:6px}.adm-state.on{background:#ff5a6e}
@@ -4339,7 +4341,7 @@ function renderDm(){
     const mine = m.from===uid, first = prev!==m.from; prev = m.from;
     const bub = `<div class="dm-msg ${mine ? 'me' : ''}">${esc(m.t)}<small>${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}</small></div>`;
     html += mine ? bub : `<div class="dm-line">${first ? (avatarOf(m.from) ? `<img class="dm-pic" src="${avatarOf(m.from)}" alt="">` : `<span class="dm-pic dm-init">${esc(String(m.nick||'?').slice(0,1))}</span>`) : '<span class="dm-pic"></span>'}<div class="dm-col">${first ? `<b>${esc(String(players[m.from]?.nick || m.nick || '').slice(0,10))}</b>` : ''}${bub}</div></div>`; }
-  el.innerHTML = html; el.scrollTop = el.scrollHeight;
+  el.innerHTML = html; const bottom = () => { el.scrollTop = el.scrollHeight; }; bottom(); requestAnimationFrame(bottom); el.querySelectorAll('img').forEach(im => { if (!im.complete) im.addEventListener('load', bottom, {once:true}); });
 }
 // 폰 키패드가 올라오면 대화창을 보이는 화면 안으로 옮겨요
 function dmKeyboard(){
@@ -6229,6 +6231,22 @@ function enterAdmin(){
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
 }
+// 관리자 메뉴 탭: 고른 탭은 이 기기에 기억해요
+const ADM_TABS = [['people','주민'],['event','이벤트'],['mob','몬스터'],['tmap','보물 지도'],['dark','다크 모드'],['data','가게 · 데이터']];
+let admTab = (() => { try { const v = localStorage.getItem('admTab'); return ADM_TABS.some(([k])=>k===v) ? v : 'people'; } catch(e){ return 'people'; } })();
+// 보물 지도 현황: 사람마다 가진 조각 · 맞춘 지도(파러 가는 중) · 찾은 보물
+function adminTmapSec(regs){
+  const zs = i => MAP_SHORT[TMAP[i][0]] || ZONES[TMAP[i][0]].name, tot = Array(TMAP.length).fill(0);
+  const rows = regs.map(([id, p]) => { const bag = p.inv?.tmaps || {}, act = p.tmaps || {}, dug = p.stats?.tmapDug || 0;
+    const have = TMAP.map((_, i) => { let n = 0, all = 0; for (let q = 1; q <= 9; q++){ const c = bag[`z${String(i).padStart(2, '0')}_${q}`] || 0; if (c > 0) n++; all += c; } tot[i] += all; return [n, all]; });
+    const pcs = have.reduce((a, [, all]) => a + all, 0), ready = Object.keys(act).filter(i => TMAP[i]).map(zs);
+    const chips = have.map(([n, all], i) => n ? `<span class="adm-chip${n >= 9 ? ' on' : ''}">${esc(zs(i))} ${n}/9${all > n ? ` <i>+${all - n}</i>` : ''}</span>` : '').join('');
+    return {pcs, ready, dug, html:`<div class="adm-tm"><b>${esc(p.nick)}</b><small>조각 ${pcs} 개 · 찾은 보물 ${dug} 개${ready.length ? ` · ✕ 파러 가는 중: ${ready.map(esc).join(', ')}` : ''}</small>${chips ? `<div class="adm-chips">${chips}</div>` : ''}</div>`}; })
+    .sort((a, b) => (b.dug - a.dug) || (b.ready.length - a.ready.length) || (b.pcs - a.pcs));
+  const sum = TMAP.map((t, i) => tot[i] ? `<span class="adm-chip">${esc(zs(i))} ${tot[i]}</span>` : '').join('');
+  return `<div class="adm-sec"><b>🗺️ 보물 지도 현황</b><small>사람마다 구역별로 모은 조각 (몇 번까지 모았는지 /9 · <i>+</i>는 겹친 조각) · 맞춘 지도 · 찾은 보물</small>${sum ? `<small style="margin-top:4px">섬 전체 조각</small><div class="adm-chips">${sum}</div>` : '<small>아직 아무도 조각을 줍지 않았어요</small>'}</div>
+    <div class="adm-sec">${rows.map(r => r.html).join('') || '<small>주민이 없어요</small>'}</div>`;
+}
 function renderAdmin(){
   const box = $('adminUi'); if (!box || !admin) return;
   // 드롭다운을 펼쳐 둔 동안 다시 그리면 목록이 닫혀요: 고르기를 마치고(포커스가 빠지면) 그때 그려요
@@ -6247,19 +6265,15 @@ function renderAdmin(){
     <div class="adm-top"><span class="rec">● REC</span><b>관리자 · CCTV</b><span class="adm-clock" id="recClock">${kstClock()}</span><span class="adm-view">${watching}</span>${admWalk ? '<button data-a="walkoff" class="adm-btn warn adm-walk">오투모 나가기</button><button data-a="odress" class="adm-btn">오투모 옷</button>' : '<button data-a="walkon" class="adm-btn adm-walk">오투모로 들어가기</button>'}<button data-a="side" class="adm-btn adm-menu ${admSide ? 'on' : ''}">메뉴${adminInbox().some(x=>!x.l.replied) ? ' ●' : ''}</button><button data-a="logout" class="adm-btn">로그아웃</button></div>
     <div class="adm-zones">${Object.keys(ZONES).map(z=>`<button data-z="${z}" class="adm-zone ${zoneId===z && !cam.follow ? 'on' : ''}">${esc(ZONES[z].name)}<i>${count[z]||0}</i></button>`).join('')}</div>
     <div class="adm-side">
-      <div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
+      <div class="adm-mtabs">${ADM_TABS.map(([k,l])=>`<button data-at="${k}" class="adm-tab ${admTab===k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      ${admTab==='people' ? `${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}<div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div><div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>` : ''}
+      ${admTab==='event' ? `${adminGoalSec()}${adminNightSec()}${adminAucSec()}${adminFestSec()}` : ''}
+      ${admTab==='mob' ? `${adminMobSec()}` : ''}
+      ${admTab==='tmap' ? adminTmapSec(regs) : ''}
+      ${admTab==='dark' ? `<div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
-        <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}<button data-a="dkq" class="adm-btn">✏️ 방탈출 문제 편집</button></div>
-      ${adminGoalSec()}
-      ${adminNightSec()}
-      ${adminAucSec()}
-      ${adminFestSec()}
-      ${adminMobSec()}
-      ${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}
-      <div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div>
-      ${adminShopSec(regs)}
-      <div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>
-      <div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>
+        <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}<button data-a="dkq" class="adm-btn">✏️ 방탈출 문제 편집</button></div>` : ''}
+      ${admTab==='data' ? `${adminShopSec(regs)}<div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>` : ''}
     </div>${admDressOpen ? adminDress() : admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : admQ !== null ? adminQEdit() : ''}`;
   for (const [k, y, x] of kept){ const [c, i] = k.split('#'), e = k ? box.getElementsByClassName(c)[+i] : box; if (e){ e.scrollTop = y; e.scrollLeft = x; } }
   if (window.scrollY !== pageY) window.scrollTo(0, pageY);
@@ -6268,7 +6282,7 @@ function renderAdmin(){
   if (typingRk){ const ta = box.querySelector(`[data-rk="${typingRk}"]`); if (ta){ ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch(e){} } } // 다시 그려도 쓰던 칸·커서 그대로
   const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
   const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
-  const cl = box.querySelector('.adm-chat-list:not(.adm-post-list)'); if (cl){ cl.scrollTop = admChatScroll ?? cl.scrollHeight; cl.onscroll = ()=>{ admChatScroll = cl.scrollTop + cl.clientHeight >= cl.scrollHeight - 4 ? null : cl.scrollTop; }; }
+  const cl = box.querySelector('.adm-chat-list:not(.adm-post-list):not(.adm-dm-rooms)'); if (cl){ cl.scrollTop = admChatScroll ?? cl.scrollHeight; cl.onscroll = ()=>{ admChatScroll = cl.scrollTop + cl.clientHeight >= cl.scrollHeight - 4 ? null : cl.scrollTop; }; }
 }
 // 관리자: 핑크 시장 가게 현황 (주인이 접속 안 한 동안 팔린 것까지 계산해서 보여 줘요)
 function adminShopSec(regs){
@@ -6454,12 +6468,13 @@ function adminDm(){
     let day = '', rows = ''; for (const m of list){ const t = kstTime(m.at), d = t.slice(0,10); if (d!==day){ day = d; rows += `<div class="adm-day">${d}</div>`; } rows += `<div class="adm-msg"><small>${t.slice(11,16)}</small><b>${esc(String(m.nick||'누군가').slice(0,10))}</b><span>${esc(m.t)}</span></div>`; }
     return `<div class="adm-tbl adm-chat"><div class="adm-tbl-head"><b>${c ? esc(c.names.join(' ↔ ')) : '대화'}</b><small>${list.length} 개 · 맨 아래가 최신</small><button data-a="dmback" class="adm-btn">대화 목록</button><button data-a="dmclose" class="adm-btn">닫기</button></div><div class="adm-chat-list">${rows || '<small>메시지가 없어요</small>'}</div></div>`; }
   return `<div class="adm-tbl adm-chat"><div class="adm-tbl-head"><b>메신저 기록</b><small>대화방 ${convs.length} 개 · 최근 순</small><button data-a="dmclose" class="adm-btn">닫기</button></div>
-    <div class="adm-chat-list">${convs.map(c=>`<button data-dmc="${c.cid}" class="adm-p"><span>${esc(c.names.join(' ↔ '))}</span><small>${c.list.length} 개 · ${c.last ? kstTime(c.last).slice(5,16) : ''}</small></button>`).join('') || '<small>아직 메신저 대화가 없어요</small>'}</div></div>`;
+    <div class="adm-chat-list adm-dm-rooms">${convs.map(c=>`<button data-dmc="${c.cid}" class="adm-p"><span>${esc(c.names.join(' ↔ '))}</span><small>${c.list.length} 개 · ${c.last ? kstTime(c.last).slice(5,16) : ''}</small></button>`).join('') || '<small>아직 메신저 대화가 없어요</small>'}</div></div>`;
 }
 function adminClick(e){
   const td = e.target.closest('.adm-tbl td[title]'); if (td) return toast(td.title);
   const lt = e.target.closest('[data-lt]'); if (lt){ const k = lt.dataset.lt, l = adminInbox().find(x=>x.to+'|'+x.id===k); const cur = admLetterOpen.has(k) ? admLetterOpen.get(k) : !(l && l.l.replied); admLetterOpen.set(k, !cur); return renderAdmin(); }
   const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.at){ admTab = b.dataset.at; try { localStorage.setItem('admTab', admTab); } catch(e){} const sd = $('adminUi')?.querySelector('.adm-side'); if (sd) sd.scrollTop = 0; renderAdmin(); const sd2 = $('adminUi')?.querySelector('.adm-side'); if (sd2) sd2.scrollTop = 0; return; }
   if (b.dataset.a==='looks'){ admLook = admLook===null ? '' : null; admDm = null; admPost = false; admTbl = null; admChat = null; admWipe = false; admSide = false; return renderAdmin(); }
   if (b.dataset.a==='lclose'){ admLook = null; return renderAdmin(); }
   if (b.dataset.a==='odress'){ admDressOpen = !admDressOpen; if (admDressOpen){ admLook = null; admDm = null; admPost = false; admTbl = null; admChat = null; admWipe = false; admSide = false; if (!otumoDress) setOtumoDress({set:'', top:'t01', bottom:'b01', hat:'none', acc:'none', shoes:'sh01'}); } return renderAdmin(); }
@@ -6471,10 +6486,10 @@ function adminClick(e){
   if (b.dataset.a==='table'){ admDm = null; admPost = false; admTbl = admTbl===null ? '' : null; admChat = null; admWipe = false; admScroll = [0, 0]; return renderAdmin(); }
   if (b.dataset.a==='chat'){ admDm = null; admPost = false; admChat = admChat===null ? '' : null; admTbl = null; admWipe = false; admChatScroll = null; return renderAdmin(); }
   if (b.dataset.a==='cclose'){ admChat = null; return renderAdmin(); }
-  if (b.dataset.a==='dm'){ admDm = admDm===null ? '' : null; admPost = false; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
+  if (b.dataset.a==='dm'){ admDm = admDm===null ? '' : null; admPost = false; admChat = null; admTbl = null; admWipe = false; admChatScroll = null; return renderAdmin(); }
   if (b.dataset.a==='dmclose'){ admDm = null; return renderAdmin(); }
-  if (b.dataset.a==='dmback'){ admDm = ''; return renderAdmin(); }
-  if (b.dataset.dmc){ admDm = b.dataset.dmc; return renderAdmin(); }
+  if (b.dataset.a==='dmback'){ admDm = ''; admChatScroll = null; return renderAdmin(); }
+  if (b.dataset.dmc){ admDm = b.dataset.dmc; admChatScroll = null; const k = $('adminUi')?.querySelector('.adm-chat-list'); if (k) k.scrollTop = 0; return renderAdmin(); } // 대화방을 열면 늘 맨 아래(최신)부터
   if (b.dataset.a==='side'){ admDm = null; admSide = !admSide; admPost = false; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
   if (b.dataset.a==='post'){ admDm = null; admPost = !admPost; admChat = null; admTbl = null; admWipe = false; return renderAdmin(); }
   if (b.dataset.a==='pclose'){ admPost = false; return renderAdmin(); }
