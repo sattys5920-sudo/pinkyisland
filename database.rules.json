@@ -185,6 +185,18 @@
         }
       }
     },
+    "bridge": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "g": {
+        "$slot": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && $slot.matches(/^[b-d][1-9ab]$/) && root.child('players/' + auth.uid).exists()",
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0 && ((!data.exists() && newData.val() <= ($slot === 'db' ? 5000000 : 1500)) || (data.exists() && newData.val() >= data.val() && newData.val() <= data.val() + ($slot === 'db' ? 5000000 : 1500)))"
+          }
+        }
+      }
+    },
     "petClaims": {
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",

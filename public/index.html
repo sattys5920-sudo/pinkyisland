@@ -936,6 +936,9 @@ function rebuildObstacles(){
   if (!z.lamps && z.theme!=='room' && z.theme!=='cave'){ placeLamps(z); staticSig = ''; }
   for (const l of (z.lamps||[])) obstacles.circles.push({x:l.x, y:l.y, r:8});
   if (!z.fspots && FORAGE_ZONES.has(zoneId)) z.fspots = buildForageSpots(z); // 채집 자리는 가로등까지 놓은 다음에
+  if (!z.chop && CHOP_ZONES.has(zoneId)) z.chop = buildChopTrees(z); // 벨 수 있는 나무는 채집 자리 다음에
+  for (const s_ of (CHOP_ZONES.has(zoneId) ? z.chop || [] : [])) obstacles.circles.push({x:s_.x, y:s_.y-2, r:14});
+  if (zoneId==='beach') obstacles.circles.push({x:bridgeX()+96, y:326, r:12});
 }
 function inCorridor(x, y){
   const z = Z(), ex = z.exits;
@@ -1350,6 +1353,7 @@ function soloNet(){
     mobHeal: async (z, sl, gen) => { const c = (soloNet.mobs||{})[z] || {}, cur = c[sl]; if (!cur || cur.gen !== gen || !(cur.hp > 0) || cur.hp >= cur.max || Date.now() - (cur.lastHit||0) < MOB_HEAL_IDLE) return; cur.hp = Math.min(cur.max, cur.hp + Math.floor(cur.max * MOB_HEAL_STEP)); if (cur.hp >= cur.max) delete cur.hits; soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); },
     mobPos: async (z, up) => { const c = (soloNet.mobs||{})[z] || {}; for (const [k,v] of Object.entries(up)){ const [sl, f] = k.split('/'); if (c[sl]) c[sl][f] = v; } },
     museumGive: async (cat, id) => { const c = museum[cat] || (museum[cat] = {}); if (c[id]) return false; c[id] = {uid, nick:me.nick, at:Date.now()}; onMuseum(museum); return true; },
+    bridgeGive: async (slot, total) => { const b = structuredClone(bridgeData); ((b.g = b.g || {})[slot] = b.g[slot] || {})[uid] = total; onBridge(b); },
     darkTx: async (npc, fn) => { const st_ = soloNet.dark || (soloNet.dark = {}); const r = fn(st_[npc] ? structuredClone(st_[npc]) : null); if (r !== undefined){ if (r === null) delete st_[npc]; else st_[npc] = r; } onDarkRooms(structuredClone(st_)); return r !== undefined; },
     reviveSend: async (id, by) => { if (id === uid) onRevive({by, at:darkNow()}); },
     grantDel: async () => {},
@@ -1419,6 +1423,7 @@ function firebaseNet(){
     mobHeal: (z, sl, gen) => F.runTransaction(F.ref(db, `mobs/${z}/${sl}`), cur => { const now = Date.now() + serverOffset; if (!cur || cur.gen !== gen || !(cur.hp > 0) || cur.hp >= cur.max || now - (cur.lastHit||0) < MOB_HEAL_IDLE) return; const hp = Math.min(cur.max, cur.hp + Math.floor(cur.max * MOB_HEAL_STEP)); const out = {...cur, hp}; if (hp >= cur.max) delete out.hits; return out; }).catch(()=>{}),
     bossAtk: (z, a) => F.update(F.ref(db, 'mobs/'+z), {[BOSS_SLOT+'/atk']:a}).catch(()=>{}),
     museumGive: async (cat, id) => { try { const r = await F.runTransaction(F.ref(db, 'museum/'+cat+'/'+id), cur => cur ? undefined : {uid, nick:String(me.nick||'').slice(0,16), at:Date.now() + serverOffset}); return r.committed; } catch(e){ return false; } },
+    bridgeGive: (slot, total) => F.set(F.ref(db, 'bridge/g/'+slot+'/'+uid), total),
     darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
     darkQSet: (npc, pid, pub, plain) => F.update(F.ref(db), {[`darkQ/${npc}/${pid}`]: pub || null, [`darkQA/${npc}/${pid}`]: plain || null, ...(pub ? {} : {[`darkImg/${npc}/${pid}`]: null})}),
@@ -1446,7 +1451,7 @@ function firebaseNet(){
     // 장소마다 100 줄만 남기고 오래된 줄은 지워요
     chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ox:null, fest:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, bridge:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ox:null, fest:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -1462,6 +1467,7 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'petClaims'), s=>{ petClaims = s.val() || {}; }, ()=>{});
       F.onValue(F.ref(db, 'snowmen'), s=>{ snowmen = s.val() || {}; }, ()=>{});
       F.onValue(F.ref(db, 'museum'), s=>onMuseum(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'bridge'), s=>onBridge(s.val()), ()=>{});
       F.onValue(F.ref(db, 'darkRooms'), s=>onDarkRooms(s.val()), ()=>{});
       F.onValue(F.ref(db, 'darkQ'), s=>onDarkQ(s.val()), ()=>{});
       F.onValue(F.ref(db, 'revive/'+uid), s=>onRevive(s.val()), ()=>{});
@@ -2510,7 +2516,7 @@ function showFishBag(){
 // ===== 가방 =====
 // 아이템 키: 'crop:c01' 작물, 'seed:c01' 씨앗, 'fish:f01_3' 물고기(별 3), 'ore:o01' 광석, 'loot:m01' 전리품
 const STAR_PRICE = 50000; // 별 조각: 시세와 상관없이 늘 5 만 G
-const CATS = {seed:'seeds', crop:'crops', fish:'fish', ore:'ores', loot:'loot', forage:'forage', dish:'dishes', furn:'furn', wear:'wear', umb:'umbrellas', wall:'walls', floor:'floors', star:'stars', staple:'staples', tmap:'tmaps'};
+const CATS = {seed:'seeds', crop:'crops', fish:'fish', ore:'ores', loot:'loot', forage:'forage', dish:'dishes', furn:'furn', wear:'wear', umb:'umbrellas', wall:'walls', floor:'floors', star:'stars', staple:'staples', tmap:'tmaps', wood:'wood'};
 function bagOf(cat){ me.inv[CATS[cat]] = me.inv[CATS[cat]] || {}; return me.inv[CATS[cat]]; }
 function invCount(key){ const [cat, id] = key.split(':'); return bagOf(cat)[id] || 0; }
 // 가방: 같은 물건은 한 칸에 겹쳐 쌓여요. 한 칸 최대 500 개 — 넘치는 만큼은 버려지고 알려 줘요
@@ -2541,6 +2547,7 @@ function itemName(key){
   if (cat==='star') return '별 조각';
   if (cat==='staple') return STAPLES[id]?.[0] || '재료';
   if (cat==='tmap') return tmapName(id);
+  if (cat==='wood') return WOOD[id]?.name || '목재';
   return key;
 }
 function itemPrice(key){
@@ -2558,6 +2565,7 @@ function itemPrice(key){
   if (cat==='wall' || cat==='floor') return Math.round(((cat==='wall' ? WALLS : FLOORS)[id]?.price || 0)/2);
   if (cat==='star') return STAR_PRICE;
   if (cat==='staple') return Math.round((STAPLES[id]?.[1] || 0) / 2);
+  if (cat==='wood') return WOOD[id]?.price || 0;
   return 0;
 }
 function itemsOf(cat){ return Object.entries(bagOf(cat)).filter(([,n])=>n>0).map(([id,n])=>[cat+':'+id, n]); }
@@ -2722,7 +2730,7 @@ const tfx = k => ((me && me.title && TITLE_FX[me.title]?.[k]) || 0) + petFx(k); 
 const maxHp = () => 100 + (lvOf()-1)*10 + (ring()?.hp || 0) + tfx('hp'), maxSta = () => 100 + (lvOf()-1)*10 + (ringFx().sta || 0) + tfx('sta');
 const expNeed = lv => Math.round(60 + lv*40 + 5*lv*lv + lv*lv*lv/40); // 레벨마다 계속 늘어나요 (Lv1→2: 105, Lv10→11: 985, Lv30→31: 6,435, Lv50→51: 17,685, Lv99→100: 77,282)
 // 기력: 일할 때마다 조금씩 써요. 천천히 차오르고, 날이 바뀌면 가득, 먹으면 바로 차요
-const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10, snow:2, forage:1};
+const STA_COST = {swing:1, mine:2, fish:3, water:2, harvest:1, travel:10, snow:2, forage:1, chop:1};
 let playerSta = 100, tiredToastT = 0, dayChkT = 0;
 function useSta(kind){
   const c = STA_COST[kind] || 1;
@@ -3327,6 +3335,7 @@ function contentTarget(w){
     return {x:mob.x+dx/l*40, y:mob.y+dy/l*40, act:()=>{ faceTo(mob.x, mob.y); swing(); }};
   }
   for (const r of rocksHere()) if (Math.abs(w.x-r.x) < 24 && Math.abs(w.y-r.y) < 20) return {x:r.x, y:r.y+24, act:()=>mineRock(r)};
+  { const ct = chopTap(w); if (ct) return ct; }
   return null;
 }
 
@@ -3677,7 +3686,7 @@ function bzRemovePaths(id){ const o = {['bazaar/owners/'+id]: null}; for (const 
 
 // ===== 공통 패널 =====
 function openPanel(title, body, onClick){
-  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.fest; delete p.dataset.bz; bzView = null; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv; delete p.dataset.museum;
+  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.fest; delete p.dataset.bz; bzView = null; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv; delete p.dataset.museum; delete p.dataset.bridge;
   p.innerHTML = deEmoji(`<div class="np-head"><b>${title}</b><button class="mini" id="pnClose">닫기</button></div>${body}`);
   $('pnClose').onclick = ()=>{ p.hidden = true; };
   if (onClick) p.querySelectorAll('.np[data-id]').forEach(b=>b.onclick = ()=>onClick(b));
@@ -4421,14 +4430,14 @@ function onMail(m, remove){
 // 판매처: 모모는 뭐든 사 주고, 전문 상인은 자기 분야를 더 비싸게 사 줘요. 친한 친구(♥7)가 되면 +10%
 const BUYERS = {
   bami:{cats:['forage'], bonus:{forage:1.25}, line:'들꽃이랑 열매, 버섯은 내가 제일 잘 알아. 비싸게 사 줄게.'},
-  momo:{cats:['crop','forage','fish','ore','loot','dish','furn','star'], bonus:{}, line:'뭐든 가져와요~ 다 사 줄게요!'},
+  momo:{cats:['crop','forage','fish','ore','loot','dish','furn','star','wood'], bonus:{}, line:'뭐든 가져와요~ 다 사 줄게요!'},
   hana:{cats:['crop'], bonus:{crop:1.25}, line:'작물이면 내가 제일 비싸게 사 줄게!'},
   pengpeng:{cats:['fish'], bonus:{fish:1.25}, line:'펭! 물고기라면 제일 비싸게 사 줄게!'},
   dodo:{cats:['ore'], bonus:{ore:1.25}, line:'광석이라면 내가 제값 쳐 주지.'},
   kongi:{cats:['loot'], bonus:{loot:1.25}, line:'충성! 전리품은 경비대가 비싸게 사겠습니다!'},
   dandan:{cats:['dish','crop'], bonus:{dish:1.25, crop:1.05}, line:'요리라면 우리 카페에서 사 갈게요.'},
 };
-const SELL_CATS = {crop:'작물', forage:'채집물', fish:'물고기', ore:'광석', loot:'전리품', dish:'요리', furn:'가구', star:'별 조각'};
+const SELL_CATS = {crop:'작물', forage:'채집물', fish:'물고기', ore:'광석', loot:'전리품', dish:'요리', furn:'가구', star:'별 조각', wood:'목재'};
 const baseKey = key => { const [cat, id] = key.split(':'); return cat==='fish' ? 'fish:'+parseFish(id).id : key; };
 // 오늘의 인기 품목: 작물·물고기·광석에서 하나씩, 오늘은 2 배 값
 function hotToday(){
@@ -4487,8 +4496,9 @@ function pricePanel(){
 const MARKET_FEE = .05, MARKET_MAX = 5;
 let market = {};
 // 거래할 수 있는 아이템 키인지 (옷·우산·벽지·바닥도 거래돼요)
-function itemKeyOk(k){ const m = /^(dish|crop|forage|fish|ore|loot|seed|furn|wear|umb|wall|floor|tmap):([A-Za-z0-9_~]{2,12})$/.exec(k || ''); if (!m) return false; const [, cat, id] = m;
+function itemKeyOk(k){ const m = /^(dish|crop|forage|fish|ore|loot|seed|furn|wear|umb|wall|floor|tmap|wood):([A-Za-z0-9_~]{2,12})$/.exec(k || ''); if (!m) return false; const [, cat, id] = m;
   if (cat==='tmap') return !!tmapParse(id);
+  if (cat==='wood') return !!WOOD[id];
   if (cat==='wear'){ const [w, c] = id.split(/[~#]/); return !!slotOfWear(w) && (c===undefined || /^[1-4]$/.test(c)); }
   if (cat==='umb') return !!UMB[id]; if (cat==='wall') return !!WALLS[id]; if (cat==='floor') return !!FLOORS[id]; return /^[a-z0-9_]{2,8}$/.test(id); }
 const validListing = l => l && typeof l.item==='string' && itemKeyOk(l.item) && l.n>=1 && l.n<=99 && l.price>=1 && typeof l.uid==='string' && (!l.item.startsWith('tmap:') || l.price === TMAP_PRICE * l.n);
@@ -4900,6 +4910,180 @@ function forageDex(){
     const when = [f.wx ? WX[f.wx][0] : '', f.tm ? (f.tm==='day' ? '낮' : '밤') : ''].filter(Boolean).join(' · ') || '언제나';
     if (has) withIcon('forage:'+f.id); say(has ? f.name : '아직 못 찾았어요', has ? `${f.desc}\n${ZONES[f.zone]?.name} · ${when} · ${f.price} G · 지금까지 ${has} 개` : `${ZONES[f.zone]?.name}의 ${SPOT_NAME[SPOT_OF[f.kind]]}에서 · ${when}`); });
 }
+// ===== 나무 베기: 바깥 구역마다 벨 수 있는 나무가 24 그루쯤 있어요 (집터 · 시장 · 축제장 빼고) =====
+// 세 번 치면 쓰러지고 목재가 나와요. 그루터기는 사람마다 따로 5 분 뒤 다시 자라요 (me.chopped[구역][번호] = 벤 시각)
+const WOOD = {w1:{name:'나뭇가지', price:5, rare:1, col:'#c9a27a'}, w2:{name:'통나무', price:20, rare:2, col:'#b07a4f'}, w3:{name:'단단한 원목', price:80, rare:3, col:'#7a5034'}, w4:{name:'별빛 고목', price:600, rare:5, col:'#b9a6ff'}};
+const CHOP_ZONES = new Set(['village','museum','starhill','pond','beach','meadow','forest','deepforest','workshop','minegate']);
+const CHOP_REGROW = 5*60000, CHOP_HITS = 3;
+const chopKind = () => zoneId==='beach' ? 'palm' : zoneId==='starhill' ? 'star' : zoneId==='deepforest' ? 'pine' : 'round';
+function buildChopTrees(z){
+  const n = 24, rng = seeded(hash('chop:' + zoneId)), out = [];
+  const cx = z.W/2, cy = z.H/2, ex = z.exits || {}, rocks = (MINE_ZONES[zoneId]?.spots || []), npcs = NPCS.filter(p=>p.zone===zoneId), fs = z.fspots || [];
+  const avoid = zoneId==='beach' ? [[bridgeX(), 300, 190]] : [];
+  for (let tries = 0; out.length < n && tries < 4000; tries++){
+    const x = M + 40 + rng()*(z.W - 2*M - 80), y = M + 70 + rng()*(z.H - 2*M - 90);
+    if (blocked(x, y) || blocked(x, y-24) || blocked(x-22, y) || blocked(x+22, y)) continue;
+    if (((ex.n || ex.s) && Math.abs(x-cx) < 70) || ((ex.w || ex.e) && Math.abs(y-cy) < 70)) continue; // 길 위는 피해요
+    if (Math.hypot(x-cx, y-cy) < 140) continue;
+    if (out.some(s=>Math.hypot(s.x-x, s.y-y) < 84)) continue;
+    if ([[cx+110, M+50], [cx+110, z.H-M-10], [M+80, cy-50], [z.W-M-80, cy-50]].some(([sx,sy])=>Math.hypot(sx-x, sy-y) < 100)) continue;
+    if (rocks.some(([rx,ry])=>Math.hypot(rx-x, ry-y) < 80) || npcs.some(p=>Math.hypot(p.homeX-x, p.homeY-y) < 110) || fs.some(s=>Math.hypot(s.x-x, s.y-y) < 70) || (z.lamps||[]).some(l=>Math.hypot(l.x-x, l.y-y) < 60)) continue;
+    if (avoid.some(([ax, ay, r])=>Math.hypot(ax-x, ay-y) < r)) continue;
+    out.push({i:out.length, x:Math.round(x), y:Math.round(y)});
+  }
+  return out;
+}
+const chopTrees = () => CHOP_ZONES.has(zoneId) ? (Z().chop || []) : [];
+function choppedAt(i){ const m = me && me.chopped && me.chopped[zoneId]; return m ? (m[i] || 0) : 0; }
+const chopReady = s => Date.now() - choppedAt(s.i) >= CHOP_REGROW;
+const chopHits = {}, chopShake = {};
+function drawChopTree(c, s, t, ready){
+  const k = chopKind(), x = s.x, y = s.y, sh = chopShake[s.i] ? Math.max(0, 1 - (performance.now() - chopShake[s.i])/260) : 0, wob = Math.sin(performance.now()/30)*3*sh;
+  c.save(); c.fillStyle = 'rgba(40,30,20,.16)'; c.beginPath(); c.ellipse(x, y+2, ready ? 26 : 16, ready ? 8 : 5, 0, 0, 7); c.fill();
+  const trunk = k==='star' ? '#8a6aa8' : k==='palm' ? '#c79a6a' : '#a8744f', trunkD = k==='star' ? '#6a4a88' : k==='palm' ? '#a87a4a' : '#7d5236';
+  if (!ready){ // 그루터기 + 다시 자라는 새싹
+    c.fillStyle = trunk; c.beginPath(); c.roundRect(x-11, y-12, 22, 14, 5); c.fill(); c.fillStyle = '#e8c9a0'; c.beginPath(); c.ellipse(x, y-12, 11, 4.5, 0, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(150,100,60,.55)'; c.lineWidth = 1; c.beginPath(); c.ellipse(x, y-12, 6, 2.4, 0, 0, 7); c.stroke();
+    const g = Math.min(1, (Date.now() - choppedAt(s.i)) / CHOP_REGROW); c.fillStyle = k==='star' ? '#c9b6ff' : '#7fd07a'; c.beginPath(); c.ellipse(x+5, y-17-g*6, 3+g*3, 2+g*2, -.5, 0, 7); c.fill(); c.beginPath(); c.ellipse(x+1, y-16-g*5, 2.5+g*2.5, 1.6+g*1.6, .6, 0, 7); c.fill();
+    c.restore(); return; }
+  c.translate(x, y); c.rotate(wob*.01); c.translate(-x, -y);
+  if (k==='palm'){ c.strokeStyle = trunk; c.lineWidth = 9; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x-8, y-36, x+4, y-70); c.stroke(); c.strokeStyle = trunkD; c.lineWidth = 2; for (let i = 0; i < 5; i++){ c.beginPath(); c.moveTo(x-5, y-10-i*12); c.lineTo(x+4, y-12-i*12); c.stroke(); }
+    for (let i = 0; i < 6; i++){ const a = -Math.PI/2 + (i - 2.5)*.62; c.fillStyle = i%2 ? '#4fb878' : '#6fd08f'; c.beginPath(); c.ellipse(x+4 + Math.cos(a)*24, y-68 + Math.sin(a)*12 + 8, 28, 9, a, 0, 7); c.fill(); }
+    c.fillStyle = '#8a5a30'; for (const dx of [-3, 5]){ c.beginPath(); c.arc(x+dx+2, y-64, 5, 0, 7); c.fill(); } }
+  else if (k==='pine'){ c.fillStyle = trunk; c.beginPath(); c.roundRect(x-5, y-20, 10, 22, 3); c.fill();
+    for (const [w, h, yy, col] of [[34, 30, -16, '#2f6a4a'], [28, 28, -34, '#3a7a55'], [20, 24, -52, '#4a8a62']]){ c.fillStyle = col; c.beginPath(); c.moveTo(x-w, y+yy); c.quadraticCurveTo(x, y+yy-h*1.6, x+w, y+yy); c.quadraticCurveTo(x, y+yy+6, x-w, y+yy); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.ellipse(x-8, y-50, 5, 9, -.4, 0, 7); c.fill(); }
+  else { const pink = k==='round' && (s.i % 3 === 0), star = k==='star';
+    c.fillStyle = trunk; c.beginPath(); c.roundRect(x-6, y-26, 12, 28, 4); c.fill(); c.fillStyle = trunkD; c.fillRect(x-1, y-20, 2, 14);
+    const A = star ? '#b9a6ff' : pink ? '#ffb8cf' : '#7fcf7a', B = star ? '#9f86f0' : pink ? '#ff9fbd' : '#64b862', Cc = star ? '#d6c9ff' : pink ? '#ffd3e1' : '#9be095';
+    for (const [dx, dy, r, col] of [[-16, -36, 18, B], [16, -38, 18, B], [0, -50, 22, A], [-10, -54, 13, Cc], [12, -30, 14, A]]){ c.fillStyle = col; c.beginPath(); c.arc(x+dx, y+dy, r, 0, 7); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(x-8, y-58, 7, 4, -.5, 0, 7); c.fill();
+    if (star){ const a = .5 + Math.sin(t/260 + s.i)*.5; c.fillStyle = `rgba(255,246,176,${a})`; for (const [dx, dy] of [[-14, -44], [10, -58], [18, -36]]){ c.beginPath(); for (let q = 0; q < 8; q++){ const r = q%2 ? 1.4 : 4, an = q*Math.PI/4; c.lineTo(x+dx + Math.cos(an)*r, y+dy + Math.sin(an)*r); } c.fill(); } }
+    else if (pink) for (const [dx, dy] of [[-12, -40], [8, -56], [16, -34]]){ c.fillStyle = '#fff'; c.beginPath(); c.arc(x+dx, y+dy, 2.4, 0, 7); c.fill(); }
+    else for (const [dx, dy] of [[-12, -40], [8, -56], [16, -32]]){ c.fillStyle = '#ff6b6b'; c.beginPath(); c.arc(x+dx, y+dy, 3, 0, 7); c.fill(); } }
+  const h = chopHits[zoneId+':'+s.i]; if (h){ c.fillStyle = '#fff'; c.strokeStyle = 'rgba(120,80,60,.5)'; c.lineWidth = 1; for (let q = 0; q < CHOP_HITS; q++){ c.beginPath(); c.arc(x - 8 + q*8, y+12, 2.6, 0, 7); c.fillStyle = q < h ? '#ffb84f' : '#fff'; c.fill(); c.stroke(); } }
+  c.restore();
+}
+function chopEntities(d, t){ if (!me || admin) return []; return chopTrees().map(s=>({y:s.y, draw:()=>drawChopTree(d.ctx, s, t, chopReady(s)), label:()=>{}})); }
+function chopTap(w){ for (const s of chopTrees()) if (Math.abs(w.x-s.x) < 26 && w.y > s.y-70 && w.y < s.y+8) return {x:s.x + (pos.x < s.x ? -30 : 30), y:s.y+6, act:()=>chopAt(s)}; return null; }
+function chopNear(){ let best = null, bd = 60; for (const s of chopTrees()){ const d = Math.hypot(pos.x-s.x, pos.y-s.y); if (d < bd){ bd = d; best = s; } } return best; }
+function chopAt(s){
+  if (!chopReady(s)) return toast(`그루터기예요 · ${fmtLeft(CHOP_REGROW - (Date.now() - choppedAt(s.i)))} 뒤에 다시 자라요`);
+  if (!useSta('chop')) return;
+  faceTo(s.x, s.y); const key = zoneId+':'+s.i; chopHits[key] = (chopHits[key]||0) + 1; chopShake[s.i] = performance.now();
+  fx.push({x:s.x, y:s.y-50, text:'콩!', t:performance.now(), color:'#8a5a3a'});
+  if (chopHits[key] < CHOP_HITS) return;
+  delete chopHits[key];
+  // 구역마다 나오는 목재가 달라요
+  const got = [['w1', 1 + Math.floor(Math.random()*3)]];
+  if (zoneId==='deepforest'){ got.push(['w2', 1 + (Math.random() < .5 ? 1 : 0)]); if (Math.random() < .35) got.push(['w3', 1]); }
+  else if (zoneId==='starhill'){ if (Math.random() < .5) got.push(['w2', 1]); if (Math.random() < .08) got.push(['w4', 1]); }
+  else if (zoneId==='forest' || zoneId==='meadow' || zoneId==='workshop'){ got.push(['w2', 1 + (Math.random() < .3 ? 1 : 0)]); }
+  else if (Math.random() < .6) got.push(['w2', 1]);
+  const msg = []; let best = 1;
+  for (const [id, n] of got){ const k = 'wood:'+id, a = invAdd(k, n); if (a > 0) msg.push(`${WOOD[id].name} ${a}`); best = Math.max(best, WOOD[id].rare); }
+  me.chopped = me.chopped || {}; const m = me.chopped[zoneId] = me.chopped[zoneId] || {}; m[s.i] = Date.now();
+  for (const [i, at] of Object.entries(m)) if (Date.now() - at > CHOP_REGROW) delete m[i]; m[s.i] = Date.now(); // 다 자란 기록은 지워요
+  stat('treesChopped'); tmapDrop(); gainExp(2 + best); setExpr(best >= 3 ? 'sparkle' : 'happy', 1500); saveMe(); renderHud();
+  fx.push({x:s.x, y:s.y-70, text:'쿵!', t:performance.now(), color:'#7a5034'});
+  if (msg.length) toast(`나무를 베었어요 · ${msg.join(' · ')}${got.some(([id])=>id==='w4') ? ' · ✨ 별빛 고목!' : ''}`, 'wood:' + got[got.length-1][0]);
+}
+const woodIcons = {};
+function woodIcon(id){ if (woodIcons[id]) return woodIcons[id]; const w = WOOD[id]; if (!w) return ''; const cv = document.createElement('canvas'); cv.width = cv.height = 96; const c = cv.getContext('2d'); c.translate(48, 52);
+  c.fillStyle = 'rgba(60,40,30,.15)'; c.beginPath(); c.ellipse(0, 26, 34, 8, 0, 0, 7); c.fill();
+  if (id==='w1'){ c.strokeStyle = w.col; c.lineCap = 'round'; c.lineWidth = 8; c.beginPath(); c.moveTo(-30, 18); c.lineTo(28, -16); c.stroke(); c.lineWidth = 5; c.beginPath(); c.moveTo(-2, 2); c.lineTo(8, 16); c.moveTo(12, -8); c.lineTo(22, -26); c.stroke(); c.fillStyle = '#7fcf7a'; c.beginPath(); c.ellipse(24, -28, 7, 4, -.6, 0, 7); c.fill(); }
+  else { const r = id==='w2' ? 16 : 18, len = id==='w2' ? 54 : 50; c.save(); c.rotate(-.25); const g = c.createLinearGradient(0, -r, 0, r); g.addColorStop(0, '#fff8'); g.addColorStop(.3, w.col); g.addColorStop(1, '#0003'); c.fillStyle = w.col; c.beginPath(); c.roundRect(-len/2, -r, len, r*2, r*.6); c.fill(); c.fillStyle = g; c.fill();
+    c.fillStyle = id==='w4' ? '#efe8ff' : '#efd3a8'; c.beginPath(); c.ellipse(len/2, 0, r*.55, r, 0, 0, 7); c.fill(); c.strokeStyle = id==='w4' ? '#9f86f0' : '#b98a5a'; c.lineWidth = 1.6; for (const k of [.25, .55]){ c.beginPath(); c.ellipse(len/2, 0, r*.55*k, r*k, 0, 0, 7); c.stroke(); } c.restore();
+    if (id==='w4') { c.fillStyle = '#fff6b0'; for (const [x, y] of [[-20, -20], [6, -30], [26, -6]]){ c.beginPath(); for (let q = 0; q < 8; q++){ const rr = q%2 ? 2 : 6, an = q*Math.PI/4; c.lineTo(x + Math.cos(an)*rr, y + Math.sin(an)*rr); } c.fill(); } } }
+  return woodIcons[id] = cv.toDataURL(); }
+
+// ===== 섬 복구 꾸러미: 등대 해변 끝 부서진 다리 =====
+// bridge/g/<칸>/<uid> = 그 사람이 지금까지 낸 개수 (늘어나기만 해요). 칸마다 다 합쳐서 필요한 만큼 채우면 완성.
+// 단계마다 꾸러미 4 개 · 앞 단계를 다 채워야 다음 단계에 낼 수 있어요. 세 단계를 다 채우면 다리가 이어져요.
+const BRIDGE = [
+  {name:'기둥 세우기', b:[['🪵 통나무', [['wood:w2', 600, 'b1'], ['wood:w1', 1500, 'b2']]], ['🪨 돌 · 흙', [['ore:o01', 800, 'b3'], ['ore:o05', 400, 'b4'], ['ore:o06', 300, 'b5']]],
+    ['⛓️ 쇠붙이', [['ore:o11', 250, 'b6'], ['ore:o03', 300, 'b7'], ['ore:o02', 500, 'b8']]], ['⚔️ 몬스터 재료', [['loot:m13', 200, 'b9'], ['loot:m14', 300, 'ba'], ['loot:m46', 150, 'bb']]]]},
+  {name:'판자 깔기', b:[['🌳 원목', [['wood:w3', 400, 'c1'], ['wood:w2', 800, 'c2']]], ['🪢 밧줄', [['forage:g38', 400, 'c3'], ['forage:g45', 200, 'c4'], ['ore:o04', 200, 'c5']]],
+    ['🍱 도시락', [['dish:*', 100, 'c6']]], ['💎 보석', [['ore:o21', 60, 'c7'], ['ore:o23', 30, 'c8'], ['ore:o28', 30, 'c9']]]]},
+  {name:'난간과 등불', b:[['🐟 바다', [['fish:*2', 150, 'd1'], ['forage:g43', 50, 'd2']]], ['🏮 등불', [['wood:w4', 30, 'd3'], ['forage:g50', 40, 'd4'], ['forage:g05', 80, 'd5']]],
+    ['🕳️ 깊은 동굴', [['loot:m59', 30, 'd6'], ['ore:o30', 10, 'd7'], ['ore:o31', 10, 'd8'], ['ore:o32', 10, 'd9'], ['ore:o37', 2, 'da']]], ['💰 골드', [['gold', 5000000, 'db']]]]}];
+const BRIDGE_LINES = BRIDGE.flatMap((st, si)=>st.b.flatMap(([, ls])=>ls.map(([key, need, slot])=>({key, need, slot, si}))));
+let bridgeData = {g:{}}, bridgeBusy = false;
+const bridgeX = () => Math.round(ZONES.beach.W*.24);
+function onBridge(v){ bridgeData = v || {}; bridgeData.g = bridgeData.g || {}; const p = $('npcPanel'); if (p && !p.hidden && p.dataset.bridge && !bridgeBusy) keepScroll(bridgePanel); }
+const bridgeGot = slot => Object.values(bridgeData.g[slot] || {}).reduce((a, n)=>a + (+n || 0), 0);
+const bridgeMine = slot => +((bridgeData.g[slot] || {})[uid] || 0);
+const bridgeLineP = l => Math.min(1, bridgeGot(l.slot) / l.need);
+const bridgeStageP = si => { const ls = BRIDGE_LINES.filter(l=>l.si===si); return ls.reduce((a, l)=>a + bridgeLineP(l), 0) / ls.length; };
+const bridgeStageDone = si => BRIDGE_LINES.filter(l=>l.si===si).every(l=>bridgeGot(l.slot) >= l.need);
+const bridgeStage = () => { for (let i = 0; i < 3; i++) if (!bridgeStageDone(i)) return i; return 3; }; // 3 = 다 됐어요
+const bridgeLabel = key => key==='gold' ? '골드' : key==='dish:*' ? '요리 (아무거나)' : key==='fish:*2' ? '물고기 ★2 이상 (아무거나)' : itemName(key);
+// 그 칸에 낼 수 있는 내 물건들 (아무거나 칸은 여러 종류에서 싼 것부터)
+function bridgeHave(key){
+  if (key==='gold') return [['gold', me.inv.gold|0]];
+  if (key==='dish:*') return itemsOf('dish').sort((a, b)=>itemPrice(a[0]) - itemPrice(b[0]));
+  if (key==='fish:*2') return itemsOf('fish').filter(([k])=>parseFish(k.slice(5)).st >= 2).sort((a, b)=>itemPrice(a[0]) - itemPrice(b[0]));
+  return [[key, invCount(key)]];
+}
+const bridgeHaveN = key => bridgeHave(key).reduce((a, [, n])=>a + n, 0);
+function bridgeContrib(){ const sc = {}; for (const l of BRIDGE_LINES) for (const [id, n] of Object.entries(bridgeData.g[l.slot] || {})) sc[id] = (sc[id]||0) + Math.min(1, (+n||0) / l.need) * 100; return Object.entries(sc).sort((a, b)=>b[1] - a[1]); }
+async function bridgeGive(l, want){
+  if (bridgeBusy || !me) return; const stage = bridgeStage();
+  if (l.si > stage) return toast('앞 단계 꾸러미를 먼저 다 채워야 해요');
+  const left = l.need - bridgeGot(l.slot); if (left <= 0) return toast('이 칸은 벌써 다 찼어요');
+  let n = Math.min(want, left, bridgeHaveN(l.key)); if (l.key !== 'gold') n = Math.min(n, 500);
+  if (n <= 0) return toast(`${bridgeLabel(l.key)}이(가) 가방에 없어요`);
+  bridgeBusy = true; const total = bridgeMine(l.slot) + n;
+  try { await net.bridgeGive(l.slot, total); }
+  catch(e){ bridgeBusy = false; return toast('내지 못했어요 · 잠시 뒤에 다시 해 봐요'); }
+  if (l.key==='gold') me.inv.gold -= n;
+  else { let r = n; for (const [k, c] of bridgeHave(l.key)){ if (r <= 0) break; const t = Math.min(c, r); invAdd(k, -t); r -= t; } }
+  ((bridgeData.g[l.slot] = bridgeData.g[l.slot] || {}))[uid] = total;
+  bridgeBusy = false; stat('bridgeGiven', n); saveMe(); renderHud();
+  toast(`다리에 ${bridgeLabel(l.key)} ${n.toLocaleString()} ${l.key==='gold' ? 'G' : '개'}를 냈어요${bridgeGot(l.slot) >= l.need ? ' · 이 칸 완성!' : ''}`, l.key.includes('*') || l.key==='gold' ? null : l.key);
+  if (bridgeStageDone(l.si) && bridgeStage() > l.si) setTimeout(()=>say('섬 복구', l.si < 2 ? `${l.si + 1} 단계 「${BRIDGE[l.si].name}」를 다 채웠어요!\n다음은 「${BRIDGE[l.si + 1].name}」예요.` : '다리가 다 이어졌어요!\n저 너머 섬으로 가는 길은 곧 열려요.', [], ''), 400);
+  keepScroll(bridgePanel);
+}
+function bridgePanel(){
+  if (!me) return; const stage = bridgeStage(), top = bridgeContrib().slice(0, 5);
+  const nick = id => id===uid ? '나' : esc(String(players[id]?.nick || '누군가'));
+  let html = `<div class="np" style="display:block"><b>등대 해변 끝 부서진 다리</b><br><small>모두 함께 채워요 · 단계마다 꾸러미 4 개 · 앞 단계를 다 채워야 다음 단계가 열려요${stage >= 3 ? '<br>✨ 다리가 다 이어졌어요! 새 섬은 곧 열려요' : ''}</small></div>`;
+  if (top.length) html += `<p class="mnote" style="margin:4px 2px">기여 순위 · ${top.map(([id, s], i)=>`${i + 1}. ${nick(id)} ${Math.round(s)}`).join(' · ')}</p>`;
+  BRIDGE.forEach((st, si)=>{ const done = bridgeStageDone(si), lock = si > stage, p = Math.round(bridgeStageP(si)*100);
+    html += `<div class="bz-sec" style="margin:8px 0 2px;padding:6px 8px;border-radius:10px;background:${done ? '#e3f6dc' : lock ? '#f0eef2' : '#fff1d6'}"><b>${si + 1} 단계 · ${st.name}</b> <small>${done ? '완성!' : lock ? '🔒 잠김' : p + '%'}</small></div>`;
+    for (const [bn, ls] of st.b){ html += `<p class="mnote" style="margin:6px 2px 2px"><b>${bn}</b></p>`;
+      for (const [key, need, slot] of ls){ const l = BRIDGE_LINES.find(x=>x.slot===slot), got = Math.min(need, bridgeGot(slot)), full = got >= need, have = bridgeHaveN(key), mine = bridgeMine(slot), gold = key==='gold';
+        const steps = gold ? [[10000, '1 만'], [100000, '10 만'], [1000000, '100 만']] : [[1, '1'], [10, '10'], [1e9, '있는 만큼']];
+        html += `<div class="np" style="display:block;${lock ? 'opacity:.55' : ''}"><span class="np-name">${key.includes('*') || gold ? '' : iconImg(key)}${esc(bridgeLabel(key))}</span> <small>${got.toLocaleString()} / ${need.toLocaleString()}${mine ? ` · 내가 ${mine.toLocaleString()}` : ''}</small>
+          <div style="height:7px;border-radius:4px;background:#f2e6ea;margin:4px 0"><div style="height:7px;border-radius:4px;width:${Math.round(got/need*100)}%;background:${full ? '#9fd88a' : '#ffd36a'}"></div></div>
+          ${full ? '<small style="color:#3a9a4a">완성</small>' : lock ? '' : `<small>가진 것 ${have.toLocaleString()}</small> ` + steps.map(([n, t])=>`<button class="mini" data-bg="${slot}" data-n="${n}" ${have <= 0 ? 'disabled' : ''}>${t}</button>`).join(' ')}</div>`; } } });
+  openPanel('🌉 섬 복구 꾸러미', html);
+  const P = $('npcPanel'); P.dataset.bridge = '1';
+  P.querySelectorAll('button[data-bg]').forEach(b=>b.onclick = ()=>{ const l = BRIDGE_LINES.find(x=>x.slot===b.dataset.bg); if (l) bridgeGive(l, +b.dataset.n); });
+}
+// 다리 그림: 기둥(1 단계) → 판자(2 단계) → 난간 · 등불(3 단계)이 채운 만큼 생겨요
+function drawBridge(c, t){
+  const x = bridgeX(), y0 = 252, y1 = -20, n = 7, p1 = bridgeStageDone(0) ? 1 : bridgeStageP(0), p2 = bridgeStageDone(0) ? (bridgeStageDone(1) ? 1 : bridgeStageP(1)) : 0, p3 = bridgeStageDone(1) ? (bridgeStageDone(2) ? 1 : bridgeStageP(2)) : 0;
+  c.save();
+  const posts = Math.round(p1 * n);
+  for (let i = 0; i <= n; i++){ const yy = y0 - (y0 - y1) * i / n, ok = i < posts || i === 0;
+    for (const sx of [-1, 1]){ c.fillStyle = ok ? '#8a5a3a' : 'rgba(110,80,60,.45)'; c.beginPath(); c.roundRect(x + sx*30 - 4, yy - 6, 8, ok ? 30 : 12, 3); c.fill(); if (ok){ c.fillStyle = '#a8744f'; c.beginPath(); c.ellipse(x + sx*30, yy - 6, 4, 2, 0, 0, 7); c.fill(); } } }
+  const planks = 18, fresh = Math.round(p2 * planks);
+  for (let i = 0; i < planks; i++){ const yy = y0 - 4 - (y0 - y1) * (i + .5) / planks;
+    if (i < fresh){ c.fillStyle = i%2 ? '#e8b77c' : '#dfaa6c'; c.beginPath(); c.roundRect(x - 34, yy - 5, 68, 10, 3); c.fill(); c.fillStyle = 'rgba(120,80,40,.35)'; c.fillRect(x - 24, yy - 1, 2, 2); c.fillRect(x + 22, yy - 1, 2, 2); }
+    else if (i % 3 === 1){ c.save(); c.translate(x + (i%2 ? -12 : 10), yy); c.rotate(i%2 ? .25 : -.3); c.fillStyle = '#9a7a5a'; c.beginPath(); c.roundRect(-20, -4, 40, 8, 2); c.fill(); c.restore(); } }
+  if (fresh > 0){ c.strokeStyle = '#c89a62'; c.lineWidth = 2.5; for (const sx of [-1, 1]){ c.beginPath(); c.moveTo(x + sx*30, y0 - 10); c.quadraticCurveTo(x + sx*34, y0 - (y0 - y1)*fresh/planks/2, x + sx*30, y0 - (y0 - y1)*fresh/planks); c.stroke(); } }
+  const rails = Math.round(p3 * n);
+  for (let i = 0; i < rails; i++){ const ya = y0 - (y0 - y1) * i / n, yb = y0 - (y0 - y1) * (i + 1) / n; c.strokeStyle = '#ffffff'; c.lineWidth = 4; for (const sx of [-1, 1]){ c.beginPath(); c.moveTo(x + sx*30, ya - 16); c.lineTo(x + sx*30, yb - 16); c.stroke(); }
+    if (i % 2 === 0){ const a = .55 + Math.sin(t/400 + i)*.25; c.fillStyle = `rgba(255,214,120,${a})`; c.beginPath(); c.arc(x + 30, ya - 24, 9, 0, 7); c.fill(); c.fillStyle = '#ff9a5a'; c.beginPath(); c.roundRect(x + 26, ya - 30, 8, 11, 3); c.fill(); } }
+  // 다리 앞 게시판
+  const bx = x + 96, by = 330; c.fillStyle = '#8a5a3a'; c.fillRect(bx - 3, by - 10, 6, 32); c.fillStyle = '#fff7e0'; c.strokeStyle = '#c89a62'; c.lineWidth = 2; c.beginPath(); c.roundRect(bx - 50, by - 58, 100, 50, 8); c.fill(); c.stroke();
+  c.font = 'bold 15px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#8a4a2a'; c.fillText('🌉 섬 복구 꾸러미', bx, by - 38); const st = bridgeStage();
+  c.fillStyle = '#c05a7a'; c.fillText(st >= 3 ? '다리 완성!' : `${st + 1} 단계 · ${Math.round(bridgeStageP(st)*100)}%`, bx, by - 20);
+  c.restore();
+}
+function bridgeEntities(d, t){ if (zoneId !== 'beach') return []; return [{y:258, draw:()=>drawBridge(d.ctx, t), label:()=>{}}]; }
+function bridgeTap(w){ if (zoneId !== 'beach') return null; const x = bridgeX(); if ((Math.abs(w.x - x) < 44 && w.y < 262) || (Math.abs(w.x - (x + 96)) < 54 && w.y > 266 && w.y < 342)) return {x:x + 96, y:352, act:bridgePanel}; return null; }
 // ===== 다크 모드: 주민 12 명의 집 = 방탈출 =====
 // 관리자가 다크 모드를 켜면 하루에 한 방씩 열려요 (DARK_ORDER). 여러 명이 같은 방에 들어가 문제 15 개를 같이 풀고,
 // 다 풀면 그 주민이 아주 강한 보스로 깨어나요. 첫 입장부터 2 시간 안에 못 끝내면 방이 처음으로 돌아가요.
@@ -5549,7 +5733,7 @@ function artIdOf(key){
   if (cat==='fish') return parseFish(id).id;
   if (cat==='dish') return 'dish:'+id;
   if (cat==='furn') return 'furn:'+id;
-  if (cat==='wear' || cat==='umb' || cat==='wall' || cat==='floor' || cat==='forage' || cat==='star' || cat==='staple' || cat==='tmap') return key;
+  if (cat==='wear' || cat==='umb' || cat==='wall' || cat==='floor' || cat==='forage' || cat==='star' || cat==='staple' || cat==='tmap' || cat==='wood') return key;
   return id; // seed·crop → c00, ore → o00, loot → m00
 }
 function drawArt(d, aid, t=0){
@@ -5588,6 +5772,7 @@ function specialIcon(key){
   if (cat==='star') return starShardIcon();
   if (cat==='staple' && STAPLES[id]) return stapleIconURL(id);
   if (cat==='tmap') return tmapPieceIcon(id);
+  if (cat==='wood') return woodIcon(id);
   return '';
 }
 const iconImg = (key, cls='ic') => { const a = artIdOf(key); return a ? `<img class="${cls}" src="${iconURL(a)}" alt="">` : ''; };
@@ -5610,7 +5795,7 @@ const withIcon = key => { talkIconNext = key; };
 
 // 가방: 아이콘 칸
 // ===== 가방: 6 × 5 칸 격자 (분류 탭 · 빈칸 · 쪽 넘기기). 주민 선물·친구 선물도 같은 창을 써요 =====
-const INV_TABS = [['all','전체'],['star','별'],['crop','작물'],['forage','채집'],['dish','요리'],['fish','물고기'],['ore','광석'],['loot','전리품'],['seed','씨앗'],['wear','옷'],['umb','우산'],['furn','가구'],['wall','벽지'],['floor','바닥'],['tmap','지도']];
+const INV_TABS = [['all','전체'],['star','별'],['crop','작물'],['forage','채집'],['dish','요리'],['fish','물고기'],['ore','광석'],['loot','전리품'],['wood','목재'],['seed','씨앗'],['wear','옷'],['umb','우산'],['furn','가구'],['wall','벽지'],['floor','바닥'],['tmap','지도']];
 const INV_COLS = 6, INV_PAGE = INV_COLS*5;
 const bagState = {tab:'all', page:0, sel:null};
 function invGrid(cats, st){
@@ -5658,7 +5843,7 @@ function detailBox(el, k, buttons){
 function showBag(sel){
   if (typeof sel==='string'){ bagState.sel = sel; const c = sel.split(':')[0]; if (bagState.tab!=='all' && bagState.tab!==c) bagState.tab = c; }
   const tools = [me.inv.can&&'물뿌리개',me.inv.rod&&'낚싯대',me.inv.pick&&'곡괭이',me.inv.sword&&`${weapon().name}(공격 ${weapon().atk})`].filter(Boolean).join(' · ')||'없음';
-  const cats = ['star','crop','forage','dish','staple','fish','ore','loot','seed','wear','umb','furn','wall','floor','tmap'];
+  const cats = ['star','crop','forage','dish','staple','fish','ore','loot','wood','seed','wear','umb','furn','wall','floor','tmap'];
   keepScroll(()=>openPanel('가방',
     `<div class="np"><span class="np-name">💰 ${me.inv.gold} G <small>· 체력 ${Math.ceil(playerHp)}/${maxHp()} · 기력 ${Math.floor(playerSta)}/${maxSta()}</small></span><span class="np-day" style="grid-column:1/-1;text-align:left">도구: ${tools}</span></div>${wornRow()}${invGrid(cats, bagState)}
      ${ringRow()}
@@ -5758,6 +5943,7 @@ document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow
 function toWorld(cx, cy){ return { x: view.cx + cx/view.zoom, y: view.cy + cy/view.zoom }; }
 function hitTarget(w){
   { const ft = forageTap(w); if (ft) return ft; }
+  { const bt_ = bridgeTap(w); if (bt_) return bt_; }
   { const mb = mailboxTap(w); if (mb) return mb; }
   for (const [id, o] of others) if (o.down && o.z === zoneId && Math.abs(w.x-o.x) < 40 && Math.abs(w.y-(o.y-10)) < 34) return {x:o.x + 30, y:o.y + 10, act:()=>{ darkRevive = {id, uid:o.uid, at:performance.now()}; toast(`${o.nick} 님을 ${downWords().helping}.... 곁에 있어 줘요`); }};
   const pt = petTap(w); if (pt) return pt;
@@ -5790,6 +5976,7 @@ function interactNear(){
   let best = null, bd = 1e9;
   if (zoneId.startsWith('dark:')){ const pz = darkNear(); if (pz) return darkPuzzlePanel(pz); }
   { const fs = forageNear(); if (fs) return forageAt(fs); }
+  { const cs_ = chopNear(); if (cs_) return chopAt(cs_); }
   { const rn = relicNear(64); if (rn) return relicLook(rn); }
   for (const n of NPCS){ if (n.zone!==zoneId || !npcVisible(n)) continue; const d = Math.hypot(pos.x-n.x, pos.y-n.y); if (d<64 && d<bd){ bd=d; best=()=>talkTo(n); } }
   if (zoneId==='home' && me.lot!=null) slotsOf(me.lot, me.plots).forEach((s,i)=>{ const d = Math.hypot(pos.x-s.x, pos.y-s.y-10); if (d<48 && d<bd){ bd=d; best=()=>useSlot(i); } });
@@ -6168,6 +6355,8 @@ function frameBody(t){
       ...darkEntities(d, t),
       ...mailboxEntities(d, t),
       ...forageEntities(d, t),
+      ...chopEntities(d, t),
+      ...bridgeEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>{ const ly = n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0); tag(ctx, n.name, n.x, ly, dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null); if (!admin) dlvMark(ctx, n, ly); }})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.adm) return drawOtumoAny(d, ctx, o.x, o.y, o.dir||'down', t/1000, !!o.mv, o.look); if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); const um = o.um && isRain() && snowOutside(); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'back'); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'front', o.look?.skin); }, label:()=>{ if (o.adm){ otumoLabel(ctx, o.x, o.y); talkBubble(k,o.x,o.y,t); return; } if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{ if (admin) adminMobLabel(ctx, mob); }})),
