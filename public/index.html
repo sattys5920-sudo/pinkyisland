@@ -7573,8 +7573,20 @@ function aucItems(){
   const paid = (list, pre) => Object.entries(list).filter(([id, it]) => id !== 'none' && it && !it.otumo && (it.price || 0) > 0).map(([id, it]) => [pre + id, it.name + (pre === 'umb:' ? ' 우산' : ''), it.price]);
   const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1], r[3]])], ...CH.CATS.map(([, l, list]) => [l, paid(list, 'wear:')]).filter(([, l]) => l.length), ['우산', paid(UMB, 'umb:')], ['벽지', paid(WALLS, 'wall:')], ['바닥', paid(FLOORS, 'floor:')], ['가구', FURN_ALL.map((f, i) => { const id = 'u' + String(i + 1).padStart(2, '0'); return ['furn:' + id, f[0], FURN[id]?.gold || 0]; })],
     ['광석', Object.keys(ORES).map(id => ['ore:' + id, ORES[id].name, itemPrice('ore:' + id)])], ['요리', Object.keys(DISHES).map(id => ['dish:' + id, DISHES[id].name, itemPrice('dish:' + id)])]];
-  return o.map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n, p]) => `<option value="${k}"${admAuc.aucK === k ? ' selected' : ''}>${esc(n)} · 원가 ${(p || 0).toLocaleString()} G</option>`).join('')}</optgroup>`).join('');
+  // 상품 고를 때: 이미 가진 주민 수를 보여 줘요 (🆕 = 아직 아무도 없음 · 👥N = N 명이 가짐 · ★ = 상품 전용 옷)
+  const own = prizeOwners();
+  return o.map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n, p]) => { const c = own(k), ex = k.startsWith('wear:') && CH.ITEM(k.slice(5))?.excl;
+    return `<option value="${k}"${admAuc.aucK === k ? ' selected' : ''} style="color:${c == null ? '' : c ? '#9a8a9a' : '#d0306a'}">${c == null ? '' : c ? `👥${c} ` : '🆕 '}${ex ? '★ ' : ''}${esc(n)} · 원가 ${(p || 0).toLocaleString()} G${c ? ` · ${c} 명이 가짐` : c === 0 ? ' · 아무도 없음' : ''}</option>`; }).join('')}</optgroup>`).join('');
 }
+// 주민들이 그 물건을 가졌는지 (옷 · 반지 · 가구 · 우산 · 벽지 · 바닥). 광석 · 요리처럼 쌓이는 건 null
+function prizeOwners(){ const regs = Object.values(players || {}).filter(p=>p && !p.adm); const memo = {};
+  return k => { if (k in memo) return memo[k]; const [cat, id] = k.split(':'); let f = null;
+    if (cat === 'wear') f = p => [...(p.closet || []), ...CH.lookItems(CH.migrateLook(p.look || {}))].some(x=>String(x).split('#')[0] === id) || Object.keys(p.inv?.wear || {}).some(x=>x.split(/[~#]/)[0] === id);
+    else if (cat === 'ring') f = p => (p.inv?.rings || []).includes(id);
+    else if (cat === 'furn') f = p => (p.inv?.furn?.[id] || 0) > 0 || (p.furn || []).some(x=>x && x.id === id);
+    else if (cat === 'umb') f = p => (p.inv?.umbrellas?.[id] || 0) > 0 || (p.umbs || []).includes?.(id);
+    else if (cat === 'wall' || cat === 'floor') f = p => (p.inv?.[cat === 'wall' ? 'walls' : 'floors']?.[id] || 0) > 0;
+    if (!f) return memo[k] = null; let n = 0; for (const p of regs){ try { if (f(p)) n++; } catch(e){} } return memo[k] = n; }; }
 function adminAucSec(){
   if (!admWalk) return `<div class="adm-sec"><b>🔨 오투모 경매</b><small>오투모로 들어가면 지금 서 있는 자리에서 경매를 열 수 있어요</small></div>`;
   if (aucLive()){ const m = auc.meta, t = aucTop(), left = Math.max(0, Math.ceil((aucEnd() - Date.now() - serverOffset) / 1000));
