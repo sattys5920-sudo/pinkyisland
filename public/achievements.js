@@ -105,6 +105,19 @@ export const ACHIEVEMENTS = [
   { id:'broke',      name:'돈이 없어',         desc:'10 만 G 넘게 벌어 놓고 지갑이 100 G 아래',  stat:'brokeNow', n:1, reward:{gold:100, title:'돈이 없어'},      icon:'🕳️' },
   { id:'homeless',   name:'집이 없어',         desc:'집을 한 번도 안 늘리고 출석 14 일', stat:'homeless',   n:1,       reward:{gold:1400,  title:'집이 없어'},         icon:'⛺' },
   { id:'legend',     name:'레전드',            desc:'업적 60 개 달성하기',            stat:'achCount',    n:60,      reward:{gold:30000, title:'레전드'},            icon:'🏆' },
+  // 솜사탕 리조트 가게 칭호
+  { id:'rs_coaster', name:'퍼레이더',          desc:'롤러코스터 100 번 끝까지 타기',  stat:'rsCoaster',   n:100,     reward:{gold:10000, title:'퍼레이더'},          icon:'🎢' },
+  { id:'rs_slide',   name:'물개',              desc:'워터 슬라이드 100 번 성공',      stat:'rsSlide',     n:100,     reward:{gold:10000, title:'물개'},              icon:'🏊' },
+  { id:'rs_sauna',   name:'맥반석',            desc:'불가마 30 초 50 번 버티기',      stat:'rsSauna',     n:50,      reward:{gold:10000, title:'맥반석'},            icon:'♨️' },
+  { id:'rs_camp',    name:'캠핑족',            desc:'마시멜로 노릇노릇 100 개',       stat:'rsCamp',      n:100,     reward:{gold:10000, title:'캠핑족'},            icon:'⛺' },
+  { id:'rs_boat',    name:'마도로스',          desc:'먼 바다 낚시 100 번 성공',       stat:'rsBoat',      n:100,     reward:{gold:10000, title:'마도로스'},          icon:'🚤' },
+  { id:'rs_surf',    name:'서퍼',              desc:'서핑 콤보 30 한 번에',           stat:'rsSurfMax',   n:30,      reward:{gold:10000, title:'서퍼'},              icon:'🏄' },
+  { id:'rs_stage',   name:'아이돌',            desc:'공연으로 박수 1,000 번 받기',    stat:'rsClaps',     n:1000,    reward:{gold:10000, title:'아이돌'},            icon:'🎭' },
+  { id:'rs_photo',   name:'포토그래퍼',        desc:'주민 12 명 모두와 반짝 사진',    stat:'rsPhotos',    n:12,      reward:{gold:10000, title:'포토그래퍼'},        icon:'📸' },
+  { id:'rs_plush',   name:'토이스토리',        desc:'경품 인형 20 종 다 모으기',      stat:'rsPlush',     n:20,      reward:{gold:10000, title:'토이스토리'},        icon:'🧸' },
+  { id:'rs_strike',  name:'국가대표',          desc:'볼링 스트라이크 30 번',          stat:'rsStrike',    n:30,      reward:{gold:10000, title:'국가대표'},          icon:'🎳' },
+  { id:'rs_chest',   name:'인어',              desc:'바닷속 보물 상자 50 개',         stat:'rsChest',     n:50,      reward:{gold:10000, title:'인어'},              icon:'🤿' },
+  { id:'rs_balloon', name:'하늘을 날아 본',    desc:'열기구 반짝이 5 개 성공 30 번',  stat:'rsBalloon',   n:30,      reward:{gold:10000, title:'하늘을 날아 본'},    icon:'🎈' },
 ];
 
 // ===== 칭호 효과: 지금 달고 있는 칭호 하나만 적용돼요 =====
@@ -132,10 +145,12 @@ export const TITLE_FX = {
   dex_100:{fish:.1, ore:.1, loot:.1}, mg_200:{free:.15}, broke:{loot:.2}, homeless:{speed:.1, sta:30}, legend:{hp:100, atk:.1, dr:.05, xp:.1},
   goal1:{free:.1, xp:.05, crop:.05}, // 고급 노동자 (오늘의 섬 목표 기여 1 위)
   bridge1:{hp:60, sta:40, xp:.05}, // 다리를 놓은 사람 (섬 복구 다리 기여 1 위)
+  rs_coaster:{xp:.08}, rs_slide:{speed:.08}, rs_sauna:{hp:80, sta:40}, rs_camp:{dr:.06}, rs_boat:{fish:.15}, rs_surf:{speed:.05, free:.05},
+  rs_stage:{sell:.08}, rs_photo:{xp:.05}, rs_plush:{loot:.15}, rs_strike:{atk:.1}, rs_chest:{fish:.08, ore:.08}, rs_balloon:{tmap:.1},
 };
 const PCT = v => Math.round(v*100) + '%';
 export function titleFxText(f){ if (!f) return ''; const o = [];
   if (f.hp) o.push(`최대 체력 +${f.hp}`); if (f.sta) o.push(`최대 기력 +${f.sta}`); if (f.atk) o.push(`공격력 +${PCT(f.atk)}`); if (f.dr) o.push(`받는 피해 -${PCT(f.dr)}`);
   if (f.regen) o.push(`체력 회복 +${PCT(f.regen)}`); if (f.revive) o.push('하루 한 번 즉시 부활'); if (f.fish) o.push(`희귀 물고기 +${PCT(f.fish)}`); if (f.ore) o.push(`희귀 광석 +${PCT(f.ore)}`);
   if (f.crop) o.push(`수확 +1 확률 ${PCT(f.crop)}`); if (f.sell) o.push(`판매가 +${PCT(f.sell)}`); if (f.loot) o.push(`몬스터 골드 +${PCT(f.loot)}`); if (f.speed) o.push(`이동 속도 +${PCT(f.speed)}`);
-  if (f.xp) o.push(`경험치 +${PCT(f.xp)}`); if (f.free) o.push(`기력 안 쓸 확률 ${PCT(f.free)}`); if (f.food) o.push(`음식 회복 +${PCT(f.food)}`); return o.join(' · '); }
+  if (f.xp) o.push(`경험치 +${PCT(f.xp)}`); if (f.free) o.push(`기력 안 쓸 확률 ${PCT(f.free)}`); if (f.food) o.push(`음식 회복 +${PCT(f.food)}`); if (f.tmap) o.push(`보물 지도 조각 +${PCT(f.tmap)}`); return o.join(' · '); }

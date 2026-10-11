@@ -197,6 +197,59 @@
         }
       }
     },
+    "resort": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "plots": {
+        "$i": {
+          ".write": "auth != null && $i.matches(/^([0-9]|1[01])$/) && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && data.child('uid').val() === auth.uid))",
+          ".validate": "newData.child('uid').val() === auth.uid && newData.child('type').isNumber() && newData.child('type').val() >= 0 && newData.child('type').val() <= 11 && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 10 && newData.child('lv').isNumber() && newData.child('lv').val() >= 1 && newData.child('lv').val() <= 5 && newData.child('fac').isNumber() && newData.child('fac').val() >= 0 && newData.child('fac').val() <= 63 && newData.child('fee').isNumber() && newData.child('fee').val() >= 0 && newData.child('fee').val() <= 500 && newData.parent().parent().child('types/' + newData.child('type').val()).val() === auth.uid && ('' + newData.parent().parent().child('owners/' + auth.uid).val()) === $i"
+        }
+      },
+      "types": {
+        "$t": {
+          ".write": "auth != null && $t.matches(/^([0-9]|1[01])$/) && ((!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && !newData.exists()))"
+        }
+      },
+      "owners": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 11"
+        }
+      },
+      "v": {
+        "$i": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && $i.matches(/^([0-9]|1[01])$/)",
+            ".validate": "newData.hasChildren(['n', 'paid']) && newData.child('n').isNumber() && newData.child('paid').isNumber() && newData.child('paid').val() >= 0 && ((!data.exists() && newData.child('n').val() <= 1 && newData.child('paid').val() <= 500) || (data.exists() && newData.child('n').val() >= data.child('n').val() && newData.child('n').val() <= data.child('n').val() + 1 && newData.child('paid').val() >= data.child('paid').val() && newData.child('paid').val() <= data.child('paid').val() + 500))"
+          }
+        }
+      },
+      "w": {
+        "$wk": {
+          "$i": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid",
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= (data.exists() ? data.val() : 0) + 1"
+            }
+          }
+        }
+      },
+      "show": {
+        "$i": {
+          ".write": "auth != null && $i.matches(/^([0-9]|1[01])$/) && newData.child('uid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['uid', 'nick', 'at']) && newData.child('nick').isString() && newData.child('nick').val().length <= 8 && newData.child('at').isNumber() && newData.child('at').val() <= now + 60000"
+        }
+      },
+      "clap": {
+        "$p": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && $p !== $uid",
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= (data.exists() ? data.val() : 0) + 1"
+          }
+        }
+      }
+    },
     "petClaims": {
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",

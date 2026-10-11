@@ -182,6 +182,10 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 #wishBtn.on{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
 #tmapHint{position:fixed;z-index:29;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 176px);transform:translateX(-50%);background:rgba(255,250,240,.95);color:#6a3a2a;border-radius:999px;padding:7px 16px;font-size:16px;font-weight:700;box-shadow:0 4px 12px rgba(90,50,30,.18);opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap}
 #tmapHint.on{opacity:1}
+#buffChip{position:fixed;z-index:29;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 128px);background:rgba(255,250,240,.95);color:#6a3a2a;border:0;border-radius:999px;padding:6px 12px;font:700 15px 'Dongle',sans-serif;box-shadow:0 2px 8px rgba(80,40,60,.18)}
+#rsGame{position:fixed;inset:0;z-index:95;background:rgba(40,20,50,.6);display:flex;align-items:center;justify-content:center;touch-action:none}
+#rsGame canvas{width:min(94vw,calc(86vh*360/540));aspect-ratio:360/540;border-radius:22px;box-shadow:0 10px 40px rgba(0,0,0,.35);touch-action:none}
+#rsGame #rsGx{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px}
 #digBtn{position:fixed;z-index:30;left:50%;transform:translateX(-50%) scale(.6);opacity:0;pointer-events:none;bottom:calc(env(safe-area-inset-bottom,0px) + 112px);border:0;border-radius:999px;padding:12px 26px;font:inherit;font-size:21px;font-weight:700;color:#fff;background:linear-gradient(#ffb36a,#f08a3a);box-shadow:0 6px 16px rgba(160,80,30,.35);transition:transform .2s,opacity .2s}
 #digBtn.on{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
 #wishBtn:disabled{filter:saturate(.7);color:#8a6a7a}
@@ -534,6 +538,7 @@ import { ACHIEVEMENTS, TITLE_FX, titleFxText } from './achievements.js';
 import { SITUATIONS } from './situations.js';
 import { UI, EMOJI_UI } from './art/ui.js';
 import { FURN_ALL, FURN_DRAW } from './art/furniture.js';
+import { PLUSH, drawPlush, PLUSH_TIER } from './art/plush.js';
 import { drawOtumo, OTUMO_HP } from './art/otumo.js';
 import * as TB from './art/toriboss.js';
 import { PET_SPECIES, PET_DRAW } from './art/pets.js';
@@ -953,6 +958,7 @@ function rebuildObstacles(){
   }
   if (zoneId==='bazaar') bazaarObstacles(o);
   if (zoneId==='fest') festObstacles(o);
+  if (zoneId==='resort') resortObstacles(o);
   if (zoneId==='home') for (const p of Object.values(players)) if (p.lot!=null){ const L=LOTS[p.lot]; o.rects.push({x:L.x-54,y:L.y-106,w:108,h:108}); const [mx, my] = mailboxPos(p.lot); o.circles.push({x:mx, y:my-2, r:9}); }
   // 남의 울타리(빈 집터 포함)는 못 들어가요. 내 울타리만 드나들 수 있어요
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (me && me.lot===i) return; if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return; o.rects.push({x:L.x-FENCE.w/2, y:L.y+FENCE.top-6, w:FENCE.w, h:FENCE.h+6}); });
@@ -1380,6 +1386,7 @@ function soloNet(){
     mobHeal: async (z, sl, gen) => { const c = (soloNet.mobs||{})[z] || {}, cur = c[sl]; if (!cur || cur.gen !== gen || !(cur.hp > 0) || cur.hp >= cur.max || Date.now() - (cur.lastHit||0) < MOB_HEAL_IDLE) return; cur.hp = Math.min(cur.max, cur.hp + Math.floor(cur.max * MOB_HEAL_STEP)); if (cur.hp >= cur.max) delete cur.hits; soloNet.mobCb && soloNet.mobCb[0]===z && soloNet.mobCb[1](structuredClone(c)); },
     mobPos: async (z, up) => { const c = (soloNet.mobs||{})[z] || {}; for (const [k,v] of Object.entries(up)){ const [sl, f] = k.split('/'); if (c[sl]) c[sl][f] = v; } },
     museumGive: async (cat, id) => { const c = museum[cat] || (museum[cat] = {}); if (c[id]) return false; c[id] = {uid, nick:me.nick, at:Date.now()}; onMuseum(museum); return true; },
+    rsSet: async up => { const r = structuredClone(resortData); for (const [k, v] of Object.entries(up)){ const ks = k.split('/'); let o = r; for (const q of ks.slice(0, -1)) o = o[q] = o[q] || {}; if (v === null) delete o[ks[ks.length - 1]]; else o[ks[ks.length - 1]] = v; } onResort(r); },
     bridgeGive: async (slot, total) => { const b = structuredClone(bridgeData); ((b.g = b.g || {})[slot] = b.g[slot] || {})[uid] = total; onBridge(b); },
     darkTx: async (npc, fn) => { const st_ = soloNet.dark || (soloNet.dark = {}); const r = fn(st_[npc] ? structuredClone(st_[npc]) : null); if (r !== undefined){ if (r === null) delete st_[npc]; else st_[npc] = r; } onDarkRooms(structuredClone(st_)); return r !== undefined; },
     reviveSend: async (id, by) => { if (id === uid) onRevive({by, at:darkNow()}); },
@@ -1451,6 +1458,7 @@ function firebaseNet(){
     bossAtk: (z, a) => F.update(F.ref(db, 'mobs/'+z), {[BOSS_SLOT+'/atk']:a}).catch(()=>{}),
     museumGive: async (cat, id) => { try { const r = await F.runTransaction(F.ref(db, 'museum/'+cat+'/'+id), cur => cur ? undefined : {uid, nick:String(me.nick||'').slice(0,16), at:Date.now() + serverOffset}); return r.committed; } catch(e){ return false; } },
     bridgeGive: (slot, total) => F.set(F.ref(db, 'bridge/g/'+slot+'/'+uid), total),
+    rsSet: up => F.update(F.ref(db, 'resort'), up),
     darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
     darkQSet: (npc, pid, pub, plain) => F.update(F.ref(db), {[`darkQ/${npc}/${pid}`]: pub || null, [`darkQA/${npc}/${pid}`]: plain || null, ...(pub ? {} : {[`darkImg/${npc}/${pid}`]: null})}),
@@ -1478,7 +1486,7 @@ function firebaseNet(){
     // 장소마다 100 줄만 남기고 오래된 줄은 지워요
     chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
-    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, bridge:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ox:null, fest:null, ...(withChat ? {chat:null} : {})}),
+    wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, bridge:null, resort:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ox:null, fest:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
       F.onValue(F.ref(db, 'roofs'), s=>onRoofs(s.val()));
@@ -1495,6 +1503,7 @@ function firebaseNet(){
       F.onValue(F.ref(db, 'snowmen'), s=>{ snowmen = s.val() || {}; }, ()=>{});
       F.onValue(F.ref(db, 'museum'), s=>onMuseum(s.val()), ()=>{});
       F.onValue(F.ref(db, 'bridge'), s=>onBridge(s.val()), ()=>{});
+      F.onValue(F.ref(db, 'resort'), s=>onResort(s.val()), ()=>{});
       F.onValue(F.ref(db, 'darkRooms'), s=>onDarkRooms(s.val()), ()=>{});
       F.onValue(F.ref(db, 'darkQ'), s=>onDarkQ(s.val()), ()=>{});
       F.onValue(F.ref(db, 'revive/'+uid), s=>onRevive(s.val()), ()=>{});
@@ -2758,10 +2767,10 @@ const RING_OPEN = true; // 반지 그림·이름표가 정해지면 공방에 �
 const RINGS = Object.fromEntries(RING_LIST.map(r=>[r[0], {name:r[1], hp:r[2], gold:r[3], need:r[4], fx:r[5], color:r[6]}]));
 const ring = () => (me && RINGS[me.inv?.ring]) || null, ringFx = () => ring()?.fx || {};
 let ringShieldAt = 0;
-function ringDmg(d, boss){ const f = ringFx(), t = performance.now(); if (f.shield && t - ringShieldAt > f.shield*1000){ ringShieldAt = t; fx.push({x:pos.x, y:pos.y-70, text:'보호막!', t, color:'#ffb3d9'}); return 0; } return Math.max(1, Math.round(d * (1 - (f.dr||0) - tfx('dr') - (boss ? (f.bossDr||0) : 0)))); }
+function ringDmg(d, boss){ const f = ringFx(), t = performance.now(); if (tfx('dodge') && Math.random() < tfx('dodge')){ fx.push({x:pos.x, y:pos.y-70, text:'피했다!', t, color:'#7ab8ff'}); return 0; } if (f.shield && t - ringShieldAt > f.shield*1000){ ringShieldAt = t; fx.push({x:pos.x, y:pos.y-70, text:'보호막!', t, color:'#ffb3d9'}); return 0; } return Math.max(1, Math.round(d * (1 - (f.dr||0) - tfx('dr') - (boss ? (f.bossDr||0) : 0)))); }
 const ringKb = n => n * (ringFx().kb || 1);
 // 칭호 효과: 지금 달고 있는 칭호 하나만 (achievements.js 의 TITLE_FX)
-const tfx = k => ((me && me.title && TITLE_FX[me.title]?.[k]) || 0) + petFx(k); // 칭호 효과 + 산책 중인 펫의 동행 보너스
+const tfx = k => ((me && me.title && TITLE_FX[me.title]?.[k]) || 0) + petFx(k) + buffFx(k); // 칭호 효과 + 산책 중인 펫의 동행 보너스 + 리조트 버프 (2 시간)
 const maxHp = () => 100 + (lvOf()-1)*10 + (ring()?.hp || 0) + tfx('hp'), maxSta = () => 100 + (lvOf()-1)*10 + (ringFx().sta || 0) + tfx('sta');
 const expNeed = lv => Math.round(60 + lv*40 + 5*lv*lv + lv*lv*lv/40); // 레벨마다 계속 늘어나요 (Lv1→2: 105, Lv10→11: 985, Lv30→31: 6,435, Lv50→51: 17,685, Lv99→100: 77,282)
 // 기력: 일할 때마다 조금씩 써요. 천천히 차오르고, 날이 바뀌면 가득, 먹으면 바로 차요
@@ -3721,7 +3730,7 @@ function bzRemovePaths(id){ const o = {['bazaar/owners/'+id]: null}; for (const 
 
 // ===== 공통 패널 =====
 function openPanel(title, body, onClick){
-  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.fest; delete p.dataset.bz; bzView = null; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv; delete p.dataset.museum; delete p.dataset.bridge;
+  closeTalk(); $('mapPanel').hidden = true; const p = $('npcPanel'); p.hidden = false; p.dataset.kind = 'other'; delete p.dataset.fest; delete p.dataset.bz; bzView = null; delete p.dataset.post; delete p.dataset.dm; p.style.top = ''; p.style.bottom = ''; p.style.maxHeight = ''; delete p.dataset.market; delete p.dataset.stock; delete p.dataset.tv; delete p.dataset.museum; delete p.dataset.bridge; delete p.dataset.rs;
   p.innerHTML = deEmoji(`<div class="np-head"><b>${title}</b><button class="mini" id="pnClose">닫기</button></div>${body}`);
   $('pnClose').onclick = ()=>{ p.hidden = true; };
   if (onClick) p.querySelectorAll('.np[data-id]').forEach(b=>b.onclick = ()=>onClick(b));
@@ -3769,12 +3778,13 @@ function errandPanel(){
 // ===== 보리 공방: 텃밭 늘리기 · 가구 =====
 const PLOT_COST = {3:[3000,'ore:o11',3], 4:[7500,'ore:o12',3], 5:[18000,'ore:o21',2], 6:[36000,'ore:o30',1], 7:[60000,'ore:o21',4], 8:[90000,'ore:o30',2], 9:[130000,'ore:o36',1], 10:[180000,'ore:o37',1]}; // 울타리 안 최대 10 칸
 // [이름, 골드, 재료, 개수, 모양, 색]
-const FURN_LIST = FURN_ALL; // 가구 43 종 (art/furniture.js)
-const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5]}]));
+const FURN_LIST = [...FURN_ALL, ...PLUSH.map((p, k)=>[p[0] + ' 인형', 0, 'ore:o01', 0, 'plush' + k, p[1], 1])]; // 가구 43 종 (art/furniture.js) + 오락실 경품 인형 20 종 (공방에서는 못 만들어요)
+const PLUSH_FURN = PLUSH.map((_, k)=>'u' + String(FURN_ALL.length + k + 1).padStart(2, '0'));
+const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5], prize:!!f[6]}]));
 function workshopPanel(){
   const plots = me.plots || 2, next = plots + 1, pc = PLOT_COST[next];
   const plotRow = pc ? `<button class="np" data-id="plot"><span class="np-name">텃밭 늘리기 (${plots} → ${next} 칸) <small>${pc[0].toLocaleString()} G + ${itemName(pc[1])} ${pc[2]}</small></span><span class="np-place">${me.inv.gold>=pc[0]&&invCount(pc[1])>=pc[2]?'늘리기':'재료 부족'}</span></button>` : `<div class="np"><span class="np-name">텃밭이 최대 10 칸이에요</span></div>`;
-  openPanel('보리 공방 · 💰 '+me.inv.gold+' G', plotRow + Object.entries(FURN).map(([id,f])=>{
+  openPanel('보리 공방 · 💰 '+me.inv.gold+' G', plotRow + Object.entries(FURN).filter(([,f])=>!f.prize).map(([id,f])=>{
     const ok = me.inv.gold >= f.gold && invCount(f.need) >= f.n;
     return `<button class="np" data-id="${id}" ${ok?'':'style="opacity:.55"'}><span class="np-name">${f.name} <small>${f.gold.toLocaleString()} G + ${itemName(f.need)} ${f.n}</small></span><span class="np-place">${ok?'만들기':'재료 부족'}</span>${invCount('furn:'+id)?`<span class="np-day">가진 것 ${invCount('furn:'+id)}</span>`:''}</button>`;
   }).join('') + '<p class="mnote">만든 가구는 내 집 안에서 [꾸미기]로 놓아요.</p>', b=>{
@@ -3804,7 +3814,7 @@ function furnOf(owner){ const p = owner===uid ? me : players[owner]; return (p &
 let decorating = null; // 고른 가구 id
 function drawFurn(d, f, x, y){
   if (f.f && !f._flipping){ const c = d.ctx; c.save(); c.translate(x, 0); c.scale(-1, 1); c.translate(-x, 0); drawFurn(d, {...f, _flipping:true}, x, y); c.restore(); return; }
-  const F = FURN[f.id]; if (!F || !FURN_DRAW[F.shape]) return;
+  const F = FURN[f.id]; if (F && F.prize){ drawPlush(d.ctx, x, y, +F.shape.slice(5), .42); return; } if (!F || !FURN_DRAW[F.shape]) return;
   FURN_DRAW[F.shape](CH.mattePainter(d.ctx), x, y, F.color); // 유아용 점토: 캐릭터와 같은 매트 페인터
 }
 let movingFurn = -1;
@@ -5131,6 +5141,339 @@ function drawBridge(c, t){
 }
 function bridgeEntities(d, t){ if (zoneId !== 'beach') return []; return [{y:258, draw:()=>drawBridge(d.ctx, t), label:()=>{}}]; }
 function bridgeTap(w){ if (zoneId !== 'beach') return null; const x = bridgeX(); if ((Math.abs(w.x - x) < 44 && w.y < 262) || (Math.abs(w.x - (x + 96)) < 54 && w.y > 266 && w.y < 342)) return {x:x + 96, y:352, act:bridgePanel}; return null; }
+// ===== 버프: 리조트 가게에서 놀면 2 시간 동안 붙어요 (같은 버프는 다시 하면 시간만 새로 채워져요) =====
+// me.buffs = {버프 id: 끝나는 시각}. 효과는 tfx() 에 더해져요 (칭호 · 펫 보너스와 같은 이름)
+const BUFF_MS = 2*3600000;
+const BUFFS = {
+  fun:{name:'신남', ic:'🎢', fx:{xp:.1}, txt:'경험치 +10%'}, cool:{name:'시원함', ic:'🛟', fx:{speed:.15}, txt:'이동 속도 +15%'},
+  hot1:{name:'뜨끈함 · 불가마', ic:'🔥', fx:{hp:150}, txt:'최대 체력 +150', grp:'sauna'}, hot2:{name:'뜨끈함 · 얼음방', ic:'🧊', fx:{sta:80}, txt:'최대 기력 +80', grp:'sauna'}, hot3:{name:'뜨끈함 · 소금방', ic:'🧂', fx:{hp:60, sta:40}, txt:'최대 체력 +60 · 최대 기력 +40', grp:'sauna'},
+  fire:{name:'모닥불 온기', ic:'⛺', fx:{nightdr:.2}, txt:'밤 몬스터 피해 -20%'}, sea:{name:'항해 운', ic:'🚤', fx:{fish:.2}, txt:'희귀 물고기 +20%'},
+  bal:{name:'균형 감각', ic:'🏄', fx:{dodge:.1}, txt:'몬스터 공격 피할 확률 10%'}, wow:{name:'감동', ic:'🎭', fx:{fish:.1, ore:.1}, txt:'행운 +10% (희귀 물고기 · 광석)'},
+  aim:{name:'명중', ic:'🎳', fx:{atk:.1}, txt:'공격력 +10%'}, air:{name:'물속 숨', ic:'🤿', fx:{free:.2}, txt:'기력 안 쓸 확률 20%'}, hawk:{name:'매의 눈', ic:'🦅', fx:{tmap:.2}, txt:'보물 지도 조각 +20%'}};
+const buffsOn = () => { const b = (me && me.buffs) || {}, now = Date.now(); return Object.entries(b).filter(([id, until])=>BUFFS[id] && until > now); };
+function buffFx(k){ if (!me || !me.buffs) return 0; let v = 0; for (const [id] of buffsOn()){ const f = BUFFS[id].fx; v += f[k] || 0; if (k === 'dr' && f.nightdr && isNight()) v += f.nightdr; } return v; }
+function giveBuff(id){ const B = BUFFS[id]; if (!B) return; me.buffs = me.buffs || {}; const now = Date.now(); for (const [k, u] of Object.entries(me.buffs)) if (u <= now || (B.grp && BUFFS[k]?.grp === B.grp && k !== id)) delete me.buffs[k];
+  me.buffs[id] = now + BUFF_MS; titleApplied(); saveMe(); buffChip(true); }
+const fmtHMS = ms => { const s = Math.max(0, Math.ceil(ms/1000)); return `${Math.floor(s/3600)}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; };
+let buffSig = '';
+function buffChip(force){ if (!me || admin) return; const on = buffsOn(); let el = $('buffChip');
+  if (!on.length){ if (el) el.hidden = true; buffSig = ''; return; }
+  if (!el){ el = document.createElement('button'); el.id = 'buffChip'; document.body.appendChild(el); el.onclick = ()=>say('버프', buffsOn().map(([id, u])=>`${BUFFS[id].ic} ${BUFFS[id].name} · ${BUFFS[id].txt} · ${fmtHMS(u - Date.now())} 남음`).join('\n') || '지금 붙은 버프가 없어요', [], '리조트 가게에서 놀면 2 시간 동안 붙어요'); }
+  const soon = Math.min(...on.map(([, u])=>u)), sig = on.map(([id])=>id).join(',') + '|' + Math.ceil((soon - Date.now())/1000);
+  if (sig !== buffSig || force){ buffSig = sig; el.hidden = false; el.textContent = `${on.map(([id])=>BUFFS[id].ic).join('')} ⏱ ${fmtHMS(soon - Date.now())}`; }
+  if (on.length !== Object.keys(me.buffs || {}).length){ for (const k of Object.keys(me.buffs)) if (!(me.buffs[k] > Date.now())) delete me.buffs[k]; titleApplied(); } }
+setInterval(()=>{ try { buffChip(); } catch(e){} }, 1000);
+
+// ===== 리조트 거리 가게 12 =====
+// resort/plots/<자리> = {uid, type, name, lv, fac(설치한 시설 비트), fee(친구 입장료)} · resort/types/<종류> = uid · resort/owners/<uid> = 자리
+// resort/v/<자리>/<uid> = {n, paid} 친구가 놀고 낸 입장료 누적 (주인이 정산 때 가져가요) · resort/w/<주>/<자리>/<uid> = 이번 주 놀러 온 횟수
+// resort/show/<자리> = {uid, nick, at} 공연장에서 지금 공연한 사람 · resort/clap/<공연한 uid>/<uid> = 박수 친 횟수
+const RS_TYPES = [
+  {name:'놀이공원', ic:'🎡', col:'#ffd0e0', roof:'#ff8fb3', game:'coaster', fac:['회전목마','범퍼카','바이킹','대관람차','롤러코스터','귀신의 집'], play:'롤러코스터 균형 잡기'},
+  {name:'수영장', ic:'🏊', col:'#cdeeff', roof:'#6fc0f0', game:'slide', fac:['유수풀','튜브 대여','파도풀','미끄럼틀','워터 슬라이드','다이빙대'], play:'워터 슬라이드 내려가기'},
+  {name:'찜질방', ic:'♨️', col:'#ffe2c8', roof:'#e8956a', game:'sauna', fac:['온탕','소금방','얼음방','불가마','안마의자','수면실'], play:'방 골라 30 초 버티기'},
+  {name:'캠핑장', ic:'⛺', col:'#d8eec8', roof:'#7ab86a', game:'camp', fac:['텐트 자리','모닥불','해먹','바비큐 그릴','망원경','통나무 오두막'], play:'마시멜로 노릇하게 굽기 (밤에만)'},
+  {name:'낚싯배 투어', ic:'🚤', col:'#cde8ff', roof:'#5a8ad8', game:'boat', fac:['작은 보트','낚싯대 거치대','어군 탐지기','큰 배','고래 관찰 데크','심해 항로'], play:'먼 바다 낚시'},
+  {name:'서핑 교실', ic:'🏄', col:'#cdf4ee', roof:'#4ac0b0', game:'surf', fac:['보드 거치대','연습 파도','탈의실','큰 파도 구역','심판석','대회 무대'], play:'파도 타기 리듬 게임'},
+  {name:'공연장', ic:'🎭', col:'#e8e0ff', roof:'#9a7ae8', game:'stage', fac:['작은 무대','조명','음향','객석','큰 무대','불꽃 장치'], play:'무대 공연 · 관객은 박수'},
+  {name:'사진관', ic:'📸', col:'#fff0c0', roof:'#e8b840', game:'photo', fac:['배경판','소품함','조명','필터','포토 부스','액자 인화기'], play:'주민과 포즈 맞춰 찰칵'},
+  {name:'오락실', ic:'🕹️', col:'#ffd8f0', roof:'#ff6ab0', game:'claw', fac:['두더지 잡기','인형 뽑기','동전 밀기','레이싱','펌프','경품 진열장'], play:'인형 뽑기 (코인 3 개)'},
+  {name:'볼링장', ic:'🎳', col:'#ffe6d0', roof:'#e8805a', game:'bowl', fac:['레인 1','레인 2','공 진열대','점수판','레인 3','프로 레인'], play:'방향 · 힘 맞춰 굴리기'},
+  {name:'스쿠버 다이빙', ic:'🤿', col:'#d0f0ff', roof:'#3aa0d8', game:'scuba', fac:['장비 대여소','얕은 바다 코스','산호초 코스','수중 동굴','난파선','심해 코스'], play:'산소 아끼며 보물 줍기'},
+  {name:'열기구 투어', ic:'🎈', col:'#ffeec8', roof:'#ff8a5a', game:'balloon', fac:['작은 바구니','큰 풍선','무늬 풍선','2 인승','야간 비행','섬 일주 코스'], play:'불 조절하며 진짜 반짝이 찾기'}];
+const RS_PLOTS = [[190,250],[360,250],[190,470],[360,470],[190,690],[360,690],[840,300],[1010,300],[840,560],[1010,560],[840,720],[1010,720]];
+const RS_SLOTS = [3, 4, 5, 6, 6];
+const RS_LV = [null, [50000, [['wood:w2', 30], ['ore:o01', 30]], '넓히기'], [150000, [['ore:o11', 10], ['ore:o21', 5], ['forage:g42', 10]], '2 층 올리기'], [400000, [['loot:m73', 10], ['loot:m72', 10]], '옆 땅까지 확장'], [1000000, [['loot:m78', 1]], '랜드마크']];
+const RS_FAC = [[20000, [['wood:w2', 10]]], [40000, [['wood:w2', 20], ['ore:o11', 5]]], [80000, [['wood:w2', 30], ['ore:o12', 5]]], [150000, [['wood:w3', 10], ['ore:o21', 5]]], [250000, [['wood:w3', 20], ['ore:o22', 3]]], [400000, [['wood:w3', 30], ['wood:w4', 2]]]];
+const RS_RATE = 200, RS_CAP = 12*3600000, RS_FEES = [0, 100, 200, 300, 500];
+let resortData = {plots:{}, types:{}, owners:{}, v:{}, w:{}, show:{}, clap:{}}, rsBusy = false;
+const rsWeek = (ms = Date.now()) => Math.floor((ms + serverOffset + 9*3600000) / (7*86400000));
+function onResort(v){ v = v || {}; resortData = {plots:v.plots || {}, types:v.types || {}, owners:v.owners || {}, v:v.v || {}, w:v.w || {}, show:v.show || {}, clap:v.clap || {}};
+  if (zoneId === 'resort'){ rebuildObstacles(); } const p = $('npcPanel'); if (p && !p.hidden && p.dataset.rs != null && !rsBusy) keepScroll(()=>rsPanel(+p.dataset.rs)); }
+const rsPlot = i => resortData.plots[i] || null;
+const rsMine = () => { const i = resortData.owners[uid]; return i != null && rsPlot(i)?.uid === uid ? +i : null; };
+const rsFacN = pl => { let n = 0; for (let k = 0; k < 6; k++) if ((pl.fac|0) & (1 << k)) n++; return n; };
+const rsPopular = () => { const w = resortData.w[rsWeek() - 1] || {}; let best = null, bn = 0; for (const [i, u] of Object.entries(w)){ const n = Object.values(u||{}).reduce((a, x)=>a + (+x||0), 0); if (n > bn){ bn = n; best = +i; } } return best; };
+const rsMaintOk = () => (me.rsMaint|0) === today();
+function rsIncome(pl, i){ const hrs = Math.min(RS_CAP, Date.now() - (me.rsLast || Date.now())) / 3600000;
+  return Math.floor(RS_RATE * rsFacN(pl) * pl.lv * (rsMaintOk() ? 1 : .5) * (rsPopular() === i ? 2 : 1) * (pl.lv >= 5 ? 1.5 : 1) * hrs); }
+function rsFriendIncome(i){ const v = resortData.v[i] || {}, got = me.rsGot || {}; let s = 0; for (const [id, r] of Object.entries(v)) if (id !== uid) s += Math.max(0, (+r?.paid||0) - (+got[id]||0)); return s; }
+const costTxt = (g, mats) => [g ? `${g.toLocaleString()} G` : '', ...mats.map(([k, n])=>`${itemName(k)} ${n}`)].filter(Boolean).join(' · ');
+const costOk = (g, mats) => me.inv.gold >= g && mats.every(([k, n])=>invCount(k) >= n);
+const costPay = (g, mats) => { me.inv.gold -= g; for (const [k, n] of mats) invAdd(k, -n); };
+// 가게 건물 그림
+function drawRsPlot(c, i, t){ const [x, y] = RS_PLOTS[i], pl = rsPlot(i);
+  c.save(); c.fillStyle = 'rgba(60,30,50,.12)'; c.beginPath(); c.ellipse(x, y + 4, 66, 12, 0, 0, 7); c.fill();
+  if (!pl){ c.setLineDash([6, 6]); c.strokeStyle = 'rgba(200,120,150,.6)'; c.lineWidth = 2; c.beginPath(); c.roundRect(x - 58, y - 70, 116, 70, 10); c.stroke(); c.setLineDash([]);
+    c.fillStyle = '#c79a74'; c.fillRect(x - 2, y - 46, 4, 40); c.fillStyle = '#fff4e2'; c.beginPath(); c.roundRect(x - 40, y - 66, 80, 26, 7); c.fill(); c.font = 'bold 15px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#a0607a'; c.fillText('빈 가게 자리', x, y - 48); c.restore(); return; }
+  const T = RS_TYPES[pl.type] || RS_TYPES[0], w = 100 + pl.lv*6, h = 62 + pl.lv*6;
+  c.fillStyle = T.col; c.beginPath(); c.roundRect(x - w/2, y - h, w, h, 10); c.fill(); c.strokeStyle = 'rgba(120,70,90,.25)'; c.lineWidth = 2; c.stroke();
+  c.fillStyle = T.roof; c.beginPath(); c.roundRect(x - w/2 - 8, y - h - 22, w + 16, 28, 12); c.fill(); for (let k = 0; k < 7; k++){ c.beginPath(); c.arc(x - w/2 - 2 + k*(w + 4)/6, y - h + 4, 7, 0, Math.PI); c.fill(); }
+  if (pl.lv >= 2){ c.fillStyle = 'rgba(255,255,255,.75)'; for (const dx of [-w/2 + 16, w/2 - 16]){ c.beginPath(); c.roundRect(x + dx - 9, y - h + 16, 18, 16, 4); c.fill(); } }
+  c.fillStyle = '#9a5a45'; c.beginPath(); c.roundRect(x - 12, y - 30, 24, 30, 9); c.fill();
+  c.font = '30px sans-serif'; c.textAlign = 'center'; c.fillText(T.ic, x, y - h + (pl.lv >= 2 ? 50 : 40));
+  const fl = rsFacN(pl); for (let k = 0; k < fl; k++){ const fx_ = x - w/2 + 8 + k*((w - 16)/5); c.fillStyle = '#8a5a3a'; c.fillRect(fx_, y - h - 40, 2, 18); c.fillStyle = ['#ff6b8a','#ffd23f','#6ac8ff','#7ad86a','#c8a8ff','#ff9a5a'][k]; c.beginPath(); c.moveTo(fx_ + 2, y - h - 40); c.lineTo(fx_ + 14, y - h - 35); c.lineTo(fx_ + 2, y - h - 30); c.fill(); }
+  if (pl.lv >= 5){ c.fillStyle = '#ffd23f'; c.beginPath(); c.roundRect(x - 34, y - h - 58, 68, 16, 8); c.fill(); }
+  c.font = 'bold 16px "Dongle",sans-serif'; const nm = String(pl.name || T.name).slice(0, 10), nw = c.measureText(nm).width + 18; c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.roundRect(x - nw/2, y + 6, nw, 20, 8); c.fill(); c.fillStyle = '#7a3a5a'; c.fillText(nm, x, y + 21);
+  c.fillStyle = '#ffb820'; c.font = 'bold 12px sans-serif'; c.fillText('★'.repeat(pl.lv), x, y - h - (pl.lv >= 5 ? 46 : 26) + (pl.lv >= 5 ? 0 : 0));
+  if (rsPopular() === i){ c.font = '16px sans-serif'; c.fillText('🏆', x + w/2 + 2, y - h - 10); }
+  c.restore(); }
+// 관광객 (보기만): 시설이 있는 가게 앞을 돌아다녀요
+function drawRsTourists(d, t){ const out = []; for (let i = 0; i < 12; i++){ const pl = rsPlot(i); if (!pl) continue; const n = Math.min(3, Math.ceil(rsFacN(pl)/2)); const [x, y] = RS_PLOTS[i];
+  for (let k = 0; k < n; k++){ const ph = t/1000*.4 + i*1.7 + k*2.1, tx = x + Math.sin(ph)*70, ty = y + 30 + Math.abs(Math.cos(ph*.7))*20 + k*6, col = ['#ffd0a0','#c8e0ff','#ffc8e0','#d8f0c0','#e8d8ff'][(i + k)%5];
+    out.push({y:ty, draw:()=>{ const c = d.ctx, b = Math.abs(Math.sin(t/120 + k + i))*2; c.save(); c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.ellipse(tx, ty + 1, 9, 3, 0, 0, 7); c.fill(); c.fillStyle = col; c.beginPath(); c.arc(tx, ty - 10 - b, 9, 0, 7); c.fill(); c.beginPath(); c.arc(tx - 5, ty - 18 - b, 3.5, 0, 7); c.arc(tx + 5, ty - 18 - b, 3.5, 0, 7); c.fill(); c.fillStyle = '#2a1a20'; c.fillRect(tx - 3.5, ty - 12 - b, 1.6, 2.4); c.fillRect(tx + 2, ty - 12 - b, 1.6, 2.4); c.restore(); }, label:()=>{}}); } }
+  return out; }
+function resortEntities(d, t){ if (zoneId !== 'resort') return []; return [...RS_PLOTS.map((p, i)=>({y:p[1], draw:()=>drawRsPlot(d.ctx, i, t), label:()=>{}})), ...drawRsTourists(d, t)]; }
+function resortObstacles(o){ RS_PLOTS.forEach(([x, y], i)=>{ if (rsPlot(i)) o.rects.push({x:x - 56, y:y - 80, w:112, h:76}); }); }
+function resortTap(w){ if (zoneId !== 'resort') return null; for (let i = 0; i < 12; i++){ const [x, y] = RS_PLOTS[i]; if (Math.abs(w.x - x) < 64 && w.y > y - 110 && w.y < y + 28) return {x, y:y + 30, act:()=>rsPanel(i)}; } return null; }
+// 가게 창: 주인이면 관리, 아니면 놀러 가기
+function rsPanel(i){
+  if (!me) return; const pl = rsPlot(i), mine = rsMine();
+  if (!pl) return rsClaimPanel(i);
+  const T = RS_TYPES[pl.type], own = pl.uid === uid, owner = own ? '나' : esc(String(players[pl.uid]?.nick || '누군가')), slots = RS_SLOTS[pl.lv - 1], fn = rsFacN(pl);
+  let h = `<div class="np" style="display:block;background:${T.col}"><b>${T.ic} ${esc(pl.name || T.name)}</b> <small>${T.name} · 주인 ${owner} · ${'★'.repeat(pl.lv)} Lv ${pl.lv}${rsPopular() === i ? ' · 🏆 지난주 인기 가게 (관광객 ×2)' : ''}</small><br><small>놀거리: ${T.play} · 입장료 ${pl.fee ? pl.fee + ' G' : '무료'}</small></div>`;
+  h += `<p class="mnote" style="margin:6px 2px 2px"><b>시설 ${fn}/${slots} 칸</b></p><div style="display:flex;flex-wrap:wrap;gap:4px">${T.fac.map((f, k)=>{ const on = (pl.fac|0) & (1 << k); return `<span class="mini" style="opacity:${on ? 1 : .4}">${on ? '✓ ' : ''}${f}</span>`; }).join('')}</div>`;
+  if (!own){ h += fn ? `<button class="np" id="rsPlay"><span class="np-name">🎟️ 놀기 · ${T.play}</span><span class="np-place">${pl.fee ? pl.fee + ' G' : '무료'}</span></button>` : '<p class="mnote">아직 시설이 없어서 놀 수 없어요</p>';
+    if (pl.type === 6){ const sh = resortData.show[i]; if (sh && sh.uid !== uid && Date.now() + serverOffset - sh.at < 120000) h += `<button class="np" id="rsClap"><span class="np-name">👏 ${esc(sh.nick)} 님 공연에 박수 치기</span><span class="np-place">감동 버프</span></button>`; }
+    openPanel(`${T.ic} ${esc(pl.name || T.name)}`, h); const P = $('npcPanel'); P.dataset.rs = i;
+    if ($('rsPlay')) $('rsPlay').onclick = ()=>rsPlay(i); if ($('rsClap')) $('rsClap').onclick = ()=>rsClap(i); return; }
+  // 주인
+  const inc = rsIncome(pl, i), fri = rsFriendIncome(i);
+  h += `<div class="np" style="display:block"><b>💰 정산</b> <small>관광객 ${inc.toLocaleString()} G · 친구 입장료 ${fri.toLocaleString()} G${rsMaintOk() ? '' : ' · 오늘 정비를 안 해서 관광객 수입이 반이에요'}</small><br><button class="mini" id="rsSettle" ${inc + fri > 0 ? '' : 'disabled'}>정산 받기</button> <button class="mini" id="rsMaint" ${rsMaintOk() ? 'disabled' : ''}>${rsMaintOk() ? '오늘 정비 끝' : '🧹 오늘 정비하기'}</button> <button class="mini" id="rsSelf">🎟️ 내 가게에서 놀기</button></div>`;
+  h += `<p class="mnote" style="margin:8px 2px 2px"><b>시설 넣기</b> · 시설이 많을수록 손님이 늘어요</p>`;
+  T.fac.forEach((f, k)=>{ const on = (pl.fac|0) & (1 << k), [g, mats] = RS_FAC[k], full = fn >= slots, ok = costOk(g, mats);
+    h += `<div class="np" style="display:block"><span class="np-name">${on ? '✓ ' : ''}${f}</span> <small>${on ? '설치됨' : costTxt(g, mats)}</small>${on ? '' : ` <button class="mini" data-fac="${k}" ${full || !ok ? 'disabled' : ''}>${full ? '칸 없음' : ok ? '설치' : '재료 부족'}</button>`}</div>`; });
+  if (pl.lv < 5){ const [g, mats, nm] = RS_LV[pl.lv], ok = costOk(g, mats); h += `<div class="np" style="display:block;background:#fff7ec"><b>⬆️ Lv ${pl.lv + 1} · ${nm}</b> <small>${costTxt(g, mats)} → 시설 칸 ${RS_SLOTS[pl.lv]}${pl.lv + 1 === 5 ? ' · 황금 간판 · 관광객 ×1.5' : ''}</small><br><button class="mini" id="rsUp" ${ok ? '' : 'disabled'}>${ok ? '올리기' : '재료 부족'}</button></div>`; }
+  h += `<div class="np" style="display:block"><small>친구 입장료</small> ${RS_FEES.map(f=>`<button class="mini ${pl.fee === f ? 'on' : ''}" data-fee="${f}">${f ? f + ' G' : '무료'}</button>`).join(' ')}</div>
+    <div class="np" style="display:block"><small>가게 이름</small> <button class="mini" id="rsName">이름 바꾸기</button> <button class="mini" id="rsQuit" style="float:right">가게 내놓기</button></div>`;
+  openPanel(`${T.ic} 내 가게 · ${esc(pl.name || T.name)}`, h); const P = $('npcPanel'); P.dataset.rs = i;
+  $('rsSettle').onclick = ()=>rsSettle(i); $('rsMaint').onclick = ()=>rsMaintGame(i); $('rsSelf').onclick = ()=>rsPlay(i);
+  P.querySelectorAll('[data-fac]').forEach(b=>b.onclick = ()=>rsInstall(i, +b.dataset.fac)); if ($('rsUp')) $('rsUp').onclick = ()=>rsLevelUp(i);
+  P.querySelectorAll('[data-fee]').forEach(b=>b.onclick = ()=>rsWrite({[`plots/${i}/fee`]:+b.dataset.fee}));
+  $('rsName').onclick = ()=>{ const nm = (prompt('가게 이름 (10 자까지)', pl.name || T.name) || '').trim().slice(0, 10); if (nm) rsWrite({[`plots/${i}/name`]:nm}); };
+  $('rsQuit').onclick = ()=>{ if (!confirm('가게를 내놓을까요? 넣은 시설과 레벨이 모두 사라져요.')) return; rsWrite({[`plots/${i}`]:null, [`types/${pl.type}`]:null, [`owners/${uid}`]:null}).then(()=>{ toast('가게를 내놓았어요'); $('npcPanel').hidden = true; }); };
+}
+async function rsWrite(up){ rsBusy = true; try { await net.rsSet(up); for (const [k, v] of Object.entries(up)){ const ks = k.split('/'); let o = resortData; for (const q of ks.slice(0, -1)) o = o[q] = o[q] || {}; if (v === null) delete o[ks[ks.length - 1]]; else o[ks[ks.length - 1]] = v; } }
+  catch(e){ toast('저장하지 못했어요 · 잠시 뒤에 다시 해 봐요'); rsBusy = false; throw e; } rsBusy = false; const p = $('npcPanel'); if (p && !p.hidden && p.dataset.rs != null) keepScroll(()=>rsPanel(+p.dataset.rs)); if (zoneId === 'resort') rebuildObstacles(); }
+function rsClaimPanel(i){
+  const mine = rsMine(); if (mine != null) return say('빈 가게 자리', '이미 내 가게가 있어요. 한 사람에 가게 하나예요.', [['내 가게 보기', ()=>{ closeTalk(); rsPanel(mine); }]]);
+  const free = RS_TYPES.map((T, t)=>({T, t, taken:!!resortData.types[t]}));
+  openPanel('빈 가게 자리 · 어떤 가게를 할까요?', `<p class="mnote" style="margin:0 2px 6px">한 사람에 가게 하나 · 종류마다 한 명만 · 처음엔 Lv 1 · 시설 칸 3</p>` + free.map(({T, t, taken})=>`<button class="np" data-t="${t}" ${taken ? 'disabled style="opacity:.45"' : ''}><span class="np-name">${T.ic} ${T.name} <small>${T.play}</small></span><span class="np-place">${taken ? '누가 하는 중' : '이걸로'}</span></button>`).join(''));
+  $('npcPanel').querySelectorAll('[data-t]').forEach(b=>b.onclick = async ()=>{ const t = +b.dataset.t, T = RS_TYPES[t]; const nm = ((prompt('가게 이름 (10 자까지)', T.name) || '').trim() || T.name).slice(0, 10);
+    try { await rsWrite({[`types/${t}`]:uid, [`owners/${uid}`]:i, [`plots/${i}`]:{uid, type:t, name:nm, lv:1, fac:0, fee:0}}); } catch(e){ return; }
+    me.rsLast = Date.now(); me.rsGot = Object.fromEntries(Object.entries(resortData.v[i] || {}).map(([id, r])=>[id, +r?.paid||0])); me.rsMaint = 0; saveMe(); toast(`${T.name} 「${nm}」을(를) 열었어요! 시설을 넣어 봐요`); rsPanel(i); }); }
+async function rsInstall(i, k){ const pl = rsPlot(i); if (!pl || pl.uid !== uid || ((pl.fac|0) & (1 << k)) || rsFacN(pl) >= RS_SLOTS[pl.lv - 1]) return; const [g, mats] = RS_FAC[k]; if (!costOk(g, mats)) return toast('재료가 모자라요');
+  rsSettle(i, true); try { await rsWrite({[`plots/${i}/fac`]:(pl.fac|0) | (1 << k)}); } catch(e){ return; } costPay(g, mats); saveMe(); renderHud(); toast(`${RS_TYPES[pl.type].fac[k]}을(를) 설치했어요!`); }
+async function rsLevelUp(i){ const pl = rsPlot(i); if (!pl || pl.uid !== uid || pl.lv >= 5) return; const [g, mats] = RS_LV[pl.lv]; if (!costOk(g, mats)) return toast('재료가 모자라요');
+  rsSettle(i, true); try { await rsWrite({[`plots/${i}/lv`]:pl.lv + 1}); } catch(e){ return; } costPay(g, mats); saveMe(); renderHud(); setExpr('sparkle', 2000); toast(`가게가 Lv ${pl.lv + 1} 이 됐어요!`); }
+function rsSettle(i, quiet){ const pl = rsPlot(i); if (!pl || pl.uid !== uid) return; const inc = rsIncome(pl, i), fri = rsFriendIncome(i);
+  me.rsLast = Date.now(); me.rsGot = me.rsGot || {}; for (const [id, r] of Object.entries(resortData.v[i] || {})) me.rsGot[id] = +r?.paid||0;
+  if (inc + fri <= 0){ saveMe(); return; } me.inv.gold += inc + fri; me.earned = (me.earned||0) + inc + fri; stat('rsEarned', inc + fri); saveMe(); renderHud();
+  if (!quiet){ toast(`정산했어요 · 관광객 ${inc.toLocaleString()} G · 친구 ${fri.toLocaleString()} G`); rsPanel(i); } }
+// 놀기: 친구 가게면 입장료를 내고, 이번 주 방문으로 세요
+async function rsPlay(i){ const pl = rsPlot(i); if (!pl) return; const T = RS_TYPES[pl.type], own = pl.uid === uid;
+  if (!rsFacN(pl)) return toast('아직 시설이 없어요');
+  if (T.game === 'camp' && !isNight()) return toast('캠핑장은 밤에만 문을 열어요 (저녁 7 시 ~ 새벽 5 시)');
+  if (T.game === 'claw' && (me.rsCoin|0) < 3) return rsCoinShop(i);
+  if (!own && pl.fee > me.inv.gold) return toast(`입장료 ${pl.fee} G 가 모자라요`);
+  let opt = {};
+  if (T.game === 'sauna'){ opt.room = await rsAsk('어느 방에 들어갈까요?', [['🔥 불가마 (최대 체력 +150)', 'hot1'], ['🧊 얼음방 (최대 기력 +80)', 'hot2'], ['🧂 소금방 (체력 +60 · 기력 +40)', 'hot3']]); if (!opt.room) return; }
+  if (T.game === 'photo'){ const vis = me.photos || {}; opt.npc = await rsAsk('누구랑 찍을까요?', NPCS.map(n=>[`${vis[n.id] ? '✨ ' : ''}${n.name} (${n.animal})`, n.id])); if (!opt.npc) return; }
+  if (!own){ if (pl.fee){ me.inv.gold -= pl.fee; renderHud(); } const r = (resortData.v[i] || {})[uid] || {n:0, paid:0}, wk = rsWeek(), wn = +((resortData.w[wk] || {})[i] || {})[uid] || 0;
+    rsWrite({[`v/${i}/${uid}`]:{n:(+r.n||0) + 1, paid:(+r.paid||0) + (pl.fee|0)}, [`w/${wk}/${i}/${uid}`]:wn + 1}).catch(()=>{}); }
+  if (T.game === 'claw'){ me.rsCoin -= 3; }
+  $('npcPanel').hidden = true; saveMe();
+  const res = await rsGame(T.game, opt); stat('rsPlayed'); rsReward(T.game, res || {}, opt, i); }
+function rsAsk(q, opts){ return new Promise(res=>{ say('리조트', q, opts.map(([l, v])=>[l, ()=>{ closeTalk(); res(v); }]), '', false, true); const t = setInterval(()=>{ if ($('talk').hidden){ clearInterval(t); res(null); } }, 300); }); }
+function rsCoinShop(i){ say('오락실', `코인이 ${me.rsCoin|0} 개 있어요. 인형 뽑기 한 판에 코인 3 개예요.`, [['코인 10 개 · 5,000 G', ()=>{ if (me.inv.gold < 5000) return toast('골드가 모자라요'); me.inv.gold -= 5000; me.rsCoin = (me.rsCoin|0) + 10; saveMe(); renderHud(); closeTalk(); toast('코인 10 개를 샀어요'); }], ['코인 30 개 · 14,000 G', ()=>{ if (me.inv.gold < 14000) return toast('골드가 모자라요'); me.inv.gold -= 14000; me.rsCoin = (me.rsCoin|0) + 30; saveMe(); renderHud(); closeTalk(); toast('코인 30 개를 샀어요'); }]]); }
+async function rsClap(i){ const sh = resortData.show[i]; if (!sh || sh.uid === uid) return; const n = +((resortData.clap[sh.uid] || {})[uid]) || 0; rsWrite({[`clap/${sh.uid}/${uid}`]:n + 1}).catch(()=>{}); giveBuff('wow'); stat('rsClapGiven'); toast(`👏 ${sh.nick} 님에게 박수! 「감동」 행운 +10% · 2 시간`); $('npcPanel').hidden = true; }
+const plushFurn = k => 'furn:' + PLUSH_FURN[k];
+function rsGrantCandy(n){ const until = lastSlot() + CANDY_PER, c = me.candy && Array.isArray(me.candy.lots) ? me.candy : {lots:[]}, have = c.lots.reduce((a, l) => a + l.n, 0); n = Math.max(0, Math.min(n, CANDY_MAX - have)); if (!n) return 0;
+  const same = c.lots.find(l => l.until === until); if (same) same.n += n; else c.lots.push({n, cost:0, until}); me.candy = c; candyLog('grant', n, 0, until); return n; }
+function rsReward(game, r, opt, i){
+  if (r.quit) return toast('그만했어요');
+  const B = id => { giveBuff(id); return `${BUFFS[id].ic} 「${BUFFS[id].name}」 ${BUFFS[id].txt} · 2 시간`; };
+  let msg = '', ok = !!r.ok;
+  if (game === 'coaster'){ if (ok){ const c = rsGrantCandy(1 + (r.score > .8 ? 1 : 0)); stat('rsCoaster'); msg = `끝까지 버텼어요!${c ? ` 별사탕 ${c} 개 ·` : ''} ${B('fun')}`; } }
+  else if (game === 'slide'){ if (ok){ stat('rsSlide'); msg = `물방울 ${r.score} 개! ${B('cool')}`; } }
+  else if (game === 'sauna'){ if (ok){ if (opt.room === 'hot1') stat('rsSauna'); msg = `30 초 버텼어요! ${B(opt.room)}`; } }
+  else if (game === 'camp'){ if (ok){ stat('rsCamp', r.score); msg = `노릇노릇 ${r.score} 개! ${B('fire')}`; } }
+  else if (game === 'boat'){ if (ok){ const list = Object.entries(FISH).filter(([, f])=>f.zone === 'beach' && f.weight <= 10), [id, f] = list[Math.floor(Math.random()*list.length)], st = Math.random() < .35 ? 3 : 2; invAdd('fish:' + fishKey(id, st), 1); stat('rsBoat'); stat('fishCaught'); msg = `먼 바다에서 ${f.name} ${'★'.repeat(st)} 을(를) 낚았어요! ${B('sea')}`; } }
+  else if (game === 'surf'){ me.rsSurfMax = Math.max(me.rsSurfMax|0, r.combo|0); stats().rsSurfMax = me.rsSurfMax; checkAchievements(); if (ok){ msg = `최대 콤보 ${r.combo}! ${B('bal')}`; } }
+  else if (game === 'stage'){ if (ok){ const c = rsGrantCandy(r.score >= .9 ? 2 : 1); stat('rsClaps', r.claps|0); rsWrite({[`show/${i}`]:{uid, nick:String(me.nick||'').slice(0, 8), at:Date.now() + serverOffset}}).catch(()=>{}); msg = `관객 박수 ${r.claps} 번!${c ? ` 별사탕 ${c} 개` : ''} · 2 분 동안 친구들이 박수를 쳐 줄 수 있어요`; } }
+  else if (game === 'photo'){ if (ok){ const n = NPCS.find(x=>x.id === opt.npc); me.photos = me.photos || {}; const first = !me.photos[n.id]; me.photos[n.id] = 1; stats().rsPhotos = Object.keys(me.photos).length; checkAchievements();
+      const pd = me.photoDay || (me.photoDay = {}); let rel = ''; if (pd[n.id] !== today()){ pd[n.id] = today(); addPts(n, 40); rel = ` · ${n.name} 호감도 +40`; } msg = `✨ ${n.name}와(과) 반짝 사진을 찍었어요!${rel}${first ? ' · 처음 찍은 주민' : ''}`; } }
+  else if (game === 'claw'){ if (ok){ const k = r.prize, P = PLUSH[k]; invAdd(plushFurn(k), 1); me.plush = me.plush || {}; me.plush[k] = (me.plush[k]||0) + 1; stats().rsPlush = Object.keys(me.plush).length; checkAchievements(); msg = `🧸 ${P[0]} (${PLUSH_TIER[P[4]]}) 을(를) 뽑았어요! 집에서 [꾸미기]로 놓아요 · 인형 ${Object.keys(me.plush).length}/20`; } }
+  else if (game === 'bowl'){ if (r.strike){ stat('rsStrike'); msg = `🎳 스트라이크! ${B('aim')}`; } else msg = `핀 ${r.pins} 개를 쓰러뜨렸어요 · 스트라이크면 「명중」 버프`; ok = r.strike; }
+  else if (game === 'scuba'){ if (ok){ const got = []; if (r.pearl){ invAdd('forage:g43', r.pearl); got.push(`진주 조개 ${r.pearl}`); } if (r.coral){ invAdd('forage:g42', r.coral); got.push(`산호 조각 ${r.coral}`); } if (r.chest){ const g = r.chest * (5000 + Math.floor(Math.random()*10000)); me.inv.gold += g; stat('rsChest', r.chest); got.push(`보물 상자 ${r.chest} (${g.toLocaleString()} G)`); } msg = `무사히 올라왔어요! ${got.join(' · ')} · ${B('air')}`; } }
+  else if (game === 'balloon'){ if (ok){ stat('rsBalloon'); msg = `진짜 반짝이 5 개! ${B('hawk')}`; } }
+  saveMe(); renderHud();
+  if (msg) say(RS_TYPES.find(T=>T.game === game).name, msg, [], ok ? '' : ''); else toast(game === 'camp' ? '마시멜로가 타 버렸어요 · 다시 해 봐요' : '아쉬워요 · 다시 해 봐요'); }
+function rsMaintGame(i){ rsGame('maint', {}).then(r=>{ if (r && r.ok){ me.rsMaint = today(); stat('rsMaint'); saveMe(); toast('오늘 정비 끝! 손님이 다시 많이 와요'); } else if (r && !r.quit) toast('시간 안에 다 못 치웠어요 · 다시 해 봐요'); rsPanel(i); }); }
+// ===== 리조트 미니게임: rsGame(종류, 옵션) → Promise({ok, score, ...}) · 화면 360×540 =====
+function rsGame(kind, opt){ return new Promise(res=>{
+  const box = document.createElement('div'); box.id = 'rsGame'; box.innerHTML = '<canvas></canvas><button class="mini" id="rsGx">그만하기</button>'; document.body.appendChild(box);
+  const cvs = box.querySelector('canvas'), W = 360, H = 540, K = 2; cvs.width = W*K; cvs.height = H*K; const c = cvs.getContext('2d'); c.scale(K, K);
+  let raf = 0, done = false, t0 = performance.now(), last = t0, held = false;
+  const G = RS_GAMES[kind](c, W, H, opt || {});
+  G.finish = r => { if (done) return; done = true; G.result = r; setTimeout(()=>{ cancelAnimationFrame(raf); box.remove(); removeEventListener('keydown', kd); removeEventListener('keyup', ku); res(r); }, r && r.quit ? 0 : 1300); };
+  const loop = now => { const dt = Math.min(.05, (now - last)/1000); last = now; const t = (now - t0)/1000; if (!done && G.update) G.update(dt, t, held); c.save(); G.draw(t); c.restore(); if (done) rsResultBanner(c, W, H, G.result); raf = requestAnimationFrame(loop); };
+  const xy = e => { const r = cvs.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
+  cvs.addEventListener('pointerdown', e=>{ e.preventDefault(); held = true; if (!done && G.down) G.down(...xy(e)); });
+  cvs.addEventListener('pointermove', e=>{ if (!done && G.move) G.move(...xy(e), held); });
+  addEventListener('pointerup', ()=>{ held = false; if (!done && G.up) G.up(); });
+  const kd = e => { if (!done && G.key) G.key(e.key, true); if (e.key === ' ') held = true; }, ku = e => { if (!done && G.key) G.key(e.key, false); if (e.key === ' ') held = false; };
+  addEventListener('keydown', kd); addEventListener('keyup', ku);
+  box.querySelector('#rsGx').onclick = ()=>G.finish({quit:1});
+  raf = requestAnimationFrame(loop); }); }
+function rsResultBanner(c, W, H, r){ if (!r || r.quit) return; c.save(); c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.roundRect(40, H/2 - 40, W - 80, 80, 20); c.fill(); rsT(c, r.ok || r.strike ? '성공!' : '아쉬워요', W/2, H/2 + 8, 30, r.ok || r.strike ? '#ff5a8a' : '#7a6a7a'); c.restore(); }
+function rsT(c, s, x, y, size = 16, col = '#4a2a3a', align = 'center'){ c.font = `bold ${size}px "Dongle", sans-serif`; c.textAlign = align; c.textBaseline = 'middle'; c.fillStyle = col; c.fillText(s, x, y); }
+function rsBar(c, x, y, w, h, p, col, back = 'rgba(255,255,255,.7)'){ c.fillStyle = back; c.beginPath(); c.roundRect(x, y, w, h, h/2); c.fill(); c.fillStyle = col; c.beginPath(); c.roundRect(x, y, Math.max(h, w*Math.max(0, Math.min(1, p))), h, h/2); c.fill(); }
+function rsButton(c, x, y, w, h, s, col, size = 18){ c.fillStyle = col; c.beginPath(); c.roundRect(x, y, w, h, h/2); c.fill(); rsT(c, s, x + w/2, y + h/2 + 1, size, '#fff'); }
+function rsBlob(c, x, y, s, col){ c.save(); c.translate(x, y); c.scale(s, s); c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.ellipse(0, 2, 20, 6, 0, 0, 7); c.fill(); c.fillStyle = col; c.beginPath(); c.arc(-11, -40, 8, 0, 7); c.arc(11, -40, 8, 0, 7); c.fill(); c.beginPath(); c.arc(0, -22, 22, 0, 7); c.fill(); c.fillStyle = '#2a1a20'; c.beginPath(); c.ellipse(-7, -24, 3, 4, 0, 0, 7); c.ellipse(7, -24, 3, 4, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(255,120,150,.5)'; c.beginPath(); c.ellipse(-13, -16, 5, 3, 0, 0, 7); c.ellipse(13, -16, 5, 3, 0, 0, 7); c.fill(); c.restore(); }
+const inBox = (x, y, bx, by, bw, bh) => x > bx && x < bx + bw && y > by && y < by + bh;
+const rsHead = (c, W, s, right) => { c.fillStyle = 'rgba(255,255,255,.9)'; c.fillRect(0, 0, W, 40); rsT(c, s, 14, 21, 20, '#4a2a3a', 'left'); if (right) rsT(c, right, W - 14, 21, 18, '#c05a7a', 'right'); };
+// 리듬 게임 (서핑 · 공연장 같이 써요): 4 줄로 내려오는 표시가 선에 닿을 때 그 줄을 눌러요
+function rsRhythm(c, W, H, skin){ const notes = [], N = 36, lanes = 4, hitY = 410, speed = 190; let t1 = 1.4; const R = seeded(Date.now() & 0xffff);
+  for (let i = 0; i < N; i++){ t1 += .42 + R()*.38; notes.push({t:t1, l:Math.floor(R()*lanes), st:0}); }
+  let hits = 0, combo = 0, best = 0, flash = [0, 0, 0, 0], msg = '', msgT = 0, T = 0;
+  const laneX = l => 46 + l*90, ARW = ['←','↑','↓','→'];
+  const hit = l => { flash[l] = .15; const n = notes.find(n=>n.st === 0 && n.l === l && Math.abs(n.t - T) < .2); if (n){ n.st = 1; hits++; combo++; best = Math.max(best, combo); msg = Math.abs(n.t - T) < .08 ? 'Perfect!' : 'Good'; } else { combo = 0; msg = 'Miss'; } msgT = .5; };
+  const G = { update(dt, t){ T = t; for (let l = 0; l < 4; l++) flash[l] = Math.max(0, flash[l] - dt); msgT -= dt; for (const n of notes) if (n.st === 0 && T - n.t > .22){ n.st = 2; combo = 0; }
+      if (T > notes[N-1].t + 1){ const ratio = hits / N; G.finish({ok:ratio >= skin.need, score:ratio, combo:best, claps:Math.round(hits*3 + best*2)}); } },
+    draw(t){ skin.bg(c, W, H, t, combo); for (let l = 0; l < 4; l++){ c.fillStyle = flash[l] > 0 ? 'rgba(255,255,255,.45)' : 'rgba(255,255,255,.14)'; c.fillRect(laneX(l) - 34, 60, 68, 400); }
+      c.fillStyle = '#fff'; c.fillRect(10, hitY - 2, W - 20, 4);
+      for (const n of notes){ if (n.st) continue; const y = hitY - (n.t - T)*speed; if (y < 40 || y > H) continue; c.fillStyle = skin.col[n.l]; c.beginPath(); c.arc(laneX(n.l), y, 22, 0, 7); c.fill(); rsT(c, skin.sym ? skin.sym[n.l] : ARW[n.l], laneX(n.l), y + 1, 22, '#fff'); }
+      for (let l = 0; l < 4; l++) rsButton(c, laneX(l) - 38, 468, 76, 54, skin.sym ? skin.sym[l] : ARW[l], skin.col[l], 26);
+      rsHead(c, W, skin.title, `콤보 ${combo} · ${hits}/${N}`); if (msgT > 0) rsT(c, msg, W/2, 340, 30, '#fff'); },
+    down(x, y){ if (y > 450) hit(Math.max(0, Math.min(3, Math.floor((x - 1)/90)))); },
+    key(k, d){ if (!d) return; const l = {ArrowLeft:0, ArrowUp:1, ArrowDown:2, ArrowRight:3}[k]; if (l != null) hit(l); } };
+  return G; }
+const RS_GAMES = {
+  // 정비: 10 초 안에 먼지 8 개 치우기
+  maint(c, W, H){ const R = seeded(Date.now() & 0xffff), dirt = Array.from({length:8}, ()=>({x:40 + R()*280, y:90 + R()*380, on:1})); let T = 0;
+    return { update(dt, t){ T = t; if (dirt.every(d=>!d.on)) this.finish({ok:1}); else if (t > 10) this.finish({ok:0}); },
+      draw(t){ c.fillStyle = '#fff4ea'; c.fillRect(0, 0, W, H); for (let y = 60; y < H; y += 40) for (let x = (y/40%2)*20; x < W; x += 40){ c.fillStyle = 'rgba(232,180,150,.18)'; c.fillRect(x, y, 20, 20); }
+        for (const d of dirt) if (d.on){ c.fillStyle = '#b8a090'; c.beginPath(); c.arc(d.x, d.y, 20, 0, 7); c.arc(d.x + 12, d.y - 6, 12, 0, 7); c.arc(d.x - 10, d.y + 8, 11, 0, 7); c.fill(); rsT(c, '먼지', d.x, d.y, 14, '#fff'); }
+        rsHead(c, W, '🧹 오늘의 정비', `${Math.max(0, 10 - T).toFixed(1)} 초`); rsBar(c, 20, 50, W - 40, 8, 1 - T/10, '#ff9ab8'); },
+      down(x, y){ for (const d of dirt) if (d.on && Math.hypot(x - d.x, y - d.y) < 30){ d.on = 0; break; } } }; },
+  // 롤러코스터: 기울기가 흔들려요 · 왼쪽/오른쪽을 눌러 가운데를 지켜요 (20 초)
+  coaster(c, W, H){ let v = 0, f = 0, T = 0, green = 0, push = 0; const R = seeded(Date.now() & 0xffff);
+    return { update(dt, t, held){ T = t; f += (R() - .5)*dt*7; f = Math.max(-1.2, Math.min(1.2, f*.995)); v += (f + push*2.4)*dt*.8; v *= .995; if (Math.abs(v) < .3) green += dt; if (Math.abs(v) >= 1) this.finish({ok:0, score:green/20}); else if (t >= 20) this.finish({ok:1, score:green/20}); },
+      draw(t){ const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#ffd8e8'); g.addColorStop(1, '#fff4e0'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+        c.strokeStyle = '#ff7fa8'; c.lineWidth = 8; c.beginPath(); for (let x = -10; x <= W + 10; x += 10) c.lineTo(x, 280 + Math.sin((x + t*220)/60)*40); c.stroke();
+        for (let x = (-(t*220)%60); x < W; x += 60){ c.fillStyle = '#e88aa8'; c.fillRect(x, 300 + Math.sin((x + t*220)/60)*40, 5, 200); }
+        c.save(); c.translate(W/2, 270 + Math.sin((W/2 + t*220)/60)*40); c.rotate(v*.7); c.fillStyle = '#5a8aff'; c.beginPath(); c.roundRect(-44, -22, 88, 30, 10); c.fill(); rsBlob(c, -16, -12, .6, '#ff9ab8'); rsBlob(c, 18, -12, .6, '#9ad8ff'); c.restore();
+        rsHead(c, W, '🎢 롤러코스터', `${Math.max(0, 20 - T).toFixed(0)} 초`); c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.roundRect(30, 370, 300, 44, 14); c.fill(); rsBar(c, 50, 386, 260, 12, 1, '#e8eef8'); c.fillStyle = 'rgba(90,200,120,.5)'; c.fillRect(180 - 39, 384, 78, 16); c.fillStyle = '#ff5a8a'; c.beginPath(); c.arc(180 + v*130, 392, 9, 0, 7); c.fill();
+        rsButton(c, 24, 440, 150, 56, '◀ 왼쪽', '#ff9ab8', 22); rsButton(c, 186, 440, 150, 56, '오른쪽 ▶', '#7ab8ff', 22); },
+      down(x, y){ if (y > 420) push = x < W/2 ? -1 : 1; }, up(){ push = 0; }, key(k, d){ if (k === 'ArrowLeft') push = d ? -1 : 0; if (k === 'ArrowRight') push = d ? 1 : 0; } }; },
+  // 워터 슬라이드: 손가락을 따라 좌우로 움직여 물방울 줍기 · 빨간 표시 3 번 닿으면 끝 (25 초 · 물방울 10 개)
+  slide(c, W, H){ let px = W/2, tx = W/2, T = 0, got = 0, bad = 0, items = [], spawn = 0; const R = seeded(Date.now() & 0xffff);
+    const cx = y => W/2 + Math.sin((y + T*180)/110)*70;
+    return { update(dt, t){ T = t; px += (tx - px)*Math.min(1, dt*8); spawn -= dt; if (spawn <= 0){ spawn = .45; const red = R() < .3; items.push({y:40, dx:(R() - .5)*90, red}); }
+        for (const it of items){ it.y += 260*dt; const ix = cx(it.y) + it.dx; if (!it.hit && Math.abs(it.y - 440) < 20 && Math.abs(ix - px) < 28){ it.hit = 1; if (it.red){ bad++; } else got++; } }
+        items = items.filter(it=>it.y < H + 20 && !it.hit); px = Math.max(cx(440) - 90, Math.min(cx(440) + 90, px));
+        if (bad >= 3) this.finish({ok:0, score:got}); else if (t >= 25) this.finish({ok:got >= 10, score:got}); },
+      draw(t){ c.fillStyle = '#bfeaff'; c.fillRect(0, 0, W, H); c.lineCap = 'round'; c.strokeStyle = '#ffd36a'; c.lineWidth = 210; c.beginPath(); for (let y = 0; y <= H; y += 20) c.lineTo(cx(y), y); c.stroke(); c.strokeStyle = '#7fd4f0'; c.lineWidth = 180; c.stroke();
+        for (const it of items){ const ix = cx(it.y) + it.dx; if (it.red){ c.fillStyle = '#ff5a5a'; c.beginPath(); c.roundRect(ix - 14, it.y - 10, 28, 20, 6); c.fill(); rsT(c, '!', ix, it.y + 1, 18, '#fff'); } else { c.fillStyle = '#fff6a0'; c.beginPath(); c.arc(ix, it.y, 10, 0, 7); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(ix - 3, it.y - 3, 3, 0, 7); c.fill(); } }
+        c.fillStyle = '#ff8aa8'; c.beginPath(); c.ellipse(px, 446, 30, 13, 0, 0, 7); c.fill(); c.fillStyle = '#7fd4f0'; c.beginPath(); c.ellipse(px, 446, 14, 6, 0, 0, 7); c.fill(); rsBlob(c, px, 448, .7, '#ff9ab8');
+        rsHead(c, W, '🛟 워터 슬라이드', `물방울 ${got}/10 · ❤ ${3 - bad}`); rsBar(c, 20, 50, W - 40, 8, T/25, '#7ab8ff'); },
+      down(x){ tx = x; }, move(x, y, held){ if (held) tx = x; }, key(k, d){ if (d && k === 'ArrowLeft') tx = px - 60; if (d && k === 'ArrowRight') tx = px + 60; } }; },
+  // 찜질방: 뜨거움이 차올라요 · 눌러서 부채질 · 꽉 차면 끝 (30 초)
+  sauna(c, W, H, opt){ const fast = {hot1:1.3, hot2:1.05, hot3:.85}[opt.room] || 1; let heat = .3, T = 0, fanT = 0;
+    return { update(dt, t){ T = t; heat += dt*.13*fast*(1 + t/30); fanT -= dt; if (heat >= 1) this.finish({ok:0}); else if (t >= 30) this.finish({ok:1}); },
+      draw(t){ const ice = opt.room === 'hot2'; c.fillStyle = ice ? '#d8f0ff' : '#ffe2c8'; c.fillRect(0, 0, W, H); c.fillStyle = ice ? '#9ad0f0' : '#c87a5a'; c.beginPath(); c.roundRect(20, 80, W - 40, 300, 30); c.fill();
+        for (let i = 0; i < 4; i++){ c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 4; c.beginPath(); const x = 70 + i*70; c.moveTo(x, 360); c.bezierCurveTo(x - 14, 300 - Math.sin(t*3 + i)*10, x + 14, 260, x, 200); c.stroke(); }
+        rsBlob(c, W/2, 330, 1.3, '#ff9ab8'); c.fillStyle = '#ffe0ec'; c.beginPath(); c.ellipse(W/2, 262, 30, 13, 0, Math.PI, 0); c.fill(); c.beginPath(); c.arc(W/2 - 22, 262, 9, 0, 7); c.arc(W/2 + 22, 262, 9, 0, 7); c.fill();
+        if (fanT > 0){ c.fillStyle = '#7ab8ff'; c.beginPath(); c.moveTo(W/2 + 60, 240); c.arc(W/2 + 60, 240, 40, -1.2 + Math.sin(t*30)*.3, -.2 + Math.sin(t*30)*.3); c.fill(); }
+        rsHead(c, W, {hot1:'🔥 불가마', hot2:'🧊 얼음방', hot3:'🧂 소금방'}[opt.room] || '♨️ 찜질방', `${Math.max(0, 30 - T).toFixed(0)} 초`);
+        rsT(c, ice ? '추워요!' : '뜨거워요!', 60, 400, 18, '#a05a3a', 'left'); rsBar(c, 20, 412, W - 40, 18, heat, heat > .75 ? '#ff4a4a' : '#ff9a5a', 'rgba(255,255,255,.8)'); rsButton(c, 60, 450, 240, 60, '🪭 부채질 (탭!)', '#ff7fa8', 22); },
+      down(x, y){ heat = Math.max(0, heat - .045); fanT = .15; }, key(k, d){ if (d && k === ' ') { heat = Math.max(0, heat - .045); fanT = .15; } } }; },
+  // 캠핑장: 누르고 있으면 구워져요 · 노릇한 칸에서 「빼기」 · 3 개 중 2 개 성공
+  camp(c, W, H){ let p = 0, n = 0, good = 0, roast = false, T = 0, msg = '', msgT = 0;
+    const take = () => { const ok = p >= .55 && p <= .78; if (ok) good++; msg = ok ? '노릇노릇!' : p < .55 ? '덜 구워졌어요' : '탔어요...'; msgT = .9; n++; p = 0; if (n >= 3) G.finish({ok:good >= 2, score:good}); };
+    const G = { update(dt, t, held){ T = t; msgT -= dt; if (roast) p += dt*.32; if (p >= 1){ take(); } },
+      draw(t){ const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1a1a40'); g.addColorStop(1, '#3a2a5a'); c.fillStyle = g; c.fillRect(0, 0, W, H); for (let i = 0; i < 40; i++){ c.fillStyle = '#fff'; c.fillRect((i*73)%W, 50 + (i*37)%200, 1.6, 1.6); }
+        c.fillStyle = '#2a3a2a'; c.fillRect(0, 330, W, 210); const fl = c.createRadialGradient(180, 330, 4, 180, 330, 90); fl.addColorStop(0, 'rgba(255,220,120,.9)'); fl.addColorStop(1, 'rgba(255,120,40,0)'); c.fillStyle = fl; c.fillRect(80, 230, 200, 200);
+        c.fillStyle = '#ff9a3a'; c.beginPath(); c.moveTo(150, 360); c.quadraticCurveTo(165, 300 - Math.sin(t*10)*6, 180, 270); c.quadraticCurveTo(196, 300, 210, 360); c.fill();
+        const cols = ['#fff8f0', '#ffe8c0', '#e8b878', '#a06a3a', '#3a2a2a'], ci = Math.min(4, Math.floor(p*5)); c.strokeStyle = '#a07a5a'; c.lineWidth = 4; c.beginPath(); c.moveTo(330, 420); c.lineTo(196, 290); c.stroke(); c.save(); c.translate(190, 282); c.rotate(roast ? t*4 : 0); c.fillStyle = cols[ci]; c.beginPath(); c.roundRect(-13, -15, 26, 30, 9); c.fill(); c.restore();
+        rsHead(c, W, '🔥 마시멜로 굽기', `노릇 ${good} · ${n}/3`); c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.roundRect(20, 54, W - 40, 34, 12); c.fill(); cols.forEach((cc, i)=>{ c.fillStyle = cc; c.fillRect(30 + i*60, 62, 58, 18); }); c.strokeStyle = '#3a9a5a'; c.lineWidth = 3; c.strokeRect(30 + .55*300, 60, .23*300, 22); c.fillStyle = '#ff5a8a'; c.beginPath(); c.moveTo(30 + p*300, 90); c.lineTo(24 + p*300, 100); c.lineTo(36 + p*300, 100); c.fill();
+        if (msgT > 0) rsT(c, msg, W/2, 200, 28, '#fff6c8'); rsButton(c, 24, 450, 150, 60, roast ? '굽는 중...' : '누르고 굽기', '#ff8a4a', 18); rsButton(c, 186, 450, 150, 60, '지금 빼기!', '#ffb84a', 20); },
+      down(x, y){ if (y > 430 && x < W/2) roast = true; else if (y > 430) { roast = false; take(); } }, up(){ roast = false; }, key(k, d){ if (k === ' ') roast = d; if (d && k === 'Enter') take(); } };
+    return G; },
+  // 낚싯배: 큰 그림자를 눌러 줄을 내리고 → 당김 세기를 초록 칸에 맞춰 버티기
+  boat(c, W, H){ const R = seeded(Date.now() & 0xffff); let st = 'find', fish = Array.from({length:4}, (_, i)=>({x:60 + R()*240, y:220 + R()*240, vx:(R() - .5)*60, big:i === 0})), ten = .5, prog = 0, zone = .5, T = 0, pull = false, miss = 0;
+    return { update(dt, t, held){ T = t; for (const f of fish){ f.x += f.vx*dt; if (f.x < 40 || f.x > 320) f.vx *= -1; }
+        if (st === 'reel'){ zone += Math.sin(t*1.7)*dt*.35; zone = Math.max(.2, Math.min(.8, zone)); ten += (pull ? .9 : -.7)*dt; ten = Math.max(0, Math.min(1, ten)); if (Math.abs(ten - zone) < .14) prog += dt/6; else prog -= dt/12; prog = Math.max(0, prog); if (prog >= 1) this.finish({ok:1}); else if (ten >= 1 || (ten <= 0 && t > 3)) { this.finish({ok:0}); } }
+        if (t > 40) this.finish({ok:0}); },
+      draw(t){ const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#9ad8ff'); g.addColorStop(1, '#1a5a9a'); c.fillStyle = g; c.fillRect(0, 0, W, H); c.fillStyle = '#c86a4a'; c.beginPath(); c.moveTo(10, 120); c.lineTo(190, 120); c.lineTo(170, 150); c.lineTo(30, 150); c.fill(); rsBlob(c, 140, 122, .6, '#ff9ab8');
+        for (const f of fish){ c.fillStyle = f.big ? 'rgba(10,30,60,.6)' : 'rgba(10,30,60,.35)'; const s = f.big ? 1.5 : .8; c.beginPath(); c.ellipse(f.x, f.y, 34*s, 14*s, 0, 0, 7); c.fill(); c.beginPath(); c.moveTo(f.x + 30*s*Math.sign(f.vx||1), f.y); c.lineTo(f.x + 46*s*Math.sign(f.vx||1), f.y - 10*s); c.lineTo(f.x + 46*s*Math.sign(f.vx||1), f.y + 10*s); c.fill(); }
+        rsHead(c, W, '🚤 먼 바다 낚시', st === 'find' ? '큰 그림자를 눌러요' : '버티기!');
+        if (st === 'reel'){ c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(180, 100); c.lineTo(fish[0].x, fish[0].y); c.stroke(); c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.roundRect(20, 54, W - 40, 60, 12); c.fill(); rsBar(c, 34, 64, W - 68, 14, 1, '#e8eef8'); c.fillStyle = 'rgba(90,200,120,.55)'; c.fillRect(34 + (zone - .14)*(W - 68), 62, .28*(W - 68), 18); c.fillStyle = '#ff5a8a'; c.beginPath(); c.arc(34 + ten*(W - 68), 71, 9, 0, 7); c.fill(); rsBar(c, 34, 90, W - 68, 10, prog, '#ffd36a', '#f2e6ea'); rsButton(c, 60, 470, 240, 56, pull ? '당기는 중!' : '누르고 있으면 당겨요', '#5a8ad8', 18); }
+        else if (miss > 0) rsT(c, '작은 물고기예요 · 큰 그림자!', W/2, 500, 18, '#fff'); },
+      down(x, y){ if (st === 'find'){ const f = fish.find(f=>Math.hypot(f.x - x, f.y - y) < (f.big ? 56 : 32)); if (f && f.big){ st = 'reel'; f.vx *= .3; } else if (f) miss++; } else pull = true; }, up(){ pull = false; }, key(k, d){ if (k === ' ') pull = d; } }; },
+  surf(c, W, H){ return rsRhythm(c, W, H, {title:'🏄 파도 타기', need:.7, col:['#7ab8ff', '#5ac8b8', '#ff9ab8', '#ffb84a'], bg:(c, W, H, t, combo)=>{ const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#ffe8c8'); g.addColorStop(1, '#3aa8d8'); c.fillStyle = g; c.fillRect(0, 0, W, H); c.fillStyle = 'rgba(255,255,255,.35)'; for (let i = 0; i < 6; i++){ c.beginPath(); c.ellipse(((i*80 + t*60)%(W + 80)) - 40, 120 + i*50, 60, 8, 0, 0, 7); c.fill(); } rsBlob(c, W/2 + Math.sin(t*2)*60, 150 - Math.min(60, combo*3), .7, '#ff9ab8'); }}); },
+  stage(c, W, H){ return rsRhythm(c, W, H, {title:'🎭 무대 공연', need:.6, col:['#ff7fa8', '#7ab8ff', '#ffd36a', '#9ad89a'], sym:['♪','♫','★','♥'], bg:(c, W, H, t, combo)=>{ c.fillStyle = '#2a1a3a'; c.fillRect(0, 0, W, H); for (let i = 0; i < 3; i++){ c.save(); c.globalAlpha = .25; c.fillStyle = ['#ff7fa8','#7ab8ff','#ffe07a'][i]; c.beginPath(); c.moveTo(60 + i*120, 40); c.lineTo(100 + i*30 + Math.sin(t + i)*40, 300); c.lineTo(180 + i*30 + Math.sin(t + i)*40, 300); c.fill(); c.restore(); } rsBlob(c, W/2, 130, .8, '#ff9ab8'); for (let i = 0; i < 6; i++) rsBlob(c, 30 + i*60, 528, .45, ['#9ad8ff','#ffe08a','#c8b3ff','#9ad89a','#ffb3c6','#ffd0a0'][i]); }}); },
+  // 사진관: 주민이 보여 주는 포즈 4 개를 기억했다가 똑같이 눌러요
+  photo(c, W, H, opt){ const R = seeded(Date.now() & 0xffff), P = ['✌️','🫶','🙌','🤸'], seq = Array.from({length:4}, ()=>Math.floor(R()*4)); let st = 'show', T = 0, ans = [], flashT = 0; const n = NPCS.find(x=>x.id === opt.npc) || NPCS[0];
+    return { update(dt, t){ T = t; flashT -= dt; if (st === 'show' && t > seq.length*1 + .8) st = 'input'; },
+      draw(t){ const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#ffb08a'); g.addColorStop(1, '#ffd8e8'); c.fillStyle = g; c.fillRect(0, 0, W, H); c.fillStyle = '#fff0a0'; c.beginPath(); c.arc(W/2, 200, 50, 0, 7); c.fill(); c.fillStyle = '#7ad0f0'; c.fillRect(0, 220, W, 70); c.fillStyle = '#f7e2b0'; c.fillRect(0, 290, W, 250);
+        rsBlob(c, 130, 340, 1.1, '#ff9ab8'); rsBlob(c, 240, 340, 1.1, '#ffd0a0'); rsT(c, n.name, 240, 358, 16, '#7a3a5a'); rsT(c, '나', 130, 358, 16, '#7a3a5a');
+        const k = Math.floor((t - .4)/1); if (st === 'show' && k >= 0 && k < seq.length && (t - .4)%1 < .8){ c.font = '44px sans-serif'; c.textAlign = 'center'; c.fillText(P[seq[k]], 240, 270); rsT(c, `${k + 1}/4`, 240, 230, 16, '#fff'); }
+        if (st === 'input' && ans.length) { c.font = '44px sans-serif'; c.textAlign = 'center'; c.fillText(P[ans[ans.length - 1]], 130, 270); }
+        if (flashT > 0){ c.fillStyle = `rgba(255,255,255,${flashT*2})`; c.fillRect(0, 0, W, H); }
+        rsHead(c, W, '📸 사진관', st === 'show' ? `${n.name}의 포즈를 기억해요` : `똑같이 · ${ans.length}/4`); P.forEach((p, i)=>rsButton(c, 14 + i*86, 460, 78, 60, p, st === 'input' ? '#ff9ab8' : '#d8c8d0', 30)); },
+      down(x, y){ if (st !== 'input' || y < 450) return; const i = Math.max(0, Math.min(3, Math.floor((x - 10)/86))); ans.push(i); if (seq[ans.length - 1] !== i){ this.finish({ok:0}); return; } if (ans.length === 4){ flashT = .5; this.finish({ok:1}); } } }; },
+  // 인형 뽑기: 집게가 좌우로 움직여요 · 「잡기」 를 누르면 내려가요 · 인형 위에서 잡으면 성공
+  claw(c, W, H){ const R = seeded(Date.now() & 0xffff), prizes = Array.from({length:6}, (_, i)=>({x:70 + i*44 + (R() - .5)*12, k:rsRollPlush()})); let x = 60, dir = 1, st = 'move', cy = 120, T = 0, grab = null;
+    return { update(dt, t){ T = t; if (st === 'move'){ x += dir*120*dt; if (x > 310 || x < 50) dir *= -1; if (t > 15){ st = 'drop'; } }
+        else if (st === 'drop'){ cy += 220*dt; if (cy >= 330){ st = 'up'; const p = prizes.find(p=>Math.abs(p.x - x) < 14); if (p && R() < .85) grab = p; } }
+        else if (st === 'up'){ cy -= 160*dt; if (grab) grab.y = cy + 40; if (cy <= 120) this.finish(grab ? {ok:1, prize:grab.k} : {ok:0}); } },
+      draw(t){ c.fillStyle = '#ffe0f0'; c.fillRect(0, 0, W, H); c.fillStyle = '#ff8ac0'; c.beginPath(); c.roundRect(20, 50, 320, 420, 24); c.fill(); c.fillStyle = 'rgba(220,240,255,.85)'; c.beginPath(); c.roundRect(36, 70, 288, 300, 12); c.fill();
+        for (const p of prizes){ if (p === grab) continue; drawPlush(c, p.x, 368, p.k, .3); } if (grab) drawPlush(c, grab.x, grab.y + 30, grab.k, .3);
+        c.fillStyle = '#b0b4c4'; c.fillRect(x - 2, 70, 4, cy - 70); c.fillStyle = '#9094a8'; c.beginPath(); c.roundRect(x - 16, cy - 6, 32, 12, 4); c.fill(); c.strokeStyle = '#9094a8'; c.lineWidth = 4; c.beginPath(); c.moveTo(x - 12, cy + 6); c.quadraticCurveTo(x - (st === 'move' ? 26 : 16), cy + 24, x - 10, cy + 34); c.moveTo(x + 12, cy + 6); c.quadraticCurveTo(x + (st === 'move' ? 26 : 16), cy + 24, x + 10, cy + 34); c.stroke();
+        rsHead(c, W, '🕹️ 인형 뽑기', `코인 ${me.rsCoin|0}`); rsButton(c, 100, 400, 160, 54, st === 'move' ? '잡기!' : '...', '#ffd36a', 22); rsT(c, '흔함 60 · 희귀 30 · 아주 희귀 9 · 전설 1 %', W/2, 500, 15, '#8a4a6a'); },
+      down(x_, y){ if (st === 'move' && y > 380) st = 'drop'; }, key(k, d){ if (d && k === ' ' && st === 'move') st = 'drop'; } }; },
+  // 볼링: 방향 게이지를 멈추고 → 힘 게이지를 멈춰요 · 가운데 + 센 힘 = 스트라이크
+  bowl(c, W, H){ let st = 'aim', a = 0, p = 0, T = 0, ball = null, pins = 0, aimV = 0, powV = 0;
+    return { update(dt, t){ T = t; if (st === 'aim') a = Math.sin(t*2.6); else if (st === 'pow') p = .5 + .5*Math.sin((t - powV)*3.4 - 1.57); else if (st === 'roll'){ ball.y -= 420*dt*(.6 + p*.6); ball.x += a*60*dt; if (ball.y < 150){ st = 'end'; const err = Math.abs(a); pins = err < .12 && p > .8 ? 10 : Math.max(0, Math.min(9, Math.round(10 - err*14 - (1 - p)*6))); this.finish({strike:pins === 10, pins, ok:pins === 10}); } } },
+      draw(t){ c.fillStyle = '#3a2a4a'; c.fillRect(0, 0, W, H); c.fillStyle = '#f0c890'; c.beginPath(); c.moveTo(140, 100); c.lineTo(220, 100); c.lineTo(320, 540); c.lineTo(40, 540); c.fill();
+        if (st !== 'end' || pins < 10) for (const [r, n] of [[0, 4], [1, 3], [2, 2], [3, 1]]) for (let i = 0; i < n; i++){ const x = 180 - (n - 1)*11 + i*22, y = 110 + (3 - r)*10; c.fillStyle = '#fff'; c.beginPath(); c.ellipse(x, y + 10, 7, 12, 0, 0, 7); c.fill(); c.fillStyle = '#ff5a6a'; c.fillRect(x - 6, y + 2, 12, 3); }
+        const bx = ball ? ball.x : 180, by = ball ? ball.y : 470; c.fillStyle = '#8a6ad8'; c.beginPath(); c.arc(bx, by, 22, 0, 7); c.fill(); c.fillStyle = '#3a2a6a'; for (const [dx, dy] of [[-6, -8], [4, -10], [0, 0]]){ c.beginPath(); c.arc(bx + dx, by + dy, 3, 0, 7); c.fill(); }
+        if (st === 'aim'){ c.strokeStyle = 'rgba(255,90,140,.8)'; c.setLineDash([8, 8]); c.lineWidth = 3; c.beginPath(); c.moveTo(180, 450); c.lineTo(180 + a*90, 140); c.stroke(); c.setLineDash([]); }
+        rsHead(c, W, '🎳 볼링', st === 'aim' ? '방향을 멈춰요' : st === 'pow' ? '힘을 멈춰요' : ''); c.fillStyle = 'rgba(255,255,255,.92)'; c.beginPath(); c.roundRect(14, 50, 170, 50, 12); c.fill(); rsT(c, '방향', 30, 66, 14, '#7a5a6a', 'left'); rsBar(c, 70, 60, 100, 10, .5 + a*.5, '#7ab8ff'); rsT(c, '힘', 30, 88, 14, '#7a5a6a', 'left'); rsBar(c, 70, 82, 100, 10, p, '#ff7fa8');
+        if (st === 'end' && pins === 10){ rsT(c, 'STRIKE!', W/2, 260, 40, '#ffe07a'); } else if (st === 'end') rsT(c, `${pins} 핀`, W/2, 260, 34, '#fff'); },
+      down(){ if (st === 'aim'){ st = 'pow'; powV = T; aimV = a; } else if (st === 'pow'){ st = 'roll'; ball = {x:180, y:470}; } }, key(k, d){ if (d && k === ' ') this.down(); } }; },
+  // 스쿠버: 손가락 쪽으로 헤엄쳐요 · 보물을 줍고 산소가 떨어지기 전에 위(수면)로 올라와요
+  scuba(c, W, H){ const R = seeded(Date.now() & 0xffff), items = []; for (let i = 0; i < 7; i++) items.push({x:40 + R()*280, y:200 + R()*300, k:i < 3 ? 'pearl' : i < 6 ? 'coral' : 'chest'}); let px = W/2, py = 80, tx = px, ty = py, o2 = 1, T = 0, bag = [], under = false;
+    return { update(dt, t, held){ T = t; if (held){ px += (tx - px)*Math.min(1, dt*2.4); py += (ty - py)*Math.min(1, dt*2.4); } py = Math.max(60, Math.min(510, py)); px = Math.max(20, Math.min(340, px)); if (py > 100) under = true; o2 -= dt/32;
+        for (const it of items) if (!it.got && Math.hypot(it.x - px, it.y - py) < 26){ it.got = 1; bag.push(it.k); }
+        if (o2 <= 0) this.finish({ok:0}); else if (under && py < 76 && bag.length){ const n = k => bag.filter(b=>b === k).length; this.finish({ok:1, pearl:n('pearl'), coral:n('coral'), chest:n('chest')}); } },
+      draw(t){ const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#9ae4ff'); g.addColorStop(.12, '#5ac8f0'); g.addColorStop(1, '#0a3a6a'); c.fillStyle = g; c.fillRect(0, 0, W, H); c.fillStyle = 'rgba(255,255,255,.5)'; c.fillRect(0, 70, W, 3);
+        c.fillStyle = '#e8c890'; c.beginPath(); c.moveTo(0, 510); c.quadraticCurveTo(180, 480, 360, 515); c.lineTo(360, 540); c.lineTo(0, 540); c.fill();
+        for (const it of items){ if (it.got) continue; if (it.k === 'pearl'){ c.fillStyle = '#fff4f0'; c.beginPath(); c.ellipse(it.x, it.y, 12, 8, 0, 0, 7); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(it.x, it.y - 2, 4, 0, 7); c.fill(); } else if (it.k === 'coral'){ c.strokeStyle = '#ff8aa8'; c.lineWidth = 5; c.lineCap = 'round'; for (const a of [-.4, 0, .4]){ c.beginPath(); c.moveTo(it.x, it.y + 12); c.lineTo(it.x + Math.sin(a)*16, it.y - 12); c.stroke(); } } else { c.fillStyle = '#a06a3a'; c.beginPath(); c.roundRect(it.x - 18, it.y - 12, 36, 24, 5); c.fill(); c.fillStyle = '#ffd040'; c.beginPath(); c.arc(it.x, it.y, 4, 0, 7); c.fill(); } }
+        rsBlob(c, px, py + 18, .7, '#ff9ab8'); c.fillStyle = 'rgba(180,230,255,.75)'; c.beginPath(); c.roundRect(px - 14, py - 14, 28, 12, 5); c.fill(); for (let i = 0; i < 3; i++){ c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.arc(px + 10 + i*3, py - 20 - ((t*40 + i*12)%50), 3 + i, 0, 7); c.fill(); }
+        rsHead(c, W, '🤿 스쿠버 다이빙', `🎒 ${bag.length}`); rsT(c, '산소', 16, 52, 14, '#fff', 'left'); rsBar(c, 50, 46, 160, 12, o2, o2 < .3 ? '#ff5a5a' : '#5ac8ff'); if (bag.length && py > 100) rsT(c, '↑ 위로 올라와야 가져가요', W/2, 92, 16, '#fff'); },
+      down(x, y){ tx = x; ty = y; }, move(x, y, held){ if (held){ tx = x; ty = y; } } }; },
+  // 열기구: 불을 눌러 높이를 초록 칸에 · 돌풍과 구름 · 1.2 초만 반짝이는 진짜 빛을 탭 (가짜는 -5 초) · 60 초 안에 5 개
+  balloon(c, W, H){ const R = seeded(Date.now() & 0xffff); let alt = .5, vy = 0, burn = false, T = 0, left = 60, found = 0, spark = null, nextSp = 1.5, gust = 0, msg = '', msgT = 0; const clouds = [[60, 200], [250, 300], [300, 160]];
+    return { update(dt, t){ T = t; left -= dt; msgT -= dt; vy += (burn ? .55 : -.4)*dt; vy *= .97; alt += vy*dt; alt = Math.max(0, Math.min(1, alt)); gust = Math.sin(t*.9)*.5 + Math.sin(t*2.3)*.3;
+        nextSp -= dt; if (!spark && nextSp <= 0){ spark = {x:60 + R()*240, y:180 + R()*260, fake:R() < .35, t:0}; } if (spark){ spark.t += dt; if (spark.t > (spark.fake ? 2.2 : 1.2)){ spark = null; nextSp = .5 + R()*1.2; } }
+        if (found >= 5) this.finish({ok:1}); else if (left <= 0) this.finish({ok:0}); },
+      draw(t){ const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#9fd6ff'); g.addColorStop(1, '#e8f6ff'); c.fillStyle = g; c.fillRect(0, 0, W, H); c.fillStyle = '#5ab8e0'; c.fillRect(0, 140, W, 400);
+        c.save(); c.translate(170 + gust*20, 330); c.fillStyle = '#f7e2b0'; c.beginPath(); c.ellipse(0, 0, 150, 110, 0, 0, 7); c.fill(); c.fillStyle = '#9edc9a'; c.beginPath(); c.ellipse(-30, -26, 90, 56, 0, 0, 7); c.fill(); c.fillStyle = '#ffd6e4'; c.beginPath(); c.ellipse(30, 50, 80, 32, 0, 0, 7); c.fill(); c.fillStyle = '#8a3a30'; c.beginPath(); c.moveTo(60, 0); c.lineTo(92, -60); c.lineTo(124, 0); c.fill(); c.restore();
+        const ok = Math.abs(alt - .5) < .17, high = alt > .67, low = alt < .33;
+        if (spark && !high){ const a = spark.fake ? .6 : 1; c.fillStyle = spark.fake ? `rgba(255,255,255,${a})` : 'rgba(255,240,140,.85)'; c.beginPath(); c.arc(spark.x, spark.y, spark.fake ? 8 : 13, 0, 7); c.fill(); rsT(c, spark.fake ? '✧' : '✦', spark.x, spark.y + 1, spark.fake ? 14 : 20, '#fff'); if (!spark.fake){ c.strokeStyle = '#ffc840'; c.lineWidth = 3; c.beginPath(); c.arc(spark.x, spark.y, 19, -1.57, -1.57 + 6.28*(1 - spark.t/1.2)); c.stroke(); } }
+        if (high){ c.fillStyle = 'rgba(255,255,255,.92)'; for (const [x, y] of clouds){ c.beginPath(); c.ellipse(x + gust*40, y, 90, 40, 0, 0, 7); c.fill(); } c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(0, 140, W, 400); rsT(c, '너무 높아서 구름 속이에요!', W/2, 270, 20, '#5a7a9a'); }
+        if (low){ c.fillStyle = 'rgba(60,120,60,.55)'; for (let i = 0; i < 8; i++){ c.beginPath(); c.arc(i*50 + 20, 520, 50, 0, 7); c.fill(); } rsT(c, '너무 낮아요! 불을 켜요', W/2, 470, 18, '#fff'); }
+        c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 3; for (const y of [170, 190]){ c.beginPath(); c.moveTo(220 + gust*30, y); c.bezierCurveTo(250, y - 10, 280, y + 10, 330, y); c.stroke(); }
+        rsHead(c, W, '🎈 섬 일주 비행', `남은 시간 ${Math.max(0, left).toFixed(0)}`); c.fillStyle = 'rgba(255,255,255,.92)'; c.beginPath(); c.roundRect(10, 48, 200, 54, 12); c.fill(); rsT(c, '높이', 20, 66, 14, '#7a5a6a', 'left'); rsBar(c, 56, 60, 140, 10, 1, '#e8eef8'); c.fillStyle = 'rgba(90,200,120,.45)'; c.fillRect(56 + .33*140, 56, .34*140, 18); c.fillStyle = '#ff7fa8'; c.beginPath(); c.arc(56 + alt*140, 65, 7, 0, 7); c.fill(); rsT(c, burn ? '🔥 불 켜는 중' : '불 꺼짐', 20, 90, 14, burn ? '#ff6a2a' : '#9a8a9a', 'left');
+        c.fillStyle = 'rgba(255,255,255,.92)'; c.beginPath(); c.roundRect(220, 48, 130, 54, 12); c.fill(); rsT(c, '찾은 반짝이', 285, 64, 13, '#7a5a6a'); rsT(c, '★'.repeat(found) + '☆'.repeat(5 - found), 285, 88, 18, '#ffb820');
+        if (msgT > 0) rsT(c, msg, W/2, 130, 18, '#ff4a6a'); rsButton(c, 14, 476, 120, 50, '🔥 불 (누르기)', '#ff8a4a', 16); },
+      down(x, y){ if (y > 460 && x < 150){ burn = true; return; } if (spark && Math.hypot(spark.x - x, spark.y - y) < 30 && alt <= .67){ if (spark.fake){ left -= 5; msg = '가짜 반짝이! -5 초'; msgT = 1; } else found++; spark = null; nextSp = .6; } },
+      up(){ burn = false; }, key(k, d){ if (k === ' ' || k === 'ArrowUp') burn = d; } }; },
+};
+function rsRollPlush(){ const r = Math.random(), tier = r < .01 ? 4 : r < .10 ? 3 : r < .40 ? 2 : 1, list = PLUSH.map((p, i)=>[p, i]).filter(([p])=>p[4] === tier); return list[Math.floor(Math.random()*list.length)][1]; }
 // ===== 다크 모드: 주민 12 명의 집 = 방탈출 =====
 // 관리자가 다크 모드를 켜면 하루에 한 방씩 열려요 (DARK_ORDER). 여러 명이 같은 방에 들어가 문제 15 개를 같이 풀고,
 // 다 풀면 그 주민이 아주 강한 보스로 깨어나요. 첫 입장부터 2 시간 안에 못 끝내면 방이 처음으로 돌아가요.
@@ -5991,6 +6334,7 @@ function toWorld(cx, cy){ return { x: view.cx + cx/view.zoom, y: view.cy + cy/vi
 function hitTarget(w){
   { const ft = forageTap(w); if (ft) return ft; }
   { const bt_ = bridgeTap(w); if (bt_) return bt_; }
+  { const rt_ = resortTap(w); if (rt_) return rt_; }
   { const mb = mailboxTap(w); if (mb) return mb; }
   for (const [id, o] of others) if (o.down && o.z === zoneId && Math.abs(w.x-o.x) < 40 && Math.abs(w.y-(o.y-10)) < 34) return {x:o.x + 30, y:o.y + 10, act:()=>{ darkRevive = {id, uid:o.uid, at:performance.now()}; toast(`${o.nick} 님을 ${downWords().helping}.... 곁에 있어 줘요`); }};
   const pt = petTap(w); if (pt) return pt;
@@ -6410,6 +6754,7 @@ function frameBody(t){
       ...forageEntities(d, t),
       ...chopEntities(d, t),
       ...bridgeEntities(d, t),
+      ...resortEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>{ const ly = n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0); tag(ctx, n.name, n.x, ly, dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null); if (!admin) dlvMark(ctx, n, ly); }})),
       ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.adm) return drawOtumoAny(d, ctx, o.x, o.y, o.dir||'down', t/1000, !!o.mv, o.look); if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); const um = o.um && isRain() && snowOutside(); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'back'); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'front', o.look?.skin); }, label:()=>{ if (o.adm){ otumoLabel(ctx, o.x, o.y); talkBubble(k,o.x,o.y,t); return; } if (o.down){ const dw = downWords(); tag(ctx, `${o.nick} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,o.nick,o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{ if (admin) adminMobLabel(ctx, mob); }})),
