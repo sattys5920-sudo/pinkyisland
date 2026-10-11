@@ -131,6 +131,7 @@ export const TITLE_FX = {
   solo_60:{atk:.08, dr:.05}, letter_20:{xp:.12}, saw_god:{revive:1, hp:50}, eat_300:{food:.4, hp:60}, faint_30:{revive:1},
   dex_100:{fish:.1, ore:.1, loot:.1}, mg_200:{free:.15}, broke:{loot:.2}, homeless:{speed:.1, sta:30}, legend:{hp:100, atk:.1, dr:.05, xp:.1},
   goal1:{free:.1, xp:.05, crop:.05}, // 고급 노동자 (오늘의 섬 목표 기여 1 위)
+  bridge1:{hp:60, sta:40, xp:.05}, // 다리를 놓은 사람 (섬 복구 다리 기여 1 위)
 };
 const PCT = v => Math.round(v*100) + '%';
 export function titleFxText(f){ if (!f) return ''; const o = [];

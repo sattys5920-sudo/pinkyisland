@@ -760,11 +760,32 @@ const ZONES = {
     {kind:'crystals'},
     {kind:'sign', x:800, y:640, text:'지하 4층 · 고대룡이 잠든 곳'},
   ], trees:[]},
+  // ===== 솜사탕 리조트 섬 (등대 해변 다리를 다 고치면 열려요) · 지도 격자 밖이라 큰 지도에는 안 나와요 =====
+  resort:    {name:'솜사탕 리조트 거리', theme:'resort', isl:1, W:1600, H:1100, grid:[4,-1], places:[
+    {kind:'sign', x:700, y:1000, text:'↓ 다리 · 등대 해변'},
+    {kind:'sign', x:910, y:110, text:'↑ 산호 정글'},
+    {kind:'sign', x:1450, y:470, text:'→ 야자 해변'},
+  ], trees:[]},
+  palmbeach: {name:'야자 해변', theme:'sand', isl:1, W:1600, H:1100, grid:[5,-1], places:[
+    {kind:'seaE'},
+    {kind:'sign', x:690, y:110, text:'↑ 화산 분화구'},
+  ], trees:[]},
+  jungle:    {name:'산호 정글', theme:'jungle', isl:1, W:1600, H:1100, grid:[4,-2], places:[
+    {kind:'pond', x:1120, y:330, rx:170, ry:90},
+    {kind:'sign', x:690, y:1000, text:'추천 레벨 60 · 여럿이 같이 와요'},
+  ], trees:[]},
+  volcano:   {name:'화산 분화구', theme:'volcano', isl:1, W:1600, H:1100, grid:[5,-2], places:[
+    {kind:'lava', x:380, y:340, rx:150, ry:70},
+    {kind:'lava', x:1260, y:800, rx:130, ry:60},
+    {kind:'crater', x:800, y:250},
+    {kind:'sign', x:690, y:1000, text:'추천 레벨 85 · 불꽃 고래 왕'},
+  ], trees:[]},
 };
 { const at = {}; for (const [id,z] of Object.entries(ZONES)) at[z.grid] = id;
   for (const z of Object.values(ZONES)){ const [x,y] = z.grid; z.exits = {}; for (const [k,dx,dy] of [['n',0,-1],['s',0,1],['w',-1,0],['e',1,0]]){ const n = at[[x+dx,y+dy]]; if (n) z.exits[k] = n; } } }
 // 핑크 시장은 공방 거리(북쪽)로만 드나들어요. 옆칸 동굴과는 이어지지 않아요
 delete ZONES.bazaar.exits.w; delete ZONES.cave.exits.e;
+ZONES.resort.exits.s = 'beach'; // 리조트 섬 → 등대 해변 (반대쪽 길은 다리가 다 이어지면 열려요)
 // 넓기만 하고 빈 곳이 많던 구역을 3/4 크기로 줄여요 (집터는 12 집이 들어가야 해서 그대로). 위 숫자는 줄이기 전 기준
 const ZK = 0.75, zk = v => Math.round(v*ZK);
 for (const [id,z] of Object.entries(ZONES)){ if (id==='home' || id==='bazaar' || id==='fest') continue; z.k = ZK; z.W = zk(z.W); z.H = zk(z.H); z.trees = z.trees.map(([x,y])=>[zk(x), zk(y)]); for (const p of z.places){ if (p.x!=null){ p.x = zk(p.x); p.y = zk(p.y); } if (p.rx){ p.rx = zk(p.rx); p.ry = zk(p.ry); } } }
@@ -777,6 +798,9 @@ const THEME = {
   sand:{ground:'#ffe9c2', ground2:'#ffdcaa', path:'#f3cf9a', edge:'#e8c08a'},
   cave:{ground:'#8f8399', ground2:'#7e7289', path:'#a99fb0', edge:'#5b5266'},
   night:{ground:'#7d8fc4', ground2:'#6f80b6', path:'#c3b6d9', edge:'#4b5a8f'},
+  resort:{ground:'#ffe4ec', ground2:'#ffd3e0', path:'#fff3dc', edge:'#ffb0c8'},
+  jungle:{ground:'#82cba2', ground2:'#6dba8f', path:'#eadcae', edge:'#3f9a72'},
+  volcano:{ground:'#a8786a', ground2:'#956659', path:'#d8b49a', edge:'#5a3a34'},
 };
 
 // 동물 주민 12 명: 자리와 모습, 좋아하는 선물 (대사는 npcs.js)
@@ -920,7 +944,10 @@ function rebuildObstacles(){
     if (p.kind==='tree') o.circles.push({x:p.x, y:p.y+40, r:46});
     if (p.kind==='pond') o.ells.push({x:p.x, y:p.y, rx:p.rx, ry:p.ry});
     if (p.kind==='lighthouse') o.rects.push({x:p.x-28, y:p.y-150, w:56, h:155});
-    if (p.kind==='sea') o.rects.push({x:0, y:0, w:z.W, h:250});
+    if (p.kind==='sea'){ if (zoneId==='beach' && bridgeOpen()){ const bx_ = bridgeX(); o.rects.push({x:0, y:0, w:bx_-34, h:250}, {x:bx_+34, y:0, w:z.W-bx_-34, h:250}); } else o.rects.push({x:0, y:0, w:z.W, h:250}); } // 다리가 이어지면 다리 폭만큼 바다를 건널 수 있어요
+    if (p.kind==='seaE') o.rects.push({x:z.W-250, y:0, w:250, h:z.H});
+    if (p.kind==='lava') o.ells.push({x:p.x, y:p.y, rx:p.rx, ry:p.ry});
+    if (p.kind==='crater') o.ells.push({x:p.x, y:p.y, rx:120, ry:56});
     if (p.kind==='mine'){ o.ells.push({x:zk(520),y:zk(900),rx:zk(220),ry:zk(150)}, {x:zk(1080),y:zk(900),rx:zk(220),ry:zk(150)}); }
     if (p.kind==='logs') o.rects.push({x:p.x-60, y:p.y-30, w:120, h:40});
   }
@@ -2262,7 +2289,7 @@ function renderNpcPanel(){
 }
 // ===== 섬 지도 (미니맵) =====
 // 구역 칸을 실제 배치 그대로 그리고, 집·연못·나무·주민·친구·나를 점으로 보여 줘요. 가 본 구역은 눌러서 바로 갈 수 있어요 (기력 10)
-const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', bazaar:'핑크 시장', fest:'축제장', minegate:'광산 입구', cave:'의문의 동굴', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층', cave4:'지하 4층'};
+const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', starhill:'별빛 언덕', pond:'사탕 연못', beach:'등대 해변', seacave:'해식 동굴', meadow:'들판', forest:'먼지 숲', deepforest:'깊은 숲', workshop:'공방 거리', bazaar:'핑크 시장', fest:'축제장', minegate:'광산 입구', cave:'의문의 동굴', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층', cave4:'지하 4층', resort:'리조트 거리', palmbeach:'야자 해변', jungle:'산호 정글', volcano:'화산 분화구'};
 let mapSel = null, mapGeo = null, mapDrawT = 0;
 const visitedZones = () => (me.visited||'home').split(',');
 function renderMap(){
@@ -2306,8 +2333,8 @@ function drawMap(){
   const seen = visitedZones(), cur = zoneId.startsWith('house:') ? 'home' : zoneId;
   // 구역 사이 길
   c.fillStyle = '#ffe0bf';
-  for (const [id,z] of Object.entries(ZONES)){ const g = mapGeo[id]; if (z.exits.e){ c.fillRect(g.x+g.w-4, g.y+g.h/2-3, gap+8, 6); } if (z.exits.s){ c.fillRect(g.x+g.w/2-3, g.y+g.h-4, 6, gap+8); } }
-  for (const [id,z] of Object.entries(ZONES)){
+  for (const [id,z] of Object.entries(ZONES)){ if (z.isl) continue; const g = mapGeo[id]; if (z.exits.e){ c.fillRect(g.x+g.w-4, g.y+g.h/2-3, gap+8, 6); } if (z.exits.s){ c.fillRect(g.x+g.w/2-3, g.y+g.h-4, 6, gap+8); } }
+  for (const [id,z] of Object.entries(ZONES)){ if (z.isl) continue;
     const g = mapGeo[id], T = THEME[z.theme] || THEME.grass, sx = g.w/z.W, sy = g.h/z.H, X = x => g.x + x*sx, Y = y => g.y + y*sy;
     c.save(); c.beginPath(); c.roundRect(g.x, g.y, g.w, g.h, 7); c.fillStyle = T.ground; c.fill(); c.clip();
     // 구역 안 길
@@ -2365,7 +2392,7 @@ const FISH_LIST = [
   ['보석가오리','seacave',3,197,0.88,60,150,'#bf8cff','any'], ['실러캔스','seacave',1,414,0.97,120,200,'#4a5a7a','any'],
 ];
 const FISH = Object.fromEntries(FISH_LIST.map((f,i)=>['f'+String(i+1).padStart(2,'0'), {name:f[0], zone:f[1], weight:f[2], price:f[3], diff:f[4], min:f[5], max:f[6], color:f[7], time:f[8]}]));
-const FISH_ZONES = {pond:1, beach:1, seacave:1, fest:1};
+const FISH_ZONES = {pond:1, beach:1, seacave:1, fest:1, palmbeach:1};
 const STAR_MULT = [0, 1, 1.5, 2.5];
 const isNight = () => { const h = kstHour(); return h >= 19 || h < 5; };
 const fishKey = (id, st) => `${id}_${st}`;
@@ -2376,13 +2403,14 @@ function isWater(x, y){
   for (const p of Z().places){
     if (p.kind==='pond' && ((x-p.x)/p.rx)**2 + ((y-p.y)/p.ry)**2 < 1) return true;
     if (p.kind==='sea' && y < 226) return true;
+    if (p.kind==='seaE' && x > Z().W-226) return true;
   }
   return false;
 }
 let fishing = null; // {phase:'wait'|'bite'|'game', bx, by, biteAt, biteEnd, id}
 function rollFish(){
   const night = isNight();
-  const list = Object.entries(FISH).filter(([,f])=>f.zone===(zoneId==='fest' ? 'pond' : zoneId) && (f.time==='any' || (f.time==='night')===night));
+  const list = Object.entries(FISH).filter(([,f])=>f.zone===(zoneId==='fest' ? 'pond' : zoneId==='palmbeach' ? 'beach' : zoneId) && (f.time==='any' || (f.time==='night')===night));
   const w = f => f.weight * (isRain() && f.weight <= 8 ? 2.2 : 1) * (f.weight <= 8 ? 1 + tfx('fish') : 1); // 칭호: 희귀 물고기 +%
   const total = list.reduce((a,[,f])=>a+w(f),0);
   let r = Math.random()*total; for (const [id,f] of list){ if ((r-=w(f)) < 0) return id; } return list[0][0];
@@ -2614,6 +2642,7 @@ const MINE_ZONES = { // 구역마다 나오는 희귀도와 바위 자리
   cave1:    {tiers:[2,3,4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800],[700,860],[940,860],[640,420],[980,420]]},
   cave2:    {tiers:[3,4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800],[700,860],[940,860]]},
   cave3:    {tiers:[4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800]]},
+  volcano:  {tiers:[3,4,5], sea:false, spots:[[300,560],[520,760],[980,460],[1180,560],[1380,420],[820,820]]},
   cave4:    {tiers:[4,5], sea:false, spots:[[300,300],[480,420],[300,620],[520,800],[1100,300],[1280,440],[1100,640],[1300,800]]},
 };
 for (const mz of Object.values(MINE_ZONES)) mz.spots = mz.spots.map(([x,y])=>[zk(x), zk(y)]);
@@ -2695,9 +2724,15 @@ const MONSTER_LIST = [
   // 지하 보스
   ['수정 거인','cave2',120000,90,35,'#b9a6ff','golem','거인의 수정 심장',12000,0,15000], ['어둠 여왕 거미','cave3',150000,100,60,'#3b2f5a','dust','여왕의 어둠 실',15000,0,18000],
   ['심층의 고대룡','cave4',200000,120,45,'#c94f2f','golem','고대룡의 비늘',25000,0,25000],
+  // 솜사탕 리조트 섬: 산호 정글 (Lv 60~80) · 화산 분화구 (Lv 85~100) · 섬 보스
+  ['소라게 기사','jungle',1500,80,70,'#ff9a7a','crab','소라 방패',300,10], ['산호 해파리','jungle',1400,85,90,'#c8b3ff','ghost','산호 촉수',320,10], ['야자 원숭이','jungle',1600,88,125,'#c8945a','dust','야자 열매',340,9],
+  ['정글 앵무','jungle',1300,92,135,'#7ad86a','bat','무지개 깃털',360,8], ['덩굴 뱀','jungle',1800,90,80,'#5aa84a','plant','덩굴 비늘',380,8], ['산호 거북','jungle',2200,78,35,'#7ad8c8','golem','산호 등딱지',420,7],
+  ['마그마 젤리','volcano',2600,105,60,'#ff7a4a','slime','용암석',500,10], ['흑요석 도마뱀','volcano',3000,112,85,'#4a4060','dust','흑요석',560,9], ['화산재 유령','volcano',2700,115,100,'#6a6070','ghost','화산재',540,9],
+  ['불꽃 새','volcano',2500,120,140,'#ffb02f','bat','불꽃 깃털',600,8], ['달군 바위 게','volcano',3400,108,40,'#8a5a4a','crab','달군 집게',620,7], ['용암 거인','volcano',3500,125,30,'#c94f2f','golem','용암 심장',700,6],
+  ['불꽃 고래 왕','volcano',200000,140,40,'#ff6a4a','golem','불꽃 고래 왕의 비늘',30000,0,30000],
 ];
 const MONSTERS = Object.fromEntries(MONSTER_LIST.map((m,i)=>['m'+String(i+1).padStart(2,'0'), {name:m[0], zone:m[1], hp:m[2], atk:m[3], speed:m[4], color:m[5], shape:m[6], drop:m[7], dropPrice:m[8], weight:m[9], gold:m[10]||0, boss:!!m[10], strong:!!m[10] || i >= 35}]));
-const COMBAT_ZONES = {forest:6, deepforest:7, seacave:5, cave:7, starhill:5, cave1:7, cave2:7, cave3:6, cave4:6}; // 구역마다 한 번에 나오는 몬스터 수 (보스 빼고)
+const COMBAT_ZONES = {forest:6, deepforest:7, seacave:5, cave:7, starhill:5, cave1:7, cave2:7, cave3:6, cave4:6, jungle:7, volcano:6}; // 구역마다 한 번에 나오는 몬스터 수 (보스 빼고)
 // ===== 체력·기력·레벨 =====
 // 레벨이 오를 때마다 최대 체력·최대 기력이 10 씩 늘어요. 경험치는 퀘스트·몬스터·이야기·채집·낚시·채굴에서 받아요
 const LV_MAX = 100;
@@ -4696,11 +4731,12 @@ function checkAchievements(){
 let achToastT = 0;
 function flushAch(){ if (!achQueue.length) return; const a = achQueue.shift(); toast(`${a.icon} 업적 달성! 칭호 '${a.reward.title}' · ${titleFxText(TITLE_FX[a.id])}`); setExpr('sparkle', 2500); clearTimeout(achToastT); achToastT = setTimeout(flushAch, 2800); }
 // 업적이 아닌 특별 칭호 (오늘의 섬 목표 기여 1위 등)
-const SPECIAL_TITLES = {goal1:'고급 노동자'};
+const SPECIAL_TITLES = {goal1:'고급 노동자', bridge1:'다리를 놓은 사람'};
+const SPECIAL_DESC = {goal1:'오늘의 섬 목표 기여 1위', bridge1:'섬 복구 다리 기여 1위'};
 const titleOf = id => SPECIAL_TITLES[id] || (ACHIEVEMENTS.find(a=>a.id===id)||{}).reward?.title || '';
 function achPanel(){
   syncStats(); const st = stats(), done = me.ach || [];
-  const sp = (me.stitles||[]).filter(id=>SPECIAL_TITLES[id]).map(id=>`<button class="np" data-id="${id}"><span class="np-name">👑 ${esc(SPECIAL_TITLES[id])} <small>오늘의 섬 목표 기여 1위</small></span><span class="np-place">${me.title===id ? '칭호 사용 중' : '칭호 쓰기'}</span><span class="np-day">특별 칭호 · ✨ ${esc(titleFxText(TITLE_FX[id]))}</span></button>`).join('');
+  const sp = (me.stitles||[]).filter(id=>SPECIAL_TITLES[id]).map(id=>`<button class="np" data-id="${id}"><span class="np-name">👑 ${esc(SPECIAL_TITLES[id])} <small>${SPECIAL_DESC[id] || ''}</small></span><span class="np-place">${me.title===id ? '칭호 사용 중' : '칭호 쓰기'}</span><span class="np-day">특별 칭호 · ✨ ${esc(titleFxText(TITLE_FX[id]))}</span></button>`).join('');
   const rows = sp + ACHIEVEMENTS.map(a=>{ const ok = done.includes(a.id), v = Math.min(st[a.stat]||0, a.n);
     return `<button class="np ${ok?'':'dim'}" data-id="${a.id}" style="${ok?'':'opacity:.7'}"><span class="np-name">${a.icon} ${esc(a.name)} <small>${esc(a.desc)}</small></span><span class="np-place">${ok ? (me.title===a.id ? '칭호 사용 중' : '칭호 쓰기') : `${v}/${a.n}`}</span><span class="np-day">✨ ${esc(titleFxText(TITLE_FX[a.id]))}${ok ? '' : ' (달성하면 이 칭호로 받을 수 있어요)'}</span></button>`; }).join('');
   openPanel(`업적 ${done.length}/${ACHIEVEMENTS.length}`, `<p class="mnote" style="margin-top:0">달성한 업적의 칭호를 고르면 이름 위에 보이고, <b>그 칭호의 효과</b>가 적용돼요 (한 번에 하나).${me.title ? ` 지금 칭호: <b>${esc(titleOf(me.title))}</b> · ${esc(titleFxText(TITLE_FX[me.title]))}` : ''}</p><div style="display:flex;gap:6px"><button class="mini" id="achNone">칭호 없음</button></div>${rows}`,
@@ -4913,9 +4949,9 @@ function forageDex(){
 // ===== 나무 베기: 바깥 구역마다 벨 수 있는 나무가 24 그루쯤 있어요 (집터 · 시장 · 축제장 빼고) =====
 // 세 번 치면 쓰러지고 목재가 나와요. 그루터기는 사람마다 따로 5 분 뒤 다시 자라요 (me.chopped[구역][번호] = 벤 시각)
 const WOOD = {w1:{name:'나뭇가지', price:5, rare:1, col:'#c9a27a'}, w2:{name:'통나무', price:20, rare:2, col:'#b07a4f'}, w3:{name:'단단한 원목', price:80, rare:3, col:'#7a5034'}, w4:{name:'별빛 고목', price:600, rare:5, col:'#b9a6ff'}};
-const CHOP_ZONES = new Set(['village','museum','starhill','pond','beach','meadow','forest','deepforest','workshop','minegate']);
+const CHOP_ZONES = new Set(['village','museum','starhill','pond','beach','meadow','forest','deepforest','workshop','minegate','palmbeach','jungle']);
 const CHOP_REGROW = 5*60000, CHOP_HITS = 3;
-const chopKind = () => zoneId==='beach' ? 'palm' : zoneId==='starhill' ? 'star' : zoneId==='deepforest' ? 'pine' : 'round';
+const chopKind = () => zoneId==='beach' || zoneId==='palmbeach' || zoneId==='jungle' ? 'palm' : zoneId==='starhill' ? 'star' : zoneId==='deepforest' ? 'pine' : 'round';
 function buildChopTrees(z){
   const n = 24, rng = seeded(hash('chop:' + zoneId)), out = [];
   const cx = z.W/2, cy = z.H/2, ex = z.exits || {}, rocks = (MINE_ZONES[zoneId]?.spots || []), npcs = NPCS.filter(p=>p.zone===zoneId), fs = z.fspots || [];
@@ -4978,6 +5014,7 @@ function chopAt(s){
   const got = [['w1', 1 + Math.floor(Math.random()*3)]];
   if (zoneId==='deepforest'){ got.push(['w2', 1 + (Math.random() < .5 ? 1 : 0)]); if (Math.random() < .35) got.push(['w3', 1]); }
   else if (zoneId==='starhill'){ if (Math.random() < .5) got.push(['w2', 1]); if (Math.random() < .08) got.push(['w4', 1]); }
+  else if (zoneId==='jungle'){ got.push(['w2', 2]); if (Math.random() < .25) got.push(['w3', 1]); }
   else if (zoneId==='forest' || zoneId==='meadow' || zoneId==='workshop'){ got.push(['w2', 1 + (Math.random() < .3 ? 1 : 0)]); }
   else if (Math.random() < .6) got.push(['w2', 1]);
   const msg = []; let best = 1;
@@ -5009,8 +5046,11 @@ const BRIDGE = [
     ['🕳️ 깊은 동굴', [['loot:m59', 30, 'd6'], ['ore:o30', 10, 'd7'], ['ore:o31', 10, 'd8'], ['ore:o32', 10, 'd9'], ['ore:o37', 2, 'da']]], ['💰 골드', [['gold', 5000000, 'db']]]]}];
 const BRIDGE_LINES = BRIDGE.flatMap((st, si)=>st.b.flatMap(([, ls])=>ls.map(([key, need, slot])=>({key, need, slot, si}))));
 let bridgeData = {g:{}}, bridgeBusy = false;
-const bridgeX = () => Math.round(ZONES.beach.W*.24);
-function onBridge(v){ bridgeData = v || {}; bridgeData.g = bridgeData.g || {}; const p = $('npcPanel'); if (p && !p.hidden && p.dataset.bridge && !bridgeBusy) keepScroll(bridgePanel); }
+const bridgeX = () => Math.round(ZONES.beach.W/2);
+const bridgeOpen = () => admin || bridgeStage() >= 3;
+// 다리가 다 이어지면 등대 해변 북쪽 길이 열려요 (관리자는 미리 건널 수 있어요)
+function bridgeSync(){ const open = bridgeOpen(), had = ZONES.beach.exits.n === 'resort'; if (open) ZONES.beach.exits.n = 'resort'; else delete ZONES.beach.exits.n; if (open !== had && zoneId === 'beach'){ rebuildObstacles(); staticSig = ''; } }
+function onBridge(v){ bridgeData = v || {}; bridgeData.g = bridgeData.g || {}; bridgeSync(); bridgeReward(); const p = $('npcPanel'); if (p && !p.hidden && p.dataset.bridge && !bridgeBusy) keepScroll(bridgePanel); }
 const bridgeGot = slot => Object.values(bridgeData.g[slot] || {}).reduce((a, n)=>a + (+n || 0), 0);
 const bridgeMine = slot => +((bridgeData.g[slot] || {})[uid] || 0);
 const bridgeLineP = l => Math.min(1, bridgeGot(l.slot) / l.need);
@@ -5043,6 +5083,13 @@ async function bridgeGive(l, want){
   toast(`다리에 ${bridgeLabel(l.key)} ${n.toLocaleString()} ${l.key==='gold' ? 'G' : '개'}를 냈어요${bridgeGot(l.slot) >= l.need ? ' · 이 칸 완성!' : ''}`, l.key.includes('*') || l.key==='gold' ? null : l.key);
   if (bridgeStageDone(l.si) && bridgeStage() > l.si) setTimeout(()=>say('섬 복구', l.si < 2 ? `${l.si + 1} 단계 「${BRIDGE[l.si].name}」를 다 채웠어요!\n다음은 「${BRIDGE[l.si + 1].name}」예요.` : '다리가 다 이어졌어요!\n저 너머 섬으로 가는 길은 곧 열려요.', [], ''), 400);
   keepScroll(bridgePanel);
+}
+// 다리가 다 이어지면: 한 번이라도 낸 사람은 모두 3 만 G · 기여 1 위는 칭호 「다리를 놓은 사람」
+function bridgeReward(){
+  if (admin || !me || bridgeStage() < 3 || me.bridgePaid) return; const rank = bridgeContrib(), i = rank.findIndex(([id])=>id===uid); if (i < 0) return;
+  me.bridgePaid = 1; me.inv.gold += 30000; me.earned = (me.earned||0) + 30000; let msg = '🌉 다리가 다 이어졌어요! 함께 고친 보상 30,000 G';
+  if (i === 0){ me.stitles = [...new Set([...(me.stitles||[]), 'bridge1'])]; me.title = 'bridge1'; titleApplied(); msg += ` · 기여 1 위 칭호 '${SPECIAL_TITLES.bridge1}'`; }
+  saveMe(true); renderHud(); setTimeout(()=>say('섬 복구 완성', msg + '\n\n다리 북쪽으로 걸어가면 솜사탕 리조트 섬이에요.', [], ''), 1500);
 }
 function bridgePanel(){
   if (!me) return; const stage = bridgeStage(), top = bridgeContrib().slice(0, 5);
@@ -5880,7 +5927,7 @@ function oreDex(){
   dexGrid(`광석 도감 ${Object.keys(me.odex||{}).length}/40`, Object.entries(ORES).map(([id,o])=>({aid:id, got:!!(me.odex||{})[id], name:o.name, sub: (me.odex||{})[id] ? TIER_STAR(o.tier) : zn(o)})));
 }
 function monDex(){
-  const zn = {forest:'먼지 숲', deepforest:'깊은 숲', seacave:'해식 동굴', cave:'의문의 동굴', starhill:'별빛 언덕 밤', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층', cave4:'지하 4층'};
+  const zn = {forest:'먼지 숲', deepforest:'깊은 숲', seacave:'해식 동굴', cave:'의문의 동굴', starhill:'별빛 언덕 밤', cave1:'지하 1층', cave2:'지하 2층', cave3:'지하 3층', cave4:'지하 4층', resort:'리조트 거리', palmbeach:'야자 해변', jungle:'산호 정글', volcano:'화산 분화구'};
   dexGrid(`몬스터 도감 ${Object.keys(me.mdex||{}).length}/${Object.keys(MONSTERS).length}`, Object.entries(MONSTERS).map(([id,m])=>({aid:id, got:!!(me.mdex||{})[id], name:m.name, sub: (me.mdex||{})[id] ? `체력 ${m.hp} · 공격 ${m.atk}` : zn[m.zone]})));
 }
 
@@ -6090,6 +6137,12 @@ function drawZonePlace(d, z, p){
   else if (p.kind==='logs'){ d.rr(p.x-60,p.y-30,120,40,10,'#c98e5b'); for (const [lx,ly] of [[-36,-10],[0,-10],[36,-10],[-18,-30],[18,-30]]) { d.circle(p.x+lx,p.y+ly,16,'#d9a46f'); d.circle(p.x+lx,p.y+ly,7,'#e8c39e'); } }
   else if (p.kind==='crystals'){ c.save(); c.scale(z.k||1, z.k||1); for (const [x,y,col] of [[300,300,'#bf8cff'],[1300,320,'#7cc8ff'],[260,800,'#ff8fc4'],[1320,820,'#bf8cff'],[700,260,'#6fe0c4'],[1000,880,'#ffd84f']]){ d.tri([[x-10,y+10],[x,y-24],[x+10,y+10]],col); d.tri([[x+6,y+12],[x+16,y-8],[x+22,y+12]],col); } c.restore(); }
   else if (p.kind==='sign') signPost(d, p.text, p.x, p.y);
+  else if (p.kind==='seaE'){ const x0 = z.W-250; c.fillStyle='#8fd3f5'; c.fillRect(x0,0,250,z.H); c.fillStyle='#b4e3fa'; for (let i=0;i<34;i++) c.fillRect(x0+30+(i*61)%200, (i*197)%z.H, 22, 3);
+    c.fillStyle='#fff7e6'; c.beginPath(); c.moveTo(x0+14, 0); for (let y=0; y<=z.H; y+=40) c.lineTo(x0 + 14 + Math.sin(y/60)*8, y); c.lineTo(x0-16, z.H); c.lineTo(x0-16, 0); c.fill(); }
+  else if (p.kind==='lava'){ const g = c.createRadialGradient(p.x, p.y, 4, p.x, p.y, p.rx*1.3); g.addColorStop(0, 'rgba(255,190,90,.55)'); g.addColorStop(1, 'rgba(255,90,40,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(p.x, p.y, p.rx*1.35, p.ry*1.5, 0, 0, 7); c.fill();
+    d.ell(p.x, p.y, p.rx, p.ry, '#ff6a2f'); d.ell(p.x-p.rx*.15, p.y-p.ry*.1, p.rx*.7, p.ry*.55, '#ff9a3a'); for (let i=0;i<6;i++) d.dot(p.x-p.rx*.6+((i*53)%(p.rx*1.2)), p.y-p.ry*.4+((i*29)%(p.ry*.8)), 4+(i%3)*2, '#ffd25a'); }
+  else if (p.kind==='crater'){ d.ell(p.x, p.y+10, 190, 92, '#5a3a34'); d.ell(p.x, p.y, 150, 70, '#3a2420'); const g = c.createRadialGradient(p.x, p.y, 10, p.x, p.y, 140); g.addColorStop(0, 'rgba(255,120,50,.9)'); g.addColorStop(1, 'rgba(255,60,30,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(p.x, p.y, 140, 62, 0, 0, 7); c.fill();
+    for (let i=0;i<5;i++){ c.fillStyle = `rgba(120,110,120,${.35 - i*.06})`; c.beginPath(); c.arc(p.x - 20 + i*12, p.y - 60 - i*34, 22 + i*8, 0, 7); c.fill(); } }
 }
 function buildStatic(){
   const z = Z(), T = THEME[z.theme];
