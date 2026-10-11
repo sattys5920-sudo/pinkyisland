@@ -2443,7 +2443,7 @@ function catchFish(){
   const ratio = Math.pow(Math.random(), 1.5), size = Math.round((f.min + (f.max-f.min)*ratio)*10)/10;
   const st = ratio >= .85 ? 3 : ratio >= .5 ? 2 : 1, k = fishKey(id, st);
   setExpr(st===3 || f.weight < 10 ? 'sparkle' : 'happy', 2500); stat('fishCaught'); if (st===3) stat('fish3Star'); gainExp(3 + st*2); questEvent('catch', 'fish:'+k);
-  invAdd('fish:'+k, 1); tmapDrop(.025);
+  invAdd('fish:'+k, 1); tmapDrop();
   me.dex = me.dex || {}; const dx = me.dex[id] || {n:0, best:0, st:0};
   const record = size > dx.best; me.dex[id] = {n:dx.n+1, best:Math.max(dx.best,size), st:Math.max(dx.st,st)};
   saveMe(); renderHud(); contestSubmit(id, size); festFishSubmit(id, size);
@@ -2632,7 +2632,7 @@ function mineRock(r){
   if (rockHits[key] < 3){ toast(`바위를 캐는 중.... (${rockHits[key]}/3)`); return; }
   delete rockHits[key];
   const id = rollOre(zoneId), o = ORES[id], n = o.tier===1 ? 1 + Math.floor(Math.random()*3) : 1;
-  invAdd('ore:'+id, n); tmapDrop(.02); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200); stat('oreMined', n); questEvent('mine', 'ore:'+id, n); gainExp(o.tier*2*n);
+  invAdd('ore:'+id, n); tmapDrop(); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200); stat('oreMined', n); questEvent('mine', 'ore:'+id, n); gainExp(o.tier*2*n);
   me.mined = me.mined || {}; const m = me.mined[zoneId];
   me.mined[zoneId] = {h:rockKey(), done: (m && m.h===rockKey() ? m.done+',' : '') + r.i};
   me.odex = me.odex || {}; const first = !me.odex[id]; me.odex[id] = (me.odex[id]||0) + n;
@@ -2896,7 +2896,7 @@ function mobReward(zone, slot, d){
   me.mobGot = me.mobGot || {}; const key = zone + ':' + slot; if ((me.mobGot[key]|0) >= d.gen) return; me.mobGot[key] = d.gen;
   const m = MONSTERS[d.id], gold = Math.round((m.gold || m.atk) * (0.8 + Math.random()*.4) * (1 + tfx('loot'))), crew = Object.keys(d.hits||{}).length;
   stat('monsterKills'); if (d.id==='m28') stat('caveBossKills'); questEvent('kill', d.id);
-  invAdd('loot:'+d.id, 1); me.inv.gold += gold; tmapDrop(m.boss ? 1 : .03);
+  invAdd('loot:'+d.id, 1); me.inv.gold += gold; tmapDrop(!!m.boss);
   me.mdex = me.mdex || {}; const first = !me.mdex[d.id]; me.mdex[d.id] = (me.mdex[d.id]||0) + 1;
   const xp = m.boss ? Math.round(300 + m.hp/40) : Math.max(3, Math.round(m.hp/6 + m.atk)); gainExp(xp);
   saveMe(); renderHud();
@@ -3021,14 +3021,16 @@ function ringPanel(){
       ringPanel(); });
 }
 // ===== 보물 지도: 구역마다 9 조각 (3 × 3). 다 맞춘 사람만 그 구역에서 [파 보기] =====
-// 조각은 낚시 · 채집 · 광석 · 몬스터에서 가끔 (구역 보스는 꼭 1 개) · 하루 8 개까지. 겹친 조각은 거래소에서 사고팔아요
+// 조각은 낚시 · 채집 · 광석 · 몬스터에서 가끔 (구역 보스는 꼭 1 개) · 하루 8 개까지. 조각 번호마다 확률이 달라요 (1 번 5% → 9 번 1%)
+// 겹친 조각은 거래소에서만 사고팔아요 (1 개 10,000 G 로 정해져 있어요)
 // 9 조각을 맞추는 순간 보물 자리가 정해지고 지도에 ✕ 가 나타나요. 조각에는 ✕ 가 없어요
 const TMAP = [ // 구역 · 상자에서 나오는 것
   ['village','set','s71'], ['museum','acc','tmmuseum'], ['starhill','ring','r12'], ['pond','acc','tmpond'], ['beach','hat','tmbeach'], ['seacave','set','s72'],
   ['meadow','hat','tmmeadow'], ['forest','hat','tmforest'], ['deepforest','acc','tmdeepforest'], ['workshop','acc','tmworkshop'], ['bazaar','set','s73'], ['minegate','hat','tmminegate'],
   ['cave','set','s74'], ['cave1','hat','tmcave1'], ['cave2','set','s75'], ['cave3','acc','tmcave3'], ['cave4','sword','w10'],
 ];
-const TMAP_DAY = 8, TMAP_GOLD = 50000, TMAP_CANDY = 20, TMAP_DIG = 70;
+const TMAP_DAY = 8, TMAP_GOLD = 50000, TMAP_CANDY = 20, TMAP_DIG = 70, TMAP_PRICE = 10000;
+const TMAP_RATE = [.05, .045, .04, .035, .03, .025, .02, .015, .01], TMAP_SUM = TMAP_RATE.reduce((a, b) => a + b, 0); // 조각 1 ~ 9 번이 한 번에 나올 확률
 const tmapIdx = z => TMAP.findIndex(t => t[0] === z);
 const tmapKey = (i, p) => `tmap:z${String(i).padStart(2, '0')}_${p}`;
 const tmapParse = id => { const m = /^z(\d\d)_([1-9])$/.exec(id || ''); return m && TMAP[+m[1]] ? {i:+m[1], p:+m[2], zone:TMAP[+m[1]][0]} : null; };
@@ -3049,11 +3051,13 @@ function tmapPieceIcon(id){
   x.fillStyle = '#5a3a20'; x.font = 'bold 22px "Dongle",sans-serif'; x.textAlign = 'center'; x.fillText(String(t.p), -21 + cx*21, -14 + cy*21);
   x.restore(); const url = cv.toDataURL(); iconCache.set(k, url); return url;
 }
-// 조각 줍기: 확률은 하는 일마다 달라요 (구역 보스 = 1)
-function tmapDrop(chance){
-  if (admin || !me || darkOn() || Math.random() >= chance) return;
+// 조각 줍기: 낚시 · 채집 · 광석 · 몬스터 한 번마다 1 번 조각 5% … 9 번 조각 1% (구역 보스는 꼭 하나, 번호는 같은 비율로)
+function tmapDrop(sure){
+  if (admin || !me || darkOn()) return;
+  let r = sure ? Math.random() * TMAP_SUM : Math.random(); if (r >= TMAP_SUM) return;
   const d = today(), day = me.tmapDay && me.tmapDay.d === d ? me.tmapDay : (me.tmapDay = {d, n:0}); if (day.n >= TMAP_DAY) return;
-  const i = Math.floor(Math.random() * TMAP.length), p = 1 + Math.floor(Math.random() * 9), k = tmapKey(i, p);
+  let p = 1; while (p < 9 && r >= TMAP_RATE[p - 1]){ r -= TMAP_RATE[p - 1]; p++; }
+  const i = Math.floor(Math.random() * TMAP.length), k = tmapKey(i, p);
   if (invAdd(k, 1) <= 0) return; day.n++; stat('tmapPieces');
   const have = tmapHave(i); saveMe(); setTimeout(() => toast(`🗺️ 지도 조각을 주웠어요! ${ZONES[TMAP[i][0]].name} 지도 ${p} 번 (${have}/9)`), 900);
 }
@@ -3106,19 +3110,16 @@ function tmapView(i, fresh){
 }
 // 지도 목록: 구역마다 3 × 3 칸 (가진 조각은 채워져요)
 function tmapPanel(){
-  const act = tmapActive(), dupes = TMAP.flatMap((_, i) => Array.from({length:9}, (_, p) => [tmapKey(i, p + 1), Math.max(0, invCount(tmapKey(i, p + 1)) - 1)])).filter(([, n]) => n > 0), dn = dupes.reduce((a, [, n]) => a + n, 0);
+  const act = tmapActive();
   const card = (t, i) => { const [zid, kind] = t, has = tmapHave(i), a = act[i];
     const cells = Array.from({length:9}, (_, p) => `<i style="display:block;width:14px;height:14px;border-radius:3px;${invCount(tmapKey(i, p + 1)) > 0 ? `background:${TMAP_HUE[i]}` : 'border:1.5px dashed #d8b8c6'}"></i>`).join('');
     return `<button class="np tm-card" data-tm="${i}" style="display:flex;gap:10px;align-items:center;text-align:left"><span style="display:grid;grid-template-columns:repeat(3,14px);gap:2px;padding:4px;background:#f6ead2;border-radius:6px">${cells}</span>
       <span style="flex:1"><b>${esc(ZONES[zid].name)}</b> <small style="color:#9a7080">${TMAP_KIND[kind]} · ${esc(tmapPrize(i) || '')}</small><br><small>${a ? '✕ 지도 완성 · 보물을 파러 가요' : has >= 9 ? '9/9 · 눌러서 맞추기!' : `${has}/9 조각`}</small></span>
       <span class="mini" style="padding:4px 10px;${a || has >= 9 ? 'background:#ff8fb6;color:#fff' : 'background:#eee;color:#aaa'}">${a ? '지도 보기' : has >= 9 ? '맞추기' : `${has}/9`}</span></button>`; };
   const day = me.tmapDay && me.tmapDay.d === today() ? me.tmapDay.n : 0;
-  openPanel('🗺️ 보물 지도', `<p class="mnote" style="margin-top:0">낚시 · 채집 · 광석 · 몬스터에서 가끔 지도 조각이 나와요 (구역 보스는 꼭 1 개). 오늘 ${day}/${TMAP_DAY} 개.<br>같은 구역 9 조각을 다 모아 맞추면 보물 자리가 ✕ 로 나타나요. 겹친 조각은 거래소에서 사고팔 수 있어요.</p>
-    ${dn >= 3 ? `<div class="np" style="display:flex;align-items:center;gap:8px"><span style="flex:1">겹친 조각 ${dn} 개 · 3 개를 새 조각 1 개로 바꿀 수 있어요</span><button class="mini" id="tmSwap" style="background:#a8c8ff;color:#fff">바꾸기</button></div>` : ''}
+  openPanel('🗺️ 보물 지도', `<p class="mnote" style="margin-top:0">낚시 · 채집 · 광석 · 몬스터에서 가끔 지도 조각이 나와요 (구역 보스는 꼭 1 개). 오늘 ${day}/${TMAP_DAY} 개.<br>조각 번호가 클수록 귀해요 (1 번 5% → 9 번 1%). 같은 구역 9 조각을 다 모아 맞추면 보물 자리가 ✕ 로 나타나요.<br>겹친 조각은 거래소에서 1 개 ${TMAP_PRICE.toLocaleString()} G 로 사고팔 수 있어요.</p>
     ${TMAP.map(card).join('')}`);
   $('npcPanel').querySelectorAll('.tm-card').forEach(b => b.onclick = () => { const i = +b.dataset.tm; if (act[i]) tmapView(i); else if (tmapHave(i) >= 9) tmapAssemble(i); else toast(`${ZONES[TMAP[i][0]].name} 지도는 ${tmapHave(i)}/9 조각이에요`); });
-  const sw = $('tmSwap'); if (sw) sw.onclick = () => { let left = 3; for (const [k, n] of dupes.sort((a, b) => b[1] - a[1])){ const use = Math.min(left, n); invAdd(k, -use); left -= use; if (!left) break; }
-    const i = Math.floor(Math.random() * TMAP.length), p = 1 + Math.floor(Math.random() * 9); invAdd(tmapKey(i, p), 1); saveMe(); toast(`🗺️ 새 조각: ${ZONES[TMAP[i][0]].name} 지도 ${p} 번`); tmapPanel(); };
 }
 // 파 보기: 지도를 맞춘 사람이 ✕ 가까이 서 있을 때만
 function tmapDig(){
@@ -4489,7 +4490,7 @@ function itemKeyOk(k){ const m = /^(dish|crop|forage|fish|ore|loot|seed|furn|wea
   if (cat==='tmap') return !!tmapParse(id);
   if (cat==='wear'){ const [w, c] = id.split(/[~#]/); return !!slotOfWear(w) && (c===undefined || /^[1-4]$/.test(c)); }
   if (cat==='umb') return !!UMB[id]; if (cat==='wall') return !!WALLS[id]; if (cat==='floor') return !!FLOORS[id]; return /^[a-z0-9_]{2,8}$/.test(id); }
-const validListing = l => l && typeof l.item==='string' && itemKeyOk(l.item) && l.n>=1 && l.n<=99 && l.price>=1 && typeof l.uid==='string';
+const validListing = l => l && typeof l.item==='string' && itemKeyOk(l.item) && l.n>=1 && l.n<=99 && l.price>=1 && typeof l.uid==='string' && (!l.item.startsWith('tmap:') || l.price === TMAP_PRICE * l.n);
 function onMarket(v){
   market = {};
   for (const [id,l] of Object.entries(v||{})) if (validListing(l)) market[id] = l;
@@ -4539,10 +4540,10 @@ function marketList(k){
   $('npcPanel').hidden = true; withIcon(k);
   const ns = [...new Set([1, 5, 10, 20, Math.min(c, 99)])].filter(x=>x<=c);
   say('거래소에 올리기', `${itemName(k)}을(를) 몇 개 올릴까요? (가진 것 ${c} 개)`, ns.map(q=>[`${q} 개`, ()=>{
-    const base = unitPrice(k) * q;
-    const ps = [...new Set([.8, 1, 1.3, 1.6, 2].map(m=>Math.min(MARKET_PRICE_MAX, Math.max(1, Math.round(base*m/5)*5 || 1))))]; // 서버 규칙: 한 번에 100만 G 까지
+    const tm = k.startsWith('tmap:'), base = tm ? TMAP_PRICE * q : unitPrice(k) * q;
+    const ps = tm ? [base] : [...new Set([.8, 1, 1.3, 1.6, 2].map(m=>Math.min(MARKET_PRICE_MAX, Math.max(1, Math.round(base*m/5)*5 || 1))))]; // 서버 규칙: 한 번에 100만 G 까지 · 지도 조각은 1 개 1 만 G 로만
     withIcon(k);
-    say('거래소에 올리기', `${itemName(k)} ${q} 개, 얼마에 팔까요?\n(상점 시세로는 ${base} G)`, ps.map(p=>[`${p} G`, async ()=>{
+    say('거래소에 올리기', tm ? `${itemName(k)} ${q} 개를 올릴까요?\n(지도 조각은 1 개 ${TMAP_PRICE.toLocaleString()} G 로 정해져 있어요)` : `${itemName(k)} ${q} 개, 얼마에 팔까요?\n(상점 시세로는 ${base} G)`, ps.map(p=>[`${p} G`, async ()=>{
       if (invCount(k) < q) return closeTalk();
       invAdd(k, -q); saveMe(true); renderHud();
       try { await net.marketList({uid, nick:me.nick, item:k, n:q, price:p}); toast(`${itemName(k)} ${q} 개를 ${p} G에 올렸어요`); }
@@ -4886,7 +4887,7 @@ function forageAt(s){
   if (!useSta('forage')) return;
   invAdd(key, 1); me.foraged = me.foraged || {}; const m = me.foraged[zoneId]; me.foraged[zoneId] = {h:hourKey(), done:(m && m.h === hourKey() ? m.done + ',' : '') + s.i};
   me.gdex = me.gdex || {}; const first = !me.gdex[f.id]; me.gdex[f.id] = (me.gdex[f.id]||0) + 1;
-  stat('foraged'); tmapDrop(.02); gainExp(f.rare*2); setExpr(f.rare >= 4 ? 'sparkle' : 'happy', 1500); saveMe(); renderHud();
+  stat('foraged'); tmapDrop(); gainExp(f.rare*2); setExpr(f.rare >= 4 ? 'sparkle' : 'happy', 1500); saveMe(); renderHud();
   fx.push({x:s.x, y:s.y-40, text:'+1', t:performance.now(), color:'#ffffff'});
   toast(`${f.name}을(를) 주웠어요${first ? ' · 처음 찾은 채집물!' : ''}${f.rare >= 4 ? ' · ' + '◆'.repeat(f.rare) : ''}`, key);
 }
