@@ -1271,7 +1271,7 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz;
-    Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
+    Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, pet2: s.pet2 && PET_DRAW[s.pet2.sp] ? {sp:s.pet2.sp, col:Math.max(0, Math.min(2, s.pet2.col|0)), name:String(s.pet2.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
   }
@@ -5831,7 +5831,7 @@ function sendPresence(t){
   const tgt = target && !keyMoving ? target : null;
   const p = {z:zoneId, ...(darkDown ? {down:1} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : '', ...(me.inv?.ring ? {rg:me.inv.ring} : {})};
   if (isRain() && umbKey() && snowOutside()) p.um = umbKey();
-  const wp = walkingPet(); if (wp) p.pet = {sp:wp.sp, col:wp.col|0, name:String(wp.name||'').slice(0,8)};
+  const wps = walkingPets(), pp = wp => ({sp:wp.sp, col:wp.col|0, name:String(wp.name||'').slice(0,8)}); if (wps[0]) p.pet = pp(wps[0]); if (wps[1]) p.pet2 = pp(wps[1]);
   if (tgt){ p.tx = Math.round(tgt.x); p.ty = Math.round(tgt.y); }
   const sig = JSON.stringify(tgt ? {...p, x:0, y:0, dir:0, mv:0} : p);
   let go = false;
@@ -7854,17 +7854,17 @@ function adminCam(){
 const PET = Object.fromEntries(PET_SPECIES.map(([id, name, cols, tier])=>[id, {name, cols, tier: tier || 1}]));
 const PET_MAX = 2; // 1 차 펫 한 마리 + 2 차 펫 한 마리. 같은 종은 먼저 데려간 사람만 (선착순)
 // 동행 보너스: 산책에 데리고 다니는 펫 한 마리만. 1 차 펫은 모두 최대 체력 +50, 2 차 펫은 종마다 달라요 (칭호 효과 tfx 에 더해져요)
-const PET_FX = {pig:{food:.3}, squirrel:{forage:.1}, bear:{hp:80}, crow:{tmap:.3}, husky:{speed:.1}, dino:{atk:.1}, bee:{crop:.1}, sheep:{dr:.08}, snake:{loot:.2}, raccoon:{sell:.1}, deer:{sta:60}, otter:{fish:.3}};
+const PET_FX = {pig:{food:.3}, squirrel:{forage:.1}, bear:{hp:80}, crow:{tmap:.1}, husky:{speed:.1}, dino:{atk:.1}, bee:{crop:.1}, sheep:{dr:.08}, snake:{loot:.2}, raccoon:{sell:.1}, deer:{sta:60}, otter:{fish:.3}};
 const PET_FX_BASE = {hp:50};
 const PET_FX_TEXT = {hp:v=>`최대 체력 +${v}`, sta:v=>`최대 기력 +${v}`, food:v=>`음식 회복 +${Math.round(v*100)}%`, forage:v=>`채집할 때 ${Math.round(v*100)}% 확률로 하나 더`, tmap:v=>`보물 지도 조각 +${Math.round(v*100)}%`, speed:v=>`걷는 속도 +${Math.round(v*100)}%`, atk:v=>`공격 +${Math.round(v*100)}%`, crop:v=>`수확할 때 ${Math.round(v*100)}% 확률로 하나 더`, dr:v=>`받는 피해 -${Math.round(v*100)}%`, loot:v=>`몬스터 골드 +${Math.round(v*100)}%`, sell:v=>`주민에게 팔 때 +${Math.round(v*100)}%`, fish:v=>`희귀 물고기 +${Math.round(v*100)}%`};
 const petFxOf = sp => PET_FX[sp] || PET_FX_BASE;
 const petFxText = sp => Object.entries(petFxOf(sp)).map(([k, v]) => PET_FX_TEXT[k](v)).join(' · ');
-function petFx(k){ try { const wp = me && walkingPet(); return wp ? (petFxOf(wp.sp)[k] || 0) : 0; } catch(e){ return 0; } }
+function petFx(k){ try { return me ? walkingPets().reduce((a, wp) => a + (petFxOf(wp.sp)[k] || 0), 0) : 0; } catch(e){ return 0; } } // 같이 다니는 펫 둘의 보너스를 더해요
 // 펫 밥 3 가지: 보호소에서 사요. 비쌀수록 배가 많이 차고 더 친해져요
 const PET_FOODS = {p1:{name:'기본 사료', price:300, full:35, love:1, icon:'🥣'}, p2:{name:'말랑 간식', price:1200, full:60, love:3, icon:'🍪'}, p3:{name:'특별 케이크', price:4000, full:100, love:8, icon:'🎂'}};
 const petFoodCount = k => { me.inv.pfood = me.inv.pfood || {}; if (me.inv.petFood){ me.inv.pfood.p1 = (me.inv.pfood.p1||0) + me.inv.petFood; me.inv.petFood = 0; } return me.inv.pfood[k]||0; };
-// 배고픔이 줄어드는 길: 집에서 쉬면 1 시간에 3, 놀아 주면 10 (산책은 배고파지지 않아요)
-const PET_HOME_RATE = 3, PET_WALK_STEP = 400, PET_PLAY_COST = 10;
+// 배고픔이 줄어드는 길: 집에서 쉬면 1 시간에 3, 산책하며 걸으면 1000 걸음에 1, 놀아 주면 10
+const PET_HOME_RATE = 3, PET_WALK_STEP = 1000, PET_PLAY_COST = 10; // 산책: 1000 걸음에 배부름 1 (예전 400 걸음에 1)
 const petsOf = owner => { const p = owner===uid ? me : players[owner]; const l = p && p.pets ? (Array.isArray(p.pets) ? p.pets : Object.values(p.pets)) : []; return l.filter(x=>x && PET[x.sp]); };
 const myPets = () => { if (!me) return []; me.pets = petsOf(uid); return me.pets; };
 function petFull(pt){ if (pt.full==null){ pt.full = Math.max(0, 100 - (Date.now() - (pt.fedAt||0)) / 3600000 * 5); pt.fullAt = Date.now(); } return pt; }
@@ -7875,7 +7875,8 @@ const petMood = pt => { const f = fullness(pt); return f < 15 ? '너무 배고�
 // 이 종을 이미 데려간 다른 주민 (없으면 null)
 const petTakenBy = sp => { for (const [id,p] of Object.entries(players)) if (id!==uid && petsOf(id).some(x=>x.sp===sp)) return p; const c = petClaims[sp]; if (c && c.uid!==uid && players[c.uid]) return players[c.uid]; return null; };
 const CARRIED = new Set(['goldfish']); // 금붕어는 산책할 때 어항째 품에 안고 다녀요 (집에서는 늘 같은 자리)
-const walkingPet = () => me && myPets().find(p=>p.walk);
+const walkingPets = () => me ? myPets().filter(p=>p.walk).slice(0, 2) : []; // 1 차 · 2 차 한 마리씩, 둘 다 데리고 다닐 수 있어요
+const walkingPet = () => walkingPets()[0];
 const petCol = pt => PET[pt.sp].cols[Math.max(0, Math.min(2, pt.col|0))];
 const petIconCache = new Map();
 function petIcon(sp, col, size=96){ const key = sp+'|'+col+'|'+size; if (petIconCache.has(key)) return petIconCache.get(key); const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d'), k = size/40; x.setTransform(k,0,0,k,size/2, size*.82); try { PET_DRAW[sp](CH.mattePainter(x), 0, 0, PET[sp].cols[col|0], 0, false); } catch(e){} const u = c.toDataURL(); petIconCache.set(key, u); return u; }
@@ -7888,35 +7889,36 @@ function petHomePos(owner, i){
   return {x: a.x + (b.x-a.x)*k, y: a.y + (b.y-a.y)*k, walk: k < 1, flip: b.x < a.x};
 }
 let petClaims = {}; // petClaims/<종> = {uid}: 같은 종을 동시에 데려가지 않게 서버에서 먼저 잡아요
-let petFollow = null, petWalked = 0, petHungryT = 0, petSide = -1; // petSide: 펫은 내가 보는 방향의 반대쪽(뒤)에서 따라와요 // 산책 중인 내 펫의 위치, 걸은 거리
+let petFollows = [], petWalked = 0, petHungryT = 0, petSide = -1; // petSide: 펫은 내가 보는 방향의 반대쪽(뒤)에서 따라와요 · petFollows: 따라오는 펫 자리 (첫째 · 둘째)
 // 배고픈 펫이 있으면 가끔 알려 줘요
 function petHungerCheck(t){ if (!me || t < petHungryT) return; petHungryT = t + 300000; const h = myPets().filter(p=>fullness(p) < 35); if (h.length) addLog(`🐾 ${h.map(p=>p.name).join(', ')}이(가) 배고파해요. 집에 가서 밥을 주세요 (밥은 공방 거리 보호소)`, true); }
 const othersPets = new Map();
 function updatePets(dt){
   petHungerCheck(performance.now());
-  const wp = walkingPet();
-  if (!wp){ petFollow = null; } else { // 산책 중인 펫은 집 안에서도 나를 따라다녀요
-    petSide = pos.dir==='left' ? 1 : pos.dir==='right' ? -1 : petSide; const gx = pos.x + petSide*42, gy = pos.y - 8; if (!petFollow || Math.hypot(petFollow.x-gx, petFollow.y-gy) > 300) petFollow = {x:gx, y:gy, walk:false, flip:false};
-    const dx = gx-petFollow.x, dy = gy-petFollow.y, dd = Math.hypot(dx, dy); petFollow.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); petFollow.x += dx/dd*sp; petFollow.y += dy/dd*sp; petFollow.flip = dx < 0;
-    } // 산책하며 걸어도 배고파지지 않아요 (집에서 쉴 때만 천천히)
-  }
-  for (const [id,o] of others){ if (!o.pet || o.z!==zoneId){ othersPets.delete(id); continue; } let f = othersPets.get(id); const os = o.dir==='left' ? 1 : o.dir==='right' ? -1 : (f?.side ?? -1), gx = o.x + os*42, gy = o.y - 8;
-    if (!f || Math.hypot(f.x-gx, f.y-gy) > 300) f = {x:gx, y:gy}; const dx = gx-f.x, dy = gy-f.y, dd = Math.hypot(dx,dy); f.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); f.x += dx/dd*sp; f.y += dy/dd*sp; f.flip = dx < 0; } f.side = os; othersPets.set(id, f); }
+  const wps = walkingPets().filter(p=>!CARRIED.has(p.sp)); // 품에 안는 금붕어는 따라 걷지 않아요
+  petSide = pos.dir==='left' ? 1 : pos.dir==='right' ? -1 : petSide;
+  petFollows = wps.map((wp, i) => { // 첫째는 42, 둘째는 그 뒤 74 만큼 떨어져 따라와요
+    let f = petFollows[i]; const gx = pos.x + petSide*(i ? 74 : 42), gy = pos.y - (i ? 2 : 8); if (!f || f.sp !== wp.sp || Math.hypot(f.x-gx, f.y-gy) > 300) f = {sp:wp.sp, x:gx, y:gy, walk:false, flip:false};
+    const dx = gx-f.x, dy = gy-f.y, dd = Math.hypot(dx, dy); f.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); f.x += dx/dd*sp; f.y += dy/dd*sp; f.flip = dx < 0; if (!i) petWalked += sp; } return f; });
+  if (petWalked >= PET_WALK_STEP){ petWalked = 0; for (const wp of walkingPets()){ petSpend(wp, 1); if (fullness(wp) < 15){ wp.walk = false; toast(`${wp.name}이(가) 배고파서 집으로 돌아갔어요. 밥을 챙겨 주세요`); } } saveMe(); } // 산책은 천천히 배고파져요
+  for (const [id,o] of others){ for (const [k, pt, dist, dy0] of [[id, o.pet, 42, 8], [id + '#2', o.pet2, 74, 2]]){ if (!pt || o.z!==zoneId || CARRIED.has(pt.sp) && k !== id){ othersPets.delete(k); continue; } let f = othersPets.get(k); const os = o.dir==='left' ? 1 : o.dir==='right' ? -1 : (f?.side ?? -1), gx = o.x + os*dist, gy = o.y - dy0;
+    if (!f || Math.hypot(f.x-gx, f.y-gy) > 300) f = {x:gx, y:gy}; const dx = gx-f.x, dy = gy-f.y, dd = Math.hypot(dx,dy); f.walk = dd > 6; if (dd > 6){ const sp = Math.min(dd, 150*dt + dd*2*dt); f.x += dx/dd*sp; f.y += dy/dd*sp; f.flip = dx < 0; } f.side = os; f.pet = pt; othersPets.set(k, f); } }
+  for (const k of othersPets.keys()){ const o = others.get(k.split('#')[0]); if (!o) othersPets.delete(k); }
 }
 function drawPet(c, sp, col, x, y, t, walk, flip){ c.save(); if (flip){ c.translate(x, 0); c.scale(-1, 1); c.translate(-x, 0); } try { PET_DRAW[sp](CH.mattePainter(c), x, y, col, t, walk); } catch(e){} c.restore(); }
 function petEntities(d, t){
   const c = d.ctx, out = [], T = t/1000;
   if (Z().house){ petsOf(Z().house).forEach((pt, i)=>{ if (pt.walk){ pt._x = null; return; } /* 산책 나간 펫은 집에 없어요 */ const p = petHomePos(Z().house, i); pt._x = p.x; pt._y = p.y; out.push({y:p.y, draw:()=>drawPet(c, pt.sp, petCol(pt), p.x, p.y, T, p.walk, p.flip), label:()=>{ if (pt.name) tag(c, Z().house===uid ? pt.name : `${pt.name} · ${String(players[Z().house]?.nick||'').slice(0,8)}의 펫`, p.x, p.y-30, null); }}); }); }
-  const wp = walkingPet(); if (wp && CARRIED.has(wp.sp) && !admin){ const sd = pos.dir==='left' ? -1 : 1; out.push({y:pos.y+1, draw:()=>{ if (typeof darkDown==='undefined' || !darkDown) drawPet(c, wp.sp, petCol(wp), pos.x + sd*15, pos.y - 6, T, false, false); }, label:()=>{}}); }
-  else if (wp && petFollow) out.push({y:petFollow.y, draw:()=>drawPet(c, wp.sp, petCol(wp), petFollow.x, petFollow.y, T, petFollow.walk, petFollow.flip), label:()=>tag(c, `${String(wp.name||PET[wp.sp].name).slice(0,8)} · 내 펫`, petFollow.x, petFollow.y-30, null)});
-  for (const [id,f] of othersPets){ const o = others.get(id); if (!o || !o.pet) continue; if (CARRIED.has(o.pet.sp)){ if (!o.down) out.push({y:o.y+1, draw:()=>drawPet(c, o.pet.sp, PET[o.pet.sp].cols[o.pet.col], o.x + (o.dir==='left' ? -15 : 15), o.y - 6, T, false, false), label:()=>{}}); continue; } out.push({y:f.y, draw:()=>drawPet(c, o.pet.sp, PET[o.pet.sp].cols[o.pet.col], f.x, f.y, T, f.walk, f.flip), label:()=>tag(c, `${o.pet.name || PET[o.pet.sp].name} · ${String(o.nick||'').slice(0,8)}의 펫`, f.x, f.y-30, null)}); }
+  if (!admin) for (const wp of walkingPets()){ if (CARRIED.has(wp.sp)){ const sd = pos.dir==='left' ? -1 : 1; out.push({y:pos.y+1, draw:()=>{ if (typeof darkDown==='undefined' || !darkDown) drawPet(c, wp.sp, petCol(wp), pos.x + sd*15, pos.y - 6, T, false, false); }, label:()=>{}}); continue; }
+    const f = petFollows.find(x=>x.sp===wp.sp); if (f) out.push({y:f.y, draw:()=>drawPet(c, wp.sp, petCol(wp), f.x, f.y, T, f.walk, f.flip), label:()=>tag(c, `${String(wp.name||PET[wp.sp].name).slice(0,8)} · 내 펫`, f.x, f.y-30, null)}); }
+  for (const [key,f] of othersPets){ const o = others.get(key.split('#')[0]), pt = f.pet; if (!o || !pt) continue; if (CARRIED.has(pt.sp)){ if (!o.down) out.push({y:o.y+1, draw:()=>drawPet(c, pt.sp, PET[pt.sp].cols[pt.col], o.x + (o.dir==='left' ? -15 : 15), o.y - 6, T, false, false), label:()=>{}}); continue; } out.push({y:f.y, draw:()=>drawPet(c, pt.sp, PET[pt.sp].cols[pt.col], f.x, f.y, T, f.walk, f.flip), label:()=>tag(c, `${pt.name || PET[pt.sp].name} · ${String(o.nick||'').slice(0,8)}의 펫`, f.x, f.y-30, null)}); }
   return out;
 }
 // 산책 중인 내 펫: 따라오는 자리를 누르면 펫 창. 광석·나무·낚시 같은 다른 걸 먼저 찾고, 아무것도 없을 때만 펫을 눌러요 (실수로 밥 주지 않게)
 function walkPetTap(w){
-  const wp = me && walkingPet(); if (!wp || admin) return null;
-  const fx = CARRIED.has(wp.sp) ? pos.x + (pos.dir==='left' ? -15 : 15) : petFollow?.x, fy = CARRIED.has(wp.sp) ? pos.y - 6 : petFollow?.y;
-  if (fx!=null && Math.abs(w.x-fx) < 16 && w.y > fy-26 && w.y < fy+6) return {x:pos.x, y:pos.y, act:()=>petPanel(wp), mark:performance.now()};
+  if (!me || admin) return null;
+  for (const wp of walkingPets()){ const f = petFollows.find(x=>x.sp===wp.sp), fx = CARRIED.has(wp.sp) ? pos.x + (pos.dir==='left' ? -15 : 15) : f?.x, fy = CARRIED.has(wp.sp) ? pos.y - 6 : f?.y;
+    if (fx!=null && Math.abs(w.x-fx) < 16 && w.y > fy-26 && w.y < fy+6) return {x:pos.x, y:pos.y, act:()=>petPanel(wp), mark:performance.now()}; }
   return null;
 }
 function petTap(w){
@@ -7963,18 +7965,18 @@ function adoptPanel(sp, col=0){
 function petPanel(pt){
   const f = fullness(pt), lv = loveLv(pt);
   openPanel(`${esc(pt.name)} · ${PET[pt.sp].name}`, `<div class="np" style="grid-template-columns:auto 1fr;align-items:center"><img class="ic" src="${petIcon(pt.sp, pt.col)}" alt="" style="width:64px;height:64px"><span class="np-name">${petMood(pt)} <small>배부름 ${f}/100 · 친밀도 ${'♥'.repeat(lv) || '♡'} (${pt.love||0})</small></span></div>
-    <p class="mnote" style="margin:0 2px">배는 집에서 쉴 때(1 시간에 ${PET_HOME_RATE}), 놀아 줄 때 줄어요. 산책은 배고파지지 않아요. 산책에 데리고 다니면 동행 보너스: <b>${petFxText(pt.sp)}</b></p>` +
+    <p class="mnote" style="margin:0 2px">배는 집에서 쉴 때(1 시간에 ${PET_HOME_RATE}), 산책하며 걸을 때(천천히), 놀아 줄 때 줄어요. 산책에 데리고 다니면 동행 보너스: <b>${petFxText(pt.sp)}</b> · 1 차 · 2 차 펫 둘 다 데리고 다닐 수 있어요</p>` +
     Object.entries(PET_FOODS).map(([k,fd])=>`<button class="np" data-id="feed" data-k="${k}"><span class="np-name">${fd.icon} ${fd.name} 주기 <small>배부름 +${fd.full} · 친밀도 +${fd.love} · 가진 것 ${petFoodCount(k)} 개</small></span></button>`).join('') +
     `<button class="np" data-id="play"><span class="np-name">놀아 주기 <small>친밀도 +2 · 배부름 −${PET_PLAY_COST} (배가 고프면 못 놀아요)</small></span></button>` +
     `<button class="np" data-id="pat"><span class="np-name">쓰다듬기 <small>한 시간에 한 번 친해져요</small></span></button>` +
-    (`<button class="np" data-id="walk"><span class="np-name">${pt.walk ? '산책 그만하기' : '산책 데리고 다니기'} <small>${pt.walk ? '지금 밖에서 따라다녀요 · ' + petFxText(pt.sp) : (CARRIED.has(pt.sp) ? '켜면 어항째 품에 안고 다녀요 (한 마리만)' : '켜면 밖에서 나를 따라다녀요 (한 마리만)')}</small></span></button>`) +
+    (`<button class="np" data-id="walk"><span class="np-name">${pt.walk ? '산책 그만하기' : '산책 데리고 다니기'} <small>${pt.walk ? '지금 밖에서 따라다녀요 · ' + petFxText(pt.sp) : (CARRIED.has(pt.sp) ? '켜면 어항째 품에 안고 다녀요' : '켜면 밖에서 나를 따라다녀요')}</small></span></button>`) +
     `<button class="np" data-id="name"><span class="np-name">이름 바꾸기 <small>지금 이름: ${esc(pt.name)}</small></span></button>`,
     b=>{ const id = b.dataset.id;
       if (id==='feed'){ const k = b.dataset.k, fd = PET_FOODS[k]; if (!petFoodCount(k)) return toast(`${fd.name}이(가) 없어요. 공방 거리 보호소에서 살 수 있어요`); if (fullness(pt) >= 95) return toast(`${pt.name}은(는) 배불러요`);
         me.inv.pfood[k]--; pt.full = Math.min(100, fullness(pt) + fd.full); pt.fullAt = Date.now(); pt.fedAt = Date.now(); pt.love = (pt.love||0) + fd.love; stat('petFed'); saveMe(); toast(`${pt.name}이(가) ${fd.name}을(를) 맛있게 먹었어요`); }
       if (id==='play'){ if (fullness(pt) < 15 + PET_PLAY_COST) return toast(`${pt.name}이(가) 배고파서 놀 기운이 없어요`); if (Date.now() - (pt.playAt||0) < 600000) return toast(`${pt.name}이(가) 조금 쉬고 싶대요 (10 분 뒤에 다시)`); pt.playAt = Date.now(); petSpend(pt, PET_PLAY_COST); pt.love = (pt.love||0) + 2; saveMe(); toast(`${pt.name}이(가) 신나게 뛰어놀았어요`); }
       if (id==='pat'){ if (Date.now() - (pt.petAt||0) < 3600000){ toast(`${pt.name}이(가) 좋아해요`); return; } pt.petAt = Date.now(); pt.love = (pt.love||0) + 2; saveMe(); toast(`${pt.name}이(가) 꼬리를 흔들어요`); }
-      if (id==='walk'){ const on = !pt.walk; if (on && fullness(pt) < 15) return toast(`${pt.name}이(가) 배고파서 나가기 싫대요. 밥을 먼저 주세요`); for (const p of myPets()) p.walk = false; pt.walk = on; playerHp = Math.min(playerHp, maxHp()); playerSta = Math.min(playerSta, maxSta()); syncStats(); saveMe(); renderHud(); toast(on ? `${pt.name}이(가) 산책을 따라가요 · ${petFxText(pt.sp)}` : `${pt.name}은(는) 집에서 쉬어요`); }
+      if (id==='walk'){ const on = !pt.walk; if (on && fullness(pt) < 15) return toast(`${pt.name}이(가) 배고파서 나가기 싫대요. 밥을 먼저 주세요`); for (const p of myPets()) if (PET[p.sp].tier === PET[pt.sp].tier) p.walk = false; pt.walk = on; playerHp = Math.min(playerHp, maxHp()); playerSta = Math.min(playerSta, maxSta()); syncStats(); saveMe(); renderHud(); toast(on ? `${pt.name}이(가) 산책을 따라가요 · ${petFxText(pt.sp)}` : `${pt.name}은(는) 집에서 쉬어요`); }
       if (id==='name'){ const nm = prompt('새 이름 (8 글자까지)', pt.name); if (nm && nm.trim()){ pt.name = nm.trim().slice(0,8); saveMe(); toast(`이제 '${pt.name}'(이)라고 불러요`); } }
       petPanel(pt); });
 }

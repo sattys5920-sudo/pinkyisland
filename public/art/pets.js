@@ -20,8 +20,8 @@ const tone = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = v => 
 const oval = (d, x, y, rx, ry, rot, col, o) => d.shape(c => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, PI * 2); }, col, [x, y, Math.max(rx, ry)], o);
 // 옆을 보는 얼굴: 구슬 눈 하나 + 볼 + 코
 const face = (d, x, y, k = 1, nose = '#5a3a44') => { d.ell(x, y, 1.1 * k, 1.5 * k, INK, flat); d.dot(x + .35 * k, y - .55 * k, .4 * k, '#ffffff', .95); d.ell(x - .6 * k, y + 2.2 * k, 1.5 * k, .9 * k, '#ff8fb0', flat); if (nose) d.dot(x + 3.4 * k, y + .9 * k, .9 * k, nose); };
-// 2 차 펫 눈: 크고 반짝이는 구슬 눈 (흰 빛 두 개) + 큰 볼터치. dark = 몸이 어두우면 볼을 더 밝게, iris = 눈동자 색
-const eye2 = (d, x, y, k = 1, dark = false, iris = INK) => { d.ell(x, y, 1.5 * k, 1.95 * k, iris === INK ? INK : iris, flat); if (iris !== INK) d.ell(x, y + .3 * k, .8 * k, 1.1 * k, INK, flat); d.dot(x + .5 * k, y - .75 * k, .6 * k, '#ffffff', .98); d.dot(x - .45 * k, y + .75 * k, .28 * k, '#ffffff', .9); d.ell(x - .9 * k, y + 2.8 * k, 1.9 * k, 1.1 * k, dark ? '#ff9fbf' : '#ff8fb0', flat); };
+// 2 차 펫 눈: 흰자·반짝이 없는 콩알 눈 (••) + 볼터치. dark = 몸이 어두우면 볼을 더 밝게, iris = 눈 색
+const eye2 = (d, x, y, k = 1, dark = false, iris = INK) => { d.ell(x, y, 1.15 * k, 1.35 * k, dark && iris === INK ? '#100c10' : iris, flat); if (dark) d.dot(x + .35 * k, y - .45 * k, .38 * k, '#ffffff', .85); /* 어두운 몸에서는 콩알 눈이 보이게 작은 빛 하나 */ d.ell(x - .9 * k, y + 2.5 * k, 1.8 * k, 1 * k, dark ? '#ff9fbf' : '#ff8fb0', flat); };
 const lum = hex => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * .3 + ((n >> 8) & 255) * .59 + (n & 255) * .11) / 255; };
 const paws = (d, col, step, xs = [-4, 4], y = 0) => xs.forEach((px, i) => oval(d, px + (i % 2 ? step : -step) * .8, y - 1.6, 2.4, 1.8, 0, col));
 const P = (fn) => (d, x, y, col, t = 0, walk = false) => { const c = d.ctx, step = walk ? Math.sin(t * 10) : 0, bob = walk ? Math.abs(Math.sin(t * 10)) * 1.2 : Math.sin(t * 2) * .3;
