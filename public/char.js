@@ -822,7 +822,7 @@ export const SHOES = {
   sh12:{name:'발레 슈즈',  price:62000, draw:(d,g)=>{ shoe(d,g,'#f6c6d3'); if(!g.up) for (const f of feet(g)) d.dot(f.x+(g.side?1.6:0), -2.6-f.lift, .6, '#e85d7a'); }},
   sh13:{name:'러닝화',     price:70000, draw:(d,g)=>{ shoe(d,g,'#ff9f5a'); band(d,g,'#fffaf4',-1.0,1.1); if(!g.up) for (const f of feet(g)) d.line(k=>{ k.moveTo(f.x-1.6+(g.side?1:0), -2.4-f.lift); k.quadraticCurveTo(f.x, -1.6-f.lift, f.x+1.8+(g.side?1:0), -2.8-f.lift); }, '#fffaf4', .5, .9); }},
 };
-// ===== 오투모 상품 전용 옷 70 벌 (세트 20 · 모자 20 · 액세서리 20 · 상의 10) =====
+// ===== 오투모 상품 전용 옷 80 벌 (세트 30 · 모자 20 · 액세서리 20 · 상의 10) =====
 // excl: 가게에서는 팔지 않고, 오투모가 경매 · OX 퀴즈 · 축제 상품으로 나눠 주는 옷이에요. 플레이어가 받아서 입어요.
 // price: 경매 시작가 · 상품 고르기에 쓰는 값어치 (가게 가격이 아니에요). 주제는 다른 옷과 겹치지 않게 하나씩 골랐어요.
 const sides2 = g => g.side ? [1] : [-1, 1];
@@ -1059,6 +1059,101 @@ const SETS_PRIZE = {
         if (!g.side) { d.rr(ox-3,cy-R*.95,6,3.4,.8,gy,ff); d.line(k=>{ k.moveTo(ox-1.6,cy-R*.85); k.lineTo(ox+1.6,cy-R*.85); k.moveTo(ox-1.2,cy-R*.75); k.lineTo(ox+1.2,cy-R*.75); }, '#8a8fb0', .5, .9); } });
       if (g.up) clipTo(g, c=>{ c.beginPath(); c.ellipse(0,HY-1.5,R*1.32,R*1.24,0,0,7); }, ()=>d.rr(-R*1.5,HY-R*.62,R*3,3.4,1.2,r,ff));
       if (g.up || g.side){ const x = g.up ? 1.2 : -R*1.1, y = HY-R*.5, f = g.up ? 1 : -1; for (const [a,l] of [[.5,10],[.95,9]]) d.shape(c=>{ c.beginPath(); c.moveTo(x,y-.8); c.quadraticCurveTo(x+f*l*.5,y+f*0-1.4,x+f*Math.cos(a)*l,y+Math.sin(a)*l); c.lineTo(x+f*Math.cos(a)*l-f*.4,y+Math.sin(a)*l+1.6); c.quadraticCurveTo(x+f*l*.4,y+.8,x,y+.8); c.closePath(); }, r, [x+f*3,y+2,4], ff); d.circle(x,y,1.5,r); } }},
+  os21:{excl:1, price:168000, name:'꼬마 기관사 옷', main:'#5a78b0', draw:(d,g)=>{ const b='#5a78b0', dk='#46629a', w='#eef3fb', r='#e8505f', gd='#f3c64f';
+    const pin = (x0,x1,y0,y1) => d.line(k=>{ for (let x=x0; x<=x1; x+=1.6){ k.moveTo(x,y0); k.lineTo(x,y1); } }, w, .4, .75);
+    pants(d,g,b,.5); for (const f of feet(g)){ d.rr(f.x-2.4,-8.8-f.lift,4.8,8.6,1.8,shade(b,f)); pin(f.x-1.8,f.x+1.8,-8.4-f.lift,-.6-f.lift); }
+    torso(d,g,b); pin(-g.bw/2+1,g.bw/2-1,BY+1,BY+BH*.62);
+    if (!g.up){ const cx = g.side ? 2.2 : 0;
+      d.shape(c=>{ c.beginPath(); c.moveTo(cx-3.8,BY-.4); c.lineTo(cx+3.8,BY-.4); c.lineTo(cx,BY+4.6); c.closePath(); }, r, [cx,BY+1.4,3.6], ff); d.circle(cx,BY+1.6,1.1,r);
+      if (!g.side){ for (const yy of [6.4,9.4,12.2]) for (const sx of [-1,1]) d.dot(sx*1.6,BY+yy,.55,gd);
+        const tx = -4.6, ty = BY+7.4; d.rr(tx-1.8,ty-1,3.6,2.2,.4,'#e8505f',ff); d.rr(tx+.6,ty-2.6,1.6,2,.3,'#e8505f',ff); d.rr(tx-1.4,ty-2.4,.7,1.6,.3,'#3a3040',ff); d.dot(tx-1,ty+1.4,.6,'#3a3040'); d.dot(tx+1,ty+1.4,.6,'#3a3040'); } }
+    else { d.rr(-g.bw/2,BY+BH*.54,g.bw,1.6,.7,dk,ff); }
+    sleeves(d,g,b); cuffs(d,g,dk); hands(d,g); }},
+  os22:{excl:1, price:158000, name:'꼬마 등산가 옷', main:'#6fbf8f', draw:(d,g)=>{ const gr='#6fbf8f', dk='#55a676', kh='#c9a878', rp='#ff9a4a', rs='#e8505f';
+    legs(d,g,g.sk); for (const f of feet(g)){ d.rr(f.x-2.2,-5.6-f.lift,4.4,4.6,1.4,shade('#fffaf2',f)); d.rr(f.x-2.2,-5.6-f.lift,4.4,1,.5,shade(rs,f),ff); }
+    shorts(d,g,kh,3.4); pants(d,g,kh,.5); torso(d,g,gr); d.rr(-g.bw/2,BY+BH*.55,g.bw,1.6,.8,dk,ff);
+    if (!g.up){ if (!g.side){ d.line(k=>{ k.moveTo(0,BY+.6); k.lineTo(0,BY+BH*.6); }, '#3a5a46', .7, .9); d.rr(-.6,BY+2.6,1.2,2,.4,'#c9ced8',ff); for (const sx of [-1,1]) d.rr(sx*4.2-1.6,BY+8.2,3.2,2.6,.6,dk,ff); }
+      d.rr(g.side ? -1.4 : -3.6,BY-1.8,g.side ? 5.4 : 7.2,2.4,1.1,dk); }
+    const rope = (x,y) => { for (let i=0;i<3;i++) d.line(k=>{ k.ellipse(x,y+i*.7,3.4,2,-.6,0,7); }, rp, .9, .95); d.line(k=>{ k.moveTo(x+1.6,y+2.4); k.lineTo(x+2.6,y+4.6); }, rp, .8, .95); };
+    if (g.up) d.line(k=>{ k.moveTo(-g.bw/2+1,BY+.6); k.lineTo(g.bw/2-1,BY+BH*.5); }, rp, 1.2, .95); else if (!g.side){ d.line(k=>{ k.moveTo(g.bw/2-1,BY+.4); k.lineTo(-g.bw/2+1.6,BY+BH*.5); }, rp, 1.2, .95); rope(-4.4,BY+10.4); } else rope(1.4,BY+8);
+    sleeves(d,g,gr); cuffs(d,g,dk); hands(d,g); }},
+  os23:{excl:1, price:164000, name:'꼬마 고고학자 옷', main:'#c9b07a', draw:(d,g)=>{ const v='#c9b07a', dk='#a88f5a', sh='#fff6e6', bn='#fffaf0', br='#8a6a4a';
+    legs(d,g,g.sk); shorts(d,g,v,3.4); pants(d,g,v,.5); torso(d,g,sh);
+    if (g.up){ d.rr(-g.bw/2,BY,g.bw,BH*.62,4,v); d.line(k=>{ k.moveTo(0,BY+2); k.lineTo(0,BY+BH*.6); }, dk, .6, .8); }
+    else if (g.side){ d.rr(-g.bw/2,BY,g.bw*.7,BH*.62,3,v); d.rr(-1.2,BY+7,3.4,3,.6,dk,ff); }
+    else { for (const sx of [-1,1]) d.rr(sx>0 ? 1.2 : -g.bw/2,BY,g.bw/2-1.2,BH*.62,3,v);
+      for (const sx of [-1,1]) d.rr(sx*4.4-1.8,BY+8,3.6,3.2,.6,dk,ff); d.rr(2.8,BY+5.6,.7,3,.3,br,ff); d.ell(3.15,BY+5.2,.9,1,'#f3e6c8',ff);
+      const bx = -4.4, by = BY+4.4; d.rr(bx-1.8,by-.45,3.6,.9,.45,bn,ff); for (const sx of [-1,1]) for (const sy of [-1,1]) d.dot(bx+sx*1.9,by+sy*.6,.7,bn); }
+    if (!g.up){ d.shape(c=>{ c.beginPath(); c.moveTo(-3.6,BY-.4); c.lineTo(3.6,BY-.4); c.lineTo(0,BY+3.6); c.closePath(); }, '#e8505f', [0,BY+1,3], ff); d.dot(1.8,BY+.6,.45,'#fffaf2'); d.dot(-1.4,BY+.8,.45,'#fffaf2'); }
+    sleeves(d,g,sh); cuffs(d,g,v); hands(d,g); }},
+  os24:{excl:1, price:182000, name:'아기 얼룩말 잠옷', main:'#fbfaf6', draw:(d,g)=>{ const w='#fbfaf6', k='#3a3440', pk='#ffc4d6';
+    const zz = (x0,x1,y0,y1,step=2.8) => d.line(k2=>{ for (let y=y0; y<=y1; y+=step){ k2.moveTo(x0,y); k2.quadraticCurveTo((x0+x1)/2,y+1.4,x1,y-.4); } }, k, 1.1, .95);
+    prizeHoodBack(d,w); pants(d,g,w,.5); for (const f of feet(g)){ d.rr(f.x-2.4,-8.8-f.lift,4.8,8.6,1.8,shade(w,f)); zz(f.x-2.2,f.x+2.2,-7.6-f.lift,-2-f.lift,2.6); }
+    if (g.side || g.up){ const tx = g.up ? 1 : -g.bw/2+1, f = g.up ? 1 : -1; d.line(k2=>{ k2.moveTo(tx,BY+BH*.6); k2.quadraticCurveTo(tx+f*4,BY+BH*.66,tx+f*5,BY+BH*.95); }, k, 1, 1); if (g.side) leafAt(d,tx+f*5.2,BY+BH*1.0,1.3,2.2,0,k,{}); }
+    torso(d,g,w); zz(-g.bw/2+.4,g.bw/2-.4,BY+2.4,BY+12.4);
+    if (g.up) leafAt(d,1,BY+BH*.98,1.3,2.2,0,k,{});
+    if (!g.up){ const cx = g.side ? 2.2 : 0; d.ell(cx,BY+8.6,g.side ? 2.6 : 3.4,3.6,'#ecebe6',ff); }
+    sleeves(d,g,w); if (!g.pray) for (const sx of sides2(g)) zz(sx*(g.bw/2+1.4)-2.6,sx*(g.bw/2+1.4)+2.6,BY+3.4,BY+8,2.4); cuffs(d,g,k); hands(d,g); },
+    over:(d,g)=>{ const w='#fbfaf6', k='#3a3440', pk='#ffc4d6';
+      prizeHood(d,g,w,'#ecebe6', (cy)=>{ for (const sx of (g.side ? [-.35] : [-1,1])){ leafAt(d,sx*R*.9,cy-R*1.1,2.3,3.1,sx*.5,w,{}); if (!g.up) leafAt(d,sx*R*.9,cy-R*1.08,1.1,1.9,sx*.5,'#cfcbc4'); }
+        const mx = g.side ? -R*.15 : 0; for (let i=0;i<7;i++){ const a = Math.PI*(1.25+i*.085); d.ell(mx+Math.cos(a)*R*1.28*(g.side?1:.35),cy+Math.sin(a)*R*1.28,1.7,2.4,k,{noShadow:true}); } },
+        (cy,ox)=>{ d.line(k2=>{ for (const x of [-4.4,-1.5,1.5,4.4]){ k2.moveTo(ox+x,cy-R*1.18); k2.lineTo(ox+x*1.1,cy-R*.86); } }, k, 1.1, .9); });
+      if (g.up) d.line(k2=>{ for (const y of [-.7,-.3,.1,.5]){ k2.moveTo(-R*1.2,HY-1.5+R*y); k2.quadraticCurveTo(0,HY-1.5+R*y+2,R*1.2,HY-1.5+R*y); } }, k, 1.1, .8); }},
+  os25:{excl:1, price:176000, name:'아기 나무늘보 잠옷', main:'#b39a7c', draw:(d,g)=>{ const b='#b39a7c', lt='#e6d6bc', dk='#7a6450', cl='#f6ecd8';
+    prizeHoodBack(d,b); pants(d,g,b,.5); for (const f of feet(g)) d.rr(f.x-2.4,-8.8-f.lift,4.8,8.6,1.8,shade(b,f));
+    torso(d,g,b); if (!g.up){ const cx = g.side ? 2.2 : 0; d.ell(cx,BY+8.4,g.side ? 3.4 : 4.6,5.4,lt,ff); if (!g.side) for (const [x,y] of [[-2,6],[1.6,8.6],[-1,11]]) d.line(k=>{ k.moveTo(x-.8,BY+y); k.lineTo(x+.8,BY+y+.4); }, '#cdb998', .6, .8); }
+    else d.ell(0,BY+6,4,3,dk,ff);
+    sleeves(d,g,b); hands(d,g);
+    if (!g.pray) for (const [hx,hy] of handPos(g)) for (const dx of [-1.2,0,1.2]) d.ell(hx+dx,hy+3.2,.55,1.3,cl,{noShadow:true}); },
+    over:(d,g)=>{ const b='#b39a7c', lt='#e6d6bc', dk='#5a4636';
+      prizeHood(d,g,b,lt,null,(cy,ox)=>{ const xs = g.side ? [R*.75] : [-R*.42, R*.42]; for (const x of xs){ const sx = x < 0 ? -1 : 1; d.shape(c=>{ c.beginPath(); c.ellipse(ox+x,cy-R*.98,3.4,1.6,sx*-.35,0,7); }, dk, [ox+x,cy-R*.98,3.4], ff); d.dot(ox+x+sx*.6,cy-R*1.0,.6,'#1f1a1e'); }
+        if (!g.side){ d.ell(ox,cy-R*.86,1.2,.8,'#3a2a24',ff); d.line(k=>{ k.moveTo(ox-1.6,cy-R*.76); k.quadraticCurveTo(ox,cy-R*.66,ox+1.6,cy-R*.76); }, '#3a2a24', .6, .9); } }); }},
+  os26:{excl:1, price:186000, name:'해마 드레스', main:'#ffbf7a', draw:(d,g)=>{ const o='#ffbf7a', dk='#f2a050', lt='#ffe0b0', tq='#7fd3c8', h=.54, b = skB(h);
+    legs(d,g,g.sk);
+    if (g.side || g.up){ const x = g.up ? 0 : -g.bw/2-.4, f = g.up ? 1 : -1; for (let i=0;i<5;i++){ const a = (g.up ? -Math.PI/2 : Math.PI) + (i-2)*.32; leafAt(d,x+Math.cos(a)*3.4*(g.up?1:1),BY+6+Math.sin(a)*3.4,1.2,3.2,a+Math.PI/2,i%2 ? tq : '#9fe3d8',{}); } }
+    torso(d,g,o); skirt(d,g,o,1.4,h);
+    d.line(k=>{ for (let y=SK0+1.4; y<b; y+=1.8){ const t = (y-SK0)/(b-SK0), hw = g.bw*(.42+t*.28); k.moveTo(-hw,y); k.quadraticCurveTo(0,y+1.2,hw,y); } }, dk, .6, .65);
+    ruffle(d,-g.bw*.7,g.bw*.7,b+.4,tq,.85);
+    if (!g.up && !g.side){ const sx = -1.6, sy = BY+3; d.circle(sx,sy,1.6,tq,{noShadow:true}); d.shape(c=>{ c.beginPath(); c.moveTo(sx+.8,sy-.3); c.lineTo(sx+3.2,sy+.2); c.lineTo(sx+.9,sy+.9); c.closePath(); }, tq, [sx+2,sy,1.4], ff);
+      d.line(k=>{ k.moveTo(sx-.2,sy+1.2); k.bezierCurveTo(sx+2.4,sy+3.4,sx-1.8,sy+5.4,sx+.6,sy+7.4); k.quadraticCurveTo(sx+2,sy+8.6,sx+.6,sy+9); }, tq, 1.6, 1); d.dot(sx-.3,sy-.4,.4,'#2b2228'); leafAt(d,sx-1.6,sy+3.6,.7,1.4,-.4,'#9fe3d8');
+      for (const [x,y,r] of [[3.4,BY+3,.7],[4.4,BY+5.4,.5],[3.2,BY+7.2,.4]]) d.line(k=>{ k.arc(x,y,r,0,7); }, '#ffffff', .4, .95); }
+    capSleeve(d,g,lt); }},
+  os27:{excl:1, price:154000, name:'키위 원피스', main:'#9fd46a', draw:(d,g)=>{ const gr='#9fd46a', dk='#7fbf4e', cr='#f4f8dc', br='#a8835a', sd='#2f2a2a', h=.56, b = skB(h), fl = 1.4;
+    legs(d,g,g.sk); torso(d,g,gr); skirt(d,g,br,fl,h);
+    clipTo(g, c=>skirtPath(c,g,fl,h), ()=>{ d.shape(c=>{ c.beginPath(); c.ellipse(0,SK0-1,g.bw*.72,b-SK0-.2,0,0,Math.PI); }, gr, [0,SK0+3,8], ff);
+      d.shape(c=>{ c.beginPath(); c.ellipse(0,SK0-1,g.bw*.24,(b-SK0)*.38,0,0,Math.PI); }, cr, [0,SK0+1,3], ff);
+      if (!g.up) for (let i=0;i<9;i++){ const a = .25+i*(Math.PI-.5)/8; d.ell(Math.cos(a)*g.bw*.42,SK0-1+Math.sin(a)*(b-SK0)*.6,.35,.6,sd,{noShadow:true}); }
+      d.line(k=>{ for (let i=0;i<9;i++){ const a = .25+i*(Math.PI-.5)/8; k.moveTo(Math.cos(a)*g.bw*.2,SK0-1+Math.sin(a)*(b-SK0)*.34); k.lineTo(Math.cos(a)*g.bw*.6,SK0-1+Math.sin(a)*(b-SK0)*.82); } }, '#c4e8a0', .4, .6); });
+    d.rr(-g.bw/2,BY+BH*.52,g.bw,1.5,.7,br,ff);
+    if (!g.up && !g.side){ d.circle(-3.6,BY+4.6,2.2,br,{noShadow:true}); d.circle(-3.6,BY+4.6,1.7,gr,ff); d.circle(-3.6,BY+4.6,.6,cr,ff); for (let i=0;i<6;i++){ const a = i*Math.PI/3; d.dot(-3.6+Math.cos(a)*1.1,BY+4.6+Math.sin(a)*1.1,.22,sd); } }
+    capSleeve(d,g,cr); }},
+  os28:{excl:1, price:156000, name:'블루베리 원피스', main:'#7b8be0', draw:(d,g)=>{ const bl='#7b8be0', dk='#5f6fc8', lt='#b8c2f2', lf='#7cc78a', h=.5, b = skB(h);
+    const berry = (x,y,r) => { d.circle(x,y,r,dk,{noShadow:true}); d.dot(x-r*.35,y-r*.35,r*.25,'#c8d0ff',.8); d.line(k=>{ for (let i=0;i<5;i++){ const a = i*1.2566; k.moveTo(x,y-r*.65); k.lineTo(x+Math.cos(a)*r*.38,y-r*.65+Math.sin(a)*r*.38); } }, '#3f4a98', .35, .9); };
+    legs(d,g,g.sk); torso(d,g,bl);
+    d.shape(c=>{ c.beginPath(); c.moveTo(-g.bw*.42,SK0); c.lineTo(g.bw*.42,SK0); c.bezierCurveTo(g.bw*.86,SK0+1,g.bw*.8,b+.6,0,b+.8); c.bezierCurveTo(-g.bw*.8,b+.6,-g.bw*.86,SK0+1,-g.bw*.42,SK0); c.closePath(); }, bl, [0,(SK0+b)/2,g.bw*.7]);
+    d.rr(-g.bw/2,BY+BH*.52,g.bw,1.5,.7,lt,ff);
+    const pts = g.up ? [[-3.6,SK0+3,1.3],[3.2,SK0+4,1.2]] : g.side ? [[1.6,SK0+3.2,1.3],[-1.6,SK0+4.4,1.1]] : [[-5,SK0+2.6,1.3],[-2.6,SK0+4,1.2],[3.8,SK0+3,1.3],[1.4,SK0+4.6,1.1],[-3.6,BY+5,1]];
+    for (const [x,y,r] of pts) berry(x,y,r);
+    if (!g.up && !g.side){ leafAt(d,-1.8,BY+3.6,1.6,.8,-.5,lf); leafAt(d,-5.4,SK0+1.2,1.6,.8,.4,lf); leafAt(d,2.6,SK0+1.6,1.6,.8,-.4,lf); }
+    if (!g.up) ruffle(d,-3.4,3.4,BY+.5,lt,.8);
+    capSleeve(d,g,lt); }},
+  os29:{excl:1, price:192000, name:'열기구 원피스', main:'#ff8f8f', draw:(d,g)=>{ const cols = ['#ff8f8f','#ffd36b','#8fc8f0','#9fdc9a'], wk='#c9955a', wd='#a87440', h=.54, b = skB(h), fl = 1.42;
+    legs(d,g,g.sk); torso(d,g,cols[0]);
+    clipTo(g, c=>{ c.beginPath(); c.rect(-g.bw/2-1,BY-1,g.bw+2,BH*.66); }, ()=>{ for (let i=-3;i<=3;i++) d.shape(c=>{ c.beginPath(); c.moveTo(i*2.6,BY-1); c.quadraticCurveTo(i*3.6,BY+6,i*2.4,BY+BH*.66); c.lineTo((i+1)*2.4,BY+BH*.66); c.quadraticCurveTo((i+1)*3.6,BY+6,(i+1)*2.6,BY-1); c.closePath(); }, cols[(i+4)%4], [i*2.6,BY+6,4], ff); });
+    skirt(d,g,cols[1],fl,h);
+    clipTo(g, c=>skirtPath(c,g,fl,h), ()=>{ for (let i=-4;i<=4;i++) d.shape(c=>{ c.beginPath(); c.moveTo(i*1.8,SK0); c.lineTo(i*3.2,b+3); c.lineTo((i+1)*3.2,b+3); c.lineTo((i+1)*1.8,SK0); c.closePath(); }, cols[(i+4)%4], [i*2,SK0+3,4], ff); });
+    d.rr(-g.bw/2-.4,BY+BH*.5,g.bw+.8,2.6,.8,wk); d.line(k=>{ for (let x=-g.bw/2; x<g.bw/2; x+=1.4){ k.moveTo(x,BY+BH*.5+.4); k.lineTo(x+.7,BY+BH*.5+2.2); } }, wd, .45, .8);
+    if (!g.up && !g.side) d.line(k=>{ for (const x of [-4,4]){ k.moveTo(x*.8,BY+BH*.5); k.lineTo(x,BY+BH*.38); } }, wd, .5, .9);
+    capSleeve(d,g,cols[2]); }},
+  os30:{excl:1, price:162000, name:'꼬마 바리스타 옷', main:'#8a6248', draw:(d,g)=>{ const v='#8a6248', dk='#6e4a36', w='#fffaf2', cr='#f3e3c8', gd='#e0ad3a';
+    legs(d,g,'#3e3a46'); pants(d,g,'#3e3a46',.5); torso(d,g,w);
+    if (g.up){ d.rr(-g.bw/2,BY,g.bw,BH*.62,4,v); d.rr(-2.4,BY+BH*.44,4.8,1.2,.5,dk,ff); }
+    else if (g.side){ d.rr(-g.bw/2,BY+1,g.bw*.72,BH*.6,3,v); d.dot(2.6,BY+8,.5,gd); }
+    else { d.shape(c=>{ c.beginPath(); c.moveTo(-g.bw/2,BY+1); c.lineTo(-1.6,BY+1); c.lineTo(0,BY+6); c.lineTo(1.6,BY+1); c.lineTo(g.bw/2,BY+1); c.lineTo(g.bw/2,BY+BH*.62); c.lineTo(-g.bw/2,BY+BH*.62); c.closePath(); }, v, [0,BY+7,7]);
+      for (const yy of [8,10.6]) d.dot(0,BY+yy,.55,gd); d.rr(1.8,BY+8.4,3.6,1,.4,dk,ff);
+      const cx = -4, cy = BY+8.8; d.rr(cx-1.6,cy-1.4,3.2,3,1,cr); d.line(k=>{ k.arc(cx+1.8,cy,.9,-1.4,1.4); }, cr, .6, 1); d.ell(cx,cy-1.4,1.6,.5,'#c98a5a',ff); d.line(k=>{ for (const dx of [-.6,.6]){ k.moveTo(cx+dx,cy-2.2); k.quadraticCurveTo(cx+dx+.6,cy-3.2,cx+dx,cy-4); } }, '#ffffff', .4, .9);
+      d.shape(c=>{ c.beginPath(); c.moveTo(0,BY+1.2); c.lineTo(-1.8,BY+.2); c.lineTo(-1.8,BY+2.2); c.closePath(); c.moveTo(0,BY+1.2); c.lineTo(1.8,BY+.2); c.lineTo(1.8,BY+2.2); c.closePath(); }, dk, [0,BY+1.2,2], ff); d.dot(0,BY+1.2,.6,dk); }
+    sleeves(d,g,w); cuffs(d,g,cr); hands(d,g); }},
 };
 Object.assign(SETS, SETS_PRIZE);
 // ----- 상품 모자 · 액세서리 · 상의 도움 -----
