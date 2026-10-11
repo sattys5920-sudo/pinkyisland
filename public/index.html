@@ -5060,7 +5060,7 @@ const bridgeX = () => Math.round(ZONES.beach.W/2);
 const bridgeOpen = () => admin || bridgeStage() >= 3;
 // 다리가 다 이어지면 등대 해변 북쪽 길이 열려요 (관리자는 미리 건널 수 있어요)
 function bridgeSync(){ const open = bridgeOpen(), had = ZONES.beach.exits.n === 'resort'; if (open) ZONES.beach.exits.n = 'resort'; else delete ZONES.beach.exits.n; if (open !== had && zoneId === 'beach'){ rebuildObstacles(); staticSig = ''; } }
-function onBridge(v){ bridgeData = v || {}; bridgeData.g = bridgeData.g || {}; bridgeSync(); bridgeReward(); const p = $('npcPanel'); if (p && !p.hidden && p.dataset.bridge && !bridgeBusy) keepScroll(bridgePanel); }
+function onBridge(v){ setTimeout(()=>{ if (admin && admTab === 'island') renderAdmin(); }); bridgeData = v || {}; bridgeData.g = bridgeData.g || {}; bridgeSync(); bridgeReward(); const p = $('npcPanel'); if (p && !p.hidden && p.dataset.bridge && !bridgeBusy) keepScroll(bridgePanel); }
 const bridgeGot = slot => Object.values(bridgeData.g[slot] || {}).reduce((a, n)=>a + (+n || 0), 0);
 const bridgeMine = slot => +((bridgeData.g[slot] || {})[uid] || 0);
 const bridgeLineP = l => Math.min(1, bridgeGot(l.slot) / l.need);
@@ -5188,7 +5188,7 @@ const RS_FAC = [[20000, [['wood:w2', 10]]], [40000, [['wood:w2', 20], ['ore:o11'
 const RS_RATE = 200, RS_CAP = 12*3600000, RS_FEES = [0, 100, 200, 300, 500];
 let resortData = {plots:{}, types:{}, owners:{}, v:{}, w:{}, show:{}, clap:{}}, rsBusy = false;
 const rsWeek = (ms = Date.now()) => Math.floor((ms + serverOffset + 9*3600000) / (7*86400000));
-function onResort(v){ v = v || {}; resortData = {plots:v.plots || {}, types:v.types || {}, owners:v.owners || {}, v:v.v || {}, w:v.w || {}, show:v.show || {}, clap:v.clap || {}};
+function onResort(v){ setTimeout(()=>{ if (admin && admTab === 'island') renderAdmin(); }); v = v || {}; resortData = {plots:v.plots || {}, types:v.types || {}, owners:v.owners || {}, v:v.v || {}, w:v.w || {}, show:v.show || {}, clap:v.clap || {}};
   if (zoneId === 'resort'){ rebuildObstacles(); } const p = $('npcPanel'); if (p && !p.hidden && p.dataset.rs != null && !rsBusy) keepScroll(()=>rsPanel(+p.dataset.rs)); }
 const rsPlot = i => resortData.plots[i] || null;
 const rsMine = () => { const i = resortData.owners[uid]; return i != null && rsPlot(i)?.uid === uid ? +i : null; };
@@ -5268,6 +5268,7 @@ async function rsLevelUp(i){ const pl = rsPlot(i); if (!pl || pl.uid !== uid || 
   rsSettle(i, true); try { await rsWrite({[`plots/${i}/lv`]:pl.lv + 1}); } catch(e){ return; } costPay(g, mats); saveMe(); renderHud(); setExpr('sparkle', 2000); toast(`가게가 Lv ${pl.lv + 1} 이 됐어요!`); }
 function rsSettle(i, quiet){ const pl = rsPlot(i); if (!pl || pl.uid !== uid) return; const inc = rsIncome(pl, i), fri = rsFriendIncome(i);
   me.rsLast = Date.now(); me.rsGot = me.rsGot || {}; for (const [id, r] of Object.entries(resortData.v[i] || {})) me.rsGot[id] = +r?.paid||0;
+  rsWrite({[`plots/${i}/st`]:Date.now(), [`plots/${i}/earn`]:(+pl.earn||0) + inc + fri}).catch(()=>{});
   if (inc + fri <= 0){ saveMe(); return; } me.inv.gold += inc + fri; me.earned = (me.earned||0) + inc + fri; stat('rsEarned', inc + fri); saveMe(); renderHud();
   if (!quiet){ toast(`정산했어요 · 관광객 ${inc.toLocaleString()} G · 친구 ${fri.toLocaleString()} G`); rsPanel(i); } }
 // 놀기: 친구 가게면 입장료를 내고, 이번 주 방문으로 세요
@@ -5309,7 +5310,7 @@ function rsReward(game, r, opt, i){
   else if (game === 'balloon'){ if (ok){ stat('rsBalloon'); msg = `진짜 반짝이 5 개! ${B('hawk')}`; } }
   saveMe(); renderHud();
   if (msg) say(RS_TYPES.find(T=>T.game === game).name, msg, [], ok ? '' : ''); else toast(game === 'camp' ? '마시멜로가 타 버렸어요 · 다시 해 봐요' : '아쉬워요 · 다시 해 봐요'); }
-function rsMaintGame(i){ rsGame('maint', {}).then(r=>{ if (r && r.ok){ me.rsMaint = today(); stat('rsMaint'); saveMe(); toast('오늘 정비 끝! 손님이 다시 많이 와요'); } else if (r && !r.quit) toast('시간 안에 다 못 치웠어요 · 다시 해 봐요'); rsPanel(i); }); }
+function rsMaintGame(i){ rsGame('maint', {}).then(r=>{ if (r && r.ok){ me.rsMaint = today(); stat('rsMaint'); saveMe(); rsWrite({[`plots/${i}/mt`]:today()}).catch(()=>{}); toast('오늘 정비 끝! 손님이 다시 많이 와요'); } else if (r && !r.quit) toast('시간 안에 다 못 치웠어요 · 다시 해 봐요'); rsPanel(i); }); }
 // ===== 리조트 미니게임: rsGame(종류, 옵션) → Promise({ok, score, ...}) · 화면 360×540 =====
 function rsGame(kind, opt){ return new Promise(res=>{
   const box = document.createElement('div'); box.id = 'rsGame'; box.innerHTML = '<canvas></canvas><button class="mini" id="rsGx">그만하기</button>'; document.body.appendChild(box);
@@ -6819,7 +6820,7 @@ function enterAdmin(){
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
 }
 // 관리자 메뉴 탭: 고른 탭은 이 기기에 기억해요
-const ADM_TABS = [['people','주민'],['event','이벤트'],['mob','몬스터'],['tmap','보물 지도'],['dark','다크 모드'],['data','가게 · 데이터']];
+const ADM_TABS = [['people','주민'],['event','이벤트'],['mob','몬스터'],['tmap','보물 지도'],['island','섬 복구 · 리조트'],['dark','다크 모드'],['data','가게 · 데이터']];
 let admTab = (() => { try { const v = localStorage.getItem('admTab'); return ADM_TABS.some(([k])=>k===v) ? v : 'people'; } catch(e){ return 'people'; } })();
 // 보물 지도 현황: 사람마다 가진 조각 · 맞춘 지도(파러 가는 중) · 찾은 보물
 function adminTmapSec(regs){
@@ -6833,6 +6834,24 @@ function adminTmapSec(regs){
   const sum = TMAP.map((t, i) => tot[i] ? `<span class="adm-chip">${esc(zs(i))} ${tot[i]}</span>` : '').join('');
   return `<div class="adm-sec"><b>🗺️ 보물 지도 현황</b><small>사람마다 구역별로 모은 조각 (몇 번까지 모았는지 /9 · <i>+</i>는 겹친 조각) · 맞춘 지도 · 찾은 보물</small>${sum ? `<small style="margin-top:4px">섬 전체 조각</small><div class="adm-chips">${sum}</div>` : '<small>아직 아무도 조각을 줍지 않았어요</small>'}</div>
     <div class="adm-sec">${rows.map(r => r.html).join('') || '<small>주민이 없어요</small>'}</div>`;
+}
+// 관리자: 섬 복구 다리가 어디까지 왔는지 · 리조트 가게마다 운영 상태
+function adminIslandSec(){
+  const nick = id => esc(String(players[id]?.nick || '(나간 주민)')), st = bridgeStage();
+  let h = `<div class="adm-sec"><b>🌉 섬 복구 다리</b><small>${st >= 3 ? '다리 완성 · 섬이 열렸어요' : `지금 ${st + 1} 단계 「${BRIDGE[st].name}」 · ${Math.round(bridgeStageP(st)*100)}%`}</small>`;
+  BRIDGE.forEach((stg, si)=>{ h += `<div class="adm-tm"><b>${si + 1} 단계 · ${stg.name} ${bridgeStageDone(si) ? '✓' : Math.round(bridgeStageP(si)*100) + '%'}</b><div class="adm-chips">`;
+    for (const [bn, ls] of stg.b) for (const [key, need, slot] of ls){ const got = Math.min(need, bridgeGot(slot)), who = Object.entries(bridgeData.g[slot] || {}).filter(([, n])=>n > 0).sort((a, b)=>b[1] - a[1]);
+      h += `<span class="adm-chip${got >= need ? ' on' : ''}" title="${who.map(([id, n])=>`${players[id]?.nick || '?'} ${n}`).join(', ')}">${esc(bridgeLabel(key))} ${got.toLocaleString()}/${need.toLocaleString()}</span>`; }
+    h += '</div></div>'; });
+  const top = bridgeContrib(); h += `<div class="adm-tm"><b>기여 순위</b><small>${top.map(([id, sc], i)=>`${i + 1}. ${nick(id)} ${Math.round(sc)}점`).join(' · ') || '아직 아무도 안 냈어요'}</small></div></div>`;
+  const pop = rsPopular(), wk = resortData.w[rsWeek()] || {};
+  h += `<div class="adm-sec"><b>🏖️ 리조트 가게</b><small>가게 ${Object.keys(resortData.plots).length}/12 · 이번 주 방문 · 친구 입장료 누적 · 정비는 오늘 했는지</small>`;
+  for (let i = 0; i < 12; i++){ const pl = rsPlot(i); if (!pl){ h += `<div class="adm-tm"><b>${i + 1} 번 자리</b><small>비어 있어요</small></div>`; continue; }
+    const T = RS_TYPES[pl.type], fac = T.fac.filter((_, k)=>(pl.fac|0) & (1 << k)), visits = Object.values(wk[i] || {}).reduce((a, n)=>a + (+n||0), 0), fees = Object.values(resortData.v[i] || {}).reduce((a, r)=>a + (+r?.paid||0), 0), guests = Object.keys(resortData.v[i] || {}).length;
+    h += `<div class="adm-tm"><b>${T.ic} ${esc(pl.name || T.name)} · ${nick(pl.uid)}</b><small>${T.name} · Lv ${pl.lv} · 시설 ${fac.length}/${RS_SLOTS[pl.lv - 1]} · 입장료 ${pl.fee ? pl.fee + ' G' : '무료'}${pop === i ? ' · 🏆 지난주 인기 가게' : ''}<br>
+      정비 ${pl.mt === today() ? '오늘 함 ✓' : '오늘 안 함'} · 마지막 정산 ${pl.st ? fmtLeft(Date.now() - pl.st) + ' 전' : '아직'} · 번 돈 ${(+pl.earn||0).toLocaleString()} G · 이번 주 방문 ${visits} · 다녀간 친구 ${guests} 명 · 친구 입장료 누적 ${fees.toLocaleString()} G</small>
+      <div class="adm-chips">${fac.map(f=>`<span class="adm-chip on">${esc(f)}</span>`).join('') || '<span class="adm-chip">시설 없음</span>'}</div></div>`; }
+  return h + '</div>';
 }
 function renderAdmin(){
   const box = $('adminUi'); if (!box || !admin) return;
@@ -6857,6 +6876,7 @@ function renderAdmin(){
       ${admTab==='event' ? `${adminGoalSec()}${adminNightSec()}${adminAucSec()}${adminFestSec()}` : ''}
       ${admTab==='mob' ? `${adminMobSec()}` : ''}
       ${admTab==='tmap' ? adminTmapSec(regs) : ''}
+      ${admTab==='island' ? adminIslandSec() : ''}
       ${admTab==='dark' ? `<div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
         <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}<button data-a="dkq" class="adm-btn">✏️ 방탈출 문제 편집</button></div>` : ''}
