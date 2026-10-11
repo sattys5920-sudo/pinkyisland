@@ -1195,7 +1195,7 @@ function fromDB(p){
   if (inv.seed){ inv.seeds.c01 = (inv.seeds.c01||0) + inv.seed; } delete inv.seed;
   if (inv.tomato){ inv.crops.c01 = (inv.crops.c01||0) + inv.tomato; } delete inv.tomato;
   const lk = CH.migrateLook(p.look), worn = Object.entries(lk.cc||{}).filter(([,c])=>c).map(([slot,c])=>{ const id = slot==='set' ? lk.set : lk[slot]; return id && id!=='none' ? id+'#'+c : null; }).filter(Boolean);
-  const closet = [...new Set([...CH.FREE, ...(p.closet||[]), ...(p.hats ? p.hats.split(',') : []), ...CH.lookItems(lk), ...worn])].filter(k=>k.split('#')[0] !== 'none' && CH.ITEM(k.split('#')[0]));
+  const closet = [...new Set([...CH.FREE, ...(p.closet||[]), ...(p.hats ? p.hats.split(',') : []), ...CH.lookItems(lk), ...worn])].filter(k=>k.split('#')[0] !== 'none' && CH.ITEM(k.split('#')[0]) && !CH.ITEM(k.split('#')[0]).otumo); // 오투모 전용 옷은 옷장에 안 들어가요
   return { ...p, look:CH.migrateLook(p.look), closet, rel:p.rel||{}, inv,
     gardens:Array.from({length:Math.max(2, Math.min(PLOT_MAX, p.plots||2))}, (_,i)=>i).map(i=>{ const s = g[i]; if (!s) return null; return {crop: s.stage>=0 ? {type:s.type||'c01', stage:s.stage, wateredAt:s.wateredAt||null} : null}; }) };
 }
@@ -3962,7 +3962,7 @@ const SLOT_NAME = Object.fromEntries(CH.CATS.map(([k,l])=>[k,l]));
 function takeOff(sl){ const id = me.look[sl]; if (!id || id==='none') return false; invAdd('wear:'+bagKey(id, me.look.cc?.[sl]||0), 1); me.look = {...me.look, [sl]: emptyOf(sl)}; return true; }
 function lookChanged(){ spriteCache.clear(); previewCache.clear(); saveMe(); }
 function wearItem(k){
-  const [id, c] = k.slice(5).split(/[~#]/), sl = slotOfWear(id); if (!sl || invCount(k) < 1) return;
+  const [id, c] = k.slice(5).split(/[~#]/), sl = slotOfWear(id); if (!sl || CH.ITEM(id)?.otumo || invCount(k) < 1) return; // otumo: 오투모 전용 옷은 플레이어가 입을 수 없어요
   invAdd(k, -1);
   { const ck = ownKey(id, +c||0); if (!CLOSET().includes(ck)) CLOSET().push(ck); } // 거래소에서 산 옷도 모은 옷으로
   for (const o of sl==='set' ? ['set','top','bottom'] : sl==='top' || sl==='bottom' ? [sl, 'set'] : [sl]) takeOff(o); // 한 벌을 입으면 상의·하의도 벗어 가방에
@@ -4005,7 +4005,7 @@ function migrateItems(){
 function clothesPanel(){
   const [slot, label, cat] = CH.CATS.find(c=>c[0]===shopTab);
   const tabs = CH.CATS.map(([k,l])=>`<button class="mini" data-tab="${k}" style="${k===shopTab?'':'background:#fff'}">${l}</button>`).join('');
-  const rows = Object.entries(cat).filter(([id,it])=>!it.excl).map(([id,it])=>{ // excl: 오투모 경매·OX 퀴즈 상품으로만 받는 옷
+  const rows = Object.entries(cat).filter(([id,it])=>!it.excl && !it.otumo).map(([id,it])=>{ // excl: 오투모 경매·OX 퀴즈 상품으로만 받는 옷
     const own = ownsAny(id), on = wearing(id) || (id==='none' && (slot==='hat' ? me.look.hat==='none' : slot==='acc' ? me.look.acc==='none' : false));
     const cost = it.need ? `${it.price?it.price.toLocaleString()+' G + ':''}${itemName(it.need)} ${invCount(it.need)}/${it.n}` : `${it.price.toLocaleString()} G`;
     const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
@@ -4489,7 +4489,7 @@ let market = {};
 // 거래할 수 있는 아이템 키인지 (옷·우산·벽지·바닥도 거래돼요)
 function itemKeyOk(k){ const m = /^(dish|crop|forage|fish|ore|loot|seed|furn|wear|umb|wall|floor|tmap):([A-Za-z0-9_~]{2,12})$/.exec(k || ''); if (!m) return false; const [, cat, id] = m;
   if (cat==='tmap') return !!tmapParse(id);
-  if (cat==='wear'){ const [w, c] = id.split(/[~#]/); return !!slotOfWear(w) && (c===undefined || /^[1-4]$/.test(c)); }
+  if (cat==='wear'){ const [w, c] = id.split(/[~#]/); return !!slotOfWear(w) && !CH.ITEM(w)?.otumo && (c===undefined || /^[1-4]$/.test(c)); }
   if (cat==='umb') return !!UMB[id]; if (cat==='wall') return !!WALLS[id]; if (cat==='floor') return !!FLOORS[id]; return /^[a-z0-9_]{2,8}$/.test(id); }
 const validListing = l => l && typeof l.item==='string' && itemKeyOk(l.item) && l.n>=1 && l.n<=99 && l.price>=1 && typeof l.uid==='string' && (!l.item.startsWith('tmap:') || l.price === TMAP_PRICE * l.n);
 function onMarket(v){
@@ -6193,7 +6193,7 @@ let admSide = false; // 폰에서 [메뉴]로 여닫는 관리 목록
 let admLook = null; // 주민 캐릭터·옷·집 보기 (null 닫힘 / '' 열림)
 let admDressOpen = false; // 오투모 옷 고르기 창
 function adminDress(){
-  const D = otumoDress || {}, opt = (T, cur, none) => (none ? `<option value="none" ${!cur || cur==='none' ? 'selected' : ''}>없음</option>` : '') + Object.entries(T).filter(([id])=>id!=='none').map(([id, it])=>`<option value="${id}" ${cur===id ? 'selected' : ''}>${esc(it.name)}${it.excl ? ' ★' : ''}</option>`).join('');
+  const D = otumoDress || {}, opt = (T, cur, none) => (none ? `<option value="none" ${!cur || cur==='none' ? 'selected' : ''}>없음</option>` : '') + Object.entries(T).filter(([id])=>id!=='none').map(([id, it])=>`<option value="${id}" ${cur===id ? 'selected' : ''}>${esc(it.name)}${it.otumo ? ' ★ 오투모' : it.excl ? ' ★' : ''}</option>`).join('');
   const sel = (sl, l, T, none) => `<label>${l}<select data-od="${sl}">${opt(T, D[sl], none)}</select></label>`;
   return `<div class="adm-tbl adm-dress"><div class="adm-tbl-head"><b>오투모 옷 입히기</b><small>고르면 바로 섬에 있는 모두에게 보여요 · ★ 은 오투모 전용 옷</small><button data-a="odclose" class="adm-btn">닫기</button></div>
     <div class="adm-dress-grid">${CH.CATS.map(([sl, l, T])=>sel(sl, l, T, sl==='set' || sl==='hat' || sl==='acc')).join('')}</div>
@@ -6963,7 +6963,7 @@ function aucBubble(c, x, y){
 const admAuc = {aucK:'ring:r10', aucN:'1', aucStart:'100000', aucDur:'60'};
 function aucItems(){
   // 원가: 반지는 공방에서 만드는 값, 가구는 상점 값, 광석·요리는 기본 판매가 (시세·보너스 빼고)
-  const paid = (list, pre) => Object.entries(list).filter(([id, it]) => id !== 'none' && it && (it.price || 0) > 0).map(([id, it]) => [pre + id, it.name + (pre === 'umb:' ? ' 우산' : ''), it.price]);
+  const paid = (list, pre) => Object.entries(list).filter(([id, it]) => id !== 'none' && it && !it.otumo && (it.price || 0) > 0).map(([id, it]) => [pre + id, it.name + (pre === 'umb:' ? ' 우산' : ''), it.price]);
   const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1], r[3]])], ...CH.CATS.map(([, l, list]) => [l, paid(list, 'wear:')]).filter(([, l]) => l.length), ['우산', paid(UMB, 'umb:')], ['벽지', paid(WALLS, 'wall:')], ['바닥', paid(FLOORS, 'floor:')], ['가구', FURN_ALL.map((f, i) => { const id = 'u' + String(i + 1).padStart(2, '0'); return ['furn:' + id, f[0], FURN[id]?.gold || 0]; })],
     ['광석', Object.keys(ORES).map(id => ['ore:' + id, ORES[id].name, itemPrice('ore:' + id)])], ['요리', Object.keys(DISHES).map(id => ['dish:' + id, DISHES[id].name, itemPrice('dish:' + id)])]];
   return o.map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n, p]) => `<option value="${k}"${admAuc.aucK === k ? ' selected' : ''}>${esc(n)} · 원가 ${(p || 0).toLocaleString()} G</option>`).join('')}</optgroup>`).join('');
