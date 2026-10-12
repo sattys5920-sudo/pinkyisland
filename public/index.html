@@ -5679,6 +5679,8 @@ async function darkEnter(npc){
 }
 function darkLeave(msg){ const z = Z(); if (!z.dark) return; if (darkDown){ darkDown = null; playerHp = maxHp(); } const [dx, dy] = darkDoorOf(z.dark); darkSlams = []; enterZone(darkDoorZone(z.dark), null, dx, dy + 44); if (msg) say('다크 모드', msg); }
 // 쓰러지면 그 자리에 누워 있어요. 다른 사람이 다가와 눌러 주거나(2 초) 관리자가 살려 주면 일어나요
+const DARK_REVIVES = 5; // 보스전 한 판에 서로 살릴 수 있는 횟수 (방 전체 합)
+let darkWipeSeen = {}, darkWipeT = 0; // 다 같이 쓰러지면: 문제는 그대로, 보스전만 처음부터
 let darkDown = null, darkRevive = null; // darkDown: 쓰러진 시각 · darkRevive: 내가 살리는 중인 사람 {id, at}
 // 일반 모드는 순하게: '기절'·'깨우기', 다크 모드는 '쓰러짐'·'살리기'
 const downWords = () => zoneId.startsWith('dark:') ? {down:'쓰러짐', did:'쓰러졌어요', help:'살리기', helped:'살려 줬어요', helping:'살리는 중'} : {down:'기절', did:'기절했어요', help:'깨우기', helped:'깨워 줬어요', helping:'깨우는 중'};
@@ -5707,7 +5709,10 @@ function updateDown(dt, t){
   if (darkRevive){ const o = others.get(darkRevive.id), far = !o || Math.hypot(pos.x-o.x, pos.y-o.y) > 80;
     if (o && !o.down) darkRevive = null;
     else if (!o || o.z !== zoneId || darkDown || far){ darkRevive = null; toast(`${downWords().help}가 끊겼어요`); }
-    else if (t - darkRevive.at > 2000){ net.reviveSend(darkRevive.uid, me.nick); darkRevive = null; gainExp(10); toast(`${o.nick} 님을 ${downWords().helped.replace('줬어요', '줬어요!')}`); } }
+    else if (t - darkRevive.at > 2000){ const rv = darkRevive, dz = Z().dark; darkRevive = null;
+      const send = () => { net.reviveSend(rv.uid, me.nick); gainExp(10); toast(`${o.nick} 님을 ${downWords().helped.replace('줬어요', '줬어요!')}`); };
+      if (dz && darkBossUp(roomOf(dz))) net.darkTx(dz, cur => cur && cur.hp > 0 && !cur.clear && (cur.rv|0) < DARK_REVIVES ? {...cur, rv:(cur.rv|0) + 1} : undefined).then(ok => ok ? send() : toast(`살리기 기회를 다 썼어요 (${DARK_REVIVES}/${DARK_REVIVES}) · 모두 쓰러지면 보스전을 처음부터 다시 해요`)); // 보스전 한 판에 다 같이 5 번
+      else send(); } }
   if (darkDown && !zoneId.startsWith('dark:') && !downOffer && darkNow() - darkDown > 30*60000){ downOffer = true;
     say('기절', '한참 기다렸는데 아무도 오지 않았어요.... 집에서 푹 쉬고 일어날까요?', [['집에서 깨어나기', ()=>{ closeTalk(); wakeAtHome(); }], ['조금 더 기다리기', ()=>{ closeTalk(); downOffer = false; darkDown = darkNow(); }]], '', true); }
 }
@@ -5809,6 +5814,8 @@ function toriAttack(dt, t, r){
   tbHands = tbHands.filter(h => { const k = (now - h.at)/1000; if (k >= 1 && !h.done){ h.done = 1; if (((pos.x - h.x)/60)**2 + ((pos.y - h.y)/36)**2 < 1) darkHurt(TB_DMG.hand, t); } return k < 2.2; });
   if (Object.keys(tbHit).length > 200) tbHit = {};
 }
+// 보스전 다시 시작 자리: 마지막 층 계단 도착점 (없으면 방 문)
+function darkBossStart(npc){ const rm = darkRoomOf(npc), up = (rm?.stairs || []).filter(s=>s.up && s.to).pop(); return up ? up.to : rm?.door || DARK_ROOM.door; }
 function darkBossPos(r){ if (Z().dark === 'tori'){ const st = toriState(r); return [st.x, st.y + 40]; } const s = (darkNow() - (r.bossAt || 0)) / 1000, W = DARK_ROOM.W, [cx, cy] = darkRoomOf(Z().dark)?.boss || [W/2, 560]; return [cx + Math.cos(s*.31)*300 + Math.sin(s*.83)*60, cy + Math.sin(s*.47)*150]; } // 모두에게 같은 자리
 function drawDarkBoss(d, npc, r, x, y, t){
   const c = d.ctx, n = NPC[npc], rage = r.hp < r.max/2, pulse = .5 + Math.sin(t/200)*.5;
@@ -5832,6 +5839,11 @@ function updateDark(dt, t){
   if (darkOn() && npc !== darkToday() && !r.clear) return darkLeave('이 방의 문이 닫혔어요');
   if (!r.start && !r.clear && darkGuard < 0) return darkLeave('방이 처음으로 돌아갔어요. 다시 들어가면 새로 시작해요.'); // 관리자가 방을 되돌렸어요
   if (r.clear && darkDown) darkStandUp();
+  if (darkWipeSeen[npc] === undefined) darkWipeSeen[npc] = r.wipe|0;
+  if ((r.wipe|0) !== darkWipeSeen[npc]){ darkWipeSeen[npc] = r.wipe|0; darkSlams = []; if (darkDown){ darkDown = null; darkGuard = 3; wakeGuardUntil = performance.now() + 5000; flushSave(); } playerHp = maxHp(); const [sx, sy] = darkBossStart(npc); pos.x = sx; pos.y = sy; target = null; renderHud(); say('다크 모드', `모두 쓰러졌어요.... ${npc === 'tori' ? '토리???가' : NPC[npc].name + '이(가)'} 다시 처음 모습으로 돌아왔어요. 푼 문제는 그대로, 보스전만 처음부터 다시 해요.`); }
+  // 방 안 사람이 모두 쓰러지면 (3 초 확인) 보스 체력과 살리기 횟수를 처음으로
+  if (darkBossUp(r) && darkDown && t > darkWipeT){ darkWipeT = t + 3000; const mates = [...others.values()].filter(o=>o.z===zoneId && !o.adm);
+    if (mates.every(o=>o.down) && darkNow() - darkDown > 2500){ const w = r.wipe|0; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && (cur.wipe|0) === w ? (({rageAt, ...c}) => ({...c, hp:cur.max, rv:0, wipe:w + 1, bossAt:darkNow()}))(cur) : undefined); } }
   if (r.start && !r.clear && darkNow() > r.start + DARK_LIMIT_MS){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? {att:(cur.att|0)+1} : undefined); return darkLeave('2 시간이 지났어요.... 방이 처음으로 돌아갔어요. 다시 들어가면 새로 시작해요.'); }
   if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
     net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; const hp = Math.max(0, cur.hp - dmg); return {...cur, hp, ...(npc === 'tori' && !cur.rageAt && hp > 0 && hp <= cur.max/2 ? {rageAt:darkNow()} : {}), ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
@@ -5861,9 +5873,9 @@ function darkHud(){
   const left = r.start ? Math.max(0, r.start + DARK_LIMIT_MS - darkNow()) : DARK_LIMIT_MS, hh = Math.floor(left/3600000), mm = Math.floor(left/60000)%60, ss = Math.floor(left/1000)%60;
   const time = `${hh}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   q.hidden = false;
-  if (darkDown){ q.hidden = false; q.innerHTML = `<b style="color:#ff4f87">쓰러졌어요</b>다른 사람이 다가와 눌러 주면 일어나요 · 남은 시간 ${time}`; placeTop(); return; }
+  if (darkDown){ q.hidden = false; q.innerHTML = `<b style="color:#ff4f87">쓰러졌어요</b>${darkBossUp(r) && (r.rv|0) >= DARK_REVIVES ? '살리기 기회를 다 썼어요 · 모두 쓰러지면 보스전부터 다시' : `다른 사람이 다가와 눌러 주면 일어나요 · 살리기 ${Math.max(0, DARK_REVIVES - (r.rv|0))}/${DARK_REVIVES}`} · 남은 시간 ${time}`; placeTop(); return; }
   q.innerHTML = r.clear ? `<b>${esc(NPC[npc].name)}의 방</b>꿰매진 방이에요 · ${esc(String(r.clear.nick||'').slice(0,8))} 님이 마지막 일격`
-    : `<b style="color:#ff4f87">남은 시간 ${time}</b>${darkBossUp(r) ? `깨어난 ${npc === 'tori' ? '토리???' : esc(NPC[npc].name)} ${Math.ceil(r.hp).toLocaleString()} · 다 같이 싸워요!` : `문제 ${darkSolvedN(r)}/${n} · 빛나는 물음표를 찾아요`}`;
+    : `<b style="color:#ff4f87">남은 시간 ${time}</b>${darkBossUp(r) ? `깨어난 ${npc === 'tori' ? '토리???' : esc(NPC[npc].name)} ${Math.ceil(r.hp).toLocaleString()} · 살리기 ${Math.max(0, DARK_REVIVES - (r.rv|0))}/${DARK_REVIVES}${r.wipe ? ` · ${(r.wipe|0)+1} 번째 보스전` : ''}` : `문제 ${darkSolvedN(r)}/${n} · 빛나는 물음표를 찾아요`}`;
   placeTop();
 }
 // ===== 별빛 언덕 밤 =====
