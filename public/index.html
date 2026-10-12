@@ -2759,7 +2759,7 @@ const MONSTER_LIST = [
   ['고대 수호석상','cave3',1200,65,30,'#8f8899','golem','석상의 눈',380,8], ['불꽃 정령','cave3',1000,70,100,'#ff7a2f','ghost','정령의 불씨',360,9], ['심층 그림자','cave3',1100,75,90,'#1f1b2a','ghost','심층의 조각',400,8], ['용암 거북','cave3',1400,62,30,'#c94f2f','golem','용암 등껍질',420,7],
   // 지하 보스
   ['수정 거인','cave2',120000,90,35,'#b9a6ff','golem','거인의 수정 심장',12000,0,15000], ['어둠 여왕 거미','cave3',150000,100,60,'#3b2f5a','dust','여왕의 어둠 실',15000,0,18000],
-  ['심층의 고대룡','cave4',200000,120,45,'#c94f2f','golem','고대룡의 비늘',25000,0,25000],
+  ['심층의 고대룡','cave4',200000,200,45,'#c94f2f','golem','고대룡의 비늘',25000,0,25000],
   // 솜사탕 리조트 섬: 산호 정글 (Lv 60~80) · 화산 분화구 (Lv 85~100) · 섬 보스
   ['소라게 기사','jungle',1500,80,70,'#ff9a7a','crab','소라 방패',300,10], ['산호 해파리','jungle',1400,85,90,'#c8b3ff','ghost','산호 촉수',320,10], ['야자 원숭이','jungle',1600,88,125,'#c8945a','dust','야자 열매',340,9],
   ['정글 앵무','jungle',1300,92,135,'#7ad86a','bat','무지개 깃털',360,8], ['덩굴 뱀','jungle',1800,90,80,'#5aa84a','plant','덩굴 비늘',380,8], ['산호 거북','jungle',2200,78,35,'#7ad8c8','golem','산호 등딱지',420,7],
@@ -3303,9 +3303,9 @@ function wakeAtHome(){
 const BOSS_PAT = {
   forest:['ring', 'spiral', '+aimed3'], deepforest:['fan', 'spike', '+ringGap'], seacave:['aimed3', 'tentacle', '+ring'],
   starhill:['spiral', 'meteor', 'dive', '+ring'], cave1:['rain', 'ringGap', '+fan'], cave2:['bounce', 'aimed3', '+spike'],
-  cave3:['web', 'brood', '+fan'], cave4:['breath', 'fire3', '+meteorAll'],
+  cave3:['web', 'brood', '+fan'], cave4:['breath', 'lava', 'fire3', '+meteorAll', '+lava'],
 };
-let bShots = [], bWarns = [], bQ = [], bBooms = [], bFxZone = '', bPat = {}, playerSlowUntil = 0, bAtkSeen = '';
+let bShots = [], bWarns = [], bQ = [], bBooms = [], bPools = [], bFxZone = '', bPat = {}, playerSlowUntil = 0, bAtkSeen = '';
 // 공격 알림 받기: 같은 시각에 시작하도록 줄 세워요
 function onBossAtk(zone, a){ if (!a || zone !== zoneId || !BOSS_PAT[zone] || !MONSTERS[a.id]) return; const key = a.at + '|' + a.k; if (key === bAtkSeen) return; bAtkSeen = key; const delay = a.at - mobNow(); if (delay < -700) return; bQ.push({at:performance.now() + Math.max(0, delay), fn:t => bossFire(a, t)}); }
 function bfxHurt(dmg, fx_, fy, t){
@@ -3313,7 +3313,7 @@ function bfxHurt(dmg, fx_, fy, t){
   if (!$('talk').hidden || darkDown || t < wakeGuardUntil) return;
   dmg = ringDmg(dmg, true); if (!dmg) return; playerHp -= dmg; lastHurt = t; pushPlayer(pos.x-fx_, pos.y-fy, ringKb(14)); setExpr('surprised', 1000);
   fx.push({x:pos.x, y:pos.y-50, text:'-'+dmg, t, color:'#ff3b6b'});
-  if (playerHp <= 0){ bShots = []; bWarns = []; bQ = []; faint(); }
+  if (playerHp <= 0){ bShots = []; bWarns = []; bQ = []; bPools = []; faint(); }
 }
 function bossFire(a, t){
   const kind = a.k, m = MONSTERS[a.id], bx = a.x, by = a.y - 30, col = m.color, atk = m.atk, A0 = Math.atan2(a.ty-20-by, a.tx-bx), aim = () => A0, ptx = a.tx, pty = a.ty;
@@ -3321,6 +3321,8 @@ function bossFire(a, t){
   const later = (ms, fn) => bQ.push({at:t+ms, fn:()=>fn()});
   const circle = (x, y, r, ms, o={}) => bWarns.push({k:'c', x, y, r, t0:t, t1:t+ms, dmg:o.dmg||atk, col:o.col||'#ff3b6b'});
   const line = (an, len, w, ms, o={}) => bWarns.push({k:'l', x:bx, y:a.y, a:an, len, w, t0:t, t1:t+ms, dmg:o.dmg||Math.round(atk*1.2), col:o.col||'#ff3b6b'});
+  // 장판: 예고 뒤 몇 초 동안 바닥에 남아 밟고 있으면 계속 아파요
+  const pool = (x, y, r, ms, last, o={}) => bPools.push({x, y, r, t0:t, t1:t+ms, t2:t+ms+last, dmg:o.dmg||Math.round(atk*.4), col:o.col||'#ff5a1f', next:0});
   const R = seeded(a.s|0);
   switch (kind){
     case 'ring': { const o = R()*6; for (let i=0;i<12;i++) shot(o + i*Math.PI/6, 170); later(450, ()=>{ for (let i=0;i<12;i++) shot(o + (i+.5)*Math.PI/6, 170); }); break; }
@@ -3334,17 +3336,18 @@ function bossFire(a, t){
     case 'tentacle': { circle(ptx, pty, 50, 1000); for (let i=0;i<3;i++){ const an = R()*6.28, d = 70 + R()*90; circle(ptx + Math.cos(an)*d, pty + Math.sin(an)*d, 50, 1150 + i*120); } break; }
     case 'rain': { for (let i=0;i<7;i++){ const an = R()*6.28, d = i===0 ? 0 : 40 + R()*170; later(i*160, ()=>circle(ptx + Math.cos(an)*d, pty + Math.sin(an)*d, 44, 950, {col:'#ff6b3b'})); } break; }
     case 'meteor': { for (let i=0;i<5;i++){ const ox = (R()-.5)*60, oy = (R()-.5)*60; later(i*220, ()=>circle(ptx + ox, pty + oy, 46, 950, {col:'#ffe26a'})); } break; }
-    case 'meteorAll': { const cx = ptx, cy = pty, safe = Math.floor(R()*8); let k = 0; for (let i=-1;i<=1;i++) for (let j=-1;j<=1;j++){ if (i===0 && j===0){ circle(cx, cy, 56, 1100, {col:'#ff7a2f'}); continue; } if (k++ === safe) continue; circle(cx + i*110, cy + j*110, 56, 1100, {col:'#ff7a2f'}); } break; }
+    case 'meteorAll': { const cx = ptx, cy = pty, safe = Math.floor(R()*8); let k = 0; for (let i=-1;i<=1;i++) for (let j=-1;j<=1;j++){ if (i===0 && j===0){ circle(cx, cy, 56, 1100, {col:'#ff7a2f'}); pool(cx, cy, 70, 1100, 3500); continue; } if (k++ === safe) continue; circle(cx + i*110, cy + j*110, 56, 1100, {col:'#ff7a2f'}); } break; }
     case 'bounce': { const o = R()*6; for (let i=0;i<10;i++) shot(o + i*Math.PI/5, 190, {bounce:2, r:10, life:6}); break; }
     case 'web': { const a0 = aim(); for (let i=-1;i<=1;i++) shot(a0 + i*.3, 200, {kind:'web', r:12, col:'#f2eef8', dmg:Math.round(atk*.4)}); break; }
     case 'brood': { for (let i=0;i<4;i++){ const a = aim() + (i-1.5)*.8; shot(a, 115, {kind:'spider', home:1, r:10, life:5, col:'#2a2238'}); } break; }
+    case 'lava': { pool(ptx, pty, 72, 900, 5000); for (let i=0;i<4;i++){ const an = R()*6.28, d = 110 + R()*110; later(250 + i*200, ()=>pool(ptx + Math.cos(an)*d, pty + Math.sin(an)*d, 60, 900, 4500)); } break; }
     case 'breath': { const a0 = aim(), dir = R()<.5 ? 1 : -1; for (let i=0;i<20;i++) later(150 + i*60, ()=>shot(a0 + dir*(-.75 + i*.075), 245, {r:12, col: i%2 ? '#ff7a2f' : '#ffb04f'})); break; }
   }
 }
 // 원거리 공격을 시작하는 거리: 먼지 뭉치 대왕(먼지 숲)은 가까이 와야만 쏴요 (멀리서 지나가는 사람은 그냥 둬요)
 const BOSS_RANGE = {forest: 280};
 function updateBossFx(dt, t){
-  if (bFxZone !== zoneId){ bFxZone = zoneId; bShots = []; bWarns = []; bQ = []; bBooms = []; } // 관리자는 보기만 해요 (맞지 않아요)
+  if (bFxZone !== zoneId){ bFxZone = zoneId; bShots = []; bWarns = []; bQ = []; bBooms = []; bPools = []; } // 관리자는 보기만 해요 (맞지 않아요)
   const pats = BOSS_PAT[zoneId], boss = pats && mobs.find(mb => mb.slot === BOSS_SLOT && MONSTERS[mb.id]?.boss && mb.hp > 0);
   if (boss){ const m = MONSTERS[boss.id], st = bPat[zoneId] || (bPat[zoneId] = {next:t + 2000, i:0}), d = Math.hypot(pos.x-boss.x, pos.y-boss.y), rage = boss.hp < (boss.max || m.hp)*.5;
     if (t >= st.next && !admin && mobOwner()){ // 구역 주인만 정해요: 가장 가까운 사람을 노려요
@@ -3370,11 +3373,14 @@ function updateBossFx(dt, t){
     else { const dx = pos.x-w.x, dy = pos.y-w.y, ux = Math.cos(w.a), uy = Math.sin(w.a), along = dx*ux + dy*uy, side = Math.abs(-dx*uy + dy*ux); hit = along > -10 && along < w.len && side < w.w/2 + 8; for (let k=1;k<=6;k++) bBooms.push({x:w.x + ux*w.len*k/6, y:w.y + uy*w.len*k/6, r:w.w*.8, col:w.col, t:t + k*25}); }
     if (hit) bfxHurt(w.dmg, w.x, w.y, t);
   }
+  bPools = bPools.filter(p => t < p.t2);
+  for (const p of bPools) if (t >= p.t1 && t >= p.next && Math.hypot((pos.x-p.x)/p.r, (pos.y-p.y)/(p.r*.6)) < 1){ p.next = t + 500; bfxHurt(p.dmg, p.x, p.y, t); }
   bBooms = bBooms.filter(b => t - b.t < 380);
 }
 function drawBossFx(c, t){
   if (!bWarns.length && !bShots.length && !bBooms.length) return;
   c.save();
+  c.globalAlpha = 1;
   for (const w of bWarns){ const k = Math.max(0, Math.min(1, (t - w.t0)/(w.t1 - w.t0))), blink = .5 + .5*Math.sin(t/60);
     c.fillStyle = w.col; c.strokeStyle = w.col; c.lineWidth = 2.5;
     if (w.k === 'c'){ c.globalAlpha = .16 + .1*blink; c.beginPath(); c.ellipse(w.x, w.y, w.r, w.r*.6, 0, 0, 7); c.fill(); c.globalAlpha = .9; c.stroke(); c.globalAlpha = .38; c.beginPath(); c.ellipse(w.x, w.y, w.r*k, w.r*.6*k, 0, 0, 7); c.fill(); }
@@ -3388,6 +3394,19 @@ function drawBossFx(c, t){
     c.strokeStyle = 'rgba(40,10,30,.55)'; c.lineWidth = 1.5; c.beginPath(); c.arc(s.x, s.y, s.r, 0, 7); c.stroke();
   }
   for (const b of bBooms){ const k = (t - b.t)/380; if (k < 0) continue; c.globalAlpha = .55*(1-k); c.fillStyle = b.col; c.beginPath(); c.arc(b.x, b.y, b.r*(.6 + k*.7), 0, 7); c.fill(); }
+  c.restore();
+}
+// 용암 장판: 동굴 어둠 위에 그려서 빛나 보여요
+function drawBossPools(c, t){
+  if (!bPools.length) return;
+  c.save();
+  for (const p of bPools){
+    if (t < p.t1){ const k = (t - p.t0)/(p.t1 - p.t0); c.globalAlpha = .5 + .3*Math.sin(t/60); c.strokeStyle = p.col; c.lineWidth = 2.5; c.setLineDash([8, 6]); c.beginPath(); c.ellipse(p.x, p.y, p.r, p.r*.6, 0, 0, 7); c.stroke(); c.setLineDash([]); c.globalAlpha = .25; c.fillStyle = p.col; c.beginPath(); c.ellipse(p.x, p.y, p.r*k, p.r*.6*k, 0, 0, 7); c.fill(); continue; }
+    const fade = Math.min(1, (p.t2 - t)/500, (t - p.t1)/150), g = c.createRadialGradient(0, 0, 2, 0, 0, p.r);
+    g.addColorStop(0, '#ffe08a'); g.addColorStop(.5, '#ff7a2f'); g.addColorStop(.85, '#d8361a'); g.addColorStop(1, 'rgba(160,30,10,.2)');
+    c.save(); c.globalAlpha = .78*fade; c.translate(p.x, p.y); c.scale(1, .6); c.fillStyle = g; c.beginPath(); c.arc(0, 0, p.r, 0, 7); c.fill(); c.restore();
+    c.globalAlpha = .9*fade; c.fillStyle = '#ffd36a'; for (let i=0;i<5;i++){ const ph = (t/700 + i*.37 + p.x*.01) % 1, an = i*1.9 + p.y*.01, d = p.r*.6*((i*.29)%1); c.beginPath(); c.arc(p.x + Math.cos(an)*d, p.y + Math.sin(an)*d*.6 - ph*10, 3*(1-ph) + 1, 0, 7); c.fill(); }
+  }
   c.restore();
 }
 function drawMob(d, mob, t){
@@ -7130,7 +7149,7 @@ function frameBody(t){
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
     for (const e of ents) e.label();
-    drawBossFx(ctx, t); drawNight(ctx, t); drawDepth(ctx); drawDarkFx(ctx, t); drawWeather(ctx, t); drawBite(ctx, t); drawGlitch(ctx, t);
+    drawBossFx(ctx, t); drawNight(ctx, t); drawDepth(ctx); drawBossPools(ctx, t); drawDarkFx(ctx, t); drawWeather(ctx, t); drawBite(ctx, t); drawGlitch(ctx, t);
     const fo = Math.max(0, 1 - (t - fadeT)/450); if (fo !== lastFade){ lastFade = fo; $('fade').style.opacity = fo; }
   }
   requestAnimationFrame(frame);
