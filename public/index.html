@@ -5616,6 +5616,27 @@ function relicLook(n){ const R = RELICS[n.id]; say(R.name, R.lines[Math.floor(Ma
 function relicNear(r=40){ let best = null, bd = r; for (const n of relicsHere()){ const [x, y] = relicPos(n), d = Math.hypot(pos.x-x, pos.y-y); if (d < bd){ bd = d; best = n; } } return best; }
 function updateRelics(){ const n = relicNear(34); if (!n){ relicTouch = null; return; } if (relicTouch === n.id || darkDown || !$('talk').hidden) return; relicTouch = n.id; relicLook(n); }
 function relicsHere(){ return darkOn() && !Z().dark && !Z().house ? NPCS.filter(n => n.zone === zoneId && RELICS[n.id] && !npcVisible(n)) : []; }
+// 무인 판매대: 주민이 사라진 자리 옆에 가게만 남아 있어요 (말 걸기 · 선물 · 의뢰 · 알바는 없어요)
+function standActs(n){ const a = [];
+  if (n.id==='momo') a.push(...sellActions(n)); else if (BUYERS[n.id]) a.push(['물건 팔기', ()=>sellPanel(n)]);
+  if (n.id==='dandan') a.push(['요리하기', cookPanel]);
+  if (n.id==='tori') a.push([`우체국 편지함${unreadLetters() ? ' ('+unreadLetters()+')' : ''}`, ()=>postPanel()]);
+  if (n.id==='bori') a.push(['공방 (텃밭·가구)', workshopPanel], ...(RING_OPEN ? [['반지 공방', ringPanel]] : []), ['집 늘리기·인테리어', housePanel]);
+  if (n.id==='mongsil') a.push(['옷가게 · 갈아입기', clothesPanel], ['우산 가게', umbPanel]);
+  if (n.id==='kongi' && me.inv.sword) a.push(['경비대 무기고', weaponPanel]);
+  if (n.id==='olly') a.push(['박물관 기증', museumPanel]);
+  if (n.id==='bami') a.push(['꽃 씨앗 사기', seedShop]);
+  if (n.id==='toto') a.push(['오늘의 시세', pricePanel]);
+  return a; }
+const STAND_NOTES = ['아무도 없어요. 계산대 위에 쪽지 한 장.\n「필요한 건 가져가고, 값은 통에 넣어 주세요.」', '돈 통 안에서 동전이 저 혼자 굴러가는 소리가 나요.', '가격표 글씨가 조금씩 번져 있어요. 그래도 장사는 하는 모양이에요.', '계산대 종을 눌러도 아무도 나오지 않아요. 종소리만 오래 남아요.', '방금까지 누가 있었던 것처럼 의자가 아직 따뜻해요.'];
+const standsHere = () => relicsHere().filter(n => standActs(n).length);
+const standPos = n => [Math.round(n.homeX) + 56, Math.round(n.homeY) + 6];
+function standOpen(n){ say('무인 판매대', STAND_NOTES[Math.floor(Math.random()*STAND_NOTES.length)], standActs(n)); }
+function drawStand(d, n){ const [x, y] = standPos(n), c = d.ctx;
+  c.save(); c.globalAlpha = .9; c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(x, y+2, 34, 7, 0, 0, 7); c.fill(); c.restore();
+  d.rr(x-30, y-30, 6, 32, 2, '#5a4232'); d.rr(x+24, y-30, 6, 32, 2, '#5a4232'); d.rr(x-36, y-38, 72, 12, 4, '#8a6a4a'); d.rr(x-36, y-28, 72, 4, 2, '#6a4e38');
+  d.rr(x-10, y-54, 22, 16, 3, '#b8963e'); d.rr(x-4, y-51, 10, 3, 1, '#3a2a10');
+  d.rr(x-30, y-76, 38, 22, 3, '#efe3cf'); c.save(); c.font = 'bold 13px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#5a3a2a'; c.fillText('무인', x-11, y-60); c.restore(); }
 function drawRelic(d, n, t){
   const [x, y] = relicPos(n), c = d.ctx, ph = ((t/1000) + n.id.length*1.7) % 9;
   c.save(); c.translate(x, y); c.scale(1.05, 1.05); RELICS[n.id].draw(d, 0, 0, t); c.restore();
@@ -5625,6 +5646,7 @@ function darkEntities(d, t){
   const out = [];
   if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (darkDoorZone(npc) === zoneId){ const [, y] = darkDoorOf(npc); out.push({y, draw:()=>drawDarkDoor(d, npc, t), label:()=>darkDoorLabel(d.ctx, npc, t)}); }
   for (const n of relicsHere()) out.push({y:n.homeY, draw:()=>drawRelic(d, n, t), label:()=>{}});
+  for (const n of standsHere()) out.push({y:standPos(n)[1], draw:()=>drawStand(d, n), label:()=>{}});
   const z = Z(); if (!z.dark) return out;
   const r = roomOf(z.dark);
   if (z.floors){ const R = darkRoomOf(z.dark);
@@ -5740,6 +5762,7 @@ function drawDarkFx(c, t){
 function darkTap(w){
   if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (darkDoorZone(npc) === zoneId){ const [x, y] = darkDoorOf(npc); if (Math.abs(w.x-x) < 30 && w.y > y-80 && w.y < y+8) return {x, y:y+30, act:()=>darkEnter(npc)}; }
   for (const n of relicsHere()){ const [x, y] = relicPos(n); if (Math.abs(w.x-x) < 28 && w.y > y-38 && w.y < y+10) return {x, y:y+28, act:()=>relicLook(n)}; }
+  for (const n of standsHere()){ const [x, y] = standPos(n); if (Math.abs(w.x-x) < 40 && w.y > y-80 && w.y < y+10) return {x, y:y+26, act:()=>standOpen(n)}; }
   const z = Z(); if (!z.dark) return null;
   for (const pz of darkPuzzles(z.dark)) if (Math.abs(w.x-pz.x) < 34 && w.y > pz.y-80 && w.y < pz.y+12) return {x:pz.x, y:pz.y+34, act:()=>darkPuzzlePanel(pz)};
   if (z.floors) for (const st of darkRoomOf(z.dark).stairs){ const y0 = floorTop(st.f), [x, y, w2, h] = st.rect; if (w.x > x && w.x < x+w2 && w.y > y0+y && w.y < y0+y+h+40) return {x:st.at[0], y:st.at[1], act:()=>darkStair(z.dark, st)}; }
