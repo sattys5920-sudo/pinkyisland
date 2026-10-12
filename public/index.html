@@ -169,6 +169,12 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .cl-seal{position:absolute;right:12px;top:12px;width:66px;height:66px;border-radius:50%;border:3px solid #c4222a;color:#c4222a;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.05;font-size:16px;transform:rotate(-14deg)}
 .cl-file small{font-size:14px;color:#5a3a20}.cl-file h3{margin:0;font-size:30px}.cl-crime{color:#c4222a;font-size:18px}.cl-file ul{margin:8px 0 0;padding-left:18px;font-size:16px;line-height:1.5}.cl-tg{color:#c4222a;font-family:'Nanum Pen Script',cursive;font-size:22px}
 .cl-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.cl-strip img{width:100%;border-radius:3px;cursor:pointer}.cl-end{text-align:center;color:#8a1016;font-size:19px;margin:4px 0}
+.mp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mp-card{background:#f4f0e6;color:#2b1a14;padding:10px 8px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:2px;border-radius:3px}.mp-card:nth-child(odd){transform:rotate(-1.5deg)}.mp-card:nth-child(even){transform:rotate(1.2deg)}
+.mp-h{color:#c4222a;font-size:19px;letter-spacing:2px}.mp-ph{width:70%;aspect-ratio:3/4;margin:4px auto;background:#9a8a7a;overflow:hidden;border:1px solid #6a5a4a}.mp-ph img{width:100%;height:100%;object-fit:cover;filter:grayscale(.3)}.mp-ph i{display:block;width:100%;height:100%;background:radial-gradient(circle at 50% 38%,#3d3236 0 18%,transparent 19%),radial-gradient(ellipse at 50% 92%,#3d3236 0 34%,transparent 35%)}
+.mp-n{font-size:22px}.mp-card small{font-size:13px;line-height:1.35;color:#4a3a30}.mp-card em{font-style:normal;font-size:12px;color:#8a1016;margin-top:2px}
+.tvn{background:#101820;color:#e8eef4;border-radius:10px;padding:12px;overflow:hidden}.tvn-live{display:inline-block;background:#c4222a;color:#fff;padding:2px 10px;border-radius:4px;font-size:15px;animation:tvb 1s steps(2) infinite}@keyframes tvb{50%{opacity:.5}}
+.tvn-h{display:block;font-size:21px;margin:8px 0;line-height:1.3}.tvn p{font-size:15px;line-height:1.55;margin:6px 0;color:#c8d2dc}.tvn-list{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;padding-top:8px;border-top:1px solid #2a3a4a}.tvn-list small{width:100%;color:#8aa0b4}.tvn-list span{font-size:17px}
+.tvn-tick{margin:10px -12px -12px;background:#c4222a;white-space:nowrap;overflow:hidden;font-size:15px;padding:4px 0}.tvn-tick span{display:inline-block;padding-left:100%;animation:tvt 18s linear infinite}@keyframes tvt{to{transform:translateX(-100%)}}
 .cl-tabs{display:flex;gap:6px}.cl-tabs .on{background:#3b2418;color:#f2d16b}.cl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cl-th{background:#fff;padding:4px 4px 6px;border:0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.25);font:inherit;cursor:pointer;text-align:left;color:var(--ink)}
 .cl-th em{font-style:normal;font-size:15px;display:block;margin-top:4px;line-height:1.2}.cl-th.off{background:#e6dcca;cursor:default}.cl-q{aspect-ratio:4/3;background:#3a2529;color:#a88a8a;display:flex;align-items:center;justify-content:center;font-size:34px;border-radius:6px}.cl-hud{margin-right:6px;pointer-events:auto}
 .dk-img{display:block;max-width:100%;max-height:0;margin:0 auto 8px;border-radius:12px;object-fit:contain;cursor:zoom-in;transition:max-height .2s}.dk-img.on{max-height:42vh}.dk-img.big{max-height:80vh;cursor:zoom-out}.adm-qimg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.adm-qimg img{height:70px;border-radius:8px;background:#fff}.adm-qimg label.adm-btn{cursor:pointer}
@@ -1276,6 +1282,7 @@ function onKicked(){
 async function flushSave(){
   clearTimeout(saveTimer); saveTimer = 0;
   if (admin || !me || kicked) return;
+  if (!zoneId.startsWith('house:') && !zoneId.startsWith('dark:') && ZONES[zoneId] && !darkDown){ me.zone = zoneId; me.zx = Math.round(pos.x); me.zy = Math.round(pos.y); } // 마지막으로 서 있던 자리
   if (saving){ saveAgain=true; return; }
   saving=true; lastSaved = saveSig();
   me.downAt = darkDown && !zoneId.startsWith('dark:') ? darkDown : 0; // 기절한 채로 나가면 다시 들어와도 기절해 있어요
@@ -4429,7 +4436,7 @@ const OTUMO = {key:'otumo', name:'오투모'};
 const LETTER_MAX = 300;
 let letters = {}, lettersOut = {}, letterSeen = null;
 const letterWho = key => key===OTUMO.key ? OTUMO.name : key && key.startsWith('npc_') ? (NPC[key.slice(4)]?.name || '주민') : (players[key]?.nick || '');
-const unreadLetters = () => Object.values(letters).filter(l=>l && !l.read).length;
+const unreadLetters = () => Object.values(allLetters()).filter(l=>l && !l.read).length;
 function onLetters(v){
   const next = {}; for (const [id,l] of Object.entries(v||{})) if (l && typeof l.text==='string') next[id] = l;
   const fresh = Object.entries(next).filter(([id,l])=>!l.read && letterSeen && !letterSeen.has(id));
@@ -4443,17 +4450,17 @@ const dateOf = at => { const d = new Date((at||0) + 9*3600000); return `${d.getU
 let postView = {tab:'in'};
 function postPanel(v){
   postView = v || {tab:'in'}; const tab = postView.tab;
-  const inList = Object.entries(letters).sort((a,b)=>(b[1].at||0)-(a[1].at||0)), outList = Object.entries(lettersOut).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
+  const inList = Object.entries(allLetters()).sort((a,b)=>(b[1].at||0)-(a[1].at||0)), outList = Object.entries(lettersOut).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
   const tabs = `<div class="inv-tabs"><button class="itab${tab==='in'||tab==='read' ? ' on' : ''}" data-pt="in">받은 편지${unreadLetters() ? ` ${unreadLetters()}` : ''}</button><button class="itab${tab==='write' ? ' on' : ''}" data-pt="write">편지 쓰기</button><button class="itab${tab==='out' ? ' on' : ''}" data-pt="out">보낸 편지</button></div>`;
   const row = ([id,l], out) => `<button class="np letter${!out && !l.read ? ' new' : ''}" data-lid="${id}"><span class="np-name">${out ? '→ ' + esc(letterWho(l.to) || '???') : esc(String(l.nick || letterWho(l.from) || '누군가').slice(0,10))}${l.replyTo ? ' <small>· 답장</small>' : ''}</span><span class="np-place">${dateOf(l.at)}</span><span class="np-day" style="grid-column:1/-1;text-align:left">${esc(l.text.replace(/\n/g,' ').slice(0,40))}${l.text.length > 40 ? '…' : ''}</span></button>`;
   let body = '';
   if (tab==='in') body = inList.length ? inList.map(x=>row(x, false)).join('') : '<p class="mnote">아직 받은 편지가 없어요.</p>';
   if (tab==='out') body = outList.length ? outList.map(x=>row(x, true)).join('') : '<p class="mnote">아직 보낸 편지가 없어요.</p>';
-  if (tab==='read'){ const l = letters[postView.id];
+  if (tab==='read'){ const l = allLetters()[postView.id];
     if (!l) return postPanel({tab:'in'});
     const canReply = l.from && l.from !== uid && (l.from===OTUMO.key || l.from.startsWith('npc_') || players[l.from]);
     body = `<div class="letter-paper"><small>${dateOf(l.at)} · ${esc(String(l.nick || letterWho(l.from) || '누군가').slice(0,10))} 님이 보낸 편지</small><p>${esc(l.text)}</p></div>
-      <div class="idt-acts">${canReply ? '<button class="btn" data-pa="reply">답장 쓰기</button>' : ''}<button class="btn ghost" data-pa="del">지우기</button><button class="btn ghost" data-pa="back">목록</button></div>`; }
+      <div class="idt-acts">${l.home ? '<button class="btn" data-pa="homereply">답장 쓰기</button>' : canReply ? '<button class="btn" data-pa="reply">답장 쓰기</button>' : ''}${l.home ? '' : '<button class="btn ghost" data-pa="del">지우기</button>'}<button class="btn ghost" data-pa="back">목록</button></div>`; }
   if (tab==='write'){
     const opts = [...Object.entries(players).filter(([id])=>id!==uid).map(([id,p])=>[id, `${p.nick} (주민 플레이어)`]), ...NPCS.map(n=>['npc_'+n.id, `${n.name} (${n.animal} · ${n.role})`]), [OTUMO.key, '오투모']];
     body = `<p class="mnote" style="margin:0 2px">섬 친구, 동물 주민, 오투모에게 편지를 보낼 수 있어요. 주민과 오투모의 답장은 시간이 조금 걸려요.</p>
@@ -4465,12 +4472,14 @@ function postPanel(v){
   p.querySelectorAll('[data-pt]').forEach(b=>b.onclick = ()=>postPanel({tab:b.dataset.pt}));
   p.querySelectorAll('[data-lid]').forEach(b=>b.onclick = ()=>{ const id = b.dataset.lid;
     if (tab==='out'){ const l = lettersOut[id]; return say(`→ ${letterWho(l.to) || '???'}`, `${l.text}`, [['우체국으로', ()=>postPanel({tab:'out'})]], dateOf(l.at)); }
+    if (id === '__home'){ if (me.homeMail !== (world.darkAt || 1)){ me.homeMail = world.darkAt || 1; saveMe(); } return postPanel({tab:'read', id}); }
     if (!letters[id].read){ letters[id].read = true; net.letterMark(uid, id, {read:true, readAt:Date.now() + serverOffset}).catch(()=>{}); }
     postPanel({tab:'read', id}); });
   const ta = $('ltText'); if (ta) ta.oninput = ()=>{ postView.draft = ta.value; $('ltCount').textContent = `${ta.value.length} / ${LETTER_MAX}`; };
   const sel = $('ltTo'); if (sel) sel.onchange = ()=>{ postView.to = sel.value; };
   p.querySelectorAll('[data-pa]').forEach(b=>b.onclick = async ()=>{ const a = b.dataset.pa, l = letters[postView.id];
     if (a==='back') return postPanel({tab:'in'});
+    if (a==='homereply') return say('....', '답장을 쓰려고 봉투를 뒤집었는데, 보내는 사람 주소가 번져서 읽을 수가 없어요.', [['목록', ()=>postPanel({tab:'in'})]]);
     if (a==='del'){ net.letterDel(uid, postView.id).catch(()=>{}); delete letters[postView.id]; return postPanel({tab:'in'}); }
     if (a==='reply') return postPanel({tab:'write', to:l.from, replyTo:postView.id});
     if (a==='send'){ const to = $('ltTo').value, text = $('ltText').value.trim().slice(0, LETTER_MAX);
@@ -4702,10 +4711,23 @@ function candyTrade(n){
   }
   saveMe(); renderHud(); tvPanel();
 }
+// 다크 모드: TV 를 켜면 뉴스 채널이 먼저 나와요
+let tvCh = 'news';
+function tvNews(){
+  const L = missingList(), n = 12, d = new Date((world.darkAt || Date.now()) + 9*3600000);
+  openPanel('📺 뉴스', `<div class="tvn"><div class="tvn-live">● 속보</div><b class="tvn-h">${n}명 동시 실종… 모두 자기 집에서 게임을 하던 중</b>
+    <p>${d.getUTCMonth()+1}월 ${d.getUTCDate()}일 밤, 서로 다른 집에 사는 ${n}명이 같은 시각에 사라졌습니다. 실종자들은 모두 자기 방에서 같은 모바일 게임에 접속해 있었고, 방에는 켜진 휴대폰만 남아 있었습니다.</p>
+    <p>휴대폰 화면 속 게임은 지금도 꺼지지 않은 채 움직이고 있다고 합니다. 경찰은 게임 회사에 접속 기록을 요청했지만, 그런 게임은 등록돼 있지 않다는 답을 받았습니다.</p>
+    ${L.length ? `<div class="tvn-list"><small>실종자 · 마지막으로 본 곳 : 자택</small>${L.map(([, nm]) => `<span>${esc(nm)}</span>`).join('')}</div>` : ''}
+    <div class="tvn-tick"><span>속보 · ${n}명 실종 · 자택에서 게임 중 사라져 · 휴대폰 화면은 아직 켜져 있어 · 목격자를 찾습니다 · </span></div></div>
+    <button class="mini" id="tvShop">채널 돌리기 (홈쇼핑)</button>`);
+  $('tvShop').onclick = () => { tvCh = 'shop'; tvPanel(); };
+}
 function tvPanel(){
   if (me && !me.tvSeen){ me.tvSeen = true; saveMe(); setTimeout(tutCheck); }
   if (!hasTV()) return toast('보리 공방에서 동그란 TV를 만들어 집에 놓으면 홈쇼핑을 볼 수 있어요');
   if (Z().house !== uid) return toast('홈쇼핑은 집에 있는 TV로 봐요');
+  if (darkOn() && tvCh === 'news') return tvNews();
   const live = showLive(), cur = live ? live.slot : lastSlot(), c = myCandy(), cyc = cycleOf(cur), first = cyc * CANDY_PER;
   const nx = live ? null : (()=>{ let k = lastSlot() + 1; return {slot:k, wait:slotTime(k) - (Date.now() + serverOffset)}; })();
   const rows = Array.from({length:CANDY_PER}, (_,i)=>{ const k = first + i, d = Math.floor(k/2) - Math.floor(first/2) + 1, past = k <= lastSlot();
@@ -4718,6 +4740,7 @@ function tvPanel(){
      ${live ? `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px"><input id="candyQ" type="number" min="1" max="${CANDY_MAX}" value="${candyQv}" inputmode="numeric" style="width:84px;font:inherit;padding:4px 8px;border-radius:10px;border:2px solid #f3cfe0;text-align:right"> 개 <button class="mini" data-qb="1">사기</button>${c ? `<button class="mini" data-qb="-1">팔기</button>` : ''}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${[10, 50, 100].map(q=>`<button class="mini" data-q="${q}">${q} 개 사기</button>`).join('')}<button class="mini" data-q="999">최대로 사기</button>${c ? `<button class="mini" data-q="-${c.n}">전부 팔기</button>` : ''}</div>` : ''}
      <p class="mnote">방송은 매일 오후 1 시, 밤 10 시에 한 시간씩. 그때만 사고팔 수 있어요. 값은 3 일(방송 6 번)마다 오르내리는 모양이 바뀌어요. 별사탕은 산 때부터 3 일 뒤 같은 시각 방송까지 팔 수 있고, 그 방송이 끝나면 녹아요. 최대 ${CANDY_MAX} 개.</p>`);
   $('npcPanel').dataset.tv = '1';
+  if (darkOn()){ const nb = document.createElement('button'); nb.className = 'mini'; nb.textContent = '채널 돌리기 (뉴스)'; nb.onclick = () => { tvCh = 'news'; tvPanel(); }; $('npcPanel').appendChild(nb); }
   $('npcPanel').querySelectorAll('button[data-q]').forEach(b=>b.onclick = ()=>candyTrade(+b.dataset.q));
   { const qi = $('candyQ'); if (qi) qi.oninput = ()=>{ candyQv = qi.value; }; } // 수량을 직접 넣어 사고팔아요
   $('npcPanel').querySelectorAll('button[data-qb]').forEach(b=>b.onclick = ()=>{ const n = Math.floor(Number($('candyQ')?.value)); if (!(n > 0)) return toast('몇 개인지 숫자로 넣어 주세요'); candyQv = String(n); candyTrade(n * Number(b.dataset.qb)); });
@@ -5642,11 +5665,43 @@ function drawRelic(d, n, t){
   c.save(); c.translate(x, y); c.scale(1.05, 1.05); RELICS[n.id].draw(d, 0, 0, t); c.restore();
   if (ph < .14){ c.save(); c.globalAlpha = .28 + Math.random()*.2; c.translate((Math.random()-.5)*8, 0); drawCritter(c, x, y, n.look||{kind:n.sp.kind, fur:n.sp.fur}, t/1000, false, 1, !!n.flip); c.restore(); } // 한 프레임씩 주인의 모습이 비쳐요
 }
+
+// ===== 바깥 사람들이 섬에 갇혔다는 흔적 (다크 모드 동안만 · 안내 문구 없이 그냥 바뀌어 있어요) =====
+// 진짜 이름은 관리자가 정한 다크 모드 이름 (world.darkNames). 실종 전단 사진은 관리자가 올려요 (darkImg/missing/<uid>)
+const missingList = () => Object.entries(world.darkNames || {}).filter(([id, n]) => n && players[id]).sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'ko'));
+const josaA = n => { const c = String(n).charCodeAt(String(n).length - 1) - 0xAC00; return c >= 0 && c % 28 ? '아' : '야'; };
+const givenName = n => { const s = String(n); return s.length === 3 ? s.slice(1) : s; };
+const missPhotoAt = id => darkQ?.missing?.[id]?.im || 0;
+function missPoster(id, name){
+  const at = missPhotoAt(id);
+  return `<div class="mp-card"><b class="mp-h">사람을 찾습니다</b><div class="mp-ph">${at ? `<img data-dkimg="missing|${esc(id)}|${at}" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">` : '<i></i>'}</div>
+    <b class="mp-n">${esc(name)}</b><small>마지막으로 본 곳 : 자택</small><small>자기 방에서 게임에 접속한 채 사라졌어요<br>휴대폰 화면은 아직 켜져 있었어요</small><em>보신 분은 꼭 연락 주세요</em></div>`;
+}
+function missBoard(only){
+  const L = missingList().filter(([id]) => !only || id === only); if (!L.length) return say('....', '빛바랜 게시판이에요. 종이를 떼어 낸 자국만 잔뜩 남아 있어요.');
+  openPanel(only ? '현관문에 붙은 전단' : '마을 게시판', `<div class="mp-grid">${L.map(([id, n]) => missPoster(id, n)).join('')}</div>`);
+  darkImgFill($('npcPanel'));
+}
+const MISS_BOARD = {z:'village', x:950, y:460};
+function drawMissBoard(d){ const {x, y} = MISS_BOARD, c = d.ctx, n = missingList().length;
+  c.save(); c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(x, y+2, 46, 8, 0, 0, 7); c.fill(); c.restore();
+  d.rr(x-40, y-12, 7, 14, 2, '#5a4232'); d.rr(x+33, y-12, 7, 14, 2, '#5a4232'); d.rr(x-48, y-84, 96, 74, 6, '#7a5a40'); d.rr(x-43, y-79, 86, 64, 4, '#b89a72');
+  for (let i = 0; i < Math.min(n || 3, 8); i++){ const px = x - 38 + (i % 4) * 20, py = y - 74 + Math.floor(i / 4) * 30; c.save(); c.translate(px + 8, py + 12); c.rotate(((i * 37) % 9 - 4) * .03); d.rr(-8, -12, 17, 24, 1, n ? '#f4efe6' : '#d8ccb4'); if (n){ d.rr(-7, -11, 15, 4, 1, '#c4222a'); d.rr(-5, -5, 11, 9, 1, '#8a8a8a'); } c.restore(); } }
+// 우편함: 바깥에서 온 편지 (받는 사람은 진짜 이름)
+const homeLetter = () => { const nm = darkOn() && (world.darkNames || {})[uid]; if (!nm) return null; const g = givenName(nm);
+  return {from:'', nick:'엄마', at:world.darkAt || 0, read: me?.homeMail === (world.darkAt || 1), home:true,
+    text:`${g}${josaA(g)}, 엄마야.\n\n연락이 안 된 지 벌써 며칠째야. 네 방 불은 켜져 있고, 휴대폰 화면에는 게임이 그대로 켜져 있는데 너만 없어.\n\n밥은 먹고 있니? 춥지는 않니?\n이 편지가 어디로 가는지도 모르겠지만, 혹시 닿으면 꼭 대답해 줘.\n\n— 엄마가` }; };
+const allLetters = () => { const h = homeLetter(); return h ? {...letters, __home:h} : letters; };
+// 접속을 끊은 사람: 마지막 자리에 몸만 남아요
+const husksHere = () => !darkOn() || Z().dark || Z().house ? [] : Object.entries(players).filter(([id, p]) => id !== uid && p && !p.adm && p.lot != null && p.zone === zoneId && typeof p.zx === 'number' && ![...others.values()].some(o => o.uid === id));
+function huskLook(id){ say('....', ['불러도 대답이 없어요. 눈은 뜨고 있는데, 아무것도 보지 않아요.', '어깨를 흔들어도 인형처럼 흔들리기만 해요.', '숨소리 대신 어디선가 게임 배경음악이 작게 들려요.'][Math.floor(Math.random()*3)]); }
 function darkEntities(d, t){
   const out = [];
   if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (darkDoorZone(npc) === zoneId){ const [, y] = darkDoorOf(npc); out.push({y, draw:()=>drawDarkDoor(d, npc, t), label:()=>darkDoorLabel(d.ctx, npc, t)}); }
   for (const n of relicsHere()) out.push({y:n.homeY, draw:()=>drawRelic(d, n, t), label:()=>{}});
   for (const n of standsHere()) out.push({y:standPos(n)[1], draw:()=>drawStand(d, n), label:()=>{}});
+  if (darkOn() && zoneId === MISS_BOARD.z) out.push({y:MISS_BOARD.y, draw:()=>drawMissBoard(d), label:()=>{}});
+  for (const [id, p] of husksHere()) out.push({y:p.zy, draw:()=>drawDowned(d.ctx, p.zx, p.zy, CH.migrateLook(p.look), t, 'husk'+id), label:()=>tag(d.ctx, `${realNick(id, String(p.nick||''))} · 응답 없음`, p.zx, p.zy-40, '#8a8a8a')});
   const z = Z(); if (!z.dark) return out;
   const r = roomOf(z.dark);
   if (z.floors){ const R = darkRoomOf(z.dark);
@@ -5763,6 +5818,8 @@ function darkTap(w){
   if (darkOn() && !Z().dark && !Z().house) for (const npc of DARK_ORDER) if (darkDoorZone(npc) === zoneId){ const [x, y] = darkDoorOf(npc); if (Math.abs(w.x-x) < 30 && w.y > y-80 && w.y < y+8) return {x, y:y+30, act:()=>darkEnter(npc)}; }
   for (const n of relicsHere()){ const [x, y] = relicPos(n); if (Math.abs(w.x-x) < 28 && w.y > y-38 && w.y < y+10) return {x, y:y+28, act:()=>relicLook(n)}; }
   for (const n of standsHere()){ const [x, y] = standPos(n); if (Math.abs(w.x-x) < 40 && w.y > y-80 && w.y < y+10) return {x, y:y+26, act:()=>standOpen(n)}; }
+  if (darkOn() && zoneId === MISS_BOARD.z && Math.abs(w.x-MISS_BOARD.x) < 50 && w.y > MISS_BOARD.y-90 && w.y < MISS_BOARD.y+10) return {x:MISS_BOARD.x, y:MISS_BOARD.y+26, act:()=>missBoard()};
+  for (const [id, p] of husksHere()) if (Math.abs(w.x-p.zx) < 30 && w.y > p.zy-40 && w.y < p.zy+14) return {x:p.zx + 30, y:p.zy + 10, act:()=>huskLook(id)};
   const z = Z(); if (!z.dark) return null;
   for (const pz of darkPuzzles(z.dark)) if (Math.abs(w.x-pz.x) < 34 && w.y > pz.y-80 && w.y < pz.y+12) return {x:pz.x, y:pz.y+34, act:()=>darkPuzzlePanel(pz)};
   if (z.floors) for (const st of darkRoomOf(z.dark).stairs){ const y0 = floorTop(st.f), [x, y, w2, h] = st.rect; if (w.x > x && w.x < x+w2 && w.y > y0+y && w.y < y0+y+h+40) return {x:st.at[0], y:st.at[1], act:()=>darkStair(z.dark, st)}; }
@@ -6943,7 +7000,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; if (e.target.id && e.target.id in admFest) admFest[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('input', e=>{ if (e.target.dataset?.dn) admDn[e.target.dataset.dn] = e.target.value; }); box.addEventListener('change', e=>{ if (e.target.dataset?.dn){ const id = e.target.dataset.dn, v = e.target.value.trim().slice(0,12), N = {...(world.darkNames || {})}; if (v) N[id] = v; else delete N[id]; delete admDn[id]; Promise.resolve(net.setWorld({darkNames:N})).then(()=>{}).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); return; } if (e.target.dataset && e.target.dataset.dt && DARK_ORDER.includes(e.target.dataset.dt)){ const T = {...(world.darkTgt || {})}; if (e.target.value) T[e.target.dataset.dt] = e.target.value; else delete T[e.target.dataset.dt]; e.target.blur(); Promise.resolve(net.setWorld({darkTgt:T})).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); return; } if (e.target.dataset && e.target.dataset.od){ const D = {...(otumoDress || {})}; D[e.target.dataset.od] = e.target.value === 'none' && e.target.dataset.od === 'set' ? '' : e.target.value; if (e.target.dataset.od === 'set' && D.set) {} setOtumoDress(D); e.target.blur(); return; } if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK' || ['fgbK','fhuK','frpK','fsyK','ffiK','fmgK','fmcK','ftcK','fbbK'].includes(e.target.id)){ e.target.blur(); renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; if (e.target.id && e.target.id in admFest) admFest[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('input', e=>{ if (e.target.dataset?.dn) admDn[e.target.dataset.dn] = e.target.value; }); box.addEventListener('change', async e=>{ const id = e.target.dataset?.mph, f = e.target.files?.[0]; if (!id || !f) return; const img = await shrinkImage(f); if (!img) return toast('사진을 줄이지 못했어요'); Promise.resolve(net.darkImgSet('missing', id, img, Date.now())).then(()=>toast('사진을 올렸어요')).catch(()=>toast('올리지 못했어요')); }); box.addEventListener('change', e=>{ if (e.target.dataset?.dn){ const id = e.target.dataset.dn, v = e.target.value.trim().slice(0,12), N = {...(world.darkNames || {})}; if (v) N[id] = v; else delete N[id]; delete admDn[id]; Promise.resolve(net.setWorld({darkNames:N})).then(()=>{}).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); return; } if (e.target.dataset && e.target.dataset.dt && DARK_ORDER.includes(e.target.dataset.dt)){ const T = {...(world.darkTgt || {})}; if (e.target.value) T[e.target.dataset.dt] = e.target.value; else delete T[e.target.dataset.dt]; e.target.blur(); Promise.resolve(net.setWorld({darkTgt:T})).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); return; } if (e.target.dataset && e.target.dataset.od){ const D = {...(otumoDress || {})}; D[e.target.dataset.od] = e.target.value === 'none' && e.target.dataset.od === 'set' ? '' : e.target.value; if (e.target.dataset.od === 'set' && D.set) {} setOtumoDress(D); e.target.blur(); return; } if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK' || ['fgbK','fhuK','frpK','fsyK','ffiK','fmgK','fmcK','ftcK','fbbK'].includes(e.target.id)){ e.target.blur(); renderAdmin(); } if (e.target.dataset?.qimg) adminQImage(e.target.dataset.qimg, e.target.files?.[0]); if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -7034,7 +7091,7 @@ const realNick = (id, nick) => (id && darkNames()[id]) || nick;
 let admDn = {};
 function adminDarkNameSec(regs){
   const ppl = regs.filter(([,p])=>p && !p.adm), set = world.darkNames || {}, done = ppl.filter(([id])=>set[id]).length;
-  return `<div class="adm-sec"><b>다크 모드 이름 ${done}/${ppl.length}</b><small>다크 모드가 켜지면 닉네임 대신 이 이름이 머리 위 · 채팅 · 상단에 보여요. 비우면 닉네임 그대로</small>${ppl.map(([id,p])=>`<label class="adm-wrow"><small style="min-width:70px">${esc(String(p.nick||'').slice(0,8))}</small><input data-dn="${esc(id)}" maxlength="12" placeholder="사람 이름" value="${esc(admDn[id] ?? set[id] ?? '')}" autocomplete="off"></label>`).join('')}</div>`;
+  return `<div class="adm-sec"><b>다크 모드 이름 ${done}/${ppl.length}</b><small>다크 모드가 켜지면 닉네임 대신 이 이름이 머리 위 · 채팅 · 상단에 보여요. 비우면 닉네임 그대로</small>${ppl.map(([id,p])=>`<label class="adm-wrow"><small style="min-width:70px">${esc(String(p.nick||'').slice(0,8))}</small><input data-dn="${esc(id)}" maxlength="12" placeholder="사람 이름" value="${esc(admDn[id] ?? set[id] ?? '')}" autocomplete="off"><label class="adm-btn" style="cursor:pointer">${missPhotoAt(id) ? '사진 ✓' : '사진'}<input type="file" accept="image/*" data-mph="${esc(id)}" hidden></label></label>`).join('')}<small>사진은 실종 전단에 들어가요 (마을 광장 게시판)</small></div>`;
 }
 const darkTgt = npc => { const u = world.darkTgt?.[npc]; return u && players[u] ? {uid:u, nick:String(players[u].nick||'').slice(0,8)} : null; };
 function adminDarkTgtSec(regs){
