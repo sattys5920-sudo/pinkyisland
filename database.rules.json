@@ -313,6 +313,11 @@
       "darkShift": {
         ".validate": "newData.isNumber()"
       },
+      "darkTgt": {
+        "$npc": {
+          ".validate": "newData.isString() && newData.val().length < 64"
+        }
+      },
       "reloadAt": {
         ".validate": "newData.isNumber()"
       },
