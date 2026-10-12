@@ -161,6 +161,12 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .np-day{font-size:16px;color:var(--soft);text-align:right}
 .np-h small{color:var(--soft);letter-spacing:0}
 .np-keep{grid-column:1/-1;font-size:16px;color:var(--ink);opacity:.8}
+ #clueView{position:fixed;inset:0;z-index:40;background:rgba(14,6,12,.84);display:flex;align-items:center;justify-content:center;padding:16px}#clueView[hidden]{display:none}
+.cl-box{width:min(480px,100%);text-align:center;color:#fff}.cl-pic{position:relative;width:100%;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#1a1016}.cl-box>.cl-pic{box-shadow:0 0 0 3px #f2d16b,0 0 40px rgba(242,209,107,.3)}
+.cl-pic img{width:100%;height:100%;display:block}.cl-name{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.cl-new{display:inline-block;background:#c4222a;color:#fff;padding:3px 14px;border-radius:20px;margin-bottom:10px;font-size:18px}
+.cl-t{display:block;font-size:22px;margin:12px 0 4px}#clueView small{color:#e8cbd6;display:block;font-size:16px}.cl-btns{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}.btn.dk{background:#4a2e3c;color:#f6e6ee;box-shadow:inset 0 -3px 0 #2a1822}.btn:disabled{opacity:.4}
+.cl-tabs{display:flex;gap:6px}.cl-tabs .on{background:#3b2418;color:#f2d16b}.cl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cl-th{background:#fff;padding:4px 4px 6px;border:0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.25);font:inherit;cursor:pointer;text-align:left;color:var(--ink)}
+.cl-th em{font-style:normal;font-size:15px;display:block;margin-top:4px;line-height:1.2}.cl-th.off{background:#e6dcca;cursor:default}.cl-q{aspect-ratio:4/3;background:#3a2529;color:#a88a8a;display:flex;align-items:center;justify-content:center;font-size:34px;border-radius:6px}.cl-hud{margin-right:6px;pointer-events:auto}
 .dk-img{display:block;max-width:100%;max-height:0;margin:0 auto 8px;border-radius:12px;object-fit:contain;cursor:zoom-in;transition:max-height .2s}.dk-img.on{max-height:42vh}.dk-img.big{max-height:80vh;cursor:zoom-out}.adm-qimg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.adm-qimg img{height:70px;border-radius:8px;background:#fff}.adm-qimg label.adm-btn{cursor:pointer}
 .dk-q{font-size:18px;line-height:1.5;margin:4px 2px 10px;white-space:pre-wrap}.dk-ans{display:flex;gap:6px;margin-bottom:8px}.dk-ans input{flex:1;min-width:0;font:inherit;font-size:18px;padding:8px 12px;border-radius:12px;border:2px solid #f2c6d6}.dk-ok{color:#2f9b57;font-size:17px}.adm-lhead i.rd{color:#7dff9a;margin-left:6px;font-style:normal}.adm-lhead i.unrd{color:#ffb86b;margin-left:6px;font-style:normal}
 .adm-dark{display:grid;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.12)}.adm-dark small{opacity:.8}
@@ -544,6 +550,7 @@ import * as TB from './art/toriboss.js';
 import { PET_SPECIES, PET_DRAW } from './art/pets.js';
 import { FORAGE, FORAGE_DRAW, SPOT_OF, SPOT_NAME, SPOT_DRAW } from './forage.js';
 import { JUKE_SONGS, jukeEngine } from './jukebox.js';
+import { CLUE_TITLES, CLUE_TGT } from './art/clues.js';
 import { DARK_ORDER, DARK_LIMIT_MS, DARK_ROOM, DARK_BOSS, DARK_REWARD, DARK_ROOMS, placeholderPuzzles, FLOOR_H, FLOOR_STEP, floorTop, floorOf } from './dark.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
@@ -5554,7 +5561,7 @@ function onDarkRooms(v){
   darkRooms = v || {};
   if (me && !admin) for (const npc of Object.keys(darkRooms)) darkClaim(npc);
   if (admin) renderAdmin();
-  for (const npc of Object.keys(darkRooms)) darkOpenSound(npc, roomOf(npc));
+  for (const npc of Object.keys(darkRooms)){ darkOpenSound(npc, roomOf(npc)); clueSync(npc, roomOf(npc)); }
   if (zoneId.startsWith('dark:')){ renderHud(); const r = roomOf(zoneId.slice(5)); if (!r.hp && !r.clear && darkSolvedN(r) >= darkPuzzles(zoneId.slice(5)).length) darkWake(zoneId.slice(5)); }
 }
 // ----- 문 (다크 모드 동안 주민 자리 옆에 생겨요) -----
@@ -5628,6 +5635,50 @@ function darkEntities(d, t){
 // 문제는 하나씩: 앞 문제를 풀어야 다음 물건이 열려요 (그 전엔 모두 닫혀 있어요)
 const darkPrev = (pz, npc = Z().dark) => { const list = darkPuzzles(npc), i = list.findIndex(x => x.id === pz.id); return i > 0 ? list[i-1] : null; };
 const darkLocked = (pz, r, npc) => { const pv = darkPrev(pz, npc); return !!(pv && !(r.solved || {})[pv.id]) || (pz.need || []).some(id => !(r.solved || {})[id]); };
+
+// ===== 단서: 문제를 풀면 단서 그림이 떠요. 한 번 찾은 단서는 수첩에 계속 남아요 (방이 처음으로 돌아가도) =====
+// 그림은 art/clue/<주민>/<번호>.jpg · 노리는 몸 이름은 그림 위에 게임이 써요 (관리자가 고른 사람)
+const CLUE_N = 14;
+const clueOf = (npc, pzId) => { const i = darkPuzzles(npc).findIndex(p => p.id === pzId); return i < 0 ? 0 : i < 4 ? i + 1 : i === 4 ? 0 : i <= CLUE_N ? i : 0; }; // 5 번(계단 관문)은 단서 없음
+const clueHave = npc => String(me?.clues?.[npc] || '').padEnd(CLUE_N, '0');
+const clueCount = npc => (clueHave(npc).match(/1/g) || []).length;
+function clueAdd(npc, n){ const s = clueHave(npc).split(''); if (s[n-1] === '1') return false; s[n-1] = '1'; me.clues = {...(me.clues || {}), [npc]: s.join('')}; saveMe(); return true; }
+let clueFontOn = false;
+function clueFont(){ if (clueFontOn) return; clueFontOn = true; const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap'; document.head.appendChild(l); }
+function clueSvg(npc, n){
+  const t = (CLUE_TGT[npc] || {})[n] || []; if (!t.length) return '';
+  const nick = darkTgt(npc)?.nick || '???', len = [...nick].length;
+  return `<svg class="cl-name" viewBox="0 0 480 360">${t.map(o => { const fit = o.w / 3 * len > o.w * 1.6 ? ` textLength="${Math.round(o.w*1.6)}" lengthAdjust="spacingAndGlyphs"` : '';
+    return `<text x="${o.x}" y="${o.y}" text-anchor="middle" dominant-baseline="central" font-size="${o.fs}" fill="${o.c}" font-family="${o.hand ? "'Nanum Pen Script',cursive" : 'serif'}" transform="rotate(${o.a} ${o.x} ${o.y})"${fit}>${esc(nick)}</text>`; }).join('')}</svg>`;
+}
+const clueImg = (npc, n) => `<div class="cl-pic"><img src="art/clue/${npc}/${n}.jpg" alt="" loading="lazy">${clueSvg(npc, n)}</div>`;
+// 크게 보기 (방금 풀린 거면 '새 단서')
+function clueShow(npc, n, opt = {}){
+  clueFont(); let v = $('clueView'); if (!v){ v = document.createElement('div'); v.id = 'clueView'; document.body.appendChild(v); }
+  const have = clueHave(npc), list = Array.from({length:CLUE_N}, (_, i) => i + 1).filter(i => have[i-1] === '1'), k = list.indexOf(n);
+  v.innerHTML = `<div class="cl-box">${opt.fresh ? `<span class="cl-new">새 단서 ${n}</span>` : ''}${clueImg(npc, n)}<b class="cl-t">${n}. ${esc(CLUE_TITLES[npc]?.[n-1] || '')}</b>${opt.who ? `<small>${esc(String(opt.who).slice(0,8))} 님이 풀었어요 · 방 안 모두의 수첩에 들어갔어요</small>` : ''}
+    <div class="cl-btns">${opt.fresh ? `<button class="btn dk" data-c="x">계속 찾기</button><button class="btn" data-c="book">단서 수첩</button>`
+      : `<button class="btn dk" data-c="prev" ${k > 0 ? '' : 'disabled'}>◀</button><button class="btn" data-c="book">수첩</button><button class="btn dk" data-c="next" ${k >= 0 && k < list.length-1 ? '' : 'disabled'}>▶</button><button class="btn dk" data-c="x">닫기</button>`}</div></div>`;
+  v.hidden = false;
+  v.onclick = e => { const a = e.target.closest('[data-c]')?.dataset.c; if (e.target === v || a === 'x'){ v.hidden = true; return; } if (a === 'book'){ v.hidden = true; clueBook(npc); } else if (a === 'prev') clueShow(npc, list[k-1]); else if (a === 'next') clueShow(npc, list[k+1]); };
+}
+// 단서 수첩: 층별로 (1 층 1~4 · 2 층 5~9 · 3 층 10~14)
+let clueFloor = 1;
+function clueBook(npc){
+  clueFont(); const have = clueHave(npc), [a, b] = [[1,4],[5,9],[10,14]][clueFloor-1], cells = [];
+  for (let n = a; n <= b; n++) cells.push(have[n-1] === '1' ? `<button class="cl-th" data-n="${n}">${clueImg(npc, n)}<em>${n}. ${esc(CLUE_TITLES[npc]?.[n-1] || '')}</em></button>` : `<div class="cl-th off"><div class="cl-q">?</div><em>${n}. 아직 못 찾았어요</em></div>`);
+  openPanel(`${esc(NPC[npc].name)}의 방 · 단서 수첩 ${clueCount(npc)}/${CLUE_N}`, `<div class="cl-tabs">${['1 층','2 층','3 층'].map((l, i) => `<button class="mini ${clueFloor === i+1 ? 'on' : ''}" data-f="${i+1}">${l}</button>`).join('')}</div><div class="cl-grid">${cells.join('')}</div><p class="mnote">한 번 찾은 단서는 방이 처음으로 돌아가도 수첩에 남아요.</p>`);
+  const P = $('npcPanel'); P.querySelectorAll('[data-f]').forEach(el => el.onclick = () => { clueFloor = +el.dataset.f; clueBook(npc); });
+  P.querySelectorAll('[data-n]').forEach(el => el.onclick = () => clueShow(npc, +el.dataset.n));
+}
+// 방 안에 있으면 풀린 문제의 단서가 내 수첩에 들어와요 (방금 풀린 건 크게 보여 줘요)
+function clueSync(npc, r){
+  if (admin || !me || zoneId !== 'dark:' + npc) return;
+  let fresh = null;
+  for (const [id, sv] of Object.entries(r.solved || {})){ const n = clueOf(npc, id); if (n && clueAdd(npc, n) && darkNow() - (sv.at || 0) < 15000 && (!fresh || (sv.at || 0) > fresh.at)) fresh = {n, at:sv.at || 0, who:sv.nick}; }
+  if (fresh) clueShow(npc, fresh.n, {fresh:true, who:fresh.who});
+}
+document.addEventListener('click', e => { if (e.target.closest?.('#clueBtn') && zoneId.startsWith('dark:')) clueBook(zoneId.slice(5)); });
 // 방금 풀린 문제 다음 물건 쪽에서 열리는 소리 (방 안 모두에게)
 let darkSolvedSeen = {};
 function darkOpenSound(npc, r){
@@ -5736,7 +5787,7 @@ function darkPuzzlePanel(pz){
   const shown = done && (done.ans || pz.a[0] || ''), body = done ? `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
     : lock ? `<p class="dk-q">굳게 닫혀 있어요. 꿈쩍도 하지 않아요.</p><p class="mnote">어딘가에서 다른 것이 먼저 열려야 할 것 같아요.</p>`
     : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>`;
-  openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body); darkImgFill($('npcPanel'));
+  openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body + (admin ? '' : `<button class="mini" id="dkBook">단서 수첩 ${clueCount(npc)}/${CLUE_N}</button>`)); darkImgFill($('npcPanel')); if ($('dkBook')) $('dkBook').onclick = () => clueBook(npc);
   for (const el of $('npcPanel').querySelectorAll('.dk-img')) el.onclick = () => el.classList.toggle('big'); // 누르면 크게
   if (done || lock) return;
   const go = async () => {
@@ -5886,8 +5937,9 @@ function darkHud(){
   const time = `${hh}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   q.hidden = false;
   if (darkDown){ q.hidden = false; q.innerHTML = `<b style="color:#ff4f87">쓰러졌어요</b>${darkBossUp(r) && (r.rv|0) >= DARK_REVIVES ? '살리기 기회를 다 썼어요 · 모두 쓰러지면 보스전부터 다시' : `다른 사람이 다가와 눌러 주면 일어나요 · 살리기 ${Math.max(0, DARK_REVIVES - (r.rv|0))}/${DARK_REVIVES}`} · 남은 시간 ${time}`; placeTop(); return; }
-  q.innerHTML = r.clear ? `<b>${esc(NPC[npc].name)}의 방</b>꿰매진 방이에요 · ${esc(String(r.clear.nick||'').slice(0,8))} 님이 마지막 일격`
-    : `<b style="color:#ff4f87">남은 시간 ${time}</b>${darkBossUp(r) ? `깨어난 ${npc === 'tori' ? '토리???' : esc(NPC[npc].name)} ${Math.ceil(r.hp).toLocaleString()} · 살리기 ${Math.max(0, DARK_REVIVES - (r.rv|0))}/${DARK_REVIVES}${r.wipe ? ` · ${(r.wipe|0)+1} 번째 보스전` : ''}` : `문제 ${darkSolvedN(r)}/${n} · 빛나는 물음표를 찾아요`}`;
+  const cb = admin ? '' : `<button class="mini cl-hud" id="clueBtn">단서 ${clueCount(npc)}/${CLUE_N}</button>`;
+  q.innerHTML = cb + (r.clear ? `<b>${esc(NPC[npc].name)}의 방</b>꿰매진 방이에요 · ${esc(String(r.clear.nick||'').slice(0,8))} 님이 마지막 일격`
+    : `<b style="color:#ff4f87">남은 시간 ${time}</b>${darkBossUp(r) ? `깨어난 ${npc === 'tori' ? '토리???' : esc(NPC[npc].name)} ${Math.ceil(r.hp).toLocaleString()} · 살리기 ${Math.max(0, DARK_REVIVES - (r.rv|0))}/${DARK_REVIVES}${r.wipe ? ` · ${(r.wipe|0)+1} 번째 보스전` : ''}` : `문제 ${darkSolvedN(r)}/${n} · 빛나는 물음표를 찾아요`}`);
   placeTop();
 }
 // ===== 별빛 언덕 밤 =====
