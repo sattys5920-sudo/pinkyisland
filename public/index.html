@@ -172,9 +172,16 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .mp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mp-card{background:#f4f0e6;color:#2b1a14;padding:10px 8px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:2px;border-radius:3px}.mp-card:nth-child(odd){transform:rotate(-1.5deg)}.mp-card:nth-child(even){transform:rotate(1.2deg)}
 .mp-h{color:#c4222a;font-size:19px;letter-spacing:2px}.mp-ph{width:70%;aspect-ratio:3/4;margin:4px auto;background:#9a8a7a;overflow:hidden;border:1px solid #6a5a4a}.mp-ph img{width:100%;height:100%;object-fit:cover;filter:grayscale(.3)}.mp-ph i{display:block;width:100%;height:100%;background:radial-gradient(circle at 50% 38%,#3d3236 0 18%,transparent 19%),radial-gradient(ellipse at 50% 92%,#3d3236 0 34%,transparent 35%)}
 .mp-n{font-size:22px}.mp-card small{font-size:13px;line-height:1.35;color:#4a3a30}.mp-card em{font-style:normal;font-size:12px;color:#8a1016;margin-top:2px}
-.tvn{background:#101820;color:#e8eef4;border-radius:10px;padding:12px;overflow:hidden}.tvn-live{display:inline-block;background:#c4222a;color:#fff;padding:2px 10px;border-radius:4px;font-size:15px;animation:tvb 1s steps(2) infinite}@keyframes tvb{50%{opacity:.5}}
-.tvn-h{display:block;font-size:21px;margin:8px 0;line-height:1.3}.tvn p{font-size:15px;line-height:1.55;margin:6px 0;color:#c8d2dc}.tvn-list{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;padding-top:8px;border-top:1px solid #2a3a4a}.tvn-list small{width:100%;color:#8aa0b4}.tvn-list span{font-size:17px}
-.tvn-tick{margin:10px -12px -12px;background:#c4222a;white-space:nowrap;overflow:hidden;font-size:15px;padding:4px 0}.tvn-tick span{display:inline-block;padding-left:100%;animation:tvt 18s linear infinite}@keyframes tvt{to{transform:translateX(-100%)}}
+.nw-tv{position:relative;aspect-ratio:16/9;overflow:hidden;background:#06142c;color:#fff;font-family:'Noto Sans KR',sans-serif;container-type:inline-size;border-radius:6px;flex:none}.nw-scene{position:absolute;inset:0}
+.nw-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.nw-tv::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px);pointer-events:none}
+.nw-logo{position:absolute;left:3cqw;top:2.6cqw;font:700 1.7cqw 'Noto Sans KR';display:flex;align-items:center;gap:.8cqw;text-shadow:0 1px 3px #000}.nw-logo b{background:#e8eef6;color:#0b2a5a;font-weight:900;font-size:2.1cqw;padding:.2cqw .8cqw;border-radius:.3cqw}
+.nw-live{position:absolute;right:3cqw;top:2.6cqw;display:flex;gap:.6cqw;font:700 1.6cqw 'Noto Sans KR'}.nw-live i{font-style:normal;background:#d1121c;padding:.2cqw .9cqw}.nw-live em{font-style:normal;background:rgba(0,0,0,.55);padding:.2cqw .9cqw}
+.nw-loc{position:absolute;left:3cqw;top:6.6cqw;background:rgba(0,0,0,.55);font:700 1.6cqw 'Noto Sans KR';padding:.4cqw 1cqw;border-left:.4cqw solid #d1121c}.nw-rec{position:absolute;right:3cqw;top:6.6cqw;background:rgba(0,0,0,.45);font:700 1.4cqw 'Noto Sans KR';padding:.3cqw .8cqw}
+.nw-l3{position:absolute;left:3cqw;right:3cqw;bottom:6cqw}.nw-tag{display:inline-block;background:#d1121c;font:900 2.1cqw 'Noto Sans KR';padding:.4cqw 1.4cqw;letter-spacing:.2cqw}.nw-s2{display:inline-block;background:#0b2a5a;font:700 1.6cqw 'Noto Sans KR';padding:.7cqw 1.2cqw;color:#cfe0f4;vertical-align:top}
+.nw-h{background:linear-gradient(#fff,#e9eef4);color:#0a0f18;font:900 3.4cqw/1.25 'Noto Sans KR';padding:1cqw 1.6cqw;letter-spacing:-.1cqw}.nw-sub{background:#0b2a5a;font:500 1.95cqw 'Noto Sans KR';padding:.7cqw 1.6cqw}
+.nw-tick{position:absolute;left:0;right:0;bottom:0;height:4.2cqw;background:#071a3a;display:flex;align-items:center;font:500 1.75cqw 'Noto Sans KR';color:#dfe8f4;white-space:nowrap;overflow:hidden}.nw-tick b{background:#f2c200;color:#071a3a;height:100%;display:flex;align-items:center;padding:0 1.4cqw;font-weight:900;flex:none;position:relative;z-index:1}.nw-tick span{display:inline-block;padding-left:2cqw;animation:nwt 40s linear infinite}@keyframes nwt{to{transform:translateX(-50%)}}
+.nw-list{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 20%,#123a70,#061428 70%);text-align:center;padding-top:5.6cqw}.nw-list>b{font:900 3cqw 'Noto Sans KR'}.nw-list>small{display:block;font:500 1.5cqw 'Noto Sans KR';color:#9fb8d6}
+.nw-list>div{display:grid;grid-template-columns:repeat(6,1fr);gap:1cqw;margin:1cqw 8cqw 0}.nw-list span{background:#0d2850;border:1px solid #2a5a9a;padding:.5cqw;font:700 1.5cqw 'Noto Sans KR'}.nw-list i{display:block;height:4.6cqw;margin-bottom:.3cqw;background:radial-gradient(circle at 50% 36%,#5a6678 0 20%,transparent 21%),radial-gradient(ellipse at 50% 100%,#5a6678 0 42%,transparent 43%),#24364f;overflow:hidden}.nw-list i img{width:100%;height:100%;object-fit:cover}
 .cl-tabs{display:flex;gap:6px}.cl-tabs .on{background:#3b2418;color:#f2d16b}.cl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cl-th{background:#fff;padding:4px 4px 6px;border:0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.25);font:inherit;cursor:pointer;text-align:left;color:var(--ink)}
 .cl-th em{font-style:normal;font-size:15px;display:block;margin-top:4px;line-height:1.2}.cl-th.off{background:#e6dcca;cursor:default}.cl-q{aspect-ratio:4/3;background:#3a2529;color:#a88a8a;display:flex;align-items:center;justify-content:center;font-size:34px;border-radius:6px}.cl-hud{margin-right:6px;pointer-events:auto}
 .dk-img{display:block;max-width:100%;max-height:0;margin:0 auto 8px;border-radius:12px;object-fit:contain;cursor:zoom-in;transition:max-height .2s}.dk-img.on{max-height:42vh}.dk-img.big{max-height:80vh;cursor:zoom-out}.adm-qimg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.adm-qimg img{height:70px;border-radius:8px;background:#fff}.adm-qimg label.adm-btn{cursor:pointer}
@@ -561,6 +568,7 @@ import { PET_SPECIES, PET_DRAW } from './art/pets.js';
 import { FORAGE, FORAGE_DRAW, SPOT_OF, SPOT_NAME, SPOT_DRAW } from './forage.js';
 import { JUKE_SONGS, jukeEngine } from './jukebox.js';
 import { CLUE_TITLES, CLUE_TGT, CLUE_CASE } from './art/clues.js';
+import { NEWS_SCENES } from './art/news.js';
 import { DARK_ORDER, DARK_LIMIT_MS, DARK_ROOM, DARK_BOSS, DARK_REWARD, DARK_ROOMS, placeholderPuzzles, FLOOR_H, FLOOR_STEP, floorTop, floorOf } from './dark.js';
 import { ART_PART as ART_FISH_A } from './art/fish_a.js';
 import { ART_PART as ART_FISH_B } from './art/fish_b.js';
@@ -4711,17 +4719,30 @@ function candyTrade(n){
   }
   saveMe(); renderHud(); tvPanel();
 }
-// 다크 모드: TV 를 켜면 뉴스 채널이 먼저 나와요
+// 다크 모드: TV 를 켜면 뉴스 채널이 먼저 나와요 (장면 4 개가 7 초마다 넘어가요 · 흘러가는 속보 자막 · 지금 시각)
 let tvCh = 'news';
+const NEWS = [
+  {loc:'서울 ○○구 · 실종자 자택 아파트', tag:'속보', s2:'사회', head:'자택서 게임하던 12명, 같은 시각 동시 실종', sub:'방에는 켜진 휴대폰만… 서로 모르는 사이'},
+  {loc:'실종자 방 내부 · 경찰 제공', rec:'자료 화면', tag:'단독', s2:'이민서 기자', head:'"방 안엔 휴대폰만… 게임 화면 그대로 켜져 있어"', sub:'문은 안에서 잠겨 있었고, 창문도 닫혀 있어'},
+  {loc:'현장 연결 · 실종자 자택 앞 복도', tag:'현장', s2:'사회', head:'경찰, 게임사에 접속 기록 요청… "등록된 게임 없다"', sub:'12명 휴대폰, 같은 시각 같은 게임에 접속한 채 발견'},
+  {list:true, tag:'속보', s2:'사회', head:'실종자 12명… 마지막으로 본 곳 모두 "자택"', sub:'보신 분은 112 로 제보해 주세요'}];
+const NEWS_TICK = '경찰 "강제로 들어온 흔적 없어" · 실종자 휴대폰 12대 모두 같은 게임 화면 · 게임사 "그런 게임은 등록돼 있지 않다" · 휴대폰 화면 속 캐릭터는 지금도 움직이는 중 · 가족들 "아이 이름을 부르는 소리가 화면에서 들린다" · 목격자 제보 112 · ';
+let newsI = 0, newsTimer = 0, newsFontOn = false; const newsImg = [];
+function newsFont(){ if (newsFontOn) return; newsFontOn = true; const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap'; document.head.appendChild(l); }
+function newsBg(i){ if (!newsImg[i]){ const c = document.createElement('canvas'); c.width = 960; c.height = 540; NEWS_SCENES[i](c.getContext('2d')); newsImg[i] = c.toDataURL('image/jpeg', .85); } return newsImg[i]; }
+function newsScene(){
+  const k = newsI % NEWS.length, N = NEWS[k], L = missingList(), now = new Date(Date.now() + 9*3600000), hm = `${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}`;
+  const list = N.list ? `<div class="nw-list"><b>실종자 12명</b><small>마지막으로 본 곳 : 모두 자택</small><div>${Array.from({length:12}, (_, i) => { const e = L[i], at = e && missPhotoAt(e[0]); return `<span><i>${at ? `<img data-dkimg="missing|${esc(e[0])}|${at}" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">` : ''}</i>${e ? esc(e[1]) : '???'}</span>`; }).join('')}</div></div>` : `<img class="nw-bg" src="${newsBg(k)}" alt="">`;
+  return `${list}<div class="nw-logo"><b>HBN</b>뉴스 24</div><div class="nw-live"><i>LIVE</i><em>${hm}</em></div>${N.loc ? `<div class="nw-loc">${N.loc}</div>` : ''}${N.rec ? `<div class="nw-rec">${N.rec}</div>` : ''}
+    <div class="nw-l3"><div><span class="nw-tag">${N.tag}</span><span class="nw-s2">${N.s2}</span></div><div class="nw-h">${esc(N.head)}</div><div class="nw-sub">${esc(N.sub)}</div></div>`;
+}
 function tvNews(){
-  const L = missingList(), n = 12, d = new Date((world.darkAt || Date.now()) + 9*3600000);
-  openPanel('📺 뉴스', `<div class="tvn"><div class="tvn-live">● 속보</div><b class="tvn-h">${n}명 동시 실종… 모두 자기 집에서 게임을 하던 중</b>
-    <p>${d.getUTCMonth()+1}월 ${d.getUTCDate()}일 밤, 서로 다른 집에 사는 ${n}명이 같은 시각에 사라졌습니다. 실종자들은 모두 자기 방에서 같은 모바일 게임에 접속해 있었고, 방에는 켜진 휴대폰만 남아 있었습니다.</p>
-    <p>휴대폰 화면 속 게임은 지금도 꺼지지 않은 채 움직이고 있다고 합니다. 경찰은 게임 회사에 접속 기록을 요청했지만, 그런 게임은 등록돼 있지 않다는 답을 받았습니다.</p>
-    ${L.length ? `<div class="tvn-list"><small>실종자 · 마지막으로 본 곳 : 자택</small>${L.map(([, nm]) => `<span>${esc(nm)}</span>`).join('')}</div>` : ''}
-    <div class="tvn-tick"><span>속보 · ${n}명 실종 · 자택에서 게임 중 사라져 · 휴대폰 화면은 아직 켜져 있어 · 목격자를 찾습니다 · </span></div></div>
-    <button class="mini" id="tvShop">채널 돌리기 (홈쇼핑)</button>`);
-  $('tvShop').onclick = () => { tvCh = 'shop'; tvPanel(); };
+  newsFont();
+  openPanel('📺 HBN 뉴스 24', `<div class="nw-tv"><div class="nw-scene">${newsScene()}</div><div class="nw-tick"><b>속보</b><span>${NEWS_TICK}${NEWS_TICK}</span></div></div><button class="mini" id="tvShop">채널 돌리기 (홈쇼핑)</button>`);
+  const P = $('npcPanel'); darkImgFill(P);
+  $('tvShop').onclick = () => { tvCh = 'shop'; clearTimeout(newsTimer); tvPanel(); };
+  const next = () => { const sc = P.querySelector('.nw-scene'); if (P.hidden || !sc) return; newsI++; sc.innerHTML = newsScene(); darkImgFill(sc); newsTimer = setTimeout(next, 7000); };
+  clearTimeout(newsTimer); newsTimer = setTimeout(next, 7000);
 }
 function tvPanel(){
   if (me && !me.tvSeen){ me.tvSeen = true; saveMe(); setTimeout(tutCheck); }
