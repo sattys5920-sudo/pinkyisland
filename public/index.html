@@ -4872,36 +4872,26 @@ function newsScene(){
   return `${list}<div class="nw-logo"><b>HBN</b>뉴스 24</div><div class="nw-live"><i>LIVE</i><em>${hm}</em></div>${N.loc ? `<div class="nw-loc">${N.loc}</div>` : ''}${N.rec ? `<div class="nw-rec">${N.rec}</div>` : ''}
     <div class="nw-l3"><div><span class="nw-tag">${N.tag}</span><span class="nw-s2">${N.s2}</span></div><div class="nw-h">${esc(N.head)}</div><div class="nw-sub">${esc(N.sub)}</div></div>`;
 }
-// 앵커 목소리: 폰에 들어 있는 한국어 음성(AI 음성 합성)으로 장면마다 읽어 줘요. 다 읽으면 다음 장면으로
-const NEWS_SAY = [
-  '속보입니다. 오늘 밤, 각자의 집에 있던 열두 명이 같은 시각에 동시에 실종됐습니다. 이들은 서로 모르는 사이로, 방에는 켜진 휴대폰만 남아 있었습니다.',
-  '단독 보도입니다. 경찰이 공개한 실종자의 방 내부입니다. 문은 안에서 잠겨 있었고, 창문도 닫혀 있었습니다. 휴대폰 화면에는 게임이 그대로 켜져 있었습니다.',
-  '현장 연결합니다. 경찰은 게임사에 접속 기록을 요청했지만, 해당 게임은 어디에도 등록돼 있지 않은 것으로 확인됐습니다. 열두 명의 휴대폰은 모두 같은 시각, 같은 게임에 접속한 채 발견됐습니다.',
-  ''];
-let newsMute = false, newsTok = 0;
-function newsVoice(){ const vs = (window.speechSynthesis && speechSynthesis.getVoices() || []).filter(v => /^ko/i.test(v.lang)); if (!vs.length) return null;
-  const sc = v => (/premium|enhanced|neural|natural|online/i.test(v.name) ? 4 : 0) + (/yuna|sunhi|injoon|google|유나/i.test(v.name) ? 2 : 0) + (v.localService ? 0 : 1); return vs.sort((a, b) => sc(b) - sc(a))[0]; }
-function newsLine(k){ if (k !== 3) return NEWS_SAY[k]; const L = missingList().map(e => e[1]);
-  return `실종자 열두 명이 마지막으로 목격된 곳은 모두 자택입니다.${L.length ? ` 실종자는 ${L.join(', ')} 씨 등입니다.` : ''} 이들을 보신 분은 일일이로 제보해 주시기 바랍니다.`; }
-function newsSpeak(k, done){ // 다 읽으면 done (음성이 없거나 막히면 시간으로 넘겨요)
-  const tok = ++newsTok, txt = newsLine(k), fin = () => { if (tok !== newsTok) return; newsTok++; done(); };
-  const wait = Math.max(7000, txt.length*160 + 1200);
-  if (newsMute || !window.speechSynthesis){ newsTimer = setTimeout(fin, 7000); return; }
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(txt), v = newsVoice(); u.lang = 'ko-KR'; if (v) u.voice = v; u.rate = 1.04; u.pitch = .96; u.volume = 1;
-    u.onend = () => setTimeout(fin, 700); u.onerror = () => setTimeout(fin, 700); speechSynthesis.speak(u); } catch(e){}
-  newsTimer = setTimeout(fin, wait + 4000);
-}
-function newsHush(){ newsTok++; clearTimeout(newsTimer); try { window.speechSynthesis && speechSynthesis.cancel(); } catch(e){} }
+// 앵커 목소리: 녹음해 둔 뉴스 한 편(46초)을 틀고, 문단이 바뀌는 때에 맞춰 장면을 넘겨요. 끝나면 잠깐 쉬고 처음부터
+const NEWS_MP3 = 'art/news.mp3', NEWS_CUT = [0, 10.6, 22.95, 36.95];
+let newsMute = false, newsAud = null, newsWatch = 0;
+function newsDuck(on){ try { if (bgmAudio) bgmAudio.volume = on ? .05 : BGM_VOL; if (bgmGain) bgmGain.gain.value = on ? .05 : BGM_VOL; } catch(e){} }
+function newsHush(){ clearTimeout(newsTimer); clearInterval(newsWatch); if (newsAud){ newsAud.pause(); newsAud.onended = null; } newsDuck(false); }
 function tvNews(){
-  newsFont();
+  newsFont(); newsHush(); newsI = 0;
   openPanel('📺 HBN 뉴스 24', `<div class="nw-tv"><div class="nw-scene">${newsScene()}</div><div class="nw-tick"><b>속보</b><span>${NEWS_TICK}${NEWS_TICK}</span></div></div><div class="adm-wrow"><button class="mini" id="tvMute">${newsMute ? '🔈 소리 켜기' : '🔇 소리 끄기'}</button><button class="mini" id="tvShop">채널 돌리기 (홈쇼핑)</button></div>`);
   const P = $('npcPanel'); darkImgFill(P);
-  $('tvShop').onclick = () => { tvCh = 'shop'; newsHush(); tvPanel(); };
-  $('tvMute').onclick = () => { newsMute = !newsMute; $('tvMute').textContent = newsMute ? '🔈 소리 켜기' : '🔇 소리 끄기'; newsHush(); run(); };
   const alive = () => !P.hidden && P.querySelector('.nw-scene');
-  const run = () => newsSpeak(newsI % NEWS.length, () => { const sc = alive(); if (!sc) return newsHush(); newsI++; sc.innerHTML = newsScene(); darkImgFill(sc); run(); });
-  const watch = setInterval(() => { if (!alive()){ clearInterval(watch); newsHush(); } }, 300); // 창을 닫으면 바로 조용히
-  newsHush(); run();
+  const show = k => { const sc = alive(); if (!sc || newsI === k) return; newsI = k; sc.innerHTML = newsScene(); darkImgFill(sc); };
+  if (!newsAud){ newsAud = new Audio(NEWS_MP3); newsAud.preload = 'auto'; }
+  const A = newsAud; A.muted = newsMute; A.currentTime = 0;
+  let timed = false; // 소리를 못 틀면(막힘·오류) 7초마다 넘겨요
+  const byTime = () => { timed = true; const step = () => { if (!alive()) return; show((newsI + 1) % NEWS.length); newsTimer = setTimeout(step, 7000); }; newsTimer = setTimeout(step, 7000); };
+  A.onended = () => { show(NEWS.length - 1); newsTimer = setTimeout(() => { if (!alive()) return; show(0); A.currentTime = 0; A.play().catch(()=>{}); }, 2500); };
+  const pr = A.play(); if (pr && pr.then) pr.then(() => newsDuck(!newsMute)).catch(byTime); else newsDuck(!newsMute);
+  newsWatch = setInterval(() => { if (!alive()){ newsHush(); return; } if (timed || A.paused) return; let k = 0; NEWS_CUT.forEach((c, i) => { if (A.currentTime >= c) k = i; }); show(k); }, 200);
+  $('tvShop').onclick = () => { tvCh = 'shop'; newsHush(); tvPanel(); };
+  $('tvMute').onclick = () => { newsMute = !newsMute; A.muted = newsMute; newsDuck(!newsMute); $('tvMute').textContent = newsMute ? '🔈 소리 켜기' : '🔇 소리 끄기'; };
 }
 function tvPanel(){
   if (me && !me.tvSeen){ me.tvSeen = true; saveMe(); setTimeout(tutCheck); }
