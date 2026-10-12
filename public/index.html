@@ -5554,6 +5554,7 @@ function onDarkRooms(v){
   darkRooms = v || {};
   if (me && !admin) for (const npc of Object.keys(darkRooms)) darkClaim(npc);
   if (admin) renderAdmin();
+  for (const npc of Object.keys(darkRooms)) darkOpenSound(npc, roomOf(npc));
   if (zoneId.startsWith('dark:')){ renderHud(); const r = roomOf(zoneId.slice(5)); if (!r.hp && !r.clear && darkSolvedN(r) >= darkPuzzles(zoneId.slice(5)).length) darkWake(zoneId.slice(5)); }
 }
 // ----- 문 (다크 모드 동안 주민 자리 옆에 생겨요) -----
@@ -5624,7 +5625,18 @@ function darkEntities(d, t){
   else if (darkBossUp(r)){ const [bx, by] = darkBossPos(r); out.push({y:by, draw:()=>drawDarkBoss(d, z.dark, r, bx, by, t), label:()=>{}}); }
   return out;
 }
-const darkLocked = (pz, r) => (pz.need || []).some(id => !(r.solved || {})[id]);
+// 문제는 하나씩: 앞 문제를 풀어야 다음 물건이 열려요 (그 전엔 모두 닫혀 있어요)
+const darkPrev = (pz, npc = Z().dark) => { const list = darkPuzzles(npc), i = list.findIndex(x => x.id === pz.id); return i > 0 ? list[i-1] : null; };
+const darkLocked = (pz, r, npc) => { const pv = darkPrev(pz, npc); return !!(pv && !(r.solved || {})[pv.id]) || (pz.need || []).some(id => !(r.solved || {})[id]); };
+// 방금 풀린 문제 다음 물건 쪽에서 열리는 소리 (방 안 모두에게)
+let darkSolvedSeen = {};
+function darkOpenSound(npc, r){
+  const n = darkSolvedN(r), was = darkSolvedSeen[npc]; darkSolvedSeen[npc] = n;
+  if (was === undefined || n <= was || !zoneId.startsWith('dark:' + npc)) return;
+  const list = darkPuzzles(npc), next = list.find(pz => !(r.solved || {})[pz.id] && !darkLocked(pz, r, npc));
+  if (next) setTimeout(() => toast(`철컥.... ${next.open || `어디선가 열리는 소리가 들렸어요 · ${next.title} 쪽이에요`}`), 1600);
+  else if (n >= list.length) setTimeout(() => toast('철컥.... 마지막 자물쇠가 풀렸어요. 방 깊은 곳에서 무언가 깨어나요'), 1600);
+}
 // 수사 현장 노란 증거 번호표 (층 방에서는 가구 대신 그림 위에 서 있어요)
 function drawEvidence(c, pz){ const x = pz.x, y = pz.y - 4, n = parseInt(pz.id.slice(1), 10); c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 6; const q = c.createLinearGradient(0, y-30, 0, y); q.addColorStop(0, '#ffe04a'); q.addColorStop(1, '#d6a812'); c.fillStyle = q; c.beginPath(); c.moveTo(x-15, y); c.lineTo(x+15, y); c.lineTo(x+9, y-28); c.lineTo(x-9, y-28); c.closePath(); c.fill(); c.shadowBlur = 0; c.fillStyle = '#111'; c.font = 'bold 15px sans-serif'; c.textAlign = 'center'; c.fillText(n, x, y-9); c.restore(); }
 function darkObjLabel(d, pz, r, t){
@@ -5722,7 +5734,7 @@ function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, b
 function darkPuzzlePanel(pz){
   const npc = Z().dark; if (!npc) return; const r = roomOf(npc), done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), list = darkPuzzles(npc);
   const shown = done && (done.ans || pz.a[0] || ''), body = done ? `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
-    : lock ? `<p class="dk-q">이 물건은 아직 열리지 않아요.</p><p class="mnote">먼저 풀어야 하는 것: ${(pz.need||[]).filter(id=>!(r.solved||{})[id]).map(id=>esc(list.find(x=>x.id===id)?.title || id)).join(', ')}</p>`
+    : lock ? `<p class="dk-q">굳게 닫혀 있어요. 꿈쩍도 하지 않아요.</p><p class="mnote">어딘가에서 다른 것이 먼저 열려야 할 것 같아요.</p>`
     : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>`;
   openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body); darkImgFill($('npcPanel'));
   for (const el of $('npcPanel').querySelectorAll('.dk-img')) el.onclick = () => el.classList.toggle('big'); // 누르면 크게
@@ -5732,7 +5744,7 @@ function darkPuzzlePanel(pz){
     if (!(await darkCheck(npc, pz, v))){ if ($('dkIn')){ $('dkIn').value = ''; $('dkIn').placeholder = '틀렸어요. 다시 생각해 봐요'; } setExpr('sad', 1200); return; }
     const ans = String(v).trim().slice(0, 40), ok = await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; return {...cur, solved:{...(cur.solved||{}), [pz.id]:{uid, nick:me.nick, at:darkNow(), ans}}}; });
     $('npcPanel').hidden = true;
-    if (ok){ gainExp(20); toast(`${pz.title}: 정답! 문을 여는 소리가 들려요 (${darkSolvedN(roomOf(npc))}/${list.length})`); setExpr('sparkle', 1500); }
+    if (ok){ gainExp(20); toast(`${pz.title}: 정답! (${darkSolvedN(roomOf(npc))}/${list.length})`); setExpr('sparkle', 1500); }
     else toast('누군가 먼저 풀었거나 방이 바뀌었어요');
   };
   $('dkGo').onclick = go; $('dkIn').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229){ e.preventDefault(); go(); } };
