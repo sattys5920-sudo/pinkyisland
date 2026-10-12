@@ -554,6 +554,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 
 <script type="module">
 import { firebaseConfig } from './firebase-config.js';
+import { bossAudio } from './bossaudio.js';
 import { NPC_TEXT } from './npcs.js';
 import * as CH from './char.js';
 import { QUESTS as NPC_QUESTS } from './quests.js';
@@ -580,6 +581,7 @@ import { ART_PART as ART_DISH } from './art/dishes.js';
 import { openKitchen, gradeIdx, shopIconURL, stapleIconURL, MENU } from './kitchen.js';
 import { LV_SOLD, STAPLES } from './shopdata.js';
 import { drawShop, drawLot } from './art/shops.js';
+const bossSnd = bossAudio({ volume:.5 }); // 다크 보스전 음악 · 효과음
 const P = {grass:'#b5e6a3',grass2:'#9fdb8c',path:'#ffe0bf',water:'#9fd9ff',waterHi:'#e8f7ff',cream:'#fff0e0',pink:'#ffa6c9',choco:'#9a5a45',cherry:'#ff5a78',candyA:'#ffa6cf',candyB:'#fff09a',stick:'#fff',soil:'#d69a70',berry:'#ff5a78',leaf:'#6cc46a',rock:'#c3b8d2',gem:'#bf8cff',dust:'#bdb5c9',blush:'#ffadc4',eye:'#5b3345',stitch:'#ffffff',bubble:'#fff',text:'#8a4b63'};
 // 캐릭터 만들기: 피부·머리·표정과 기본 옷(상의 5 · 하의 5 · 신발 3)을 색까지 골라요. 기본 옷은 다섯 색 모두 무료
 const BASIC = cat => Object.keys(CH[cat]).filter(id => CH.FREE.includes(id));
@@ -1704,7 +1706,7 @@ function bgmSchedule(){
   }
 }
 function bgmStart(){
-  if (!bgmOn() || document.visibilityState==='hidden' || jukeOn) return;
+  if (!bgmOn() || document.visibilityState==='hidden' || jukeOn || bossSnd.playing()) return;
   bgmStarted = true;
   if (!bgmUseSynth){
     if (!bgmAudio){ bgmAudio = new Audio(BGM_FILE); bgmAudio.loop = true; bgmAudio.volume = BGM_VOL; bgmAudio.addEventListener('error', ()=>{ bgmUseSynth = true; bgmAudio = null; bgmStart(); }, {once:true}); }
@@ -1718,6 +1720,7 @@ function bgmStart(){
 function bgmStop(){ if (bgmAudio) bgmAudio.pause(); if (bgmTimer){ clearInterval(bgmTimer); bgmTimer = 0; } if (bgmCtx) bgmCtx.suspend().catch(()=>{}); }
 // 브라우저는 처음 화면을 누르기 전엔 소리를 못 내요. 첫 터치·키 입력 때 시작해요
 for (const ev of ['pointerdown','keydown']) addEventListener(ev, ()=>{ if (me && !admin && !bgmStarted) bgmStart(); }, {passive:true});
+for (const ev of ['pointerdown','keydown']) addEventListener(ev, ()=>{ try { const c = bossSnd.ctx; if (c && c.state === 'suspended') c.resume().catch(()=>{}); } catch(e){} }, {passive:true});
 document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='hidden') bgmStop(); else if (bgmStarted && bgmOn()) bgmStart(); });
 // ===== 주크박스: 집의 주크박스를 누르면 섬 노래(jukebox.js) 중 하나를 골라 무한 반복. 듣는 동안 배경 음악은 쉬고, 집 밖으로 나가면 꺼져요 =====
 var jukeOn = null; const juke = jukeEngine(BGM_VOL);
@@ -6159,9 +6162,9 @@ function toriAttack(dt, t, r){
   const st = toriState(r), now = darkNow(), me_ = [pos.x, pos.y - 25];
   if (r.rageAt && tbRageSeen !== r.rageAt && now - r.rageAt < 3000){ tbRageSeen = r.rageAt; glitchBurst = performance.now(); toast('토리??? 가 등을 돌려요....'); }
   for (const L of toriLetters(r, now)) if (!L.ring && L.al > .4 && !tbHit[L.key] && Math.hypot(L.x - me_[0], L.y - me_[1]) < 20){ tbHit[L.key] = 1; darkHurt(L.dmg, t); }
-  if (st.ph === 2){ TB_P2.waves.forEach((w0, i) => { const key = `${r.rageAt}.${st.cyc}.${i}`; if (st.t >= w0 && st.t < w0 + .5 && tbWaveSeen.indexOf('|' + key + '|') < 0){ tbWaveSeen = (tbWaveSeen + '|' + key + '|').slice(-400);
+  if (st.ph === 2){ TB_P2.waves.forEach((w0, i) => { const key = `${r.rageAt}.${st.cyc}.${i}`; if (st.t >= w0 && st.t < w0 + .5 && tbWaveSeen.indexOf('|' + key + '|') < 0){ tbWaveSeen = (tbWaveSeen + '|' + key + '|').slice(-400); bossFx('warn', 250);
       tbHands.push({x:pos.x, y:pos.y, at:now, mine:1}); for (const o of [...others.values()].filter(o => o.z === zoneId && !o.down)) tbHands.push({x:o.x, y:o.y, at:now}); } }); }
-  tbHands = tbHands.filter(h => { const k = (now - h.at)/1000; if (k >= 1 && !h.done){ h.done = 1; if (((pos.x - h.x)/60)**2 + ((pos.y - h.y)/36)**2 < 1) darkHurt(TB_DMG.hand, t); } return k < 2.2; });
+  tbHands = tbHands.filter(h => { const k = (now - h.at)/1000; if (k >= 1 && !h.done){ h.done = 1; if (h.mine) bossFx('slam', 150); if (((pos.x - h.x)/60)**2 + ((pos.y - h.y)/36)**2 < 1) darkHurt(TB_DMG.hand, t); } return k < 2.2; });
   if (Object.keys(tbHit).length > 200) tbHit = {};
 }
 // 보스전 다시 시작 자리: 마지막 층 계단 도착점 (없으면 방 문)
@@ -6178,11 +6181,25 @@ function drawDarkBoss(d, npc, r, x, y, t){
 function darkSwing(cx, cy, vx, vy, t){
   const z = Z(); if (!z.dark) return; const r = roomOf(z.dark); if (!darkBossUp(r)) return;
   const [bx, by] = darkBossPos(r); if (Math.hypot(bx-cx, by-cy) > (z.dark === 'tori' ? 160 : 110)) return;
-  const dmg = swordAtk(); darkPending += dmg; darkHurtT = .2; fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
+  const dmg = swordAtk(); darkPending += dmg; darkHurtT = .2; bossFx('hit', 60); fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
   me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.start||0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
 }
-function darkHurt(n, t){ if (darkGuard > 0) return; n = ringDmg(n, false); if (!n) return; playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0) darkRespawn(); }
+function darkHurt(n, t){ if (darkGuard > 0) return; n = ringDmg(n, false); if (!n) return; bossFx('hurt', 200); playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0) darkRespawn(); }
+// ===== 다크 보스전 음악 · 효과음 (주민마다 다른 테마곡 · 배경 음악을 끄면 같이 꺼져요) =====
+let bossRageKey = '', bossClearKey = '', bossSfxT = {};
+const bossFx = (kind, gap = 120) => { if (!bgmOn() || !zoneId.startsWith('dark:')) return; const now = performance.now(); if (now - (bossSfxT[kind] || 0) < gap) return; bossSfxT[kind] = now; try { bossSnd.sfx(Z().dark, kind); } catch(e){} };
+function bossMusicSync(){
+  const z = Z(), npc = z.dark, r = npc ? roomOf(npc) : null, want = !!(npc && darkBossUp(r) && bgmOn() && document.visibilityState !== 'hidden');
+  try {
+    if (want && bossSnd.playing() !== npc){ bgmStop(); if (jukeOn){ juke.stop(); jukeOn = null; } bossSnd.play(npc); }
+    else if (!want && bossSnd.playing()){ bossSnd.stop(); if (bgmStarted && bgmOn() && !jukeOn) setTimeout(bgmStart, 900); }
+    if (npc && r){ const rk = `${npc}:${r.bossAt || 0}:${r.wipe | 0}`; if (darkBossUp(r) && r.hp <= r.max/2 && bossRageKey !== rk){ if (bossRageKey.startsWith(rk + '|pre')) bossFx('rage', 0); bossRageKey = rk; } else if (darkBossUp(r) && r.hp > r.max/2) bossRageKey = rk + '|pre';
+      const ck = `${npc}:${r.clear?.at || 0}`; if (r.clear && bossClearKey && bossClearKey !== ck && bossClearKey.endsWith(':0')) bossFx('down', 0); bossClearKey = ck; }
+    else { bossRageKey = ''; bossClearKey = ''; }
+  } catch(e){}
+}
 function updateDark(dt, t){
+  bossMusicSync();
   if (t > darkHudT){ darkHudT = t + 1000; if (zoneId.startsWith('dark:')) darkHud(); }
   const z = Z(); if (!z.dark) return; const npc = z.dark, r = roomOf(npc);
   darkGuard -= dt; darkHurtT -= dt;
@@ -6209,9 +6226,9 @@ function updateDark(dt, t){
   const ppl = [[uid, pos.x, pos.y], ...[...others.entries()].filter(([, o]) => o.z === zoneId && !o.down).map(([id, o]) => [id, o.x, o.y])];
   for (const [id, x, y] of ppl){ if (Math.hypot(x-bx, y-by) >= 480) continue; const h = hashU(id), slot = Math.floor((now + h % gap)/gap);
     if (darkSlamSlot[id] === undefined || darkSlamSlot[id] > slot){ darkSlamSlot[id] = slot; continue; } if (slot === darkSlamSlot[id]) continue; darkSlamSlot[id] = slot;
-    darkSlams.push({x, y, r:DARK_BOSS.slamR*(rage ? 1.15 : 1), at:t});
+    darkSlams.push({x, y, r:DARK_BOSS.slamR*(rage ? 1.15 : 1), at:t}); bossFx('warn', 250);
     if (rage){ let sd = ((h ^ (slot*2654435761)) >>> 0) % 2147483646 + 1; const rnd = () => (sd = (sd*16807) % 2147483647)/2147483647; for (let i = 0; i < 2; i++) darkSlams.push({x:x + (rnd()-.5)*260, y:y + (rnd()-.5)*160, r:DARK_BOSS.slamR, at:t + 200}); } }
-  darkSlams = darkSlams.filter(sl => { if (t - sl.at < DARK_BOSS.slamWarn*1000) return true; if (((pos.x-sl.x)/sl.r)**2 + ((pos.y-sl.y)/(sl.r*.6))**2 < 1) darkHurt(Math.round(DARK_BOSS.slam*k), t); fx.push({x:sl.x, y:sl.y-10, text:'쾅', t, color:'#ff2d55'}); return false; });
+  darkSlams = darkSlams.filter(sl => { if (t - sl.at < DARK_BOSS.slamWarn*1000) return true; if (((pos.x-sl.x)/sl.r)**2 + ((pos.y-sl.y)/(sl.r*.6))**2 < 1) darkHurt(Math.round(DARK_BOSS.slam*k), t); fx.push({x:sl.x, y:sl.y-10, text:'쾅', t, color:'#ff2d55'}); bossFx('slam', 150); return false; });
 }
 // 보스를 쓰러뜨린 도전에서 한 번이라도 때렸으면 보상 (어디에 있든)
 function darkClaim(npc){
