@@ -6297,8 +6297,8 @@ function fwShapes(){ if (fwShape.otumo) return fwShape;
     x.fillStyle = '#3a3a5a'; x.beginPath(); x.roundRect(cx - 52, cy - 10, 104, 34, 17); x.fill();
     x.fillStyle = '#7fe8ff'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*17, cy + 7, 6, 8, 0, 0, 7); x.fill(); }
     x.fillStyle = '#ff9fc4'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*34, cy + 36, 7, 4, 0, 0, 7); x.fill(); } }, 180, 150, 5);
-  fwShape.thanks = shapePts((x, w, h) => { let fs = 62; do { x.font = `bold ${fs}px "Dongle", sans-serif`; } while (x.measureText('월요일').width > w - 80 && --fs > 20); x.textAlign = 'center'; x.textBaseline = 'middle';
-    const gr = x.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ff7fb0'); gr.addColorStop(.5, '#ffe07a'); gr.addColorStop(1, '#9fd8ff'); x.fillStyle = gr; x.fillText('내일', w/2, h*.3); const l2 = x.measureText('월요일').width; x.fillText('월요일', w/2 - 14, h*.74); x.fillStyle = '#ff5c8d'; x.font = `bold ${Math.round(fs*.75)}px sans-serif`; x.fillText('♥', w/2 - 14 + l2/2 + fs*.4, h*.72); }, 330, 130, 3);
+  fwShape.thanks = shapePts((x, w, h) => { const L1 = '폐장 전', L2 = '다리 놓기 가능해?'; let fs = 62; do { x.font = `bold ${fs}px "Dongle", sans-serif`; } while (x.measureText(L2).width > w - 30 && --fs > 20); x.textAlign = 'center'; x.textBaseline = 'middle';
+    const gr = x.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ff7fb0'); gr.addColorStop(.5, '#ffe07a'); gr.addColorStop(1, '#9fd8ff'); x.fillStyle = gr; x.fillText(L1, w/2, h*.3); x.fillText(L2, w/2, h*.74); }, 400, 130, 3);
   return fwShape; }
 function shapeBurst(x, y, pts, scale){ skyP.flashes.push({x, y, t:0, col:'#ffffff', r:150}); skyP.glow.push({t:0, col:'#ffe07a'});
   for (const [px, py, col] of pts) skyP.shapes.push({sx:x, sy:y, tx:x + px*scale, ty:y + py*scale, col, t:0, hold:2.4 + Math.random()*.4, vy:0});
@@ -6330,7 +6330,7 @@ function skyFrame(now){
   for (let i = P.rockets.length - 1; i >= 0; i--){ const r = P.rockets[i]; r.trail.push([r.x, r.y]); if (r.trail.length > 14) r.trail.shift(); r.y -= 560*dt; r.x += r.vx*dt + Math.sin(now/40 + i)*.6;
     for (let k = 0; k < r.trail.length; k++){ const [tx, ty] = r.trail[k]; g.globalAlpha = k / r.trail.length * .7; g.fillStyle = '#ffd9a0'; g.beginPath(); g.arc(tx + rnd(-1, 1), ty, 1.6, 0, 7); g.fill(); }
     g.globalAlpha = 1; g.fillStyle = '#fff'; g.beginPath(); g.arc(r.x, r.y, 2.6, 0, 7); g.fill();
-    if (r.y <= r.ty){ const S = fwShapes(); if (r.kind === 'otumo') shapeBurst(r.x, r.y, S.otumo, Math.min(1.4, skyW/390)); else if (r.kind === 'thanks') shapeBurst(r.x, r.y, S.thanks, Math.min(2.2, skyW*.95/330)); else fwBurst(r.x, r.y, r.kind, r.pal); P.rockets.splice(i, 1); } }
+    if (r.y <= r.ty){ const S = fwShapes(); if (r.kind === 'otumo') shapeBurst(r.x, r.y, S.otumo, Math.min(1.4, skyW/390)); else if (r.kind === 'thanks') shapeBurst(r.x, r.y, S.thanks, Math.min(2.2, skyW*.95/400)); else fwBurst(r.x, r.y, r.kind, r.pal); P.rockets.splice(i, 1); } }
   for (let i = P.shapes.length - 1; i >= 0; i--){ const p = P.shapes[i]; p.t += dt; let x, y, al = 1;
     if (p.t < .55){ const k = 1 - (1 - p.t/.55)**3; x = p.sx + (p.tx - p.sx)*k; y = p.sy + (p.ty - p.sy)*k; }
     else if (p.t < p.hold){ x = p.tx + Math.sin(now/300 + p.tx)*.6; y = p.ty + (p.t - .55)*3; al = Math.random() < .08 ? .4 : 1; }
