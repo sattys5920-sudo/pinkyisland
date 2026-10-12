@@ -332,6 +332,9 @@
       "fwAt": {
         ".validate": "newData.isNumber()"
       },
+      "glitch": {
+        ".validate": "newData.hasChildren(['at', 'lv']) && newData.child('at').isNumber() && newData.child('lv').isNumber()"
+      },
       "balloon": {
         ".validate": "newData.hasChildren(['id', 'at', 'seed']) && newData.child('id').isString() && newData.child('at').isNumber() && newData.child('seed').isNumber()"
       },

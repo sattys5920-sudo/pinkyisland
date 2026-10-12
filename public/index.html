@@ -517,6 +517,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
   .adm-msg{flex-wrap:wrap;column-gap:6px}.adm-msg span{flex-basis:100%}
 }
 .adm-dress-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0}.adm-dress-grid label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#e8e2f0}.adm-dress-grid select{padding:6px;border-radius:8px;font:inherit}.adm-dress-row{display:flex;gap:8px;justify-content:flex-end}
+.gl-ov{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:2147483000;pointer-events:none}
 </style>
 </head>
 <body>
@@ -4720,6 +4721,141 @@ function candyTrade(n){
   saveMe(); renderHud(); tvPanel();
 }
 // 다크 모드: TV 를 켜면 뉴스 채널이 먼저 나와요 (장면 4 개가 7 초마다 넘어가요 · 흘러가는 속보 자막 · 지금 시각)
+// 관리자 '지지직': 모두의 화면이 치직거리면서 무서운 장면이 아주 짧게 번쩍였다 사라져요 (알림 없이 그냥 일어나요)
+const GL_LINES = ['여기서 꺼내 줘', '보고 있어', '집에 가고 싶어', '누가 내 이름 불렀어?', '나가는 문은 없어', '엄마', '돌아갈 몸이 없어', '아직 거기 있어?', '이건 게임이 아니야', '뒤 돌아보지 마'];
+let glSeen = null, glRun = false;
+function glitchCheck(){
+  const g = world.glitch, at = g ? +g.at || 0 : 0;
+  if (glSeen === null){ glSeen = at; return; } // 들어오기 전에 지나간 건 안 보여요
+  if (at === glSeen) return; glSeen = at;
+  if (Math.abs(wNow() - at) < 4000) glitchRun(g.lv === 2 ? 6000 : 3000, g.lv === 2);
+}
+const glR = Math.random;
+function glGrain(c, W, H, a){ const n = Math.round(W*H/900); for (let i = 0; i < n; i++){ const v = glR()*255|0; c.fillStyle = `rgba(${v},${v},${v},${a})`; c.fillRect(glR()*W, glR()*H, 2, 2); }
+  c.fillStyle = 'rgba(0,0,0,.28)'; for (let y = 0; y < H; y += 4) c.fillRect(0, y, W, 1); }
+function glVig(c, W, H, col){ const v = c.createRadialGradient(W/2, H/2, Math.min(W, H)*.2, W/2, H/2, Math.max(W, H)*.7); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, col || 'rgba(0,0,0,.92)'); c.fillStyle = v; c.fillRect(0, 0, W, H); }
+function glWords(c, W, H, line, y, size, col){
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `900 ${size}px "Noto Sans KR", "Pretendard", sans-serif`;
+  const ws = []; let cur = ''; for (const ch of line){ if (c.measureText(cur + ch).width > W*.86 && cur){ ws.push(cur); cur = ''; } cur += ch; } ws.push(cur);
+  ws.forEach((w, i) => { const yy = y + (i - (ws.length - 1)/2)*size*1.15, o = size*.06;
+    c.globalCompositeOperation = 'screen'; c.fillStyle = '#ff0030'; c.fillText(w, W/2 - o, yy); c.fillStyle = '#00e0ff'; c.fillText(w, W/2 + o, yy + o*.4);
+    c.globalCompositeOperation = 'source-over'; c.fillStyle = col || '#f4ecec'; c.fillText(w, W/2, yy); });
+}
+function glFace(c, W, H){ // 갈라진 긴 머리카락 사이로 창백한 얼굴이 정면을 봐요
+  c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+  const cx = W/2, cy = H*.45, fw = Math.min(W*.3, H*.18), fh = fw*1.45;
+  const g = c.createRadialGradient(cx, cy - fh*.1, fw*.05, cx, cy + fh*.1, fh); g.addColorStop(0, '#d6d9d2'); g.addColorStop(.55, '#80867f'); g.addColorStop(1, '#141614');
+  c.fillStyle = g; c.beginPath(); c.ellipse(cx, cy, fw, fh, 0, 0, 7); c.fill();
+  c.filter = `blur(${Math.max(2, W*.014)}px)`; c.fillStyle = '#000';
+  for (const s of [-1, 1]){ c.beginPath(); c.ellipse(cx + s*fw*.36, cy - fh*.1 + (s > 0 ? fh*.035 : 0), fw*.17, fw*.19, s*.25, 0, 7); c.fill(); }
+  c.beginPath(); c.ellipse(cx + fw*.04, cy + fh*.52, fw*.1, fh*.17, .06, 0, 7); c.fill();
+  c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(cx, cy + fh*.2, fw*.08, fh*.05, 0, 0, 7); c.fill(); c.filter = 'none';
+  c.fillStyle = 'rgba(255,255,255,.92)'; for (const s of [-1, 1]){ c.beginPath(); c.arc(cx + s*fw*.34, cy - fh*.09 + (s > 0 ? fh*.035 : 0), Math.max(1.2, W*.004), 0, 7); c.fill(); }
+  // 머리카락 커튼: 가운데만 좁게 갈라져 있어요 (가장자리는 가닥가닥)
+  for (const s of [-1, 1]){ const gap = fw*(.68 + glR()*.06);
+    c.fillStyle = '#000'; c.beginPath(); c.moveTo(cx + s*gap*.35, cy - fh*1.3); c.quadraticCurveTo(cx + s*gap*.9, cy - fh*.4, cx + s*gap, cy + fh*.2); c.quadraticCurveTo(cx + s*gap*1.05, cy + fh*1.2, cx + s*gap*.8, H); c.lineTo(cx + s*W, H); c.lineTo(cx + s*W, 0); c.lineTo(cx + s*gap*.35, 0); c.fill();
+    c.strokeStyle = '#000'; for (let i = 0; i < 45; i++){ const x0 = cx + s*gap*(.3 + glR()*.5); c.globalAlpha = .5 + glR()*.5; c.lineWidth = .8 + glR()*W*.003; c.beginPath(); c.moveTo(x0, cy - fh*1.2);
+      c.bezierCurveTo(x0 - s*fw*glR()*.2, cy - fh*.2, cx + s*gap*(.7 + glR()*.4) - s*fw*glR()*.35, cy + fh*.5, cx + s*gap*(.6 + glR()*.5), cy + fh*(1 + glR())); c.stroke(); } c.globalAlpha = 1; }
+  for (let i = 0; i < 5; i++){ const y = glR()*H, h = 3 + glR()*H*.03; try { c.drawImage(c.canvas, 0, y, W, h, (glR() - .5)*W*.1, y, W, h); } catch(e){} }
+  c.globalCompositeOperation = 'multiply'; c.fillStyle = '#a3ada0'; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over';
+  glVig(c, W, H); glGrain(c, W, H, .32);
+}
+function glEye(c, W, H){ // 아주 가까이서 들여다보는 눈 하나
+  c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+  const cx = W/2, cy = H/2, ew = W*.46, eh = Math.min(H*.13, ew*.36);
+  const sk = c.createRadialGradient(cx, cy, ew*.3, cx, cy, ew*1.4); sk.addColorStop(0, '#6b4e44'); sk.addColorStop(.6, '#2a1c18'); sk.addColorStop(1, '#000'); c.fillStyle = sk; c.fillRect(0, 0, W, H);
+  const lid = () => { c.beginPath(); c.moveTo(cx - ew, cy + eh*.1); c.bezierCurveTo(cx - ew*.4, cy - eh*1.6, cx + ew*.5, cy - eh*1.5, cx + ew, cy - eh*.05); c.bezierCurveTo(cx + ew*.45, cy + eh*1.25, cx - ew*.45, cy + eh*1.3, cx - ew, cy + eh*.1); };
+  c.save(); lid(); c.clip();
+  const sc = c.createRadialGradient(cx, cy, eh*.4, cx, cy, ew); sc.addColorStop(0, '#e8ddd2'); sc.addColorStop(.7, '#b49488'); sc.addColorStop(1, '#5a3a34'); c.fillStyle = sc; c.fillRect(0, 0, W, H);
+  c.strokeStyle = 'rgba(160,10,20,.6)'; for (let i = 0; i < 40; i++){ let x = cx + (glR() < .5 ? -1 : 1)*ew*(.6 + glR()*.4), y = cy + (glR() - .5)*eh*1.6; c.lineWidth = .5 + glR()*1.4; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 6; k++){ x += (cx - x)*.15 + (glR() - .5)*W*.03; y += (glR() - .5)*eh*.25; c.lineTo(x, y); } c.stroke(); }
+  const ix = cx + ew*.04, iy = cy - eh*.05, ir = eh*1.02, ig = c.createRadialGradient(ix, iy, ir*.25, ix, iy, ir); ig.addColorStop(0, '#5a3a1c'); ig.addColorStop(.6, '#3a2412'); ig.addColorStop(.92, '#1a0e06'); ig.addColorStop(1, '#000'); c.fillStyle = ig; c.beginPath(); c.arc(ix, iy, ir, 0, 7); c.fill();
+  c.strokeStyle = 'rgba(150,110,60,.35)'; for (let i = 0; i < 120; i++){ const a = glR()*7, r0 = ir*(.3 + glR()*.1), r1 = ir*(.6 + glR()*.35); c.lineWidth = .6 + glR(); c.beginPath(); c.moveTo(ix + Math.cos(a)*r0, iy + Math.sin(a)*r0); c.lineTo(ix + Math.cos(a + (glR() - .5)*.1)*r1, iy + Math.sin(a + (glR() - .5)*.1)*r1); c.stroke(); }
+  c.fillStyle = '#000'; c.beginPath(); c.arc(ix, iy, ir*.36, 0, 7); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.ellipse(ix - ir*.32, iy - ir*.35, ir*.12, ir*.08, -.5, 0, 7); c.fill();
+  const sh = c.createLinearGradient(0, cy - eh*1.4, 0, cy); sh.addColorStop(0, 'rgba(0,0,0,.85)'); sh.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = sh; c.fillRect(0, 0, W, cy);
+  c.restore();
+  c.strokeStyle = '#000'; for (let i = 0; i < 60; i++){ const t = i/59, x = cx - ew*.85 + t*ew*1.75, y = cy - eh*(1.2*Math.sin(Math.PI*(.08 + t*.84))) + eh*.08; c.lineWidth = 1 + glR()*2; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + (t - .5)*eh*.6, y - eh*.5, x + (t - .5)*eh*.9, y - eh*(.6 + glR()*.4)); c.stroke(); }
+  c.globalCompositeOperation = 'multiply'; c.fillStyle = '#b0a0a0'; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over';
+  glVig(c, W, H); glGrain(c, W, H, .25);
+}
+function glText(c, W, H, line){
+  c.fillStyle = '#000'; c.fillRect(0, 0, W, H); glGrain(c, W, H, .18);
+  glWords(c, W, H, line, H*.5, Math.min(W*.13, 76), '#f2e6e6');
+  c.fillStyle = 'rgba(200,0,30,.85)'; c.fillRect(W*.1, H*.5 + Math.min(W*.13, 76)*1.1, W*.8, 3);
+}
+function glNews(c, W, H, i){
+  const o = document.createElement('canvas'); o.width = 960; o.height = 540; NEWS_SCENES[i](o.getContext('2d'));
+  const sc = Math.max(W/960, H/540); c.fillStyle = '#000'; c.fillRect(0, 0, W, H); c.filter = 'grayscale(1) contrast(1.8) brightness(.9)';
+  c.drawImage(o, (W - 960*sc)/2 + (glR() - .5)*W*.2, (H - 540*sc)/2, 960*sc, 540*sc); c.filter = 'none';
+  c.globalCompositeOperation = 'multiply'; c.fillStyle = '#c0182a'; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over';
+  glVig(c, W, H); glGrain(c, W, H, .3); glWords(c, W, H, '응답 없음', H*.82, Math.min(W*.09, 52));
+}
+function glList(c, W, H){
+  c.fillStyle = '#04060c'; c.fillRect(0, 0, W, H);
+  const L = missingList(), cw = W*.42, ch = Math.min(H*.12, cw*.42), x0 = W/2 - cw - W*.02, y0 = H/2 - (ch + H*.012)*3;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (let i = 0; i < 12; i++){ const x = x0 + (i % 2)*(cw + W*.04), y = y0 + Math.floor(i/2)*(ch + H*.012), e = L[i];
+    c.strokeStyle = 'rgba(200,200,220,.35)'; c.strokeRect(x, y, cw, ch);
+    c.fillStyle = '#d8d8e0'; c.font = `700 ${ch*.36}px "Noto Sans KR", sans-serif`; c.fillText(e ? e[1] : '???', x + cw/2, y + ch/2);
+    c.save(); c.translate(x + cw/2, y + ch/2); c.rotate(-.18); c.fillStyle = 'rgba(220,10,30,.9)'; c.font = `900 ${ch*.3}px "Noto Sans KR", sans-serif`; c.fillText('응답 없음', 0, 0); c.restore(); }
+  glVig(c, W, H); glGrain(c, W, H, .25);
+}
+function glClue(c, W, H, img){
+  c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+  if (img && img.complete && img.naturalWidth){ const sc = Math.max(W/img.naturalWidth, H/img.naturalHeight)*1.1; c.filter = 'grayscale(1) invert(1) contrast(2.2)'; c.drawImage(img, (W - img.naturalWidth*sc)/2, (H - img.naturalHeight*sc)/2, img.naturalWidth*sc, img.naturalHeight*sc); c.filter = 'none';
+    c.globalCompositeOperation = 'multiply'; c.fillStyle = '#d02040'; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over'; }
+  glVig(c, W, H); glGrain(c, W, H, .3);
+}
+function glGame(c, W, H){ // 지금 내 화면이 뒤집혀서 한 번
+  c.filter = 'invert(1) grayscale(.6) contrast(1.9)'; try { c.drawImage(cv, 0, 0, W, H); } catch(e){ c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); } c.filter = 'none';
+  glGrain(c, W, H, .3); glWords(c, W, H, GL_LINES[glR()*GL_LINES.length|0], H*.5, Math.min(W*.1, 60), '#100000');
+}
+function glitchSound(len, flashes){
+  try { const A = new (window.AudioContext || window.webkitAudioContext)(); if (A.resume) A.resume(); const out = A.createGain(); out.gain.value = .55; out.connect(A.destination);
+    const sec = len/1000 + .3, t0 = A.currentTime + .03, nb = A.createBuffer(1, Math.ceil(A.sampleRate*sec), A.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
+    const src = A.createBufferSource(), bp = A.createBiquadFilter(), gn = A.createGain(); src.buffer = nb; bp.type = 'bandpass'; bp.Q.value = .6; src.connect(bp); bp.connect(gn); gn.connect(out);
+    for (let t = 0; t < len/1000; t += .02 + Math.random()*.07){ gn.gain.setValueAtTime(Math.random() < .78 ? .12 + Math.random()*.4 : 0, t0 + t); bp.frequency.setValueAtTime(250 + Math.random()*4500, t0 + t); }
+    gn.gain.setValueAtTime(0, t0 + len/1000); src.start(t0); src.stop(t0 + sec);
+    const o = A.createOscillator(), lp = A.createBiquadFilter(), og = A.createGain(); o.type = 'sawtooth'; o.frequency.value = 52; lp.type = 'lowpass'; lp.frequency.value = 220;
+    og.gain.setValueAtTime(0, t0); og.gain.linearRampToValueAtTime(.16, t0 + .2); og.gain.setValueAtTime(.16, t0 + len/1000 - .3); og.gain.linearRampToValueAtTime(0, t0 + len/1000); o.connect(lp); lp.connect(og); og.connect(out); o.start(t0); o.stop(t0 + sec);
+    for (const f of flashes){ const s = A.createOscillator(), sg = A.createGain(), at = t0 + f.t/1000, dd = f.d/1000; s.type = 'square'; s.frequency.setValueAtTime(900 + Math.random()*1900, at); s.frequency.exponentialRampToValueAtTime(160 + Math.random()*260, at + dd);
+      sg.gain.setValueAtTime(.2, at); sg.gain.exponentialRampToValueAtTime(.001, at + dd + .06); s.connect(sg); sg.connect(out); s.start(at); s.stop(at + dd + .1); }
+    setTimeout(() => { try { A.close(); } catch(e){} }, len + 800);
+  } catch(e){}
+}
+function glitchRun(len, big){
+  if (glRun) return; glRun = true;
+  const ov = document.createElement('canvas'), dpr = Math.min(window.devicePixelRatio || 1, 1.5), W = ov.width = Math.round(innerWidth*dpr), H = ov.height = Math.round(innerHeight*dpr), c = ov.getContext('2d');
+  ov.className = 'gl-ov'; document.body.appendChild(ov);
+  const mk = f => { const k = document.createElement('canvas'); k.width = W; k.height = H; f(k.getContext('2d')); return k; };
+  const clueImg = (() => { const n = DARK_ORDER[glR()*DARK_ORDER.length|0], im = new Image(); im.src = `art/clue/${n}/${1 + (glR()*14|0)}.jpg`; return im; })();
+  const lines = [...GL_LINES].sort(() => glR() - .5);
+  const pool = [mk(k => glFace(k, W, H)), mk(k => glEye(k, W, H)), mk(k => glText(k, W, H, lines[0])), mk(k => glText(k, W, H, lines[1])), mk(k => glNews(k, W, H, glR()*NEWS_SCENES.length|0)), mk(k => glList(k, W, H)), 'clue', 'game'];
+  if (big) pool.push(mk(k => glFace(k, W, H)), mk(k => glText(k, W, H, lines[2])), mk(k => glNews(k, W, H, glR()*NEWS_SCENES.length|0)));
+  const flashes = []; for (let t = 220, last = -1; t < len - 350;){ let k; do { k = glR()*pool.length|0; } while (k === last); last = k; const d = 45 + glR()*(big ? 110 : 75); flashes.push({t, d, k}); t += d + (big ? 80 + glR()*300 : 150 + glR()*380); }
+  glitchSound(len, flashes);
+  try { if (navigator.vibrate){ const v = []; let p = 0; for (const f of flashes){ v.push(Math.max(0, Math.round(f.t - p)), Math.round(f.d)); p = f.t + f.d; } navigator.vibrate(v); } } catch(e){}
+  const nz = document.createElement('canvas'); nz.width = 180; nz.height = Math.max(80, Math.round(180*H/W)); const nc = nz.getContext('2d'), nd = nc.createImageData(nz.width, nz.height);
+  const root = document.documentElement, t0 = performance.now();
+  const step = now => {
+    const t = now - t0;
+    if (t > len){ ov.remove(); root.style.filter = ''; cv.style.transform = ''; glRun = false; return; }
+    const e = Math.max(0, Math.min(1, t/250, (len - t)/500)), f = flashes.find(f => t >= f.t && t < f.t + f.d);
+    c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, W, H);
+    if (f){ const p = pool[f.k], src = p === 'clue' ? mk(k => glClue(k, W, H, clueImg)) : p === 'game' ? mk(k => glGame(k, W, H)) : p;
+      c.drawImage(src, (glR() - .5)*W*.04, (glR() - .5)*H*.015, W, H); }
+    for (let i = 0; i < nd.data.length; i += 4){ const v = glR()*255; nd.data[i] = nd.data[i+1] = nd.data[i+2] = v; nd.data[i+3] = 255; }
+    for (let y = 0; y < nz.height; y++) if (glR() < .06){ for (let x = 0; x < nz.width; x++){ const i = (y*nz.width + x)*4; nd.data[i] = nd.data[i+1] = nd.data[i+2] = 235; } }
+    nc.putImageData(nd, 0, 0); c.imageSmoothingEnabled = false;
+    c.globalAlpha = f ? .16 : !f && glR() < .07*e ? 1 : .1 + .42*e*glR(); c.drawImage(nz, 0, 0, W, H); c.globalAlpha = 1;
+    const bars = (glR()*(2 + 6*e))|0; for (let i = 0; i < bars; i++){ const y = glR()*H, h = (2 + glR()*30)*dpr; c.fillStyle = glR() < .4 ? `rgba(0,0,0,${.5 + glR()*.5})` : glR() < .5 ? 'rgba(255,40,90,.35)' : 'rgba(230,240,255,.5)'; c.fillRect(0, y, W, h); }
+    root.style.filter = f && glR() < .15 ? 'invert(1)' : glR() < .08*e ? `hue-rotate(${glR()*360|0}deg) saturate(3)` : glR() < .1*e ? 'contrast(2) grayscale(1)' : '';
+    cv.style.transform = `translate(${((glR() - .5)*16*e).toFixed(1)}px,${((glR() - .5)*9*e).toFixed(1)}px)`;
+    if (now - glitchBurst > 350) glitchBurst = now;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 let tvCh = 'news';
 const NEWS = [
   {loc:'서울 ○○구 · 실종자 자택 아파트', tag:'속보', s2:'사회', head:'자택서 게임하던 12명, 같은 시각 동시 실종', sub:'방에는 켜진 휴대폰만… 서로 모르는 사이'},
@@ -6999,7 +7135,7 @@ let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: �
 let reloadSeen; // 관리자 [전원 새로고침]: 처음 본 값에서 바뀌면 저장하고 새로고침해요
 function onWorld(w){ const was = darkOn(), nmSig = JSON.stringify([world.dark, world.darkNames]); world = w || {};
   if (me && !admin && nmSig !== JSON.stringify([world.dark, world.darkNames])){ setTimeout(()=>{ renderHud(); renderChatHist(); }, 0); } // 다크 모드 이름이 바뀌면 상단 · 채팅도 바로
-  if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('눈앞이 하얘졌다가.... 정신을 차려 보니 밖이에요'); glitchBurst = performance.now(); if (darkOn() && !admin){ // 아무 말 없이 바로: 주민과 하던 이야기는 끊겨요
+  glitchCheck(); if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('눈앞이 하얘졌다가.... 정신을 차려 보니 밖이에요'); glitchBurst = performance.now(); if (darkOn() && !admin){ // 아무 말 없이 바로: 주민과 하던 이야기는 끊겨요
     if (dlg && dlg.n) dlgClose(); if (!$('talk').hidden && talkNpcOpen()) closeTalk(); const p = $('npcPanel'); if (p && !p.hidden && p.dataset.kind === 'npc') p.hidden = true; } } }
 const kstClock = () => new Date(Date.now() + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
 const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : z && z.startsWith('dark:') ? `${NPC[z.slice(5)]?.name || ''}의 방` : (ZONES[z]?.name || '집터');
@@ -7086,7 +7222,7 @@ function renderAdmin(){
       ${admTab==='island' ? adminIslandSec() : ''}
       ${admTab==='dark' ? `<div class="adm-sec"><b>다크 모드 <span class="adm-state ${world.dark ? 'on' : ''}">${world.dark ? '켜짐' : '꺼짐'}</span></b>
         <button data-a="dark" class="adm-btn ${world.dark ? '' : 'warn'}">${world.dark ? '원래대로 돌리기' : '다크 모드로 전환'}</button>
-        <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}<button data-a="dkq" class="adm-btn">✏️ 방탈출 문제 편집</button></div>${adminDarkTgtSec(regs)}${adminDarkNameSec(regs)}` : ''}
+        <small>켜면 그날부터 하루에 주민 한 명의 집(방탈출)이 열려요. 켤 때마다 1 일 차부터 새로 시작해요.</small>${darkOn() ? adminDarkSec() : ''}<button data-a="dkq" class="adm-btn">✏️ 방탈출 문제 편집</button></div><div class="adm-sec"><b>📺 지지직</b><small>접속한 모두의 화면이 치직거리면서 무서운 장면이 아주 짧게 번쩍였다 사라져요 (관리자 화면에도 똑같이 보여요)</small><div class="adm-wrow"><button data-a="glitch1" class="adm-btn warn">짧게 (3 초)</button><button data-a="glitch2" class="adm-btn warn">길게 (6 초)</button></div></div>${adminDarkTgtSec(regs)}${adminDarkNameSec(regs)}` : ''}
       ${admTab==='data' ? `${adminShopSec(regs)}<div class="adm-sec"><b>데이터 관리</b><button data-a="reloadall" class="adm-btn">접속한 사람 전원 새로고침</button><button data-a="wipe" class="adm-btn warn">모든 가입 데이터 지우기</button></div>` : ''}
     </div>${admDressOpen ? adminDress() : admLook !== null ? adminLooks(regs) : admWipe ? adminWipe(regs) : admDm !== null ? adminDm() : admPost ? adminPost() : admTbl !== null ? adminTable(regs) : admChat !== null ? adminChat(regs) : admQ !== null ? adminQEdit() : ''}`;
   for (const [k, y, x] of kept){ const [c, i] = k.split('#'), e = k ? box.getElementsByClassName(c)[+i] : box; if (e){ e.scrollTop = y; e.scrollLeft = x; } }
@@ -7340,6 +7476,7 @@ function adminClick(e){
   else if (b.dataset.a==='reloadall'){ if (confirm('지금 접속한 사람 모두의 게임을 새로고침할까요? 진행 상황은 저장한 뒤 새로고침돼요.')) Promise.resolve(net.setWorld({reloadAt:Date.now() + serverOffset})).then(()=>toast('전원 새로고침을 보냈어요')).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.a==='dkreset'){ const npc = darkToday(); if (npc && confirm(`${NPC[npc].name}의 방을 처음 상태로 되돌릴까요? 푼 문제·시간·보스 체력이 모두 지워져요.`)) net.darkWipe(npc); }
   else if (b.dataset.a==='dkview'){ const npc = darkToday(); if (npc){ admSide = false; cam.follow = null; cam.zone = 'dark:'+npc; const [vx, vy] = darkRoomOf(npc)?.door || [DARK_ROOM.W/2, DARK_ROOM.H/2]; enterZone('dark:'+npc, null, vx, vy); renderAdmin(); } }
+  else if (b.dataset.a==='glitch1' || b.dataset.a==='glitch2'){ Promise.resolve(net.setWorld({glitch:{at:wNow(), lv:b.dataset.a==='glitch2' ? 2 : 1}})).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.a==='dkq'){ admQ = admQ === null ? (darkToday() || DARK_ORDER[0]) : null; if (admQ){ admDm = null; admPost = false; admTbl = null; admChat = null; admWipe = false; admLook = null; admSide = false; } renderAdmin(); }
   else if (b.dataset.a==='dkqclose'){ admQ = null; renderAdmin(); }
   else if (b.dataset.a==='dkqsave' || b.dataset.a==='dkqreset') adminQSave(b.dataset.pid, b.dataset.a==='dkqreset');
