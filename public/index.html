@@ -3125,7 +3125,7 @@ function tmapPieceIcon(id){
 // 조각 줍기: 낚시 · 채집 · 광석 · 몬스터 한 번마다 0.5% (구역 보스는 꼭 하나). 하루 제한 없음
 // 겹치는 조각이 잘 나오게: 번호가 작을수록 잘 나오고, 10 번 중 6 번은 지금 있는 구역의 지도 조각이에요
 function tmapDrop(sure){
-  if (admin || !me || darkOn()) return;
+  if (admin || !me) return;
   let r = sure ? Math.random() * TMAP_SUM : Math.random() / (1 + tfx('tmap')); if (r >= TMAP_SUM) return; // 까마귀 동행: 조각이 더 잘 나와요
   let p = 1; while (p < 9 && r >= TMAP_RATE[p - 1]){ r -= TMAP_RATE[p - 1]; p++; }
   const here = tmapIdx(zoneId), i = here >= 0 && Math.random() < .6 ? here : Math.floor(Math.random() * TMAP.length), k = tmapKey(i, p);
@@ -3193,7 +3193,7 @@ function tmapPanel(){
 }
 // 파 보기: 지도를 맞춘 사람이 ✕ 가까이 서 있을 때만
 function tmapDig(){
-  const i = tmapIdx(zoneId), t = i >= 0 && me?.tmaps?.[i]; if (!t || Math.hypot(pos.x - t.x, pos.y - t.y) > TMAP_DIG || darkOn()) return;
+  const i = tmapIdx(zoneId), t = i >= 0 && me?.tmaps?.[i]; if (!t || Math.hypot(pos.x - t.x, pos.y - t.y) > TMAP_DIG) return;
   delete me.tmaps[i]; const [, kind, id] = TMAP[i], got = [`💰 ${TMAP_GOLD.toLocaleString()} G`];
   me.inv.gold += TMAP_GOLD;
   { const until = lastSlot() + CANDY_PER, c = me.candy && Array.isArray(me.candy.lots) ? me.candy : {lots:[]}, have = c.lots.reduce((a, l) => a + l.n, 0), n = Math.max(0, Math.min(TMAP_CANDY, CANDY_MAX - have));
@@ -3208,7 +3208,7 @@ function tmapDig(){
 // 가까운지 알려 주고, ✕ 근처면 [파 보기] 버튼
 let tmapHint = '';
 function tmapTick(force){
-  if (!me || admin) return; const i = tmapIdx(zoneId), t = i >= 0 && me.tmaps?.[i] && !darkOn() ? me.tmaps[i] : null;
+  if (!me || admin) return; const i = tmapIdx(zoneId), t = i >= 0 && me.tmaps?.[i] ? me.tmaps[i] : null;
   if (t && !t.ok) tmapFix();
   const dist = t ? Math.hypot(pos.x - t.x, pos.y - t.y) : 1e9, near = dist <= TMAP_DIG;
   const hint = !t ? '' : near ? '🗺️ 여기예요! 파 보기 ✨' : dist < 220 ? '🗺️ 아주 가까워요! 🔥🔥🔥' : dist < 520 ? '🗺️ 따뜻해요 🔥' : '🗺️ 차가워요 ❄️';
