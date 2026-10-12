@@ -5689,6 +5689,7 @@ function rsRollPlush(){ const r = Math.random(), tier = r < .01 ? 4 : r < .10 ? 
 // 관리자가 다크 모드를 켜면 하루에 한 방씩 열려요 (DARK_ORDER). 여러 명이 같은 방에 들어가 문제 15 개를 같이 풀고,
 // 다 풀면 그 주민이 아주 강한 보스로 깨어나요. 첫 입장부터 2 시간 안에 못 끝내면 방이 처음으로 돌아가요.
 // 방 상태는 모두 함께 써요: darkRooms/<주민> = {start, att(몇 번째 도전), solved:{p01:{uid,nick,at}}, hp, max, bossAt, clear:{at,nick}}
+const hashU = v => { let h = 7; for (const ch of String(v)) h = (h*31 + ch.charCodeAt(0)) >>> 0; return h; }; let darkSlamSlot = {};
 let darkRooms = {}, darkPending = 0, darkFlushT = 0, darkTouchCd = 0, darkSlams = [], darkSlamT = 0, darkHurtT = 0, darkGuard = 0, darkHudT = 0, darkBusy = false;
 const darkOn = () => !!(world && world.dark);
 const kstDayOf = ms => Math.floor((ms + 9*3600000) / 86400000);
@@ -6140,7 +6141,7 @@ function toriAttack(dt, t, r){
   if (r.rageAt && tbRageSeen !== r.rageAt && now - r.rageAt < 3000){ tbRageSeen = r.rageAt; glitchBurst = performance.now(); toast('토리??? 가 등을 돌려요....'); }
   for (const L of toriLetters(r, now)) if (!L.ring && L.al > .4 && !tbHit[L.key] && Math.hypot(L.x - me_[0], L.y - me_[1]) < 20){ tbHit[L.key] = 1; darkHurt(L.dmg, t); }
   if (st.ph === 2){ TB_P2.waves.forEach((w0, i) => { const key = `${r.rageAt}.${st.cyc}.${i}`; if (st.t >= w0 && st.t < w0 + .5 && tbWaveSeen.indexOf('|' + key + '|') < 0){ tbWaveSeen = (tbWaveSeen + '|' + key + '|').slice(-400);
-      tbHands.push({x:pos.x, y:pos.y, at:now, mine:1}); for (const o of [...others.values()].filter(o => o.z === zoneId && !o.down).slice(0, 3)) tbHands.push({x:o.x, y:o.y, at:now}); } }); }
+      tbHands.push({x:pos.x, y:pos.y, at:now, mine:1}); for (const o of [...others.values()].filter(o => o.z === zoneId && !o.down)) tbHands.push({x:o.x, y:o.y, at:now}); } }); }
   tbHands = tbHands.filter(h => { const k = (now - h.at)/1000; if (k >= 1 && !h.done){ h.done = 1; if (((pos.x - h.x)/60)**2 + ((pos.y - h.y)/36)**2 < 1) darkHurt(TB_DMG.hand, t); } return k < 2.2; });
   if (Object.keys(tbHit).length > 200) tbHit = {};
 }
@@ -6184,8 +6185,13 @@ function updateDark(dt, t){
   darkTouchCd -= dt;
   if (npc === 'tori'){ if (Math.hypot(pos.x-bx, pos.y-by) < 100 && darkTouchCd <= 0 && $('npcPanel').hidden){ darkTouchCd = 1.1; pushPlayer(pos.x-bx, pos.y-by, 50); darkHurt(TB_DMG.touch, t); } toriAttack(dt, t, r); return; } // 토리???: 자기 패턴
   if (Math.hypot(pos.x-bx, pos.y-by) < 80 && darkTouchCd <= 0 && $('npcPanel').hidden){ darkTouchCd = 1.1; pushPlayer(pos.x-bx, pos.y-by, 40); darkHurt(Math.round(DARK_BOSS.touch*k), t); }
-  if (t - darkSlamT > DARK_BOSS.slamGap*1000/(rage ? 1.6 : 1) && Math.hypot(pos.x-bx, pos.y-by) < 480){ darkSlamT = t; // 보스 근처에 있을 때만 내려찍어요 darkSlams.push({x:pos.x, y:pos.y, r:DARK_BOSS.slamR*(rage ? 1.15 : 1), at:t});
-    if (rage) for (let i = 0; i < 2; i++) darkSlams.push({x:pos.x + (Math.random()-.5)*260, y:pos.y + (Math.random()-.5)*160, r:DARK_BOSS.slamR, at:t + 200}); }
+  // 내려찍기: 보스 근처(480)에 있는 사람마다 발밑에. 서버 시각으로 차례를 정해서 같은 방 모두가 같은 경고를 봐요
+  const gap = DARK_BOSS.slamGap*1000/(rage ? 1.6 : 1), now = darkNow();
+  const ppl = [[uid, pos.x, pos.y], ...[...others.entries()].filter(([, o]) => o.z === zoneId && !o.down).map(([id, o]) => [id, o.x, o.y])];
+  for (const [id, x, y] of ppl){ if (Math.hypot(x-bx, y-by) >= 480) continue; const h = hashU(id), slot = Math.floor((now + h % gap)/gap);
+    if (darkSlamSlot[id] === undefined || darkSlamSlot[id] > slot){ darkSlamSlot[id] = slot; continue; } if (slot === darkSlamSlot[id]) continue; darkSlamSlot[id] = slot;
+    darkSlams.push({x, y, r:DARK_BOSS.slamR*(rage ? 1.15 : 1), at:t});
+    if (rage){ let sd = ((h ^ (slot*2654435761)) >>> 0) % 2147483646 + 1; const rnd = () => (sd = (sd*16807) % 2147483647)/2147483647; for (let i = 0; i < 2; i++) darkSlams.push({x:x + (rnd()-.5)*260, y:y + (rnd()-.5)*160, r:DARK_BOSS.slamR, at:t + 200}); } }
   darkSlams = darkSlams.filter(sl => { if (t - sl.at < DARK_BOSS.slamWarn*1000) return true; if (((pos.x-sl.x)/sl.r)**2 + ((pos.y-sl.y)/(sl.r*.6))**2 < 1) darkHurt(Math.round(DARK_BOSS.slam*k), t); fx.push({x:sl.x, y:sl.y-10, text:'쾅', t, color:'#ff2d55'}); return false; });
 }
 // 보스를 쓰러뜨린 도전에서 한 번이라도 때렸으면 보상 (어디에 있든)
