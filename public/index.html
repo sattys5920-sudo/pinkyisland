@@ -2839,18 +2839,24 @@ function eat(k){
 const QUICK_N = 3;
 const quickKeys = () => { const a = String(me?.quick || '').split('|'); return Array.from({length:QUICK_N}, (_,i)=>a[i] || ''); };
 function quickSet(i, k){ const a = quickKeys(); a[i] = k || ''; me.quick = a.join('|'); saveMe(); renderQuick(); }
+let quickSig = '', quickHeld = false;
 function renderQuick(){
   const bar = $('bar'); if (!bar || !me || admin) return;
+  const sig = quickKeys().join(',') + '|' + quickKeys().map(k=>k ? (invCount(k) ? 1 : 0) : '').join('');
+  if (bar.childElementCount && (quickHeld || sig === quickSig)){ quickCounts(); return; } // 같은 칸이면 숫자만 고쳐요 (누르는 중에 칸이 바뀌면 탭이 사라져요)
+  quickSig = sig;
   bar.innerHTML = quickKeys().map((k,i)=> k
     ? `<div class="qk ${invCount(k) ? '' : 'off'}" data-qk="${i}" title="${esc(itemName(k))}" aria-label="퀵 ${i+1} · ${esc(itemName(k))} ${invCount(k)} 개"><i>${i+1}</i>${iconImg(k,'bi')}<span>${invCount(k)}</span></div>`
     : `<div class="qk empty" data-qk="${i}" aria-label="빈 퀵슬롯 ${i+1}">+</div>`).join('')
     + `<div class="sep"></div><div id="bagBtn" title="가방" aria-label="가방" style="cursor:pointer">${ui('bag','bi')}</div>`;
   $('bagBtn').onclick = showBag;
   bar.querySelectorAll('[data-qk]').forEach(el=>{ const i = +el.dataset.qk; let held = 0, long = false;
-    el.onpointerdown = ()=>{ long = false; clearTimeout(held); held = setTimeout(()=>{ long = true; quickPick(i); }, 500); };
-    el.onpointerup = el.onpointerleave = el.onpointercancel = ()=>clearTimeout(held);
+    let downAt = 0, fired = false;
+    el.onpointerdown = e=>{ e.preventDefault(); long = false; fired = false; downAt = performance.now(); quickHeld = true; clearTimeout(held); held = setTimeout(()=>{ long = true; quickHeld = false; quickPick(i); }, 500); };
+    el.onpointerup = e=>{ clearTimeout(held); quickHeld = false; if (!long && downAt && performance.now() - downAt < 500){ fired = true; downAt = 0; quickUse(i); } downAt = 0; };
+    el.onpointercancel = ()=>{ clearTimeout(held); quickHeld = false; downAt = 0; };
     el.oncontextmenu = e=>e.preventDefault();
-    el.onclick = ()=>{ if (!long) quickUse(i); }; });
+    el.onclick = ()=>{ if (!long && !fired) quickUse(i); fired = false; }; }); // 손 뗄 때 먹어요 · 클릭만 오는 기기도 대비
 }
 // 가방이 바뀌면 개수만 살짝 고쳐요 (누르는 중에 칸을 다시 만들지 않게)
 function quickCounts(){ const bar = $('bar'); if (!bar || !me) return; quickKeys().forEach((k,i)=>{ const el = bar.querySelector(`[data-qk="${i}"]`); if (!k || !el) return; const n = invCount(k), sp = el.querySelector('span'); if (sp) sp.textContent = n; el.classList.toggle('off', !n); }); }
@@ -4381,7 +4387,7 @@ function dmPanel(other){
   const send = async ()=>{ const inp = $('dmIn'), t = inp.value.trim().slice(0, DM_MAX); if (!t) return; inp.value = '';
     try { await net.dmSend(cid, other, {from:uid, nick:me.nick, t}); stat('dmSent'); } catch(e){ toast('보내지 못했어요. 잠시 뒤 다시 해 봐요'); inp.value = t; } inp.focus(); };
   $('dmSend').addEventListener('pointerdown', e=>e.preventDefault()); $('dmSend').onclick = send;
-  $('dmIn').addEventListener('keydown', e=>{ if (e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); send(); } });
+  $('dmIn').addEventListener('keydown', e=>{ if (e.key==='Enter' && !e.isComposing && e.keyCode !== 229){ e.preventDefault(); e.stopPropagation(); send(); } });
   $('dmIn').addEventListener('focus', ()=>setTimeout(dmKeyboard, 300)); $('dmIn').addEventListener('blur', ()=>setTimeout(dmKeyboard, 100));
   if (dmUnsub) dmUnsub();
   dmUnsub = net.dmWatch(cid, v=>{ dmMsgs = v; if (!dmVisible(cid)) return; renderDm(); me.dmRead = {...(me.dmRead||{}), [cid]: Math.max(Date.now(), ...Object.values(v).map(m=>m.at||0))}; saveMe(); dmBadge(); });
@@ -5724,7 +5730,7 @@ function darkPuzzlePanel(pz){
     if (ok){ gainExp(20); toast(`${pz.title}: 정답! 문을 여는 소리가 들려요 (${darkSolvedN(roomOf(npc))}/${list.length})`); setExpr('sparkle', 1500); }
     else toast('누군가 먼저 풀었거나 방이 바뀌었어요');
   };
-  $('dkGo').onclick = go; $('dkIn').onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); go(); } };
+  $('dkGo').onclick = go; $('dkIn').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229){ e.preventDefault(); go(); } };
   $('dkHint').onclick = () => { $('dkHintT').hidden = false; };
   setTimeout(()=>$('dkIn')?.focus(), 50);
 }
@@ -6307,7 +6313,7 @@ addEventListener('keydown', e=>{
   if (!me || obStep) return;
   if (dlg && !typing()){ if (e.key==='Enter' || e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); dlgTap(); } else if (e.key==='Escape' && dlg.waiting) dlgClose(); return; }
   if (typing() && document.activeElement.id !== 'chatin') return; // 편지·메신저 입력칸은 그 칸이 알아서
-  if (e.key==='Enter'){ if (typing()){ sendChat(); } else { openChat(); } e.preventDefault(); return; }
+  if (e.key==='Enter'){ if (e.isComposing || e.keyCode === 229) return; if (typing()){ sendChat(); } else { openChat(); } e.preventDefault(); return; } // 한글 조합 중 Enter 는 글자 확정용이에요
   if (e.key==='Escape'){ closeTalk(); $('chatin').blur(); return; }
   if (typing()) return;
   if (darkDown) return;
@@ -6318,7 +6324,13 @@ addEventListener('keydown', e=>{
 });
 addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
 $('sendBtn').addEventListener('pointerdown', e=>e.preventDefault()); // 눌러도 키패드가 내려가지 않게
-$('sendBtn').addEventListener('click', ()=>{ if ($('chatin').value.trim()) sendChat(); else $('chatin').focus(); });
+let chatComposing = false, chatSendWait = 0;
+$('chatin').addEventListener('compositionstart', ()=>{ chatComposing = true; });
+$('chatin').addEventListener('compositionend', ()=>{ chatComposing = false; if (chatSendWait){ clearTimeout(chatSendWait); chatSendWait = 0; setTimeout(()=>{ if ($('chatin').value.trim()) sendChat(); }, 0); } });
+// 폰 키보드는 마지막 글자를 아직 조합 중일 수 있어요: 확정될 때까지 잠깐 기다렸다가 보내요 (글자가 빠지거나 남지 않게)
+$('sendBtn').addEventListener('click', ()=>{ const inp = $('chatin');
+  if (chatComposing){ chatSendWait = setTimeout(()=>{ chatSendWait = 0; chatComposing = false; if (inp.value.trim()) sendChat(); }, 250); inp.blur(); return; }
+  if (inp.value.trim()) sendChat(); else inp.focus(); });
 // 확대 막기: 두 손가락 벌리기·두 번 톡 확대로 화면이 갑자기 커지지 않게 고정해요
 for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, e=>e.preventDefault(), {passive:false});
 document.addEventListener('touchmove', e=>{ if (e.touches.length > 1) e.preventDefault(); }, {passive:false});
@@ -7965,7 +7977,7 @@ function festBar(){
       else if (b.id === 'syJoin') net.syncJoin(String(me.nick).slice(0, 16)).then(()=>toast('동심일체에 참가했어요')).catch(()=>toast('지금은 참가할 수 없어요'));
       else if (b.dataset.pose) net.syncPick(+b.dataset.pose).then(()=>toast(`${FEST_POSES[+b.dataset.pose][1]} 골랐어요!`)).catch(()=>toast('지금은 고를 수 없어요'));
     });
-    el.addEventListener('keydown', e => { if (e.target.id === 'gbIn' && e.key === 'Enter'){ e.preventDefault(); gbSubmit(); } });
+    el.addEventListener('keydown', e => { if (e.target.id === 'gbIn' && e.key === 'Enter' && !e.isComposing && e.keyCode !== 229){ e.preventDefault(); gbSubmit(); } });
     el.addEventListener('pointerdown', e => { if (e.target.closest('#tcNow')){ e.preventDefault(); tcPressNow(e); } });
   }
   el.hidden = false;
