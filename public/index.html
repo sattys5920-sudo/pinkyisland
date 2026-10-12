@@ -5685,7 +5685,7 @@ function clueCase(npc){
     <small>${esc(NPC[npc].name)}의 진짜 이름</small><h3>${esc(real.split('').join(' '))}</h3><b class="cl-crime">${esc(title)} · ${esc(kind)}</b>
     <ul>${lines.map(l => `<li>${esc(l)}</li>`).join('')}<li>지금 노리는 몸 : <b class="cl-tg">${esc(nick)}</b></li></ul></div>
     <div class="cl-strip">${Array.from({length:CLUE_N}, (_, i) => `<img src="art/clue/${npc}/${i+1}.jpg" alt="" data-n="${i+1}">`).join('')}</div>
-    <p class="cl-end">마지막 문제를 풀면<br>${esc(NPC[npc].name)}이(가) 깨어나요</p><button class="mini" id="clBack">수첩으로</button>`);
+    <p class="cl-end">${esc(NPC[npc].name)}${((NPC[npc].name.charCodeAt(NPC[npc].name.length-1) - 0xAC00) % 28) ? '이' : '가'} 깨어났어요<br>다시 꿰매요!</p><button class="mini" id="clBack">수첩으로</button>`);
   const P = $('npcPanel'); P.querySelectorAll('.cl-strip img').forEach(el => el.onclick = () => clueShow(npc, +el.dataset.n)); $('clBack').onclick = () => clueBook(npc);
 }
 // 방 안에 있으면 풀린 문제의 단서가 내 수첩에 들어와요 (방금 풀린 건 크게 보여 줘요)
