@@ -5830,7 +5830,7 @@ function rsRollPlush(){ const r = Math.random(), tier = r < .01 ? 4 : r < .10 ? 
 // ===== 다크 모드: 주민 12 명의 집 = 방탈출 =====
 // 관리자가 다크 모드를 켜면 하루에 한 방씩 열려요 (DARK_ORDER). 여러 명이 같은 방에 들어가 문제 15 개를 같이 풀고,
 // 다 풀면 그 주민이 아주 강한 보스로 깨어나요. 첫 입장부터 2 시간 안에 못 끝내면 방이 처음으로 돌아가요.
-// 방 상태는 모두 함께 써요: darkRooms/<주민> = {start, att(몇 번째 도전), solved:{p01:{uid,nick,at}}, hp, max, bossAt, clear:{at,nick}}
+// 방 상태는 모두 함께 써요: darkRooms/<주민> = {start, att(몇 번째 도전), solved:{p01:{uid,nick,at}}, asg:{p01:uid} (문제를 맡은 사람), hp, max, bossAt, clear:{at,nick}}
 const hashU = v => { let h = 7; for (const ch of String(v)) h = (h*31 + ch.charCodeAt(0)) >>> 0; return h; }; let darkSlamSlot = {};
 let darkRooms = {}, darkPending = 0, darkFlushT = 0, darkTouchCd = 0, darkSlams = [], darkSlamT = 0, darkHurtT = 0, darkGuard = 0, darkHudT = 0, darkBusy = false;
 const darkOn = () => !!(world && world.dark);
@@ -6102,8 +6102,13 @@ function drawEvidence(c, pz){ const x = pz.x, y = pz.y - 4, n = parseInt(pz.id.s
 function darkObjLabel(d, pz, r, t){
   const c = d.ctx, done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), x = pz.x, y = pz.y - 86;
   if (done){ d.circle(x, y, 10, '#59c27a'); d.line(k=>{ k.moveTo(x-5, y); k.lineTo(x-1, y+4); k.lineTo(x+5, y-4); }, '#ffffff', 2.6); return; }
+  const owner = (r.asg || {})[pz.id];
+  if (owner && owner !== uid && !admin && !pz.film){ // 다른 사람 몫: 짙은 어둠이 엉겨 가구가 보이지 않아요
+    const cy = pz.y - 44, fg = c.createRadialGradient(x, cy, 6, x, cy, 78); fg.addColorStop(0, 'rgba(6,2,10,.96)'); fg.addColorStop(.65, 'rgba(10,4,16,.85)'); fg.addColorStop(1, 'rgba(10,4,16,0)');
+    c.save(); c.fillStyle = fg; c.beginPath(); c.ellipse(x, cy, 78, 70, 0, 0, 7); c.fill(); c.globalAlpha = .35; c.strokeStyle = '#6a4a7a'; c.lineWidth = 1.5;
+    for (let i = 0; i < 4; i++){ const a = t/900 + i*1.6; c.beginPath(); c.arc(x + Math.cos(a)*16, cy + Math.sin(a*1.3)*12, 22 + i*7, a, a + 1.6); c.stroke(); } c.restore(); return; }
   if (lock){ d.circle(x, y, 10, '#6e5a7e'); d.rr(x-5, y-1, 10, 7, 2, '#ffd76a'); c.save(); c.strokeStyle = '#ffd76a'; c.lineWidth = 1.8; c.beginPath(); c.arc(x, y-1, 3.4, Math.PI, 0); c.stroke(); c.restore(); return; }
-  const b = Math.sin(t/260 + x) * 3; d.circle(x, y + b, 11, '#ff4f87'); c.save(); c.font = 'bold 20px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText('?', x, y + b + 6); c.restore();
+  const b = Math.sin(t/260 + x) * 3, mine = owner === uid && !pz.film; d.circle(x, y + b, mine ? 12 : 11, mine ? '#ffc83a' : '#ff4f87'); c.save(); c.font = 'bold 20px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = mine ? '#4a2a10' : '#fff'; c.fillText(mine ? '!' : '?', x, y + b + 6); c.restore();
 }
 // ----- 방 그림 (어두운 벽·바닥, 실밥 무늬, 아래 문) -----
 function drawDarkRoomStatic(c, d, z){
@@ -6194,6 +6199,7 @@ const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLow
 function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of [...darkPuzzles(z.dark), ...darkProps(z.dark)]){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
 function darkPuzzlePanel(pz){
   const npc = Z().dark; if (!npc) return; const r = roomOf(npc), done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), list = darkPuzzles(npc);
+  const owner = (r.asg || {})[pz.id]; if (!done && owner && owner !== uid && !admin && !pz.film) return say('....', '짙은 어둠이 엉겨 있어요.\n아무리 들여다봐도 보이지 않아요.');
   const shown = done && (done.ans || pz.a[0] || ''), body = done ? `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
     : lock ? `<p class="dk-q">굳게 닫혀 있어요. 꿈쩍도 하지 않아요.</p><p class="mnote">어딘가에서 다른 것이 먼저 열려야 할 것 같아요.</p>`
     : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>${pz.film ? filmBtnHtml(pz.film) : ''}`;
@@ -6204,7 +6210,7 @@ function darkPuzzlePanel(pz){
   const go = async () => {
     const v = $('dkIn').value; if (!darkNorm(v)) return;
     if (!(await darkCheck(npc, pz, v))){ if ($('dkIn')){ $('dkIn').value = ''; $('dkIn').placeholder = '틀렸어요. 다시 생각해 봐요'; } setExpr('sad', 1200); return; }
-    const ans = String(v).trim().slice(0, 40), ok = await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; return {...cur, solved:{...(cur.solved||{}), [pz.id]:{uid, nick:me.nick, at:darkNow(), ans}}}; });
+    const ans = String(v).trim().slice(0, 40), ok = await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; const ow = (cur.asg || {})[pz.id]; if (ow && ow !== uid && !admin && !pz.film) return undefined; return {...cur, solved:{...(cur.solved||{}), [pz.id]:{uid, nick:me.nick, at:darkNow(), ans}}}; });
     $('npcPanel').hidden = true;
     if (ok){ gainExp(20); toast(`${pz.title}: 정답! (${darkSolvedN(roomOf(npc))}/${list.length})`); setExpr('sparkle', 1500); }
     else toast('누군가 먼저 풀었거나 방이 바뀌었어요');
@@ -6400,6 +6406,25 @@ function bossMusicSync(){
     else { bossRageKey = ''; bossClearKey = ''; }
   } catch(e){}
 }
+// ----- 문제 나눠 맡기: 지금 방에 있는 사람마다 고르게 · 맡은 사람만 보이고 답할 수 있어요 -----
+// darkRooms/<주민>.asg = {p01: uid, ...} · 방 안에서 uid 가 가장 작은 사람이 정리해서 적어요 (나간 사람 몫은 10 초 뒤 남은 사람에게)
+let asgT = 0; const asgMiss = {};
+function darkMembers(){ const set = new Set(admin ? [] : [uid]); for (const o of others.values()) if (o.z === zoneId && !o.adm && o.uid) set.add(o.uid); return [...set].sort(); }
+function darkAssignTick(npc, r, t){
+  if (admin || t < asgT || !r.start || r.clear || darkBossUp(r)) return; asgT = t + 1500;
+  const mem = darkMembers(); if (!mem.length || mem[0] !== uid) return;
+  const now = performance.now(); for (const k of Object.keys(asgMiss)) if (mem.includes(k)) delete asgMiss[k];
+  const plan = cur => { const solved = cur.solved || {}, a0 = cur.asg || {}, a = {}, list = darkPuzzles(npc).filter(p => !p.film && !solved[p.id]);
+    const alive = u => mem.includes(u) || now - (asgMiss[u] ??= now) < 10000;
+    for (const p of list) if (a0[p.id] && alive(a0[p.id])) a[p.id] = a0[p.id];
+    const cnt = u => list.reduce((n, p) => n + (a[p.id] === u ? 1 : 0), 0), tie = (p, u) => hash(String(cur.start) + p.id + u);
+    for (const p of list) if (!a[p.id]) a[p.id] = mem.slice().sort((x, y) => cnt(x) - cnt(y) || tie(p, x) - tie(p, y))[0];
+    for (let k = 0; k < 30; k++){ const by = mem.slice().sort((x, y) => cnt(x) - cnt(y)), lo = by[0], hi = by[by.length - 1]; if (cnt(hi) - cnt(lo) < 2) break; const mv = list.filter(p => a[p.id] === hi).pop(); a[mv.id] = lo; } // 새로 들어온 사람에게도 고르게
+    return a; };
+  const same = (x, y) => JSON.stringify(Object.entries(x || {}).sort()) === JSON.stringify(Object.entries(y || {}).sort());
+  if (same(plan(r), r.asg)) return;
+  net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear) return undefined; const a = plan(cur); return same(a, cur.asg) ? undefined : {...cur, asg:a}; });
+}
 function updateDark(dt, t){
   bossMusicSync(); filmTick();
   if (t > darkHudT){ darkHudT = t + 1000; if (zoneId.startsWith('dark:')) darkHud(); }
@@ -6408,6 +6433,7 @@ function updateDark(dt, t){
   if (darkOn() && npc !== darkToday() && !r.clear) return darkLeave();
   if (!r.start && !r.clear && darkGuard < 0) return darkLeave(); // 관리자가 방을 되돌렸어요
   if (r.clear && darkDown) darkStandUp();
+  darkAssignTick(npc, r, t);
   if (darkWipeSeen[npc] === undefined) darkWipeSeen[npc] = r.wipe|0;
   if ((r.wipe|0) !== darkWipeSeen[npc]){ darkWipeSeen[npc] = r.wipe|0; darkSlams = []; if (darkDown){ darkDown = null; darkGuard = 3; wakeGuardUntil = performance.now() + 5000; flushSave(); } playerHp = maxHp(); const [sx, sy] = darkBossStart(npc); pos.x = sx; pos.y = sy; target = null; renderHud(); say('....', `모두 쓰러졌어요.... ${npc === 'tori' ? '토리???가' : NPC[npc].name + '이(가)'} 다시 처음 모습으로 돌아왔어요. 푼 문제는 그대로, 보스전만 처음부터 다시 해요.`); }
   // 방 안 사람이 모두 쓰러지면 (3 초 확인) 보스 체력과 살리기 횟수를 처음으로
