@@ -5206,9 +5206,14 @@ const fgHour = () => { const d = new Date(Date.now() + serverOffset + 9*3600000)
 const tmOk = tm => { if (!tm) return true; const h = fgHour(); return tm === 'day' ? h >= 7 && h < 17 : h >= 19 || h < 5; };
 const fwOk = wx => !wx || wxNow()[2] === wx;
 // 자리: 구역마다 정해진 곳 (길·건물·나무·바위·가로등을 피해서, 서로 떨어지게)
+// 낙엽 더미: 숲에는 둘 더 · 다른 바깥 구역에도 하나씩 (거기선 밤에만 새 깃털) · 2 분마다 다시 쌓여요
+const LP_EXTRA = {forest:2, deepforest:1, starhill:1, meadow:1, museum:1, village:1, workshop:1, pond:1, beach:1, minegate:1};
+const LP_NIGHT = new Set(Object.keys(LP_EXTRA).filter(z=>z!=='forest'));
+const lpKey = () => Math.floor(Date.now()/120000);
+const spotKey = s => s.type === 'leafpile' ? lpKey() : hourKey();
 function buildForageSpots(z){
   const items = FORAGE.filter(f=>f.zone === zoneId), types = [...new Set(items.map(f=>SPOT_OF[f.kind]))];
-  const n = Math.min(8, 3 + Math.ceil(items.length/2)), rng = seeded(hash('fspot:' + zoneId)), out = [];
+  const n0 = Math.min(8, 3 + Math.ceil(items.length/2)), n = n0 + (LP_EXTRA[zoneId] || 0), rng = seeded(hash('fspot:' + zoneId)), out = [];
   const cx = z.W/2, cy = z.H/2, ex = z.exits || {}, rocks = (MINE_ZONES[zoneId]?.spots || []), npcs = NPCS.filter(p=>p.zone===zoneId);
   for (let tries = 0; out.length < n && tries < 600; tries++){
     const x = M + 50 + rng()*(z.W - 2*M - 100), y = M + 60 + rng()*(z.H - 2*M - 100);
@@ -5217,33 +5222,35 @@ function buildForageSpots(z){
     if (out.some(s=>Math.hypot(s.x-x, s.y-y) < 150)) continue;
     if ([[cx+110, M+50], [cx+110, z.H-M-10], [M+80, cy-50], [z.W-M-80, cy-50]].some(([sx,sy])=>Math.hypot(sx-x, sy-y) < 100)) continue; // 표지판 옆도 피해요
     if (rocks.some(([rx,ry])=>Math.hypot(rx-x, ry-y) < 90) || npcs.some(p=>Math.hypot(p.homeX-x, p.homeY-y) < 110) || (z.trees||[]).some(([tx,ty])=>Math.hypot(tx-x, ty+22-y) < 60) || (z.lamps||[]).some(l=>Math.hypot(l.x-x, l.y-y) < 70)) continue;
-    out.push({i:out.length, x:Math.round(x), y:Math.round(y), type:types[out.length % types.length]});
+    out.push({i:out.length, x:Math.round(x), y:Math.round(y), type:out.length < n0 ? types[out.length % types.length] : 'leafpile', ...(out.length < n0 ? {} : {lp:1})});
   }
   return out;
 }
-function forageDone(){ const m = me && (me.foraged = me.foraged || {})[zoneId]; return m && m.h === hourKey() ? String(m.done).split(',') : []; }
+function forageDone(s){ const k = s && s.type === 'leafpile' ? zoneId + '~lp' : zoneId, h = s ? spotKey(s) : hourKey(), m = me && (me.foraged = me.foraged || {})[k]; return m && m.h === h ? String(m.done).split(',') : []; }
+const forageDoneAt = s => forageDone(s).includes(String(s.i));
 // 이번 5 분에 그 자리에서 나올 것 (날씨·시간이 맞는 것 중 희귀도 가중치로, 모두에게 같게)
 function forageItemAt(s){
-  const list = FORAGE.filter(f=>f.zone === zoneId && SPOT_OF[f.kind] === s.type && fwOk(f.wx) && tmOk(f.tm)); if (!list.length) return null;
-  const rng = seeded(hash(`fg:${zoneId}:${s.i}:${hourKey()}`)), tot = list.reduce((a,f)=>a+FORAGE_W[f.rare], 0); let r = rng()*tot;
+  const list = s.lp && LP_NIGHT.has(zoneId) ? (tmOk('night') ? [FG.g45] : []) // 다른 구역에 더 놓은 낙엽 더미: 밤에만 새 깃털
+    : FORAGE.filter(f=>f.zone === zoneId && SPOT_OF[f.kind] === s.type && fwOk(f.wx) && tmOk(f.tm));
+  if (!list.length) return null;
+  const rng = seeded(hash(`fg:${zoneId}:${s.i}:${spotKey(s)}`)), tot = list.reduce((a,f)=>a+FORAGE_W[f.rare], 0); let r = rng()*tot;
   for (const f of list){ if ((r -= FORAGE_W[f.rare]) < 0) return f; } return list[0];
 }
 const forageSpots = () => (Z().fspots || []);
 function forageEntities(d, t){
   if (!me || admin || !FORAGE_ZONES.has(zoneId)) return [];
-  const done = forageDone();
-  return forageSpots().map(s=>{ const ready = !done.includes(String(s.i)) && !!forageItemAt(s);
+  return forageSpots().map(s=>{ const ready = !forageDoneAt(s) && !!forageItemAt(s);
     return {y:s.y, draw:()=>{ const c = d.ctx; c.save(); c.translate(s.x, s.y); c.fillStyle = 'rgba(40,30,20,.12)'; c.beginPath(); c.ellipse(0, 2, 24, 6, 0, 0, 7); c.fill(); SPOT_DRAW[s.type](c, ready, t); c.restore();
       if (ready){ const a = .5 + Math.sin(t/300 + s.i)*.5; c.save(); c.globalAlpha = a; c.fillStyle = '#fff7c2'; c.beginPath(); for (let k=0;k<8;k++){ const r = k%2 ? 2 : 6, an = k*Math.PI/4; c.lineTo(s.x + 16 + Math.cos(an)*r, s.y - 34 + Math.sin(an)*r); } c.fill(); c.restore(); } }, label:()=>{}}; });
 }
 function forageTap(w){ if (!FORAGE_ZONES.has(zoneId)) return null; for (const s of forageSpots()) if (Math.abs(w.x-s.x) < 30 && w.y > s.y-40 && w.y < s.y+10) return {x:s.x, y:s.y+26, act:()=>forageAt(s)}; return null; }
 function forageNear(){ let best = null, bd = 56; for (const s of forageSpots()){ const d = Math.hypot(pos.x-s.x, pos.y-s.y-14); if (d < bd){ bd = d; best = s; } } return best; }
 function forageAt(s){
-  if (forageDone().includes(String(s.i))) return toast(`${SPOT_NAME[s.type]}은(는) 비어 있어요 · 조금 뒤에 다시 돋아요`);
+  if (forageDoneAt(s)) return toast(`${SPOT_NAME[s.type]}은(는) 비어 있어요 · 조금 뒤에 다시 돋아요`);
   const f = forageItemAt(s); if (!f) return toast(`${SPOT_NAME[s.type]}에 지금은 아무것도 없어요 · 날씨나 시간이 바뀌면 돋아나요`);
   const key = 'forage:' + f.id; if (invRoom(key) < 1) return toast(`가방에 ${f.name}을(를) 더 넣을 자리가 없어요`);
   if (!useSta('forage')) return;
-  invAdd(key, 1); if (Math.random() < tfx('forage') && invRoom(key) > 0){ invAdd(key, 1); setTimeout(()=>toast(`다람쥐가 ${f.name}을(를) 하나 더 찾아 왔어요!`, key), 700); } me.foraged = me.foraged || {}; const m = me.foraged[zoneId]; me.foraged[zoneId] = {h:hourKey(), done:(m && m.h === hourKey() ? m.done + ',' : '') + s.i};
+  invAdd(key, 1); if (Math.random() < tfx('forage') && invRoom(key) > 0){ invAdd(key, 1); setTimeout(()=>toast(`다람쥐가 ${f.name}을(를) 하나 더 찾아 왔어요!`, key), 700); } me.foraged = me.foraged || {}; const fk = s.type === 'leafpile' ? zoneId + '~lp' : zoneId, fh = spotKey(s), m = me.foraged[fk]; me.foraged[fk] = {h:fh, done:(m && m.h === fh ? m.done + ',' : '') + s.i};
   me.gdex = me.gdex || {}; const first = !me.gdex[f.id]; me.gdex[f.id] = (me.gdex[f.id]||0) + 1;
   stat('foraged'); tmapDrop(); gainExp(f.rare*2); setExpr(f.rare >= 4 ? 'sparkle' : 'happy', 1500); saveMe(); renderHud();
   fx.push({x:s.x, y:s.y-40, text:'+1', t:performance.now(), color:'#ffffff'});
@@ -5255,7 +5262,8 @@ function forageDex(){
     return `<button class="tile" data-f="${f.id}" ${has ? '' : 'style="opacity:.55"'}>${has ? `<img class="ic" src="${forageIcon(f.id)}" alt="">` : '<span style="font-size:30px;line-height:44px">?</span>'}<em>${has ? esc(f.name) : '???'}</em><s>${has ? '◆'.repeat(f.rare) : esc(ZONES[f.zone]?.name || '')}</s></button>`; }).join('')}</div>`);
   $('npcPanel').querySelectorAll('[data-f]').forEach(b=>b.onclick = ()=>{ const f = FG[b.dataset.f], has = got[f.id];
     const when = [f.wx ? WX[f.wx][0] : '', f.tm ? (f.tm==='day' ? '낮' : '밤') : ''].filter(Boolean).join(' · ') || '언제나';
-    if (has) withIcon('forage:'+f.id); say(has ? f.name : '아직 못 찾았어요', has ? `${f.desc}\n${ZONES[f.zone]?.name} · ${when} · ${f.price} G · 지금까지 ${has} 개` : `${ZONES[f.zone]?.name}의 ${SPOT_NAME[SPOT_OF[f.kind]]}에서 · ${when}`); });
+    const also = f.id === 'g45' ? ' (다른 구역 낙엽 더미 · 밤)' : '';
+    if (has) withIcon('forage:'+f.id); say(has ? f.name : '아직 못 찾았어요', has ? `${f.desc}\n${ZONES[f.zone]?.name} · ${when}${also} · ${f.price} G · 지금까지 ${has} 개` : `${ZONES[f.zone]?.name}의 ${SPOT_NAME[SPOT_OF[f.kind]]}에서 · ${when}${also}`); });
 }
 // ===== 나무 베기: 바깥 구역마다 벨 수 있는 나무가 24 그루쯤 있어요 (집터 · 시장 · 축제장 빼고) =====
 // 세 번 치면 쓰러지고 목재가 나와요. 그루터기는 사람마다 따로 5 분 뒤 다시 자라요 (me.chopped[구역][번호] = 벤 시각)
