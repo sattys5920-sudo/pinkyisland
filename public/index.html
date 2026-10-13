@@ -5908,7 +5908,8 @@ function darkEntities(d, t){
     for (const p of darkProps(z.dark)) out.push({y:p.y, draw:()=>drawDarkProp(d.ctx, p), label:()=>darkPropLabel(d, p, t)});
     for (const st of R.stairs) if (st.gate && stairLocked(z.dark, st)) out.push({y:floorTop(st.f)+st.rect[1]+st.rect[3], draw:()=>drawStairLock(d.ctx, z.dark, st, t), label:()=>{}});
     for (const st of R.stairs) if (Math.hypot(pos.x-st.at[0], pos.y-st.at[1]) < 160 && !(st.f === 3 && darkBossUp(r))) out.push({y:-1, draw:()=>{}, label:()=>tag(d.ctx, st.label + (st.gate && stairLocked(z.dark, st) ? ' · 꿰매짐' : ''), st.at[0], st.at[1] - 20, st.gate && stairLocked(z.dark, st) ? '#ff4f87' : null)}); }
-  else for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawFurn(d, {id:pz.furn}, pz.x, pz.y), label:()=>darkObjLabel(d, pz, r, t)});
+  else { for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawFurn(d, {id:pz.furn}, pz.x, pz.y), label:()=>darkObjLabel(d, pz, r, t)});
+    for (const p of darkProps(z.dark)) out.push({y:p.y, draw:()=>p.furn ? drawFurn(d, {id:p.furn}, p.x, p.y) : drawDarkProp(d.ctx, p), label:()=>darkPropLabel(d, p, t)}); }
   if (darkBossUp(r) && z.dark === 'tori') out.push({y:0, draw:()=>drawToriFloor(d.ctx, r, t), label:()=>{}}, {y:toriState(r).y + TB_FEET, draw:()=>drawToriBoss(d.ctx, r, t), label:()=>toriLabel(d.ctx, r, t)}, {y:1e9, draw:()=>drawToriShots(d.ctx, r), label:()=>{}});
   else if (darkBossUp(r)){ const [bx, by] = darkBossPos(r); out.push({y:by, draw:()=>drawDarkBoss(d, z.dark, r, bx, by, t), label:()=>{}}); }
   return out;
@@ -6110,7 +6111,7 @@ function darkPropPanel(p){ const npc = Z().dark; if (!npc) return;
   if (p.film) filmBtnWire(p.film); }
 // ----- 토리 방 ① 필름 두 장: 한 사람이 한 장만 들어요. 한 장만 보면 잡음 → 다른 필름을 든 사람과 가까이 서서 끌어 맞추면 숫자가 보여요 -----
 // darkRooms/tori/film = {A:{u, n}, B:{u, n}, x, y}  x, y = 필름 A 에 대한 필름 B 의 위치 (필름 그림 픽셀). 0, 0 이면 딱 맞아요
-const FILM_PX = 2, FILM_W = 70, FILM_H = 42, FW_ = FILM_W*FILM_PX*2, FH_ = FILM_H*FILM_PX*2, FILM_NEAR = 220;
+const FILM_PX = 2, FILM_W = 90, FILM_H = 42, FW_ = FILM_W*FILM_PX*2, FH_ = FILM_H*FILM_PX*2, FILM_NEAR = 220;
 const filmOf = npc => (npc && roomOf(npc).film) || {};
 const filmNpc = () => { const z = Z(); return z.dark && darkPuzzles(z.dark).some(p => p.film) ? z.dark : null; };
 const filmLive = u => u === uid || [...others.entries()].some(([id, o]) => id === u && o.z === zoneId);
@@ -6130,7 +6131,7 @@ async function filmDrop(){ const npc = filmNpc(); if (!npc) return; const k = fi
 let filmCv = null, filmImg = null, filmDrag = null, filmLocal = null, filmWas = false, filmLink = false, filmHidden = false, filmSendT = 0, filmSendQ = null;
 function filmBuild(){ if (filmImg) return; filmImg = 'wait';
   document.fonts.load('bold 30px "Maple"').catch(()=>{}).then(() => { const sc = document.createElement('canvas'); sc.width = FILM_W; sc.height = FILM_H; const o = sc.getContext('2d');
-    o.fillStyle = '#fff'; o.fillRect(0, 0, FILM_W, FILM_H); o.font = 'bold 25px "Maple",sans-serif'; o.textAlign = 'center'; o.textBaseline = 'middle'; o.fillStyle = '#000'; o.fillText('03·15', FILM_W/2, FILM_H/2 + 2);
+    o.fillStyle = '#fff'; o.fillRect(0, 0, FILM_W, FILM_H); o.font = 'bold 24px "Maple",serif'; o.textAlign = 'center'; o.textBaseline = 'middle'; o.fillStyle = '#000'; o.fillText('三·十五', FILM_W/2, FILM_H/2 + 2);
     const d = o.getImageData(0, 0, FILM_W, FILM_H).data, P = [[1,0,0,1],[0,1,1,0],[1,1,0,0],[0,0,1,1],[1,0,1,0],[0,1,0,1]], mk = () => { const k = document.createElement('canvas'); k.width = FW_; k.height = FH_; return k; };
     const A = mk(), B = mk(), G = document.createElement('canvas'), a = A.getContext('2d'), b = B.getContext('2d'); a.fillStyle = b.fillStyle = 'rgba(18,12,22,.95)'; G.width = FILM_W; G.height = FILM_H;
     const gd = G.getContext('2d'), gi = gd.createImageData(FILM_W, FILM_H);
