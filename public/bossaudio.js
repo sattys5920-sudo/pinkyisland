@@ -1,6 +1,6 @@
 // ===== 다크 보스전 음악 · 효과음 =====
 // 주민마다 다른 테마곡을 브라우저가 직접 연주해요 (저작권 걱정 없음). 8 마디를 무한 반복해요.
-// 효과음도 주민 특징에 맞게: 예고(warn) · 내려찍기(slam) · 내가 맞음(hurt) · 보스를 때림(hit) · 50% 변신(rage) · 쓰러뜨림(down)
+// 효과음도 주민 특징에 맞게: 예고(warn) · 내려찍기(slam) · 내가 맞음(hurt) · 보스를 때림(hit) · 50% 변신(rage · 기괴하게) · 쓰러뜨림(down)
 export function bossAudio(opts = {}){
   let ctx = null, out = null, dry = null, wet = null, musicBus = null, sfxBus = null, cur = null, timer = 0, next = 0, bar = 0, noiseBuf = null;
   const VOL = opts.volume ?? .5;
@@ -50,6 +50,18 @@ export function bossAudio(opts = {}){
   const voice = (m, t, d, v = .05, dest) => { const f = hz(m); tone(f, t, d, v, 'triangle', {a:d*.4, hold:true, r:d*.4, vib:5, vibD:.01, dest}); noise(t, d, v*.25, {f:f*2.5, q:12, a:d*.4, hold:true, dest}); };
   const ghost = (m1, m2, t, d, v = .04, dest) => tone(hz(m1), t, d, v, 'sine', {glide:hz(m2), glideT:d, a:d*.3, hold:true, r:d*.3, vib:6, vibD:.02, dest});
   const heart = (t, v = .45, dest) => { thud(t, v, 70, dest); thud(t + .2, v*.7, 64, dest); };
+
+  // 일그러진 신음: 톱니파 → 찌그러뜨림 → 입 모양처럼 움직이는 띠 거르개 · 떨림이 점점 빨라져요
+  let shapeCurve = null;
+  function growl(t, d, f0, v){
+    const os = ctx.createOscillator(), lfo = ctx.createOscillator(), lg = ctx.createGain(), ws = ctx.createWaveShaper(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+    if (!shapeCurve){ shapeCurve = new Float32Array(1024); for (let i = 0; i < 1024; i++) shapeCurve[i] = Math.tanh((i/512 - 1)*6); }
+    os.type = 'sawtooth'; os.frequency.setValueAtTime(f0, t); os.frequency.linearRampToValueAtTime(f0*.62, t + d);
+    lfo.frequency.setValueAtTime(4, t); lfo.frequency.linearRampToValueAtTime(22, t + d); lg.gain.value = f0*.09; lfo.connect(lg); lg.connect(os.frequency);
+    ws.curve = shapeCurve; bp.type = 'bandpass'; bp.Q.value = 4; bp.frequency.setValueAtTime(380, t); bp.frequency.exponentialRampToValueAtTime(1500, t + d*.45); bp.frequency.exponentialRampToValueAtTime(260, t + d);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .25); g.gain.setValueAtTime(v, t + d*.6); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    os.connect(ws); ws.connect(bp); bp.connect(g); g.connect(sfxBus); os.start(t); lfo.start(t); os.stop(t + d + .05); lfo.stop(t + d + .05);
+  }
 
   // ----- 주민별 테마곡 (한 마디씩 예약) -----
   const sc = (root, steps) => i => root + steps[((i % steps.length) + steps.length) % steps.length] + 12*Math.floor(i/steps.length);
@@ -145,9 +157,16 @@ export function bossAudio(opts = {}){
     else if (kind === 'slam'){ thud(t, .55, 100, S); noise(t, .35, .18, {type:'lowpass', f:900, fTo:150, dest:S}); L.slam?.(t); }
     else if (kind === 'hurt'){ tone(220, t, .3, .12, 'sawtooth', {glide:110, lp:1400, dest:S}); tone(233, t, .3, .08, 'sawtooth', {glide:104, lp:1400, dest:S}); }
     else if (kind === 'hit'){ noise(t, .12, .12, {f:1500, q:1.2, dest:S}); tone(180, t, .12, .08, 'square', {glide:90, lp:900, dest:S}); }
-    else if (kind === 'rage'){ // 50% 변신: 낮은 폭발 + 거꾸로 부푸는 소리 + 비명 같은 미끄럼 + 주민 소리 둘
-      noise(t, 2.2, .18, {type:'lowpass', f:200, fTo:4000, a:1.9, dest:S}); thud(t + 1.9, 1, 60, S); tone(hz(84), t + 1.9, 2.2, .08, 'sawtooth', {glide:hz(48), glideT:2, lp:2600, vib:9, vibD:.03, dest:S}); tone(hz(85), t + 1.9, 2.2, .06, 'sawtooth', {glide:hz(47), glideT:2, lp:2600, dest:S});
-      L.slam?.(t + 1.9); L.warn?.(t + .6); L.warn?.(t + 1.2); }
+    else if (kind === 'rage'){ // 50% 변신 (기괴하게): 거꾸로 부푸는 숨 + 속삭임 · 늘어지는 오르골 → 쾅 + 일그러진 신음 두 겹 (맥놀이) + 금속 비명 + 엇박 심장 + 빨라지는 딸깍
+      noise(t, 2.2, .16, {type:'lowpass', f:200, fTo:4000, a:1.9, dest:S});
+      for (let i = 0; i < 26; i++){ const w = t + .15 + rnd()*1.65; noise(w, .06 + rnd()*.12, .05 + rnd()*.05, {f:1100 + rnd()*2400, q:14, a:.02, dest:S}); }
+      [84, 82, 79, 75].forEach((m, i) => { const st = t + .3 + i*.38, f = hz(m); tone(f, st, 1.1, .07, 'sine', {glide:f*.84, glideT:1, vib:4.5, vibD:.02, dest:S}); tone(f*3.01, st, .35, .02, 'sine', {glide:f*2.4, dest:S}); });
+      thud(t + 1.9, 1.1, 55, S); noise(t + 1.9, .6, .3, {type:'lowpass', f:700, fTo:60, dest:S});
+      growl(t + 1.9, 2.6, 55, .2); growl(t + 1.95, 2.5, 58.3, .14);
+      tone(2400, t + 1.95, 1.7, .035, 'sine', {glide:260, glideT:1.6, vib:11, vibD:.04, dest:S}); tone(2470, t + 1.95, 1.7, .03, 'sine', {glide:240, glideT:1.6, vib:13, vibD:.04, dest:S});
+      [2.5, 2.95, 3.75].forEach((k, i) => heart(t + k, .5 - i*.08, S));
+      for (let i = 0; i < 12; i++) click(t + 3.5 + (1 - Math.pow(.86, i))*4.2*.25, .14, 900 + i*180, S);
+      L.slam?.(t + 1.9); L.warn?.(t + .6); }
     else if (kind === 'down'){ tone(hz(72), t, 2.5, .08, 'triangle', {glide:hz(36), glideT:2.4, dest:S}); [0, 3, 7, 12].forEach((n, i) => musicbox(72 + n, t + .6 + i*.35, .1, S)); }
   }
   // 미리 녹음용 (OfflineAudioContext): until 초까지 한꺼번에 예약해요
