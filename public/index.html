@@ -186,6 +186,7 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .cl-th em{font-style:normal;font-size:15px;display:block;margin-top:4px;line-height:1.2}.cl-th.off{background:#e6dcca;cursor:default}.cl-q{aspect-ratio:4/3;background:#3a2529;color:#a88a8a;display:flex;align-items:center;justify-content:center;font-size:34px;border-radius:6px}.cl-hud{margin-right:6px;pointer-events:auto}
 .dk-img{display:block;max-width:100%;max-height:0;margin:0 auto 8px;border-radius:12px;object-fit:contain;cursor:zoom-in;transition:max-height .2s}.dk-img.on{max-height:42vh}.dk-img.big{max-height:80vh;cursor:zoom-out}.adm-qimg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.adm-qimg img{height:70px;border-radius:8px;background:#fff}.adm-qimg label.adm-btn{cursor:pointer}
 .dk-imw{position:relative;width:fit-content;max-width:100%;margin:0 auto 8px}.dk-imw .dk-img{margin:0}.dk-nm{position:absolute;white-space:nowrap;font-family:"Maple",sans-serif;font-weight:400;line-height:1;pointer-events:none}
+body.celon #npcPanel .dk-img{filter:url(#celR)}
 #filmBox{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 110px);transform:translateX(-50%);z-index:9;background:rgba(28,20,30,.94);border-radius:18px;padding:8px;box-shadow:0 8px 30px rgba(0,0,0,.6)}#filmCv{display:block;width:min(84vw,380px);height:auto;touch-action:none;border-radius:12px;cursor:grab}#filmX{position:absolute;right:10px;top:10px}
 .dk-q{font-size:18px;line-height:1.5;margin:4px 2px 10px;white-space:pre-wrap}.dk-ans{display:flex;gap:6px;margin-bottom:8px}.dk-ans input{flex:1;min-width:0;font:inherit;font-size:18px;padding:8px 12px;border-radius:12px;border:2px solid #f2c6d6}.dk-ok{color:#2f9b57;font-size:17px}.adm-lhead i.rd{color:#7dff9a;margin-left:6px;font-style:normal}.adm-lhead i.unrd{color:#ffb86b;margin-left:6px;font-style:normal}
 .adm-dark{display:grid;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.12)}.adm-dark small{opacity:.8}
@@ -6106,9 +6107,15 @@ function drawDarkProp(c, p){ const x = p.x, y = p.y - 34; c.save(); c.shadowColo
 function darkPropLabel(d, p, t){ const c = d.ctx, x = p.x, y = p.y - 86, b = Math.sin(t/260 + x) * 3; if (p.film && filmOf(Z().dark)[p.film] && !filmFree(p.film)) return;
   d.circle(x, y + b, 11, '#ff4f87'); c.save(); c.font = 'bold 20px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText('?', x, y + b + 6); c.restore(); }
 function darkPropPanel(p){ const npc = Z().dark; if (!npc) return;
-  openPanel(esc(p.title), darkImgHtml(npc, p) + (p.film ? filmBtnHtml(p.film) : '')); darkImgFill($('npcPanel'));
+  openPanel(esc(p.title), darkImgHtml(npc, p) + (p.film ? filmBtnHtml(p.film) : '') + (p.cel ? `<button class="btn" id="dkCel">${celHeld ? '내려놓기' : '셀로판 들기'}</button>` : '')); darkImgFill($('npcPanel'));
+  if ($('dkCel')) $('dkCel').onclick = () => { celSet(!celHeld); $('npcPanel').hidden = true; };
   for (const el of $('npcPanel').querySelectorAll('.dk-img')) el.onclick = () => el.classList.toggle('big');
   if (p.film) filmBtnWire(p.film); }
+// ----- 빨간 셀로판 (내 손에만 들려요): 들고 있으면 문제 그림이 빨간 셀로판 너머로 보여요 -----
+let celHeld = false;
+function celSet(on){ celHeld = !!on; document.body.classList.toggle('celon', celHeld);
+  if (celHeld && !$('celSvg')){ const d = document.createElement('div'); d.innerHTML = '<svg id="celSvg" width="0" height="0" style="position:absolute"><filter id="celR" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="1 0 0 0 0  .25 0 0 0 0  .2 0 0 0 0  0 0 0 1 0"/></filter></svg>'; document.body.appendChild(d.firstChild); }
+  try { filmSnd(celHeld ? 'pick' : 'drop'); } catch(e){} }
 // ----- 토리 방 ① 필름 두 장: 한 사람이 한 장만 들어요. 한 장만 보면 잡음 → 다른 필름을 든 사람과 가까이 서서 끌어 맞추면 숫자가 보여요 -----
 // darkRooms/tori/film = {A:{u, n}, B:{u, n}, x, y}  x, y = 필름 A 에 대한 필름 B 의 위치 (필름 그림 픽셀). 0, 0 이면 딱 맞아요
 const FILM_PX = 2, FILM_W = 90, FILM_H = 42, FW_ = FILM_W*FILM_PX*2, FH_ = FILM_H*FILM_PX*2, FILM_NEAR = 220;
@@ -6153,7 +6160,7 @@ function filmFlush(){ const npc = filmNpc(); if (!npc || !filmSendQ) return; fil
 function filmState(){ const f = filmOf(filmNpc()), mine = filmMine(), o = mine === 'A' ? 'B' : 'A', h = f[o], L = filmLocal && performance.now() < filmLocal.until ? filmLocal : null;
   const po = h && h.u !== uid ? others.get(h.u) : null, partner = !!(po && po.z === zoneId && Math.hypot(po.x - pos.x, po.y - pos.y) < FILM_NEAR);
   const x = L ? L.x : (f.x | 0), y = L ? L.y : (f.y | 0); return {mine, partner, x, y, ok:partner && x === 0 && y === 0}; }
-function filmTick(){ const on = filmActive() && !!filmMine(); if (!on){ if (filmCv) filmCv.parentNode.hidden = true; filmWas = filmLink = false; filmHidden = false; return; }
+function filmTick(){ if (celHeld && !Z().dark) celSet(false); const on = filmActive() && !!filmMine(); if (!on){ if (filmCv) filmCv.parentNode.hidden = true; filmWas = filmLink = false; filmHidden = false; return; }
   const st = filmState(); if (st.partner && !filmLink) filmHidden = false; if (st.partner !== filmLink){ filmLink = st.partner; if (st.partner) filmSnd('link'); }
   if (st.ok && !filmWas) filmSnd('snap'); filmWas = st.ok; filmBuild(); const cv = filmBox(); cv.parentNode.hidden = filmHidden; if (filmHidden || !filmImg || filmImg === 'wait') return;
   const g = cv.getContext('2d'), W = cv.width, H = cv.height, cx = Math.round(W/2 - FW_/2), cy = Math.round(H/2 - FH_/2) + 6, sg = st.mine === 'A' ? 1 : -1, ox = cx + sg*st.x, oy = cy + sg*st.y, now = performance.now()/1000;
