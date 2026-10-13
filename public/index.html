@@ -2339,8 +2339,9 @@ const MAP_SHORT = {home:'집터', village:'마을 광장', museum:'박물관', s
 let mapSel = null, mapGeo = null, mapDrawT = 0;
 const visitedZones = () => (me.visited||'home').split(',');
 function renderMap(){
-  if (!mapSel || !ZONES[mapSel]) mapSel = zoneId.startsWith('house:') ? 'home' : zoneId;
-  $('mapPanel').innerHTML = `<div class="np-head"><b>섬 지도</b><button class="mini" id="mpClose">닫기</button></div><canvas id="mapCv" aria-label="섬 지도"></canvas><div class="mlegend"><span><i style="background:#ff4f8b"></i>나</span><span><i style="background:#5b8cff"></i>친구</span><span><i style="background:#ffb43f"></i>주민</span><span class="dim">흐린 곳: 아직 안 가 본 곳</span></div><div id="mapInfo"></div><p class="mnote">구역 끝의 표지판 쪽 길로 걸어가면 옆 구역으로 넘어가요. 옆 칸끼리는 모두 이어져 있어요. <button class="mini" id="logoutBtn" style="float:right">로그아웃</button></p>`;
+  const here = zoneId.startsWith('house:') || zoneId.startsWith('dark:') ? 'home' : zoneId, isl = !!ZONES[here]?.isl;
+  if (!mapSel || !ZONES[mapSel] || !!ZONES[mapSel].isl !== isl) mapSel = here; // 다른 섬 칸은 고를 수 없어요
+  $('mapPanel').innerHTML = `<div class="np-head"><b>${isl ? '솜사탕 리조트 섬 지도' : '섬 지도'}</b><button class="mini" id="mpClose">닫기</button></div><canvas id="mapCv" aria-label="섬 지도"></canvas><div class="mlegend"><span><i style="background:#ff4f8b"></i>나</span><span><i style="background:#5b8cff"></i>친구</span><span><i style="background:#ffb43f"></i>주민</span><span class="dim">흐린 곳: 아직 안 가 본 곳</span></div><div id="mapInfo"></div><p class="mnote">구역 끝의 표지판 쪽 길로 걸어가면 옆 구역으로 넘어가요. 옆 칸끼리는 모두 이어져 있어요. <button class="mini" id="logoutBtn" style="float:right">로그아웃</button></p>`;
   $('logoutBtn').onclick = ()=>{ if (confirm('로그아웃할까요? 캐릭터와 집은 아이디에 저장돼 있어요.')) logout(); };
   $('mpClose').onclick = ()=>{ $('mapPanel').hidden = true; };
   const cvm = $('mapCv');
@@ -2368,19 +2369,22 @@ function travelTo(id){
 }
 function drawMap(){
   const cvm = $('mapCv'); if (!cvm) return;
-  const gx = Math.max(...Object.values(ZONES).map(z=>z.grid[0])) + 1, gy = Math.max(...Object.values(ZONES).map(z=>z.grid[1])) + 1;
+  // 큰 섬에 있으면 큰 섬 지도만, 다리 건너 리조트 섬에 있으면 리조트 섬 지도만 보여요
+  const curZ = zoneId.startsWith('house:') || zoneId.startsWith('dark:') ? 'home' : zoneId, onIsl = !!ZONES[curZ]?.isl, ZL = Object.entries(ZONES).filter(([,z]) => !!z.isl === onIsl);
+  const mx0 = Math.min(...ZL.map(([,z])=>z.grid[0])), my0 = Math.min(...ZL.map(([,z])=>z.grid[1]));
+  const gx = Math.max(...ZL.map(([,z])=>z.grid[0])) - mx0 + 1, gy = Math.max(...ZL.map(([,z])=>z.grid[1])) - my0 + 1;
   const cw = cvm.clientWidth || 340, pad = 8, gap = 9, tw = (cw - pad*2 - gap*(gx-1)) / gx, th = tw / 1.25, ch = pad*2 + th*gy + gap*(gy-1);
   const dpr = Math.min(2, devicePixelRatio||1); cvm.style.height = ch + 'px'; cvm.width = cw*dpr; cvm.height = ch*dpr;
   const c = cvm.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
   // 바다
   c.fillStyle = '#bfe6f7'; c.beginPath(); c.roundRect(0,0,cw,ch,14); c.fill();
   c.strokeStyle = '#e3f5fc'; c.lineWidth = 1.5; for (let i=0;i<26;i++){ const x = (i*97)%cw, y = 10+(i*53)%(ch-20); c.beginPath(); c.moveTo(x,y); c.quadraticCurveTo(x+5,y-3,x+10,y); c.stroke(); }
-  mapGeo = {}; for (const [id,z] of Object.entries(ZONES)) mapGeo[id] = {x:pad + z.grid[0]*(tw+gap), y:pad + z.grid[1]*(th+gap), w:tw, h:th};
+  mapGeo = {}; for (const [id,z] of ZL) mapGeo[id] = {x:pad + (z.grid[0]-mx0)*(tw+gap), y:pad + (z.grid[1]-my0)*(th+gap), w:tw, h:th};
   const seen = visitedZones(), cur = zoneId.startsWith('house:') ? 'home' : zoneId;
   // 구역 사이 길
   c.fillStyle = '#ffe0bf';
-  for (const [id,z] of Object.entries(ZONES)){ if (z.isl) continue; const g = mapGeo[id]; if (z.exits.e){ c.fillRect(g.x+g.w-4, g.y+g.h/2-3, gap+8, 6); } if (z.exits.s){ c.fillRect(g.x+g.w/2-3, g.y+g.h-4, 6, gap+8); } }
-  for (const [id,z] of Object.entries(ZONES)){ if (z.isl) continue;
+  for (const [id,z] of ZL){ const g = mapGeo[id]; if (z.exits.e && mapGeo[z.exits.e]){ c.fillRect(g.x+g.w-4, g.y+g.h/2-3, gap+8, 6); } if (z.exits.s && mapGeo[z.exits.s]){ c.fillRect(g.x+g.w/2-3, g.y+g.h-4, 6, gap+8); } }
+  for (const [id,z] of ZL){
     const g = mapGeo[id], T = THEME[z.theme] || THEME.grass, sx = g.w/z.W, sy = g.h/z.H, X = x => g.x + x*sx, Y = y => g.y + y*sy;
     c.save(); c.beginPath(); c.roundRect(g.x, g.y, g.w, g.h, 7); c.fillStyle = T.ground; c.fill(); c.clip();
     // 구역 안 길
@@ -2388,6 +2392,9 @@ function drawMap(){
     if (z.exits.n) c.fillRect(cx-2, g.y, 4, cy-g.y); if (z.exits.s) c.fillRect(cx-2, cy, 4, g.y+g.h-cy); if (z.exits.w) c.fillRect(g.x, cy-2, cx-g.x, 4); if (z.exits.e) c.fillRect(cx, cy-2, g.x+g.w-cx, 4);
     for (const p of z.places){
       if (p.kind==='sea'){ c.fillStyle = '#8fd3f5'; c.fillRect(g.x, g.y, g.w, 240*sy); }
+      else if (p.kind==='seaE'){ c.fillStyle = '#8fd3f5'; c.fillRect(X(z.W-250), g.y, 250*sx, g.h); }
+      else if (p.kind==='lava'){ c.fillStyle = '#ff7a3a'; c.beginPath(); c.ellipse(X(p.x), Y(p.y), p.rx*sx, p.ry*sy, 0, 0, 7); c.fill(); }
+      else if (p.kind==='crater'){ c.fillStyle = '#5a3a34'; c.beginPath(); c.ellipse(X(p.x), Y(p.y), 150*sx, 70*sy, 0, 0, 7); c.fill(); c.fillStyle = '#ff6a2f'; c.beginPath(); c.ellipse(X(p.x), Y(p.y), 80*sx, 36*sy, 0, 0, 7); c.fill(); }
       else if (p.kind==='pond'){ c.fillStyle = '#8fd3f5'; c.beginPath(); c.ellipse(X(p.x), Y(p.y), p.rx*sx, p.ry*sy, 0, 0, 7); c.fill(); }
       else if (p.kind==='house'){ c.fillStyle = '#fff6ee'; c.fillRect(X(p.x)-4, Y(p.y)-5, 8, 5); c.fillStyle = p.roof; c.beginPath(); c.moveTo(X(p.x)-5.5, Y(p.y)-5); c.lineTo(X(p.x), Y(p.y)-10); c.lineTo(X(p.x)+5.5, Y(p.y)-5); c.fill(); }
       else if (p.kind==='field'){ c.fillStyle = '#c79a74'; c.fillRect(X(p.x)-95*sx, Y(p.y)-95*sy, 190*sx, 110*sy); }
@@ -2398,6 +2405,7 @@ function drawMap(){
       else if (p.kind==='crystals'){ c.fillStyle = '#bf8cff'; const k = z.k||1; for (const [qx,qy] of [[300,300],[1300,320],[260,800],[1320,820],[700,260],[1000,880]]){ c.beginPath(); c.moveTo(X(qx*k)-2, Y(qy*k)+2); c.lineTo(X(qx*k), Y(qy*k)-4); c.lineTo(X(qx*k)+2, Y(qy*k)+2); c.fill(); } }
     }
     c.fillStyle = T.edge; for (const [x,y] of z.trees){ c.beginPath(); c.arc(X(x), Y(y), 2.6, 0, 7); c.fill(); }
+    if (id==='resort'){ RS_PLOTS.forEach(([px, py], i)=>{ c.fillStyle = rsPlot(i) ? (RS_TYPES[rsPlot(i).type]?.col || '#ffb3c6') : 'rgba(255,255,255,.6)'; c.fillRect(X(px)-3, Y(py)-6, 6, 6); }); c.fillStyle = '#ff7a8a'; c.beginPath(); c.arc(X(KIOSK.x), Y(KIOSK.y)-3, 2.6, 0, 7); c.fill(); }
     if (id==='home') LOTS.forEach((L,i)=>{ const owner = Object.values(players).find(p=>p.lot===i); if (!owner && i >= MAX) return; c.fillStyle = owner ? ROOFS[owner.roof][1] : 'rgba(255,255,255,.6)'; c.fillRect(X(L.x)-2.5, Y(L.y)-5, 5, 5); });
     for (const n of NPCS) if (n.zone===id){ c.fillStyle = '#ffb43f'; c.strokeStyle = '#fff'; c.lineWidth = 1; c.beginPath(); c.arc(X(n.homeX), Y(n.homeY), 2.6, 0, 7); c.fill(); c.stroke(); }
     for (const o of others.values()) if (o.z===id){ c.fillStyle = '#5b8cff'; c.strokeStyle = '#fff'; c.lineWidth = 1.2; c.beginPath(); c.arc(X(o.x), Y(o.y), 3, 0, 7); c.fill(); c.stroke(); }
@@ -2410,6 +2418,8 @@ function drawMap(){
     c.fillStyle = 'rgba(255,255,255,.88)'; c.beginPath(); c.roundRect(g.x + g.w/2 - w/2, g.y + g.h - 13, w, 12, 6); c.fill();
     c.fillStyle = '#5a3a4a'; c.fillText(name, g.x + g.w/2, g.y + g.h - 6.5, g.w - 4);
   }
+  // 다리: 리조트 섬 지도에선 아래로, 큰 섬 지도에선 등대 해변 위로 (건너가면 반대쪽 지도가 보여요)
+  { const bz = onIsl ? mapGeo.resort : mapGeo.beach; if (bz && (onIsl || ZONES.beach.exits.n === 'resort')){ c.save(); c.strokeStyle = '#c8a070'; c.lineWidth = 4; c.setLineDash([3, 3]); const bx = bz.x + bz.w*.44, y0 = onIsl ? bz.y + bz.h : bz.y, y1 = onIsl ? y0 + pad - 1 : y0 - pad + 1; c.beginPath(); c.moveTo(bx, y0); c.lineTo(bx, y1); c.stroke(); c.restore(); } }
   // 나
   const g = mapGeo[cur], z = ZONES[cur];
   if (g){ let px = pos.x, py = pos.y; if (zoneId.startsWith('house:')){ const p = players[zoneId.slice(6)], L = LOTS[(p && p.lot!=null) ? p.lot : me.lot]; px = L.x; py = L.y; }
@@ -2852,7 +2862,7 @@ function rarityOf(k){
   if (cat==='crop'){ const m = CROPS[id]?.min || 0; return m <= 15 ? 1 : m <= 60 ? 2 : m <= 150 ? 3 : m <= 300 ? 4 : 5; }
   if (cat==='fish'){ const {f, st} = parseFish(id); if (!f) return 1; const w = f.weight, g = w >= 22 ? 1 : w >= 14 ? 2 : w >= 8 ? 3 : w >= 4 ? 4 : 5; return Math.min(5, g + (st===3 ? 1 : 0)); }
   if (cat==='forage') return FG[id]?.rare || 1;
-  if (cat==='dish'){ const d = DISHES[id]; if (!d) return 1; return Math.max(...d.need.map(([nk])=>nk==='fish:*' ? 3 : rarityOf(nk))); }
+  if (cat==='dish'){ const d = DISHES[id]; if (!d) return 1; if (d.kiosk) return 3; return Math.max(...d.need.map(([nk])=>nk==='fish:*' ? 3 : rarityOf(nk))); }
   return 0;
 }
 function foodOf(k){
@@ -3590,10 +3600,12 @@ const DISH_LIST = [
   ['허브차', [['forage:g24',1],['forage:g25',1]], 30], ['도토리묵', [['forage:g17',3]], 40],
   ['미역국', [['forage:g38',2]], 35], ['솜사탕 버섯 파르페', [['forage:g04',1],['crop:c12',2]], 70],
 ];
-const DISHES = Object.fromEntries(DISH_LIST.map((d,i)=>['d'+String(i+1).padStart(2,'0'), {name:d[0], need:d[1], heal:d[2]}]));
+// 리조트 매점 (끼룩이) 에서만 사는 휴양지 요리 · 단단 요리 목록에는 안 나와요 · [이름, 매점 값] (d31 부터)
+const KIOSK_DISH_LIST = [['코코넛 주스', 1800], ['망고 빙수', 2600], ['열대 과일 꼬치', 2200], ['파인애플 볶음밥', 3400], ['새우 타코', 3000], ['블루 레모네이드', 2000]];
+const DISHES = Object.fromEntries([...DISH_LIST.map((d,i)=>['d'+String(i+1).padStart(2,'0'), {name:d[0], need:d[1], heal:d[2]}]), ...KIOSK_DISH_LIST.map(([name, kiosk], i)=>['d'+(31 + i), {name, need:[], kiosk}])]);
 function anyFishKeys(){ return itemsOf('fish').sort((a,b)=>fishPrice(a[0].slice(5))-fishPrice(b[0].slice(5))); }
 function canCook(id){ return DISHES[id].need.every(([k,n])=> k==='fish:*' ? countOf('fish') >= n : invCount(k) >= n); }
-function dishPrice(id){ return Math.round(DISHES[id].need.reduce((a,[k,n])=>a + (k==='fish:*' ? 25 : itemPrice(k))*n, 0) * 1.8) + 40; }
+function dishPrice(id){ if (DISHES[id].kiosk) return Math.round(DISHES[id].kiosk*.45); return Math.round(DISHES[id].need.reduce((a,[k,n])=>a + (k==='fish:*' ? 25 : itemPrice(k))*n, 0) * 1.8) + 40; }
 function cook(id){
   if (!canCook(id)) return toast('재료가 모자라요');
   for (const [k,n] of DISHES[id].need){
@@ -3604,7 +3616,7 @@ function cook(id){
   toast(`${DISHES[id].name}을(를) 만들었어요!`); cookPanel();
 }
 function cookPanel(){
-  openPanel(`단단의 요리 · 만든 요리 ${me.cooked||0} 개`, Object.entries(DISHES).map(([id,d])=>{
+  openPanel(`단단의 요리 · 만든 요리 ${me.cooked||0} 개`, Object.entries(DISHES).filter(([,d])=>!d.kiosk).map(([id,d])=>{
     const need = d.need.map(([k,n])=>`${k==='fish:*' ? '물고기' : itemName(k)} ${n}`).join(' + ');
     return `<button class="np" data-id="${id}" ${canCook(id)?'':'style="opacity:.55"'}><span class="np-name">${iconImg('dish:'+id)}${d.name} <small>${need}</small></span><span class="np-place">${canCook(id)?'만들기':'재료 부족'}</span><span class="np-day">${RARE_NAME[rarityOf('dish:'+id)]} · 체력 +${foodOf('dish:'+id).hp} · 기력 +${foodOf('dish:'+id).sta} · ${dishPrice(id)} G</span></button>`;
   }).join(''), b=>cook(b.dataset.id));
@@ -5504,14 +5516,14 @@ const KIOSK_LINES = [
   '휴가는 끝나지 않아요~\n그러니까 천천히, 오래오래 쉬다 가요. 끼룩.',
   '(먼 바다를 한참 보다가)\n…응? 아무것도 아니에요. 갈매기는 원래 멀리 봐요!',
 ];
-const KIOSK_SNACKS = ['dish:d15', 'dish:d13', 'dish:d12', 'dish:d19', 'dish:d22'];
-const kioskPrice = k => Math.max(50, Math.round(itemPrice(k)*1.5/10)*10);
+const KIOSK_SNACKS = KIOSK_DISH_LIST.map((_, i) => 'dish:d' + (31 + i));
+const kioskPrice = k => DISHES[k.slice(5)]?.kiosk || Math.max(50, Math.round(itemPrice(k)*1.5/10)*10);
 // 강화 [골드, 재료] · +1 ~ +5 · 늘 성공해요
 const WP_UP = [[30000, [['loot:m78', 1], ['loot:m74', 5]]], [50000, [['loot:m78', 1], ['loot:m76', 8]]], [80000, [['loot:m78', 2], ['loot:m73', 10]]], [120000, [['loot:m78', 2], ['loot:m77', 12]]], [180000, [['loot:m78', 3], ['loot:m75', 15], ['ore:o38', 2]]]];
 function kioskTalk(){ say('끼룩이', KIOSK_LINES[Math.floor(Math.random()*KIOSK_LINES.length)], [['매점', kioskShop], ['검 손질', kioskForge]]); }
 function kioskShop(){
   const own = (me.inv.weapons || []).includes('w11'), w = WEAPONS.w11;
-  const snack = KIOSK_SNACKS.map(k => `<button class="np" data-id="${k}"><span class="np-name">${itemName(k)}</span><span class="np-place">${kioskPrice(k).toLocaleString()} G</span><span class="np-day">가방에 ${invCount(k)} 개</span></button>`).join('');
+  const snack = KIOSK_SNACKS.map(k => `<button class="np" data-id="${k}"><span class="np-name">${iconImg(k)}${itemName(k)}</span><span class="np-place">${kioskPrice(k).toLocaleString()} G</span><span class="np-day">가방에 ${invCount(k)} 개</span></button>`).join('');
   const sword = own ? '' : `<button class="np" data-id="w11"><span class="np-name">🗡️ ${w.name} <small>공격력 ${w.atk}</small></span><span class="np-place">만들기</span><span class="np-day">${[w.gold.toLocaleString() + ' G', ...w.need.map(([k, n]) => `${itemName(k)} ${invCount(k)}/${n}`)].join(' · ')}</span></button>`;
   openPanel(`파라솔 매점 · 💰 ${me.inv.gold.toLocaleString()} G`, snack + sword, b => { const id = b.dataset.id;
     if (id === 'w11'){ if ((me.inv.weapons || []).includes('w11')) return; if (me.inv.gold < w.gold || w.need.some(([k, n]) => invCount(k) < n)) return toast('재료나 돈이 모자라요');

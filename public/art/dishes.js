@@ -1,4 +1,4 @@
-// 요리 아이콘 24 종 (d01..d24). (0,0) 중심, 약 -22..22 범위.
+// 요리 아이콘 (d01..d24 · 리조트 매점 d31..d36). (0,0) 중심, 약 -22..22 범위.
 const PI = Math.PI;
 const steam = (d, xs, y0, col = '#ffffff') => {
   xs.forEach((x, i) => d.line(c => { c.moveTo(x, y0); c.quadraticCurveTo(x - 3, y0 - 4, x, y0 - 8); c.quadraticCurveTo(x + 3, y0 - 12, x, y0 - 15 + (i % 2) * 2); }, col, 1.6));
@@ -353,5 +353,65 @@ export const ART_PART = {
     d.rr(9.5, -5, 9, 3, 1, '#2d4a2d');
     d.circle(-7, -14, 3.5, '#9fd06a'); d.dot(-8, -15, 1, '#ffffff', .6);
     d.ell(2, -14, 3.5, 2, '#ffc0c8'); d.ell(5, -16, 3, 1.8, '#ffd6dc');
+  },
+  // ===== 리조트 매점 (끼룩이) 휴양지 요리 =====
+  d31(d) { // 코코넛 주스: 반 자른 코코넛 + 빨대 + 작은 파라솔
+    const c = d.ctx;
+    d.ell(0, 14, 17, 5, '#e8d8c8');
+    d.circle(0, 2, 15, '#8a5a3a'); d.ell(0, -6, 13, 4.5, '#fffaf0'); d.ell(0, -6, 10, 3, '#f4ecd8');
+    d.dot(-6, 6, 1.4, '#5a3a24'); d.dot(5, 9, 1.2, '#5a3a24'); d.dot(-1, 11, 1, '#5a3a24');
+    d.line(c => { c.moveTo(4, -6); c.lineTo(10, -22); }, '#ff6a8a', 2.2);
+    d.line(c => { c.moveTo(-3, -6); c.lineTo(-7, -18); }, '#c8a070', 1.2);
+    d.shape(() => { c.beginPath(); c.moveTo(-17, -16); c.quadraticCurveTo(-7, -27, 3, -16); c.closePath(); }, '#ffd23f', [-7, -19, 10]);
+    d.line(c => { c.moveTo(-12, -16); c.lineTo(-10, -22); c.moveTo(-2, -16); c.lineTo(-4, -22); }, '#ff7a8a', 1.2);
+    d.dot(-5, -2, 1.5, '#ffffff', .7);
+  },
+  d32(d) { // 망고 빙수: 하얀 눈꽃 얼음 위에 노란 망고 큐브
+    const c = d.ctx;
+    bowl(d, 2, 16, 13, '#bfe6f7'); d.ell(0, 2, 16, 4, '#d8f2ff');
+    d.shape(() => { c.beginPath(); c.moveTo(-14, 2); c.quadraticCurveTo(-12, -16, 0, -18); c.quadraticCurveTo(12, -16, 14, 2); c.closePath(); }, '#fffaf6', [0, -6, 14]);
+    for (const [x, y] of [[-7, -6], [1, -12], [7, -5], [-2, -2], [4, -15], [-6, -13]]) d.rr(x - 3, y - 3, 6, 6, 1.5, '#ffb52f');
+    d.ell(2, -19, 3, 2.2, '#ff7a3a'); d.ell(-3, -18, 2.4, 1.6, '#7ac85a');
+    sparkle(d, -12, -16, 2.6);
+  },
+  d33(d) { // 열대 과일 꼬치: 파인애플 · 키위 · 수박 · 망고 · 딸기
+    const c = d.ctx;
+    d.line(c => { c.moveTo(-18, 16); c.lineTo(18, -18); }, '#c8a070', 1.8);
+    d.rr(-15, 7, 8, 8, 2, '#ffd84a');
+    d.circle(-5, 1, 5, '#7ac85a'); d.circle(-5, 1, 3, '#c8f08a'); d.dot(-5, 1, .8, '#3a3a2a');
+    d.tri([[0, -9], [9, -9], [4.5, 1]], '#ff6a7a'); d.dot(3, -7, .7, '#2a2a2a'); d.dot(6, -6, .7, '#2a2a2a');
+    d.rr(6, -16, 7, 7, 2, '#ffa52f');
+    d.circle(15, -19, 4, '#ff4a5a'); d.tri([[12.5, -23], [17.5, -23], [15, -26]], '#5ab84a');
+  },
+  d34(d) { // 파인애플 볶음밥: 반 가른 파인애플 그릇에 노란 밥 · 새우 · 완두
+    const c = d.ctx;
+    d.shape(() => { c.beginPath(); c.moveTo(-20, -2); c.quadraticCurveTo(-18, 14, 0, 15); c.quadraticCurveTo(18, 14, 20, -2); c.closePath(); }, '#ffc83a', [0, 6, 20]);
+    d.line(c => { for (let i = -3; i <= 3; i++){ c.moveTo(i * 5 - 3, 2); c.lineTo(i * 5 + 3, 12); } }, '#d89a20', .8);
+    d.ell(0, -2, 18, 5, '#fff3c8');
+    for (const [x, y] of [[-9, -5], [-2, -8], [6, -5], [11, -3], [-12, -1], [2, -3]]) d.dot(x, y, 2.2, '#ffe07a');
+    d.shape(() => { c.beginPath(); c.arc(-3, -6, 4, PI * 1.1, PI * 2.1); c.lineWidth = 3; }, '#ff8a6a', [-3, -6, 4]);
+    d.dot(5, -8, 1.5, '#7ac85a'); d.dot(-8, -8, 1.5, '#7ac85a'); d.dot(9, -6, 1.3, '#ff6a4a');
+    for (const [x, a] of [[18, -.5], [21, -.1], [23, .3]]) d.shape(() => { c.beginPath(); c.ellipse(x, -4, 2.2, 8, a, 0, 7); }, '#5ab84a', [x, -4, 8]);
+  },
+  d35(d) { // 새우 타코: 노릇한 또띠아 + 상추 + 새우 + 사워크림
+    const c = d.ctx;
+    d.shape(() => { c.beginPath(); c.moveTo(-20, 10); c.quadraticCurveTo(-18, -16, 0, -16); c.quadraticCurveTo(18, -16, 20, 10); c.quadraticCurveTo(0, 2, -20, 10); c.closePath(); }, '#f0c070', [0, -3, 18]);
+    for (const x of [-12, -4, 4, 12]) d.circle(x, -8, 5, '#7ac85a');
+    for (const x of [-9, 1, 10]) d.shape(() => { c.beginPath(); c.ellipse(x, -12, 5, 3.4, -.3, 0, 7); }, '#ff8a6a', [x, -12, 5]);
+    d.line(c => { c.moveTo(-10, -12); c.lineTo(-7, -13); c.moveTo(0, -12); c.lineTo(3, -13); c.moveTo(9, -12); c.lineTo(12, -13); }, '#ffffff', .9);
+    d.dot(-4, -15, 1.6, '#ffffff'); d.dot(6, -16, 1.4, '#ffffff'); d.dot(-14, -10, 1.2, '#ff5a3a');
+    d.dot(-12, 2, 1, '#d8963a'); d.dot(6, 0, 1, '#d8963a');
+  },
+  d36(d) { // 블루 레모네이드: 파란 바다빛 음료 + 레몬 조각 + 체리
+    const c = d.ctx;
+    d.ell(0, 17, 12, 3.5, '#e8d8c8');
+    d.shape(() => { c.beginPath(); c.moveTo(-11, -14); c.lineTo(11, -14); c.lineTo(8, 16); c.lineTo(-8, 16); c.closePath(); }, '#e8f6ff', [0, 1, 14]);
+    d.shape(() => { c.beginPath(); c.moveTo(-10.4, -7); c.lineTo(10.4, -7); c.lineTo(8, 15); c.lineTo(-8, 15); c.closePath(); }, '#3aa8f0', [0, 4, 12]);
+    d.shape(() => { c.beginPath(); c.moveTo(-9.6, 2); c.lineTo(9.6, 2); c.lineTo(8, 15); c.lineTo(-8, 15); c.closePath(); }, '#1a6ad0', [0, 8, 9]);
+    for (const [x, y] of [[-4, -2], [3, 4], [-2, 9]]) d.rr(x - 2.4, y - 2.4, 4.8, 4.8, 1, '#ffffff');
+    d.circle(10, -14, 6, '#ffe24a'); d.circle(10, -14, 4.2, '#fff6a8'); d.line(c => { c.moveTo(10, -18); c.lineTo(10, -10); c.moveTo(6, -14); c.lineTo(14, -14); }, '#ffe24a', .8);
+    d.line(c => { c.moveTo(-4, -7); c.lineTo(-9, -24); }, '#ff6a8a', 2);
+    d.circle(-2, -16, 3.2, '#e8203a'); d.line(c => { c.moveTo(-2, -19); c.quadraticCurveTo(0, -24, 3, -25); }, '#5a8a3a', .9);
+    d.dot(-6, -4, 1.4, '#ffffff', .6);
   },
 };
