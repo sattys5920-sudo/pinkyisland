@@ -1340,7 +1340,7 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz;
-    Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, pet2: s.pet2 && PET_DRAW[s.pet2.sp] ? {sp:s.pet2.sp, col:Math.max(0, Math.min(2, s.pet2.col|0)), name:String(s.pet2.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', wp:WEAPONS[s.wp] ? s.wp : '', nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
+    Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, pet2: s.pet2 && PET_DRAW[s.pet2.sp] ? {sp:s.pet2.sp, col:Math.max(0, Math.min(2, s.pet2.col|0)), name:String(s.pet2.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', wp:WEAPONS[s.wp] ? s.wp : '', wu:Math.max(0, Math.min(5, s.wu|0)), nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
     if (typeof s.sw==='number' && s.sw !== o.swT){ const fresh = o.swT !== undefined && Date.now() - s.sw < 1500; o.swT = s.sw; if (fresh){ o.swAt = performance.now(); o.swDir = ['up','down','left','right'].includes(s.sd) ? s.sd : o.dir; } }
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
@@ -3076,13 +3076,15 @@ const WEAPON_LIST = [
 const WEAPONS = Object.fromEntries(WEAPON_LIST.map(w=>[w[0], {name:w[1], atk:w[2], gold:w[3], need:w[4], color:w[5]}]));
 const weapon = () => WEAPONS[me.inv.weapon] || WEAPONS.w1;
 let swingTired = false; // 기력이 없으면 힘이 반만 들어가요
-function swordAtk(){ const a = weapon().atk, v = Math.round((a + Math.floor(Math.random()*(a*.25+1)))*(1 + tfx('atk'))); return swingTired ? Math.ceil(v/2) : v; }
+const myWpUp = () => me && me.inv && me.inv.weapon === 'w11' ? Math.max(0, Math.min(5, (me.inv.wpUp || {}).w11 | 0)) : 0; // 끼룩이 매점에서 강화 (+1 마다 공격 +8)
+function swordAtk(){ const a = weapon().atk + myWpUp()*8, v = Math.round((a + Math.floor(Math.random()*(a*.25+1)))*(1 + tfx('atk'))); return swingTired ? Math.ceil(v/2) : v; }
 function weaponPanel(){
   const own = me.inv.weapons || ['w1'];
   openPanel(`경비대 무기고 · 💰 ${me.inv.gold} G`, `<p class="mnote" style="margin-top:0">무기를 바꾸면 공격력이 세져요. 광석은 광산과 동굴에서 캘 수 있어요.</p>` +
     WEAPON_LIST.filter(([id])=>!TREASURE_ONLY.has(id) || own.includes(id)).map(([id,name,atk,gold,need])=>{ const has = own.includes(id), on = weapon()===WEAPONS[id];
       const cost = [gold?gold+' G':'', ...need.map(([k,n])=>`${itemName(k)} ${invCount(k)}/${n}`)].filter(Boolean).join(' · ');
-      return `<button class="np" data-id="${id}"><span class="np-name">🗡️ ${name} <small>공격력 ${atk}</small></span><span class="np-place">${on?'장착 중':has?'장착하기':'만들기'}</span>${has?'':`<span class="np-day">${cost}</span>`}</button>`; }).join(''),
+      const up = id === 'w11' ? Math.min(5, (me.inv.wpUp || {}).w11 | 0) : 0;
+      return `<button class="np" data-id="${id}"><span class="np-name">🗡️ ${name}${up ? ` +${up}` : ''} <small>공격력 ${atk + up*8}</small></span><span class="np-place">${on?'장착 중':has?'장착하기':'만들기'}</span>${has?'':`<span class="np-day">${cost}</span>`}</button>`; }).join(''),
     b=>{ const id = b.dataset.id, w = WEAPONS[id];
       if (!own.includes(id)){
         if (me.inv.gold < w.gold || w.need.some(([k,n])=>invCount(k) < n)) return toast('재료나 돈이 모자라요');
@@ -3282,17 +3284,17 @@ function updateSwing(dt){
 // 손에 든 검 (swords.js): 모양 + 손은 저장 그림으로 한 번만 그리고, 아우라만 매 프레임 그려요
 const SW_HOLD = { down:[9.4, -10.5, -1.25], up:[-9.4, -10.5, -1.9], side:[7.8, -10.5, -.9] };
 function swingShowing(k, since){ const K = typeof SWFX !== 'undefined' && SWFX.K[k]; return since < (K ? K.ms*1.9 : 420); }
-function drawHeld(c, x, y, dir, k, skin, t){
+function drawHeld(c, x, y, dir, k, skin, t, lv = 0){
   if (typeof SWORD_SHAPES === 'undefined' || !SWORD_SHAPES[k]) return;
   const m = dir === 'left' ? -1 : 1, [hx, hy, ang] = SW_HOLD[dir === 'left' || dir === 'right' ? 'side' : dir] || SW_HOLD.down, sk = skin || '#ffd9c4';
   const sp = sprite('sw|'+k+'|'+dir+'|'+sk+'|'+Math.round(view.dpr*view.zoom*2), 90, 90, 45, 70, d=>{ const x = d.ctx; if (m < 0) x.scale(-1, 1); drawHeldSword(x, k, hx, hy, ang, .68, m < 0, false); if (dir !== 'up'){ CLAY.setLight(0, m < 0); CLAY.paint(x, CLAY.EL(hx, hy, 2.6, 3), sk, [hx, hy, 3], {noShadow:true}); } });
   c.drawImage(sp.c, x - sp.ox, y - sp.oy, sp.c.width/sp.sc, sp.c.height/sp.sc);
-  c.save(); c.translate(x, y); if (m < 0) c.scale(-1, 1); drawHeldSwordAura(c, k, hx, hy, ang, .68, t/1000); c.restore();
+  c.save(); c.translate(x, y); if (m < 0) c.scale(-1, 1); drawHeldSwordAura(c, k, hx, hy, ang, .68, t/1000, lv); c.restore();
 }
-function drawSwingAt(c, x, y, k, dir, ms, seed){ if (typeof SWFX === 'undefined') return; const base = {right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[dir] ?? Math.PI/2;
-  c.save(); c.translate(x, y - 16); c.scale(.8, .8); SWFX.draw(c, k, 0, 0, base, ms, seed, (WEAPONS[k] || WEAPONS.w1).color); c.restore(); }
+function drawSwingAt(c, x, y, k, dir, ms, seed, lv = 0){ if (typeof SWFX === 'undefined') return; const base = {right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[dir] ?? Math.PI/2;
+  c.save(); c.translate(x, y - 16); c.scale(.8, .8); SWFX.draw(c, k, 0, 0, base, ms, seed, (WEAPONS[k] || WEAPONS.w1).color, lv); c.restore(); }
 function drawSwing(c, t){
-  if (typeof SWFX !== 'undefined'){ if (me && me.inv) drawSwingAt(c, pos.x, pos.y, me.inv.weapon || 'w1', swingDir, t - swingAt, Math.floor(swingAt) % 9973); return; }
+  if (typeof SWFX !== 'undefined'){ if (me && me.inv) drawSwingAt(c, pos.x, pos.y, me.inv.weapon || 'w1', swingDir, t - swingAt, Math.floor(swingAt) % 9973, myWpUp()); return; }
   const a = (t - swingAt)/180; if (a < 0 || a > 1) return;
   const base = {right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[swingDir] ?? Math.PI/2;
   const from = base - 1.2, to = from + 2.4*Math.min(1, a*1.6), col = weapon().color;
@@ -5486,9 +5488,84 @@ function drawRsTourists(d, t){ const out = []; for (let i = 0; i < 12; i++){ con
   for (let k = 0; k < n; k++){ const ph = t/1000*.4 + i*1.7 + k*2.1, tx = x + Math.sin(ph)*70, ty = y + 30 + Math.abs(Math.cos(ph*.7))*20 + k*6, col = ['#ffd0a0','#c8e0ff','#ffc8e0','#d8f0c0','#e8d8ff'][(i + k)%5];
     out.push({y:ty, draw:()=>{ const c = d.ctx, b = Math.abs(Math.sin(t/120 + k + i))*2; c.save(); c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.ellipse(tx, ty + 1, 9, 3, 0, 0, 7); c.fill(); c.fillStyle = col; c.beginPath(); c.arc(tx, ty - 10 - b, 9, 0, 7); c.fill(); c.beginPath(); c.arc(tx - 5, ty - 18 - b, 3.5, 0, 7); c.arc(tx + 5, ty - 18 - b, 3.5, 0, 7); c.fill(); c.fillStyle = '#2a1a20'; c.fillRect(tx - 3.5, ty - 12 - b, 1.6, 2.4); c.fillRect(tx + 2, ty - 12 - b, 1.6, 2.4); c.restore(); }, label:()=>{}}); } }
   return out; }
-function resortEntities(d, t){ if (zoneId !== 'resort') return []; return [...RS_PLOTS.map((p, i)=>({y:p[1], draw:()=>drawRsPlot(d.ctx, i, t), label:()=>{}})), ...drawRsTourists(d, t)]; }
-function resortObstacles(o){ RS_PLOTS.forEach(([x, y], i)=>{ if (rsPlot(i)) o.rects.push({x:x - 56, y:y - 80, w:112, h:76}); }); }
-function resortTap(w){ if (zoneId !== 'resort') return null; for (let i = 0; i < 12; i++){ const [x, y] = RS_PLOTS[i]; if (Math.abs(w.x - x) < 64 && w.y > y - 110 && w.y < y + 28) return {x, y:y + 30, act:()=>rsPanel(i)}; } return null; }
+function resortEntities(d, t){ if (zoneId !== 'resort') return []; return [...RS_PLOTS.map((p, i)=>({y:p[1], draw:()=>drawRsPlot(d.ctx, i, t), label:()=>{}})), ...drawRsTourists(d, t), {y:KIOSK.y, draw:()=>drawKiosk(d.ctx, t), label:()=>tag(d.ctx, '끼룩이', KIOSK.x - 34, KIOSK.y + 36, null)}]; }
+// ===== 리조트 매점 · 끼룩이 (갈매기 구조요원) =====
+// 주민이 아니라서 호감도 · 선물 · 이야기가 없어요. 늘 하던 말 중 하나를 하고, 간식 팔기 · 불꽃 고래 검 만들기와 강화만 해요
+const KIOSK = {x:662, y:610};
+const KIOSK_LINES = [
+  '끼룩! 어서 와요~ 오늘도 햇볕 좋죠?\n시원한 거 하나 어때요?',
+  '물놀이는 깃발 안쪽에서만!\n끼룩, 그게 규칙이에요~',
+  '(호루라기를 만지작거린다)\n아, 이거요? 그냥 버릇이에요. 끼룩.',
+  '다리 쪽은 물살이 세요.\n그쪽으론 안 가는 게 좋아요~',
+  '…열하나, 열둘.\n아, 아니에요! 파라솔 세고 있었어요. 끼룩!',
+  '저는 저 의자에서 다 보여요.\n그러니까 안심하고 놀아요~ 끼룩.',
+  '아이스크림 녹기 전에 얼른 드세요!\n녹으면 저도 슬퍼요.',
+  '검이 무뎌졌어요? 불꽃 고래 비늘만 있으면\n제가 반짝반짝 손봐 드릴게요!',
+  '휴가는 끝나지 않아요~\n그러니까 천천히, 오래오래 쉬다 가요. 끼룩.',
+  '(먼 바다를 한참 보다가)\n…응? 아무것도 아니에요. 갈매기는 원래 멀리 봐요!',
+];
+const KIOSK_SNACKS = ['dish:d15', 'dish:d13', 'dish:d12', 'dish:d19', 'dish:d22'];
+const kioskPrice = k => Math.max(50, Math.round(itemPrice(k)*1.5/10)*10);
+// 강화 [골드, 재료] · +1 ~ +5 · 늘 성공해요
+const WP_UP = [[30000, [['loot:m78', 1], ['loot:m74', 5]]], [50000, [['loot:m78', 1], ['loot:m76', 8]]], [80000, [['loot:m78', 2], ['loot:m73', 10]]], [120000, [['loot:m78', 2], ['loot:m77', 12]]], [180000, [['loot:m78', 3], ['loot:m75', 15], ['ore:o38', 2]]]];
+function kioskTalk(){ say('끼룩이', KIOSK_LINES[Math.floor(Math.random()*KIOSK_LINES.length)], [['매점', kioskShop], ['검 손질', kioskForge]]); }
+function kioskShop(){
+  const own = (me.inv.weapons || []).includes('w11'), w = WEAPONS.w11;
+  const snack = KIOSK_SNACKS.map(k => `<button class="np" data-id="${k}"><span class="np-name">${itemName(k)}</span><span class="np-place">${kioskPrice(k).toLocaleString()} G</span><span class="np-day">가방에 ${invCount(k)} 개</span></button>`).join('');
+  const sword = own ? '' : `<button class="np" data-id="w11"><span class="np-name">🗡️ ${w.name} <small>공격력 ${w.atk}</small></span><span class="np-place">만들기</span><span class="np-day">${[w.gold.toLocaleString() + ' G', ...w.need.map(([k, n]) => `${itemName(k)} ${invCount(k)}/${n}`)].join(' · ')}</span></button>`;
+  openPanel(`파라솔 매점 · 💰 ${me.inv.gold.toLocaleString()} G`, snack + sword, b => { const id = b.dataset.id;
+    if (id === 'w11'){ if ((me.inv.weapons || []).includes('w11')) return; if (me.inv.gold < w.gold || w.need.some(([k, n]) => invCount(k) < n)) return toast('재료나 돈이 모자라요');
+      me.inv.gold -= w.gold; for (const [k, n] of w.need) invAdd(k, -n); me.inv.weapons = [...(me.inv.weapons || ['w1']), 'w11']; me.inv.weapon = 'w11'; me.inv.sword = true; syncStats(); saveMe(); renderHud(); setExpr('sparkle', 2000); toast(`${w.name}을(를) 만들었어요! 바로 들었어요`); return kioskShop(); }
+    const pr = kioskPrice(id); if (me.inv.gold < pr) return toast('돈이 모자라요'); me.inv.gold -= pr; invAdd(id, 1); saveMe(); renderHud(); toast(`${itemName(id)}을(를) 샀어요`, id); kioskShop(); });
+}
+function kioskForge(){
+  const w = WEAPONS.w11; if (!(me.inv.weapons || []).includes('w11')) return say('끼룩이', `${w.name}이 있어야 손볼 수 있어요.\n매점에서 먼저 만들어 봐요! 끼룩.`, [['매점', kioskShop]]);
+  const lv = Math.min(5, (me.inv.wpUp || {}).w11 | 0), nx = WP_UP[lv];
+  let h = `<div class="np" style="display:block"><b>🗡️ ${w.name} +${lv}</b> <small>공격력 ${w.atk + lv*8}${lv < 5 ? ` → +${lv + 1} 이면 ${w.atk + (lv + 1)*8}` : ' · 끝까지 다 손봤어요'}</small></div>`;
+  if (nx) h += `<button class="np" data-id="up"><span class="np-name">⬆️ +${lv + 1} 로 강화</span><span class="np-place">강화하기</span><span class="np-day">${[nx[0].toLocaleString() + ' G', ...nx[1].map(([k, n]) => `${itemName(k)} ${invCount(k)}/${n}`)].join(' · ')}</span></button>`;
+  openPanel(`검 손질 · 💰 ${me.inv.gold.toLocaleString()} G`, h, () => { const cur = Math.min(5, (me.inv.wpUp || {}).w11 | 0), c = WP_UP[cur]; if (!c) return;
+    if (me.inv.gold < c[0] || c[1].some(([k, n]) => invCount(k) < n)) return toast('재료나 돈이 모자라요');
+    me.inv.gold -= c[0]; for (const [k, n] of c[1]) invAdd(k, -n); me.inv.wpUp = {...(me.inv.wpUp || {}), w11:cur + 1}; syncStats(); saveMe(); renderHud(); setExpr('sparkle', 2200); toast(`${w.name} +${cur + 1}! 공격력 ${w.atk + (cur + 1)*8}`); kioskForge(); });
+}
+// 끼룩이: 동글동글 하얀 갈매기 · 빨간 챙모자 · 노란 끈 호루라기 · 가끔 고개를 돌려 다리 쪽을 봐요
+function drawGull(c, x, y, t, s = 1){
+  const bob = Math.sin(t*2.4)*1.2, look = Math.sin(t*.37) > .82 ? -1 : 0, blink = (t % 4.2) < .12, wing = Math.sin(t*3)*.12;
+  c.save(); c.translate(x, y); c.scale(s, s);
+  c.fillStyle = 'rgba(0,0,0,.14)'; c.beginPath(); c.ellipse(0, 1, 12, 3.4, 0, 0, 7); c.fill(); c.translate(0, -bob);
+  const E = (ex, ey, rx, ry, col, r = 0) => { c.fillStyle = col; c.beginPath(); c.ellipse(ex, ey, rx, ry, r, 0, 7); c.fill(); };
+  E(-4.5, -.5, 3.6, 1.8, '#ffa94d'); E(4.5, -.5, 3.6, 1.8, '#ffa94d');
+  E(-11, -13, 4.2, 8, '#c8ccd8', .35 + wing); E(11, -13, 4.2, 8, '#c8ccd8', -.35 - wing); E(-12.5, -7.5, 2.6, 2.6, '#6a6e80'); E(12.5, -7.5, 2.6, 2.6, '#6a6e80');
+  const g = c.createRadialGradient(-4, -20, 2, 0, -14, 16); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#e8ecf4'); c.fillStyle = g; c.beginPath(); c.ellipse(0, -14, 12.5, 13.5, 0, 0, 7); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.8)'; c.beginPath(); c.ellipse(-4, -22, 4, 2.4, -.4, 0, 7); c.fill();
+  c.strokeStyle = '#ffd23f'; c.lineWidth = .9; c.beginPath(); c.moveTo(-6, -10); c.quadraticCurveTo(0, -3, 6, -10); c.stroke(); E(0, -4.6, 2, 1.5, '#ffd23f'); E(.9, -4.6, .6, .6, '#c89a20');
+  const fx = look*2.5;
+  for (const ex of [-4.6, 4.6]){ if (blink){ c.strokeStyle = '#3a2a3a'; c.lineWidth = 1; c.beginPath(); c.arc(ex + fx, -16, 1.8, .2, Math.PI - .2); c.stroke(); } else { E(ex + fx, -16.4, 2.3, 2.7, '#3a2a3a'); E(ex + fx - .7, -17.4, .9, .9, '#ffffff'); E(ex + fx + .7, -15.4, .4, .4, '#ffffff'); } }
+  E(-8 + fx, -11.6, 2.4, 1.5, 'rgba(255,150,170,.6)'); E(8 + fx, -11.6, 2.4, 1.5, 'rgba(255,150,170,.6)');
+  c.fillStyle = '#ffb02f'; c.beginPath(); c.moveTo(-3.4 + fx, -13.8); c.quadraticCurveTo(fx, -15.2, 3.4 + fx, -13.8); c.quadraticCurveTo(fx + 1.6, -10.6, fx, -9.4); c.quadraticCurveTo(fx - 1.6, -10.6, -3.4 + fx, -13.8); c.fill(); c.strokeStyle = '#d88a20'; c.lineWidth = .5; c.beginPath(); c.moveTo(-2.6 + fx, -12.6); c.quadraticCurveTo(fx, -11.8, 2.6 + fx, -12.6); c.stroke(); E(fx + 1.2, -10.6, .7, .55, '#ff5a5a');
+  c.fillStyle = '#ff5a5a'; c.beginPath(); c.ellipse(0, -25.5, 11, 3.6, 0, Math.PI, 0); c.fill(); E(look ? -4 : 4, -25, 8.5, 1.9, '#e84a4a');
+  c.fillStyle = '#ffffff'; c.fillRect(-1, -28.6, 2, 3.4); c.fillRect(-2.4, -27.3, 4.8, 1.2);
+  c.fillStyle = '#e8ecf4'; c.beginPath(); c.moveTo(-1, -28.8); c.quadraticCurveTo(-2, -32, 0, -33); c.quadraticCurveTo(-.4, -30.6, 1.2, -29); c.fill();
+  c.restore();
+}
+function drawKiosk(c, t){
+  const {x, y} = KIOSK; c.save();
+  // 감시 의자 (바닷가 구조요원 의자 · 다리 쪽을 봐요)
+  c.fillStyle = 'rgba(0,0,0,.16)'; c.beginPath(); c.ellipse(x + 80, y - 14, 30, 6, 0, 0, 7); c.fill();
+  c.strokeStyle = '#c8a070'; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); c.moveTo(x + 62, y - 14); c.lineTo(x + 74, y - 110); c.moveTo(x + 98, y - 14); c.lineTo(x + 86, y - 110); c.moveTo(x + 66, y - 50); c.lineTo(x + 94, y - 50); c.moveTo(x + 70, y - 80); c.lineTo(x + 90, y - 80); c.stroke();
+  c.fillStyle = '#e8b884'; c.beginPath(); c.roundRect(x + 66, y - 118, 30, 9, 3); c.fill(); c.fillStyle = '#ff5a5a'; c.beginPath(); c.roundRect(x + 70, y - 136, 24, 18, 4); c.fill(); c.fillStyle = '#fff'; c.fillRect(x + 80, y - 132, 4, 10); c.fillRect(x + 77, y - 129, 10, 4);
+  c.strokeStyle = '#8a8a9a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + 104, y - 14); c.lineTo(x + 104, y - 74); c.stroke(); c.fillStyle = '#ff5a5a'; c.beginPath(); c.moveTo(x + 104, y - 74); c.lineTo(x + 104 + 16 + Math.sin(t/300)*2, y - 68); c.lineTo(x + 104, y - 62); c.fill();
+  // 파라솔 매점
+  c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(x - 12, y - 10, 58, 9, 0, 0, 7); c.fill();
+  c.fillStyle = '#fffaf2'; c.beginPath(); c.roundRect(x - 62, y - 56, 100, 46, 6); c.fill(); c.fillStyle = '#e8b884'; c.beginPath(); c.roundRect(x - 66, y - 60, 108, 9, 4); c.fill();
+  c.fillStyle = '#ffe9a8'; c.beginPath(); c.roundRect(x - 52, y - 46, 80, 26, 5); c.fill();
+  c.font = '15px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillText('🍦 🍧 🍉', x - 12, y - 28);
+  c.strokeStyle = '#c8a070'; c.lineWidth = 3; c.beginPath(); c.moveTo(x - 58, y - 60); c.lineTo(x - 58, y - 104); c.moveTo(x + 34, y - 60); c.lineTo(x + 34, y - 104); c.stroke();
+  for (let i = 0; i < 8; i++){ c.fillStyle = i % 2 ? '#ff7a8a' : '#ffffff'; c.beginPath(); c.moveTo(x - 70 + i*14.5, y - 110); c.lineTo(x - 70 + (i + 1)*14.5, y - 110); c.lineTo(x - 70 + (i + 1)*14.5 - 1, y - 96); c.quadraticCurveTo(x - 70 + (i + .5)*14.5, y - 90, x - 70 + i*14.5 + 1, y - 96); c.fill(); }
+  c.fillStyle = '#ff7a8a'; c.beginPath(); c.roundRect(x - 72, y - 116, 120, 8, 4); c.fill();
+  c.restore(); drawGull(c, x - 34, y + 12, t/1000, 1.15);
+}
+function resortObstacles(o){ o.rects.push({x:KIOSK.x - 62, y:KIOSK.y - 52, w:100, h:40}, {x:KIOSK.x + 58, y:KIOSK.y - 24, w:44, h:18}); RS_PLOTS.forEach(([x, y], i)=>{ if (rsPlot(i)) o.rects.push({x:x - 56, y:y - 80, w:112, h:76}); }); }
+function resortTap(w){ if (zoneId !== 'resort') return null; if (Math.abs(w.x - KIOSK.x + 10) < 80 && w.y > KIOSK.y - 120 && w.y < KIOSK.y + 24) return {x:KIOSK.x - 34, y:KIOSK.y + 26, act:kioskTalk}; for (let i = 0; i < 12; i++){ const [x, y] = RS_PLOTS[i]; if (Math.abs(w.x - x) < 64 && w.y > y - 110 && w.y < y + 28) return {x, y:y + 30, act:()=>rsPanel(i)}; } return null; }
 // 가게 창: 주인이면 관리, 아니면 놀러 가기
 function rsPanel(i){
   if (!me) return; const pl = rsPlot(i), mine = rsMine();
@@ -6918,7 +6995,7 @@ let lastPres = 0, presSig = '', lastTarget = null;
 function sendPresence(t){
   if (!net || !me || admin || kicked) return; // 다른 곳에서 접속해 밀려난 창은 위치를 안 보내요
   const tgt = target && !keyMoving ? target : null;
-  const p = {z:zoneId, ...(darkDown ? {down:1} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : '', ...(me.inv?.ring ? {rg:me.inv.ring} : {}), ...(me.inv?.sword ? {wp:me.inv.weapon || 'w1'} : {}), ...(mySwingT && [...others.values()].some(o => o.z === zoneId) ? {sw:mySwingT, sd:swingDir} : {})}; // 같은 곳에 다른 사람이 있을 때만 휘두르기를 알려요 (데이터 아끼기)
+  const p = {z:zoneId, ...(darkDown ? {down:1} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : '', ...(me.inv?.ring ? {rg:me.inv.ring} : {}), ...(me.inv?.sword ? {wp:me.inv.weapon || 'w1', ...(myWpUp() ? {wu:myWpUp()} : {})} : {}), ...(mySwingT && [...others.values()].some(o => o.z === zoneId) ? {sw:mySwingT, sd:swingDir} : {})}; // 같은 곳에 다른 사람이 있을 때만 휘두르기를 알려요 (데이터 아끼기)
   if (isRain() && umbKey() && snowOutside()) p.um = umbKey();
   const wps = walkingPets(), pp = wp => ({sp:wp.sp, col:wp.col|0, name:String(wp.name||'').slice(0,8)}); if (wps[0]) p.pet = pp(wps[0]); if (wps[1]) p.pet2 = pp(wps[1]);
   if (tgt){ p.tx = Math.round(tgt.x); p.ty = Math.round(tgt.y); }
@@ -7278,14 +7355,14 @@ function frameBody(t){
       ...bridgeEntities(d, t),
       ...resortEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>{ const ly = n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0); tag(ctx, n.name, n.x, ly, dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null); if (!admin) dlvMark(ctx, n, ly); }})),
-      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.adm) return drawOtumoAny(d, ctx, o.x, o.y, o.dir||'down', t/1000, !!o.mv, o.look); if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); const um = o.um && isRain() && snowOutside(); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'back'); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.wp){ const sm = o.swAt ? t - o.swAt : 1e9; if (!swingShowing(o.wp, sm)) drawHeld(ctx, o.x, o.y, o.dir||'down', o.wp, o.look?.skin, t); if (sm < 1500) drawSwingAt(ctx, o.x, o.y, o.wp, o.swDir || o.dir || 'down', sm, (o.swT|0) % 9973); } if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'front', o.look?.skin); }, label:()=>{ if (o.adm){ otumoLabel(ctx, o.x, o.y); talkBubble(k,o.x,o.y,t); return; } if (o.down){ const dw = downWords(); tag(ctx, `${realNick(o.uid,o.nick)} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,realNick(o.uid,o.nick),o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
+      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.adm) return drawOtumoAny(d, ctx, o.x, o.y, o.dir||'down', t/1000, !!o.mv, o.look); if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); const um = o.um && isRain() && snowOutside(); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'back'); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.wp){ const sm = o.swAt ? t - o.swAt : 1e9; if (!swingShowing(o.wp, sm)) drawHeld(ctx, o.x, o.y, o.dir||'down', o.wp, o.look?.skin, t, o.wu|0); if (sm < 1500) drawSwingAt(ctx, o.x, o.y, o.wp, o.swDir || o.dir || 'down', sm, (o.swT|0) % 9973, o.wu|0); } if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'front', o.look?.skin); }, label:()=>{ if (o.adm){ otumoLabel(ctx, o.x, o.y); talkBubble(k,o.x,o.y,t); return; } if (o.down){ const dw = downWords(); tag(ctx, `${realNick(o.uid,o.nick)} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,realNick(o.uid,o.nick),o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{ if (admin) adminMobLabel(ctx, mob); }})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
       ...snowmenHere().map(([,s])=>({y:s.y, draw:()=>drawSnowman(d, s, t), label:()=>{}})),
       ...(admin && admWalk ? [{y:pos.y, draw:()=>drawOtumoAny(d, ctx, pos.x, pos.y, pos.dir, t/1000, pos.moving, otumoDress && otumoDressLook(otumoDress)), label:()=>{ otumoLabel(ctx, pos.x, pos.y); if (admRevive){ const k = Math.min(1, (t - admRevive.at)/ADM_REVIVE_MS); ctx.save(); ctx.strokeStyle = '#7fe3a0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pos.x, pos.y-104, 9, -Math.PI/2, -Math.PI/2 + k*6.283); ctx.stroke(); ctx.restore(); } }}] : []),
-      ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); const um = umbKey() && isRain() && snowOutside(); if (um) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving, 'back'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (me.inv && me.inv.sword && !fishing && !swingShowing(me.inv.weapon || 'w1', t - swingAt)) drawHeld(ctx, pos.x, pos.y, pos.dir, me.inv.weapon || 'w1', me.look && me.look.skin, t); if (um) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving, 'front', me.look.skin); }, label:()=>{ if (darkDown){ tag(ctx, `${realNick(uid,me.nick)} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } nameTag(ctx,realNick(uid,me.nick),pos.x,pos.y+nameDy(me.inv?.ring),ROOFS[me.roof][1],me.inv?.ring,t); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-76); talkBubble('me',pos.x,pos.y,t); }}]),
+      ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); const um = umbKey() && isRain() && snowOutside(); if (um) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving, 'back'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (me.inv && me.inv.sword && !fishing && !swingShowing(me.inv.weapon || 'w1', t - swingAt)) drawHeld(ctx, pos.x, pos.y, pos.dir, me.inv.weapon || 'w1', me.look && me.look.skin, t, myWpUp()); if (um) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving, 'front', me.look.skin); }, label:()=>{ if (darkDown){ tag(ctx, `${realNick(uid,me.nick)} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } nameTag(ctx,realNick(uid,me.nick),pos.x,pos.y+nameDy(me.inv?.ring),ROOFS[me.roof][1],me.inv?.ring,t); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-76); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);

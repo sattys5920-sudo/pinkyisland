@@ -92,16 +92,18 @@ const SWORD_AURA = (() => {
       rise(c, L, t, 6, 1.6, up, (x, y, p, i) => star4(c, x, y, 1.8*(1 - p) + .5, i % 2 ? '#ffffff' : '#ffe07a', (1 - p))); },
     w10(c, L, t, up){ glow(c, L, 6, 'rgba(170,70,240,.6)', .45 + .3*Math.sin(t*2)); for (let i = 0; i < 7; i++){ const p = (t*.7 + h(i)) % 1, x = h(i, 5)*L, r = 1.5 + p*4; dot(c, x + up[0]*p*16 + Math.sin(t*3 + i)*1.5, up[1]*p*16, r, i % 2 ? '#2a1038' : '#5a2a80', (1 - p)*.45); }
       for (let i = 0; i < 3; i++){ const a = t*1.5 + i*2.1; dot(c, L*.5 + Math.cos(a)*L*.45, Math.sin(a)*6, .9, '#d890ff', .8); } },
-    w11(c, L, t, up){ glow(c, L, 6, 'rgba(255,110,40,.65)', .5 + .25*Math.sin(t*7) + .1*Math.sin(t*19));
-      for (let i = 0; i < 9; i++){ const p = (t*1.4 + h(i)) % 1, x = h(i, 6)*L*.95 + 1, ang = Math.atan2(up[1], up[0]); c.globalAlpha = (1 - p)*.9; c.fillStyle = i % 3 === 0 ? '#ffe07a' : i % 2 ? '#ff9a3a' : '#ff3b1f'; c.beginPath(); c.ellipse(x + up[0]*p*14 + Math.sin(t*6 + i)*1.2, up[1]*p*14, 2.6*(1 - p) + .5, 1.3*(1 - p) + .4, ang, 0, 7); c.fill(); }
-      rise(c, L, t, 4, 1.1, up, (x, y, p) => dot(c, x, y, .7, '#ffe8a0', (1 - p)));
+    w11(c, L, t, up, lv = 0){ glow(c, L, 6 + lv*.8, 'rgba(255,110,40,.65)', .5 + lv*.06 + .25*Math.sin(t*7) + .1*Math.sin(t*19)); // 강화 단계(+1 ~ +5)마다 불꽃이 커져요
+      if (lv >= 3){ for (let i = 0; i < lv - 1; i++){ const a = t*2.4 + i*Math.PI*2/(lv - 1), x = L*.5 + Math.cos(a)*L*.55, y = Math.sin(a)*7; dot(c, x, y, 1.2, i % 2 ? '#ffe07a' : '#ff7a2f', .55 + .45*(Math.sin(a) > 0 ? 1 : .3)); } }
+      if (lv >= 5) glow(c, L, 10, 'rgba(255,220,120,.35)', .4 + .2*Math.sin(t*3));
+      for (let i = 0; i < 9 + lv*3; i++){ const p = (t*1.4 + h(i)) % 1, x = h(i, 6)*L*.95 + 1, ang = Math.atan2(up[1], up[0]); c.globalAlpha = (1 - p)*.9; c.fillStyle = i % 3 === 0 ? '#ffe07a' : i % 2 ? '#ff9a3a' : '#ff3b1f'; c.beginPath(); c.ellipse(x + up[0]*p*14 + Math.sin(t*6 + i)*1.2, up[1]*p*14, 2.6*(1 - p) + .5, 1.3*(1 - p) + .4, ang, 0, 7); c.fill(); }
+      rise(c, L, t, 4 + lv, 1.1, up, (x, y, p) => dot(c, x, y, .7, '#ffe8a0', (1 - p)));
       const sp = (t/2.6) % 1; if (sp < .35){ const q = sp/.35; for (let i = 0; i < 5; i++){ const a = (i - 2)*.35; dot(c, L + up[0]*q*14 + Math.cos(a)*q*5, up[1]*q*14 + Math.sin(a)*q*5, .9*(1 - q) + .3, '#ffd27a', 1 - q); } } },
   };
 })();
-function drawHeldSwordAura(c, k, hx, hy, ang, s = 1, t = performance.now()/1000){ const L = SWORD_LEN[k] || 26, G = SWORD_GRIP[k] || 9, f = SWORD_AURA[k]; if (!f) return;
+function drawHeldSwordAura(c, k, hx, hy, ang, s = 1, t = performance.now()/1000, lv = 0){ const L = SWORD_LEN[k] || 26, G = SWORD_GRIP[k] || 9, f = SWORD_AURA[k]; if (!f) return;
   // 화면 '위' 방향을 칼 좌표로
   const up = [Math.cos(-Math.PI/2 - ang), Math.sin(-Math.PI/2 - ang)];
-  c.save(); c.translate(hx, hy); c.rotate(ang); c.scale(s, s); c.translate(G*.5, 0); f(c, L, t, up); c.restore(); }
+  c.save(); c.translate(hx, hy); c.rotate(ang); c.scale(s, s); c.translate(G*.5, 0); f(c, L, t, up, lv|0); c.restore(); }
 
 // 검마다 다른 휘두르기 연출 · 비싼 검일수록 화려하게 (단계 1 → 11)
 // 상태 없이 "휘두른 뒤 지난 시간(ms)" 과 seed 만으로 그려요
@@ -182,18 +184,18 @@ const SWFX = (() => {
       c.save(); for (let i = 0; i < 14; i++){ const ang = from + hash(s, i)*(to - from), d = 58, t = life; const x = Math.cos(ang)*d + (hash(s, i + 3) - .5)*50*t, y = Math.sin(ang)*d - 50*t; A(c, (1 - life)*.5); dot(c, x, y, 8 + 22*t, i % 2 ? '#1a0824' : '#4a1a70'); } c.restore();
       if (life < .3){ glowDisc(c, hx, hy, 80, 'rgba(160,60,240,.8)', 1 - life/.3); glowDisc(c, 0, 0, 200, 'rgba(20,0,30,.45)', (1 - life/.3)); } } },
     // 11 불꽃 고래 검: 세 겹 불꽃 칼바람 + 불꽃 고래 꼬리가 바닥을 내려침 + 용암 기둥 + 불씨 폭풍 + 붉은 번쩍 + 화면 흔들림
-    w11: { ms: 270, life: 1200, R: 60, span: 3.2, shake: 8, draw(c, a, p, s, col, from, to, life){
+    w11: { ms: 270, life: 1200, R: 60, span: 3.2, shake: 8, draw(c, a, p, s, col, from, to, life, lv = 0){
       const f = Math.max(0, 1 - life*1.2); crescent(c, 66, from, to, 44, 'rgba(255,190,80,.5)', f); crescent(c, 62, from + .05, to, 28, '#ff6a2f', f*.9); crescent(c, 60, from + .1, to, 12, '#ff2f1a', f); crescent(c, 60, from + .16, to, 4, '#fff0b0', f); if (a <= 1) blade(c, to);
       const [hx, hy] = hitAt(from, to, 64);
       if (life > .08 && life < .7){ const b = (life - .08)/.62, tx = hx, ty = hy - 40 + b*30; c.save(); A(c, Math.sin(b*Math.PI)*.9); c.fillStyle = '#ff7a2f'; c.translate(tx, ty); c.scale(1.4, 1.4); c.beginPath(); c.moveTo(0, 14); c.quadraticCurveTo(-4, 2, -18, -8); c.quadraticCurveTo(-6, -6, 0, 2); c.quadraticCurveTo(6, -6, 18, -8); c.quadraticCurveTo(4, 2, 0, 14); c.fill(); c.fillStyle = '#ffd23f'; c.scale(.55, .55); c.beginPath(); c.moveTo(0, 12); c.quadraticCurveTo(-4, 2, -16, -6); c.quadraticCurveTo(-5, -4, 0, 3); c.quadraticCurveTo(5, -4, 16, -6); c.quadraticCurveTo(4, 2, 0, 12); c.fill(); c.restore(); }
       for (const [d, k] of [[.18, 1], [.32, .7]]){ if (life > d){ const b = (life - d)/(1 - d); c.save(); A(c, (1 - b)*k); c.strokeStyle = '#ff5a1f'; c.lineWidth = 5*(1 - b) + 1; c.beginPath(); c.ellipse(hx, hy + 18, 20 + 130*b, (20 + 130*b)*.35, 0, 0, 7); c.stroke(); c.restore(); } }
-      if (life > .2 && life < .85){ const b = (life - .2)/.65; c.save(); for (let i = 0; i < 5; i++){ const ang = hash(s, i + 30)*Math.PI*2, d = 30 + hash(s, i + 31)*70, x = hx + Math.cos(ang)*d, y = hy + 18 + Math.sin(ang)*d*.35, hgt = 70*Math.sin(Math.min(1, b*1.6)*Math.PI)*(.6 + hash(s, i + 32)*.6); A(c, (1 - b)*.9); const q = c.createLinearGradient(0, y, 0, y - hgt); q.addColorStop(0, '#ff3b1f'); q.addColorStop(.6, '#ffb347'); q.addColorStop(1, 'rgba(255,240,170,0)'); c.fillStyle = q; c.beginPath(); c.moveTo(x - 6, y); c.quadraticCurveTo(x - 3, y - hgt*.6, x, y - hgt); c.quadraticCurveTo(x + 3, y - hgt*.6, x + 6, y); c.closePath(); c.fill(); } c.restore(); }
-      c.save(); burst(c, s, 22, hx, hy, ease(life), 110, (x, y, ang, i) => { A(c, 1 - life); dot(c, x, y - life*40, 2.6*(1 - life) + .5, i % 3 === 0 ? '#ffe07a' : i % 2 ? '#ff9a3a' : '#ff3b1f'); }); c.restore();
-      if (life < .3){ glowDisc(c, hx, hy, 90, 'rgba(255,110,40,.85)', 1 - life/.3); glowDisc(c, 0, 0, 220, 'rgba(255,60,20,.3)', (1 - life/.3)); } } },
+      if (life > .2 && life < .85){ const b = (life - .2)/.65; c.save(); for (let i = 0; i < 5 + lv; i++){ const ang = hash(s, i + 30)*Math.PI*2, d = 30 + hash(s, i + 31)*70, x = hx + Math.cos(ang)*d, y = hy + 18 + Math.sin(ang)*d*.35, hgt = 70*Math.sin(Math.min(1, b*1.6)*Math.PI)*(.6 + hash(s, i + 32)*.6); A(c, (1 - b)*.9); const q = c.createLinearGradient(0, y, 0, y - hgt); q.addColorStop(0, '#ff3b1f'); q.addColorStop(.6, '#ffb347'); q.addColorStop(1, 'rgba(255,240,170,0)'); c.fillStyle = q; c.beginPath(); c.moveTo(x - 6, y); c.quadraticCurveTo(x - 3, y - hgt*.6, x, y - hgt); c.quadraticCurveTo(x + 3, y - hgt*.6, x + 6, y); c.closePath(); c.fill(); } c.restore(); }
+      c.save(); burst(c, s, 22 + lv*6, hx, hy, ease(life), 110 + lv*10, (x, y, ang, i) => { A(c, 1 - life); dot(c, x, y - life*40, 2.6*(1 - life) + .5, i % 3 === 0 ? '#ffe07a' : i % 2 ? '#ff9a3a' : '#ff3b1f'); }); c.restore();
+      if (life < .3){ glowDisc(c, hx, hy, 90 + lv*10, 'rgba(255,110,40,.85)', 1 - life/.3); glowDisc(c, 0, 0, 220 + lv*20, 'rgba(255,60,20,.3)', (1 - life/.3)); } } },
   };
-  function draw(c, kind, x, y, base, ms, seed, col){ CUR = K[kind] ? kind : 'w1'; const k = K[kind] || K.w1; const total = k.ms + k.life; if (ms < 0 || ms > total) return false;
+  function draw(c, kind, x, y, base, ms, seed, col, lv = 0){ CUR = K[kind] ? kind : 'w1'; const k = K[kind] || K.w1; const total = k.ms + k.life; if (ms < 0 || ms > total) return false;
     const a = ms/k.ms, p = ease(Math.min(1, a)), from = base - k.span/2, to = from + k.span*p, life = Math.max(0, (ms - k.ms*.5)/(total - k.ms*.5));
-    c.save(); c.translate(x, y); k.draw(c, a, p, seed, col, from, to, life); if (a > 1 && a < 2.2){ c.save(); c.globalAlpha *= Math.min(1, (2.2 - a)/.5); blade(c, to); c.restore(); } c.restore(); return true; }
+    c.save(); c.translate(x, y); k.draw(c, a, p, seed, col, from, to, life, lv|0); if (a > 1 && a < 2.2){ c.save(); c.globalAlpha *= Math.min(1, (2.2 - a)/.5); blade(c, to); c.restore(); } c.restore(); return true; }
   const shake = (kind, ms) => { const k = K[kind]; if (!k || !k.shake || ms < k.ms*.8 || ms > k.ms + 200) return [0, 0]; const f = 1 - (ms - k.ms*.8)/(k.ms*.2 + 200); return [Math.sin(ms*.9)*k.shake*f, Math.cos(ms*1.3)*k.shake*f*.6]; };
   return { draw, shake, K };
 })();
