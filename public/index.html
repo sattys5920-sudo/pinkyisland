@@ -185,6 +185,8 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .cl-tabs{display:flex;gap:6px}.cl-tabs .on{background:#3b2418;color:#f2d16b}.cl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cl-th{background:#fff;padding:4px 4px 6px;border:0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.25);font:inherit;cursor:pointer;text-align:left;color:var(--ink)}
 .cl-th em{font-style:normal;font-size:15px;display:block;margin-top:4px;line-height:1.2}.cl-th.off{background:#e6dcca;cursor:default}.cl-q{aspect-ratio:4/3;background:#3a2529;color:#a88a8a;display:flex;align-items:center;justify-content:center;font-size:34px;border-radius:6px}.cl-hud{margin-right:6px;pointer-events:auto}
 .dk-img{display:block;max-width:100%;max-height:0;margin:0 auto 8px;border-radius:12px;object-fit:contain;cursor:zoom-in;transition:max-height .2s}.dk-img.on{max-height:42vh}.dk-img.big{max-height:80vh;cursor:zoom-out}.adm-qimg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.adm-qimg img{height:70px;border-radius:8px;background:#fff}.adm-qimg label.adm-btn{cursor:pointer}
+.dk-imw{position:relative;width:fit-content;max-width:100%;margin:0 auto 8px}.dk-imw .dk-img{margin:0}.dk-nm{position:absolute;white-space:nowrap;font-family:"Maple",sans-serif;font-weight:400;line-height:1;pointer-events:none}
+#filmBox{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 110px);transform:translateX(-50%);z-index:9;background:rgba(28,20,30,.94);border-radius:18px;padding:8px;box-shadow:0 8px 30px rgba(0,0,0,.6)}#filmCv{display:block;width:min(84vw,380px);height:auto;touch-action:none;border-radius:12px;cursor:grab}#filmX{position:absolute;right:10px;top:10px}
 .dk-q{font-size:18px;line-height:1.5;margin:4px 2px 10px;white-space:pre-wrap}.dk-ans{display:flex;gap:6px;margin-bottom:8px}.dk-ans input{flex:1;min-width:0;font:inherit;font-size:18px;padding:8px 12px;border-radius:12px;border:2px solid #f2c6d6}.dk-ok{color:#2f9b57;font-size:17px}.adm-lhead i.rd{color:#7dff9a;margin-left:6px;font-style:normal}.adm-lhead i.unrd{color:#ffb86b;margin-left:6px;font-style:normal}
 .adm-dark{display:grid;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.12)}.adm-dark small{opacity:.8}
 .worn-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}.worn-row>b{font-size:14px;width:100%}.worn{display:flex;align-items:center;gap:6px;background:#fff;border:0;border-radius:14px;padding:4px 10px 4px 4px;box-shadow:0 2px 0 #f2d6e1;font:inherit;cursor:pointer;color:inherit}.worn img{width:38px;height:38px}.worn span{display:grid;line-height:1.15;text-align:left;font-size:13px}.worn small{color:var(--soft,#9b7d8b);font-size:11px}.worn b{font-size:12px;color:#e0708f;margin-left:2px}
@@ -1423,6 +1425,7 @@ function soloNet(){
     adminGrant: async (id, d) => { if (id === uid) onGrants({['g'+Date.now()]:d}); },
     reviveClear: async () => {},
     darkWipe: async npc => { const st_ = soloNet.dark || (soloNet.dark = {}); if (npc) delete st_[npc]; else for (const k in st_) delete st_[k]; onDarkRooms(structuredClone(st_)); },
+    darkFilmXY: async (npc, x, y) => { const f = soloNet.dark?.[npc]?.film; if (f){ f.x = x; f.y = y; onDarkRooms(structuredClone(soloNet.dark)); } },
     adminRemove: async id => { delete st.players[id]; onPlayers(structuredClone(st.players)); },
     sessionClaim: () => {},
     presence: async () => {},
@@ -1490,6 +1493,7 @@ function firebaseNet(){
     rsSet: up => F.update(F.ref(db, 'resort'), up),
     darkTx: async (npc, fn) => { try { const r = await F.runTransaction(F.ref(db, 'darkRooms/'+npc), cur => fn(cur)); return r.committed; } catch(e){ return false; } },
     darkWipe: npc => F.remove(F.ref(db, 'darkRooms' + (npc ? '/'+npc : ''))),
+    darkFilmXY: (npc, x, y) => F.update(F.ref(db, `darkRooms/${npc}/film`), {x, y}).catch(()=>{}),
     darkQSet: (npc, pid, pub, plain) => F.update(F.ref(db), {[`darkQ/${npc}/${pid}`]: pub || null, [`darkQA/${npc}/${pid}`]: plain || null, ...(pub ? {} : {[`darkImg/${npc}/${pid}`]: null})}),
     darkQA: cb => F.onValue(F.ref(db, 'darkQA'), s=>cb(s.val() || {}), ()=>{}),
     balloonPop: async (ev, i, v) => { try { const r = await F.runTransaction(F.ref(db, `balloons/${ev}/${i}`), cur => cur ? undefined : v); return r.committed; } catch(e){ return false; } },
@@ -5728,8 +5732,11 @@ function darkPuzzles(npc){ const base = darkBase(npc), o = darkQ[npc]; if (!o) r
 // 문제 그림: darkImg/<주민>/<문제 id> 에 따로 두고, 문제를 열 때만 불러와요 (im = 올린 시각, 바뀌면 다시 받아요)
 const darkImgCache = {};
 function darkImgGet(npc, pid, im, cb){ const k = `${npc}|${pid}|${im}`; if (!darkImgCache[k]) darkImgCache[k] = Promise.resolve(net.darkImg(npc, pid)).catch(() => { delete darkImgCache[k]; return ''; }); darkImgCache[k].then(d => cb(d || '')); }
-const darkImgHtml = (npc, pz) => pz.im ? `<img class="dk-img" data-dkimg="${npc}|${pz.id}|${pz.im}" alt="문제 그림" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">` : '';
-function darkImgFill(root){ for (const el of (root || document).querySelectorAll('img[data-dkimg]')){ const [npc, pid, im] = el.dataset.dkimg.split('|'); darkImgGet(npc, pid, im, d => { if (d) { el.src = d; el.classList.add('on'); } }); } }
+const darkImgHtml = (npc, pz) => pz.im ? `<img class="dk-img" data-dkimg="${npc}|${pz.id}|${pz.im}" alt="문제 그림" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">`
+  : (pz.img || []).map((src, i) => `<div class="dk-imw"><img class="dk-img on" alt="" src="${esc(src)}">${((pz.nm || {})[(pz.imgKey || [])[i]] || []).map(n => `<span class="dk-nm" data-s="${n.s}" style="left:${n.x*100}%;top:${n.y*100}%;color:${n.c};transform:translate(${n.al === 'left' ? 0 : -50}%,-50%)">${esc(n.t.replace('{n}', String(me.nick || '').slice(0, 10)))}</span>`).join('')}</div>`).join(''); // 기본 그림 · 이름 칸은 내 닉네임
+const dkNmRO = window.ResizeObserver ? new ResizeObserver(es => { for (const e of es) for (const sp of e.target.parentNode.querySelectorAll('.dk-nm')) sp.style.fontSize = (+sp.dataset.s * e.target.clientHeight).toFixed(1) + 'px'; }) : null;
+function darkImgFill(root){ for (const im of (root || document).querySelectorAll('.dk-imw img')) if (im.parentNode.querySelector('.dk-nm')) dkNmRO?.observe(im);
+  for (const el of (root || document).querySelectorAll('img[data-dkimg]')){ const [npc, pid, im] = el.dataset.dkimg.split('|'); darkImgGet(npc, pid, im, d => { if (d) { el.src = d; el.classList.add('on'); } }); } }
 // 관리자가 고른 그림을 줄여요 (긴 쪽 900px, JPEG). 너무 크면 한 번 더 줄여요
 async function shrinkImage(file){ const url = URL.createObjectURL(file); try { const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
   for (const [max, q] of [[900, .82], [700, .72], [520, .65]]){ const k = Math.min(1, max/Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width*k); c.height = Math.round(im.height*k); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); const d = c.toDataURL('image/jpeg', q); if (d.length < 600000) return d; }
@@ -5898,6 +5905,7 @@ function darkEntities(d, t){
   const r = roomOf(z.dark);
   if (z.floors){ const R = darkRoomOf(z.dark);
     for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawEvidence(d.ctx, pz), label:()=>darkObjLabel(d, pz, r, t)});
+    for (const p of darkProps(z.dark)) out.push({y:p.y, draw:()=>drawDarkProp(d.ctx, p), label:()=>darkPropLabel(d, p, t)});
     for (const st of R.stairs) if (st.gate && stairLocked(z.dark, st)) out.push({y:floorTop(st.f)+st.rect[1]+st.rect[3], draw:()=>drawStairLock(d.ctx, z.dark, st, t), label:()=>{}});
     for (const st of R.stairs) if (Math.hypot(pos.x-st.at[0], pos.y-st.at[1]) < 160 && !(st.f === 3 && darkBossUp(r))) out.push({y:-1, draw:()=>{}, label:()=>tag(d.ctx, st.label + (st.gate && stairLocked(z.dark, st) ? ' · 꿰매짐' : ''), st.at[0], st.at[1] - 20, st.gate && stairLocked(z.dark, st) ? '#ff4f87' : null)}); }
   else for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawFurn(d, {id:pz.furn}, pz.x, pz.y), label:()=>darkObjLabel(d, pz, r, t)});
@@ -6012,6 +6020,7 @@ function darkTap(w){
   for (const [id, p] of husksHere()) if (Math.abs(w.x-p.zx) < 30 && w.y > p.zy-40 && w.y < p.zy+14) return {x:p.zx + 30, y:p.zy + 10, act:()=>huskLook(id)};
   const z = Z(); if (!z.dark) return null;
   for (const pz of darkPuzzles(z.dark)) if (Math.abs(w.x-pz.x) < 34 && w.y > pz.y-80 && w.y < pz.y+12) return {x:pz.x, y:pz.y+34, act:()=>darkPuzzlePanel(pz)};
+  for (const p of darkProps(z.dark)) if (Math.abs(w.x-p.x) < 34 && w.y > p.y-80 && w.y < p.y+12) return {x:p.x, y:p.y+34, act:()=>darkPropPanel(p)};
   if (z.floors) for (const st of darkRoomOf(z.dark).stairs){ const y0 = floorTop(st.f), [x, y, w2, h] = st.rect; if (w.x > x && w.x < x+w2 && w.y > y0+y && w.y < y0+y+h+40) return {x:st.at[0], y:st.at[1], act:()=>darkStair(z.dark, st)}; }
   return null;
 }
@@ -6065,15 +6074,16 @@ function updateDown(dt, t){
 }
 // ----- 문제 -----
 const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
-function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of darkPuzzles(z.dark)){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
+function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of [...darkPuzzles(z.dark), ...darkProps(z.dark)]){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
 function darkPuzzlePanel(pz){
   const npc = Z().dark; if (!npc) return; const r = roomOf(npc), done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), list = darkPuzzles(npc);
   const shown = done && (done.ans || pz.a[0] || ''), body = done ? `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
     : lock ? `<p class="dk-q">굳게 닫혀 있어요. 꿈쩍도 하지 않아요.</p><p class="mnote">어딘가에서 다른 것이 먼저 열려야 할 것 같아요.</p>`
-    : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>`;
+    : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>${pz.film ? filmBtnHtml(pz.film) : ''}`;
   openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body + (admin ? '' : `<button class="mini" id="dkBook">단서 수첩 ${clueCount(npc)}/${CLUE_N}</button>`)); darkImgFill($('npcPanel')); if ($('dkBook')) $('dkBook').onclick = () => clueBook(npc);
   for (const el of $('npcPanel').querySelectorAll('.dk-img')) el.onclick = () => el.classList.toggle('big'); // 누르면 크게
   if (done || lock) return;
+  if (pz.film) filmBtnWire(pz.film);
   const go = async () => {
     const v = $('dkIn').value; if (!darkNorm(v)) return;
     if (!(await darkCheck(npc, pz, v))){ if ($('dkIn')){ $('dkIn').value = ''; $('dkIn').placeholder = '틀렸어요. 다시 생각해 봐요'; } setExpr('sad', 1200); return; }
@@ -6086,6 +6096,81 @@ function darkPuzzlePanel(pz){
   $('dkHint').onclick = () => { $('dkHintT').hidden = false; };
   setTimeout(()=>$('dkIn')?.focus(), 50);
 }
+// ----- 창턱 같은 물건 (문제가 아니에요: 그림만 보거나 필름을 들어요) -----
+const darkProps = npc => (darkRoomOf(npc)?.props || []).map(p => p.prop ? p : Object.assign(p, {prop:true}));
+function drawDarkProp(c, p){ const x = p.x, y = p.y - 34; c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 6;
+  if (p.film){ if (filmOf(Z().dark)[p.film] && !filmFree(p.film)){ c.restore(); return; } c.fillStyle = 'rgba(215,232,240,.5)'; c.fillRect(x-15, y-10, 30, 18); c.shadowBlur = 0; c.strokeStyle = 'rgba(240,250,255,.9)'; c.lineWidth = 1.5; c.strokeRect(x-15, y-10, 30, 18); c.fillStyle = 'rgba(20,14,22,.7)'; for (let i = 0; i < 30; i++) c.fillRect(x-13 + (i*7 % 26), y-8 + (i*5 % 14), 2, 2); }
+  else { c.translate(x, y); c.rotate(-.12); c.fillStyle = '#eadfc4'; c.fillRect(-14, -12, 28, 22); c.shadowBlur = 0; c.fillStyle = 'rgba(80,60,40,.5)'; for (let i = 0; i < 4; i++) c.fillRect(-10, -7 + i*5, 18 - (i%2)*6, 1.5); }
+  c.restore(); }
+function darkPropLabel(d, p, t){ const c = d.ctx, x = p.x, y = p.y - 86, b = Math.sin(t/260 + x) * 3; if (p.film && filmOf(Z().dark)[p.film] && !filmFree(p.film)) return;
+  d.circle(x, y + b, 11, '#ff4f87'); c.save(); c.font = 'bold 20px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText('?', x, y + b + 6); c.restore(); }
+function darkPropPanel(p){ const npc = Z().dark; if (!npc) return;
+  openPanel(esc(p.title), darkImgHtml(npc, p) + (p.film ? filmBtnHtml(p.film) : '')); darkImgFill($('npcPanel'));
+  for (const el of $('npcPanel').querySelectorAll('.dk-img')) el.onclick = () => el.classList.toggle('big');
+  if (p.film) filmBtnWire(p.film); }
+// ----- 토리 방 ① 필름 두 장: 한 사람이 한 장만 들어요. 한 장만 보면 잡음 → 다른 필름을 든 사람과 가까이 서서 끌어 맞추면 숫자가 보여요 -----
+// darkRooms/tori/film = {A:{u, n}, B:{u, n}, x, y}  x, y = 필름 A 에 대한 필름 B 의 위치 (필름 그림 픽셀). 0, 0 이면 딱 맞아요
+const FILM_PX = 2, FILM_W = 70, FILM_H = 42, FW_ = FILM_W*FILM_PX*2, FH_ = FILM_H*FILM_PX*2, FILM_NEAR = 220;
+const filmOf = npc => (npc && roomOf(npc).film) || {};
+const filmNpc = () => { const z = Z(); return z.dark && darkPuzzles(z.dark).some(p => p.film) ? z.dark : null; };
+const filmLive = u => u === uid || [...others.entries()].some(([id, o]) => id === u && o.z === zoneId);
+const filmFree = k => { const h = filmOf(filmNpc())[k]; return !h || !filmLive(h.u); };
+const filmMine = () => { const f = filmOf(filmNpc()); return f.A?.u === uid ? 'A' : f.B?.u === uid ? 'B' : null; };
+const filmActive = () => { const npc = filmNpc(); if (!npc) return false; const r = roomOf(npc), pz = darkPuzzles(npc).find(p => p.film); return !!(r.start && !r.clear && pz && !(r.solved || {})[pz.id]); };
+const filmRnd = () => { const sg = () => Math.random() < .5 ? -1 : 1; return {x:sg()*Math.round(40 + Math.random()*50), y:sg()*Math.round(24 + Math.random()*30)}; };
+function filmBtnHtml(k){ if (!filmActive()) return ''; const m = filmMine(); return m === k ? '<button class="btn" id="dkFilm">내려놓기</button>' : !m && filmFree(k) ? '<button class="btn" id="dkFilm">필름 들기</button>' : ''; }
+function filmBtnWire(k){ const b = $('dkFilm'); if (b) b.onclick = () => { $('npcPanel').hidden = true; filmMine() === k ? filmDrop() : filmPick(k); }; }
+async function filmPick(k){ const npc = filmNpc(); if (!npc) return;
+  const ok = await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear) return undefined; const f = cur.film || {}, o = k === 'A' ? 'B' : 'A';
+    if ((f[k] && f[k].u !== uid && filmLive(f[k].u)) || f[o]?.u === uid) return undefined;
+    return {...cur, film:{...f, [k]:{u:uid, n:String(me.nick || '').slice(0, 12)}, ...(typeof f.x === 'number' ? {} : filmRnd())}}; });
+  if (ok){ filmSnd('pick'); filmHidden = false; } }
+async function filmDrop(){ const npc = filmNpc(); if (!npc) return; const k = filmMine(); if (!k) return;
+  if (await net.darkTx(npc, cur => { if (!cur || cur.film?.[k]?.u !== uid) return undefined; const {[k]:_, ...f} = cur.film; return {...cur, film:{...f, ...filmRnd()}}; })) filmSnd('drop'); }
+let filmCv = null, filmImg = null, filmDrag = null, filmLocal = null, filmWas = false, filmLink = false, filmHidden = false, filmSendT = 0, filmSendQ = null;
+function filmBuild(){ if (filmImg) return; filmImg = 'wait';
+  document.fonts.load('bold 30px "Maple"').catch(()=>{}).then(() => { const sc = document.createElement('canvas'); sc.width = FILM_W; sc.height = FILM_H; const o = sc.getContext('2d');
+    o.fillStyle = '#fff'; o.fillRect(0, 0, FILM_W, FILM_H); o.font = 'bold 25px "Maple",sans-serif'; o.textAlign = 'center'; o.textBaseline = 'middle'; o.fillStyle = '#000'; o.fillText('03·15', FILM_W/2, FILM_H/2 + 2);
+    const d = o.getImageData(0, 0, FILM_W, FILM_H).data, P = [[1,0,0,1],[0,1,1,0],[1,1,0,0],[0,0,1,1],[1,0,1,0],[0,1,0,1]], mk = () => { const k = document.createElement('canvas'); k.width = FW_; k.height = FH_; return k; };
+    const A = mk(), B = mk(), G = document.createElement('canvas'), a = A.getContext('2d'), b = B.getContext('2d'); a.fillStyle = b.fillStyle = 'rgba(18,12,22,.95)'; G.width = FILM_W; G.height = FILM_H;
+    const gd = G.getContext('2d'), gi = gd.createImageData(FILM_W, FILM_H);
+    for (let y = 0; y < FILM_H; y++) for (let x = 0; x < FILM_W; x++){ const blk = d[(y*FILM_W + x)*4] < 128, p = P[Math.floor(Math.random()*6)], q = blk ? p.map(v => 1 - v) : p, j = (y*FILM_W + x)*4;
+      gi.data[j] = 255; gi.data[j+1] = 200; gi.data[j+2] = 120; gi.data[j+3] = blk ? 255 : 0;
+      for (let k = 0; k < 4; k++){ const X = x*FILM_PX*2 + (k % 2)*FILM_PX, Y = y*FILM_PX*2 + (k >> 1)*FILM_PX; if (p[k]) a.fillRect(X, Y, FILM_PX, FILM_PX); if (q[k]) b.fillRect(X, Y, FILM_PX, FILM_PX); } }
+    gd.putImageData(gi, 0, 0); filmImg = {A, B, G}; }); }
+function filmBox(){ if (filmCv) return filmCv; const d = document.createElement('div'); d.id = 'filmBox'; d.hidden = true; d.innerHTML = '<canvas id="filmCv" width="420" height="270"></canvas><button class="mini" id="filmX">닫기</button>'; document.body.appendChild(d);
+  filmCv = $('filmCv'); $('filmX').onclick = () => { filmHidden = true; d.hidden = true; };
+  const at = e => { const r = filmCv.getBoundingClientRect(); return [(e.clientX - r.left)*filmCv.width/r.width, (e.clientY - r.top)*filmCv.height/r.height]; };
+  filmCv.addEventListener('pointerdown', e => { const st = filmState(); if (!st.partner || st.ok) return; filmCv.setPointerCapture(e.pointerId); filmDrag = {p:at(e), x:st.x, y:st.y, sg:st.mine === 'A' ? 1 : -1}; filmCv.style.cursor = 'grabbing'; });
+  filmCv.addEventListener('pointermove', e => { if (!filmDrag) return; const [px, py] = at(e); let x = Math.round(filmDrag.x + filmDrag.sg*(px - filmDrag.p[0])), y = Math.round(filmDrag.y + filmDrag.sg*(py - filmDrag.p[1]));
+    x = Math.max(-150, Math.min(150, x)); y = Math.max(-100, Math.min(100, y)); const snap = Math.abs(x) <= 3 && Math.abs(y) <= 3; if (snap){ x = 0; y = 0; }
+    filmLocal = {x, y, until:performance.now() + 900}; filmSend(x, y, snap); if (snap){ filmDrag = null; filmCv.style.cursor = ''; } });
+  const end = () => { filmDrag = null; filmCv.style.cursor = ''; }; filmCv.addEventListener('pointerup', end); filmCv.addEventListener('pointercancel', end);
+  return filmCv; }
+function filmSend(x, y, now){ filmSendQ = [x, y]; const t = performance.now(); if (!now && t - filmSendT < 110) return setTimeout(() => filmSendQ && performance.now() - filmSendT >= 110 && filmFlush(), 120); filmFlush(); }
+function filmFlush(){ const npc = filmNpc(); if (!npc || !filmSendQ) return; filmSendT = performance.now(); const [x, y] = filmSendQ; filmSendQ = null; net.darkFilmXY(npc, x, y); }
+function filmState(){ const f = filmOf(filmNpc()), mine = filmMine(), o = mine === 'A' ? 'B' : 'A', h = f[o], L = filmLocal && performance.now() < filmLocal.until ? filmLocal : null;
+  const po = h && h.u !== uid ? others.get(h.u) : null, partner = !!(po && po.z === zoneId && Math.hypot(po.x - pos.x, po.y - pos.y) < FILM_NEAR);
+  const x = L ? L.x : (f.x | 0), y = L ? L.y : (f.y | 0); return {mine, partner, x, y, ok:partner && x === 0 && y === 0}; }
+function filmTick(){ const on = filmActive() && !!filmMine(); if (!on){ if (filmCv) filmCv.parentNode.hidden = true; filmWas = filmLink = false; filmHidden = false; return; }
+  const st = filmState(); if (st.partner && !filmLink) filmHidden = false; if (st.partner !== filmLink){ filmLink = st.partner; if (st.partner) filmSnd('link'); }
+  if (st.ok && !filmWas) filmSnd('snap'); filmWas = st.ok; filmBuild(); const cv = filmBox(); cv.parentNode.hidden = filmHidden; if (filmHidden || !filmImg || filmImg === 'wait') return;
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height, cx = Math.round(W/2 - FW_/2), cy = Math.round(H/2 - FH_/2) + 6, sg = st.mine === 'A' ? 1 : -1, ox = cx + sg*st.x, oy = cy + sg*st.y, now = performance.now()/1000;
+  g.imageSmoothingEnabled = false; g.fillStyle = '#2a1e28'; g.fillRect(0, 0, W, H);
+  const frame = (x, y, blue, ok) => { g.fillStyle = blue ? 'rgba(160,210,255,.12)' : 'rgba(215,232,240,.16)'; g.fillRect(x - 12, y - 12, FW_ + 24, FH_ + 24); g.strokeStyle = blue ? 'rgba(150,210,255,.85)' : 'rgba(230,245,255,.55)'; g.lineWidth = 2; g.strokeRect(x - 12, y - 12, FW_ + 24, FH_ + 24);
+    for (const [px, py] of [[x - 6, y - 6], [x + FW_ + 6, y + FH_ + 6]]){ g.strokeStyle = ok ? '#5ae68c' : 'rgba(225,40,50,.95)'; g.lineWidth = 2; g.beginPath(); g.moveTo(px - 6, py); g.lineTo(px + 6, py); g.moveTo(px, py - 6); g.lineTo(px, py + 6); g.stroke(); } };
+  frame(cx, cy, false, st.ok); g.drawImage(filmImg[st.mine], cx, cy);
+  if (st.partner){ frame(ox, oy, true, st.ok); g.drawImage(filmImg[st.mine === 'A' ? 'B' : 'A'], ox, oy); }
+  if (st.ok){ g.save(); g.globalAlpha = .28 + .08*Math.sin(now*4); g.globalCompositeOperation = 'lighter'; g.filter = 'blur(5px)'; g.imageSmoothingEnabled = true; g.drawImage(filmImg.G, cx, cy, FW_, FH_); g.restore(); } }
+let filmAc = null;
+function filmSnd(k){ if (!bgmOn()) return; try { const A = filmAc || (filmAc = new (window.AudioContext || window.webkitAudioContext)()); if (A.resume) A.resume(); const t = A.currentTime + .01;
+  const tone = (at, f, d, v, type = 'sine', f2) => { const o = A.createOscillator(), gn = A.createGain(); o.type = type; o.frequency.setValueAtTime(f, t + at); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + at + d); gn.gain.setValueAtTime(0, t + at); gn.gain.linearRampToValueAtTime(v, t + at + .005); gn.gain.exponentialRampToValueAtTime(.0001, t + at + d); o.connect(gn).connect(A.destination); o.start(t + at); o.stop(t + at + d + .05); };
+  const hiss = (at, d, v, f) => { const b = A.createBuffer(1, Math.ceil(A.sampleRate*d), A.sampleRate), c = b.getChannelData(0); for (let i = 0; i < c.length; i++) c[i] = (Math.random()*2 - 1)*(1 - i/c.length); const s = A.createBufferSource(), q = A.createBiquadFilter(), gn = A.createGain(); s.buffer = b; q.type = 'highpass'; q.frequency.value = f; gn.gain.value = v; s.connect(q).connect(gn).connect(A.destination); s.start(t + at); };
+  if (k === 'pick'){ hiss(0, .18, .25, 3000); tone(.05, 1320, .25, .06); tone(.12, 1760, .3, .05); }
+  else if (k === 'drop'){ hiss(0, .12, .18, 2500); tone(.02, 990, .2, .05, 'sine', 660); }
+  else if (k === 'link'){ tone(0, 660, .9, .05); tone(.15, 990, .9, .04); tone(.3, 1320, 1.1, .035); }
+  else if (k === 'snap'){ tone(0, 2200, .05, .2, 'square', 1200); hiss(0, .06, .25, 2000); [523, 659, 784, 1047, 1319].forEach((f, i) => { tone(.1 + i*.09, f, 1.5, .07, 'triangle'); tone(.1 + i*.09, f*2.01, .9, .02); }); }
+} catch(e){} }
 // ----- 보스: 문제를 다 풀면 그 주민이 깨어나요. 체력은 모두가 같이 깎아요 -----
 function darkWake(npc){ net.darkTx(npc, cur => cur && cur.start && !cur.clear && !(cur.hp > 0) && darkSolvedN(cur) >= darkPuzzles(npc).length ? {...cur, hp:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, max:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, bossAt:darkNow()} : undefined); }
 // ----- 토리??? (토리 방 보스): 모두에게 같은 시계(bossAt · rageAt)로 움직여서 누구 화면이든 같은 자리·같은 공격이에요 -----
@@ -6193,7 +6278,7 @@ function bossMusicSync(){
   } catch(e){}
 }
 function updateDark(dt, t){
-  bossMusicSync();
+  bossMusicSync(); filmTick();
   if (t > darkHudT){ darkHudT = t + 1000; if (zoneId.startsWith('dark:')) darkHud(); }
   const z = Z(); if (!z.dark) return; const npc = z.dark, r = roomOf(npc);
   darkGuard -= dt; darkHurtT -= dt;
@@ -6757,7 +6842,7 @@ cv.addEventListener('pointerdown', e=>{
 ['pointerdown','pointermove'].forEach(ev=>$('fgTrack').addEventListener(ev, e=>{ if (ev==='pointermove' && !e.buttons && e.pointerType!=='mouse') return; setZoneFromPointer(e); }));
 function interactNear(){
   let best = null, bd = 1e9;
-  if (zoneId.startsWith('dark:')){ const pz = darkNear(); if (pz) return darkPuzzlePanel(pz); }
+  if (zoneId.startsWith('dark:')){ const pz = darkNear(); if (pz) return pz.prop ? darkPropPanel(pz) : darkPuzzlePanel(pz); }
   { const fs = forageNear(); if (fs) return forageAt(fs); }
   { const cs_ = chopNear(); if (cs_) return chopAt(cs_); }
   { const rn = relicNear(64); if (rn) return relicLook(rn); }
