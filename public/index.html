@@ -6907,7 +6907,7 @@ let lastPres = 0, presSig = '', lastTarget = null;
 function sendPresence(t){
   if (!net || !me || admin || kicked) return; // 다른 곳에서 접속해 밀려난 창은 위치를 안 보내요
   const tgt = target && !keyMoving ? target : null;
-  const p = {z:zoneId, ...(darkDown ? {down:1} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : '', ...(me.inv?.ring ? {rg:me.inv.ring} : {}), ...(me.inv?.sword ? {wp:me.inv.weapon || 'w1'} : {}), ...(mySwingT ? {sw:mySwingT, sd:swingDir} : {})};
+  const p = {z:zoneId, ...(darkDown ? {down:1} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : '', ...(me.inv?.ring ? {rg:me.inv.ring} : {}), ...(me.inv?.sword ? {wp:me.inv.weapon || 'w1'} : {}), ...(mySwingT && [...others.values()].some(o => o.z === zoneId) ? {sw:mySwingT, sd:swingDir} : {})}; // 같은 곳에 다른 사람이 있을 때만 휘두르기를 알려요 (데이터 아끼기)
   if (isRain() && umbKey() && snowOutside()) p.um = umbKey();
   const wps = walkingPets(), pp = wp => ({sp:wp.sp, col:wp.col|0, name:String(wp.name||'').slice(0,8)}); if (wps[0]) p.pet = pp(wps[0]); if (wps[1]) p.pet2 = pp(wps[1]);
   if (tgt){ p.tx = Math.round(tgt.x); p.ty = Math.round(tgt.y); }
