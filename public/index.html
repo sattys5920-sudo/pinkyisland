@@ -6227,13 +6227,17 @@ const DARK_FREE = 3, DARK_PEN = 10*60000; // 문제마다 3 번까지는 틀려�
 const darkLimit = r => DARK_LIMIT_MS - ((r && r.pen) | 0);
 const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
 function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of [...darkPuzzles(z.dark), ...darkProps(z.dark)]){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
+const DARK_HINT = 2; // 힌트는 그 문제를 두 번 틀린 뒤에 열려요
+const darkHintOpen = (r, pz) => ((r.wr||{})[pz.id]|0) >= DARK_HINT;
+const darkHintBtn = (r, pz) => darkHintOpen(r, pz) ? '<button class="mini" id="dkHint">힌트 보기</button>' : '<button class="mini" id="dkHint" disabled style="opacity:.45">힌트는 두 번 틀리면 열려요</button>';
+function darkHintWire(npc, pz){ const b = $('dkHint'); if (b) b.onclick = () => { if (!darkHintOpen(roomOf(npc), pz)) return; const t = $('dkHintT'); t.textContent = pz.hint || '힌트가 없어요'; t.hidden = false; }; }
 function darkTriesTxt(r, pz){ const n = ((r.wr||{})[pz.id]|0), left = DARK_FREE - n; return left > 0 ? `틀려도 되는 기회 ${left} 번 · 그 뒤로는 틀릴 때마다 남은 시간 10 분이 줄어요` : '이제 틀릴 때마다 남은 시간이 10 분씩 줄어요'; }
 function darkPuzzlePanel(pz){
   const npc = Z().dark; if (!npc) return; const r = roomOf(npc), done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), list = darkPuzzles(npc);
   const owner = (r.asg || {})[pz.id], notMine = !done && owner && owner !== uid && !admin && !pz.film; // 문제는 모두 보고, 답은 맡은 사람만 써요
   const shown = done && (done.ans || pz.a[0] || ''), body = done ? `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
     : lock ? `<p class="dk-q">굳게 닫혀 있어요. 꿈쩍도 하지 않아요.</p><p class="mnote">어딘가에서 다른 것이 먼저 열려야 할 것 같아요.</p>`
-    : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p>${notMine ? `<p class="mnote">✎ 답은 ${players[owner]?.nick ? `<b>${esc(String(players[owner].nick).slice(0, 8))}</b> 님만` : '맡은 사람만'} 쓸 수 있어요</p>` : `<div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><p class="mnote" id="dkTries">${darkTriesTxt(r, pz)}</p>`}<button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>${pz.film ? filmBtnHtml(pz.film) : ''}`;
+    : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p>${notMine ? `<p class="mnote">✎ 답은 ${players[owner]?.nick ? `<b>${esc(String(players[owner].nick).slice(0, 8))}</b> 님만` : '맡은 사람만'} 쓸 수 있어요</p>` : `<div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><p class="mnote" id="dkTries">${darkTriesTxt(r, pz)}</p>`}${darkHintBtn(r, pz)}<p class="mnote" id="dkHintT" hidden></p>${pz.film ? filmBtnHtml(pz.film) : ''}`;
   openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body + (admin ? '' : `<button class="mini" id="dkBook">단서 수첩 ${clueCount(npc)}/${CLUE_N}</button>`)); darkImgFill($('npcPanel')); if ($('dkBook')) $('dkBook').onclick = () => clueBook(npc);
   for (const el of $('npcPanel').querySelectorAll('.dk-img')) el.onclick = () => el.classList.toggle('big'); // 누르면 크게
   if (done || lock) return;
@@ -6242,15 +6246,15 @@ function darkPuzzlePanel(pz){
     if (notMine || !$('dkIn')) return; const v = $('dkIn').value; if (!darkNorm(v)) return;
     if (!(await darkCheck(npc, pz, v))){ if ($('dkIn')){ $('dkIn').value = ''; $('dkIn').placeholder = '틀렸어요. 다시 생각해 봐요'; } setExpr('sad', 1200);
       let pen = false; await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; const n = ((cur.wr||{})[pz.id]|0) + 1; pen = n > DARK_FREE; return {...cur, wr:{...(cur.wr||{}), [pz.id]:n}, ...(pen ? {pen:Math.min(DARK_LIMIT_MS, (cur.pen|0) + DARK_PEN)} : {})}; });
-      if (pen) toast('틀렸어요 · 남은 시간이 10 분 줄었어요'); if ($('dkTries')) $('dkTries').textContent = darkTriesTxt(roomOf(npc), pz); return; }
+      if (pen) toast('틀렸어요 · 남은 시간이 10 분 줄었어요'); if ($('dkTries')) $('dkTries').textContent = darkTriesTxt(roomOf(npc), pz); const hb = $('dkHint'); if (hb && hb.disabled && darkHintOpen(roomOf(npc), pz)){ hb.outerHTML = darkHintBtn(roomOf(npc), pz); darkHintWire(npc, pz); } return; }
     const ans = String(v).trim().slice(0, 40), ok = await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; const ow = (cur.asg || {})[pz.id]; if (ow && ow !== uid && !admin && !pz.film) return undefined; return {...cur, solved:{...(cur.solved||{}), [pz.id]:{uid, nick:me.nick, at:darkNow(), ans}}}; });
     $('npcPanel').hidden = true;
     if (ok){ gainExp(20); toast(`${pz.title}: 정답! (${darkSolvedN(roomOf(npc))}/${list.length})`); setExpr('sparkle', 1500); }
     else toast('누군가 먼저 풀었거나 방이 바뀌었어요');
   };
-  if (notMine){ $('dkHint').onclick = () => { $('dkHintT').hidden = false; }; return; }
+  if (notMine){ darkHintWire(npc, pz); return; }
   $('dkGo').onclick = go; $('dkIn').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229){ e.preventDefault(); go(); } };
-  $('dkHint').onclick = () => { $('dkHintT').hidden = false; };
+  darkHintWire(npc, pz);
   setTimeout(()=>$('dkIn')?.focus(), 50);
 }
 // ----- 창턱 같은 물건 (문제가 아니에요: 그림만 보거나 필름을 들어요) -----
