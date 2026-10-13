@@ -6179,7 +6179,7 @@ async function darkEnter(npc){
   if (st === 'locked') return say(`${n.name}의 집`, '문이 굳게 꿰매져 있어요.');
   if (st === 'missed') return say(`${n.name}의 집`, '이 집의 문은 이미 다시 닫혔어요.');
   if (st === 'open' && darkBusy) return; darkBusy = true;
-  if (st === 'open') await net.darkTx(npc, cur => { const now = darkNow(); cur = cur || {}; if (cur.clear) return undefined; if (!cur.start) return {...cur, start:now}; if (now > cur.start + DARK_LIMIT_MS) return {att:(cur.att|0)+1, start:now}; return undefined; });
+  if (st === 'open') await net.darkTx(npc, cur => { const now = darkNow(); cur = cur || {}; if (cur.clear) return undefined; if (!cur.start) return {...cur, start:now}; if (now > cur.start + darkLimit(cur)) return {att:(cur.att|0)+1, start:now}; return undefined; });
   darkBusy = false; darkGuard = 3;
   { const [ex, ey] = darkRoomOf(npc)?.door || DARK_ROOM.door; enterZone('dark:'+npc, null, ex, ey); }
 }
@@ -6223,21 +6223,26 @@ function updateDown(dt, t){
     say('기절', '한참 기다렸는데 아무도 오지 않았어요.... 집에서 푹 쉬고 일어날까요?', [['집에서 깨어나기', ()=>{ closeTalk(); wakeAtHome(); }], ['조금 더 기다리기', ()=>{ closeTalk(); downOffer = false; darkDown = darkNow(); }]], '', true); }
 }
 // ----- 문제 -----
+const DARK_FREE = 3, DARK_PEN = 10*60000; // 문제마다 3 번까지는 틀려도 괜찮고, 그 뒤로는 틀릴 때마다 제한 시간 10 분이 줄어요
+const darkLimit = r => DARK_LIMIT_MS - ((r && r.pen) | 0);
 const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
 function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of [...darkPuzzles(z.dark), ...darkProps(z.dark)]){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
+function darkTriesTxt(r, pz){ const n = ((r.wr||{})[pz.id]|0), left = DARK_FREE - n; return left > 0 ? `틀려도 되는 기회 ${left} 번 · 그 뒤로는 틀릴 때마다 남은 시간 10 분이 줄어요` : '이제 틀릴 때마다 남은 시간이 10 분씩 줄어요'; }
 function darkPuzzlePanel(pz){
   const npc = Z().dark; if (!npc) return; const r = roomOf(npc), done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), list = darkPuzzles(npc);
   const owner = (r.asg || {})[pz.id], notMine = !done && owner && owner !== uid && !admin && !pz.film; // 문제는 모두 보고, 답은 맡은 사람만 써요
   const shown = done && (done.ans || pz.a[0] || ''), body = done ? `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
     : lock ? `<p class="dk-q">굳게 닫혀 있어요. 꿈쩍도 하지 않아요.</p><p class="mnote">어딘가에서 다른 것이 먼저 열려야 할 것 같아요.</p>`
-    : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p>${notMine ? `<p class="mnote">✎ 답은 ${players[owner]?.nick ? `<b>${esc(String(players[owner].nick).slice(0, 8))}</b> 님만` : '맡은 사람만'} 쓸 수 있어요</p>` : '<div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div>'}<button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>${pz.film ? filmBtnHtml(pz.film) : ''}`;
+    : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p>${notMine ? `<p class="mnote">✎ 답은 ${players[owner]?.nick ? `<b>${esc(String(players[owner].nick).slice(0, 8))}</b> 님만` : '맡은 사람만'} 쓸 수 있어요</p>` : `<div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><p class="mnote" id="dkTries">${darkTriesTxt(r, pz)}</p>`}<button class="mini" id="dkHint">힌트 보기</button><p class="mnote" id="dkHintT" hidden>${esc(pz.hint || '힌트가 없어요')}</p>${pz.film ? filmBtnHtml(pz.film) : ''}`;
   openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body + (admin ? '' : `<button class="mini" id="dkBook">단서 수첩 ${clueCount(npc)}/${CLUE_N}</button>`)); darkImgFill($('npcPanel')); if ($('dkBook')) $('dkBook').onclick = () => clueBook(npc);
   for (const el of $('npcPanel').querySelectorAll('.dk-img')) el.onclick = () => el.classList.toggle('big'); // 누르면 크게
   if (done || lock) return;
   if (pz.film) filmBtnWire(pz.film);
   const go = async () => {
     if (notMine || !$('dkIn')) return; const v = $('dkIn').value; if (!darkNorm(v)) return;
-    if (!(await darkCheck(npc, pz, v))){ if ($('dkIn')){ $('dkIn').value = ''; $('dkIn').placeholder = '틀렸어요. 다시 생각해 봐요'; } setExpr('sad', 1200); return; }
+    if (!(await darkCheck(npc, pz, v))){ if ($('dkIn')){ $('dkIn').value = ''; $('dkIn').placeholder = '틀렸어요. 다시 생각해 봐요'; } setExpr('sad', 1200);
+      let pen = false; await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; const n = ((cur.wr||{})[pz.id]|0) + 1; pen = n > DARK_FREE; return {...cur, wr:{...(cur.wr||{}), [pz.id]:n}, ...(pen ? {pen:Math.min(DARK_LIMIT_MS, (cur.pen|0) + DARK_PEN)} : {})}; });
+      if (pen) toast('틀렸어요 · 남은 시간이 10 분 줄었어요'); if ($('dkTries')) $('dkTries').textContent = darkTriesTxt(roomOf(npc), pz); return; }
     const ans = String(v).trim().slice(0, 40), ok = await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; const ow = (cur.asg || {})[pz.id]; if (ow && ow !== uid && !admin && !pz.film) return undefined; return {...cur, solved:{...(cur.solved||{}), [pz.id]:{uid, nick:me.nick, at:darkNow(), ans}}}; });
     $('npcPanel').hidden = true;
     if (ok){ gainExp(20); toast(`${pz.title}: 정답! (${darkSolvedN(roomOf(npc))}/${list.length})`); setExpr('sparkle', 1500); }
@@ -6468,7 +6473,7 @@ function updateDark(dt, t){
   // 방 안 사람이 모두 쓰러지면 (3 초 확인) 보스 체력과 살리기 횟수를 처음으로
   if (darkBossUp(r) && darkDown && t > darkWipeT){ darkWipeT = t + 3000; const mates = [...others.values()].filter(o=>o.z===zoneId && !o.adm);
     if (mates.every(o=>o.down) && darkNow() - darkDown > 2500){ const w = r.wipe|0; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && (cur.wipe|0) === w ? (({rageAt, ...c}) => ({...c, hp:cur.max, rv:0, wipe:w + 1, bossAt:darkNow()}))(cur) : undefined); } }
-  if (r.start && !r.clear && darkNow() > r.start + DARK_LIMIT_MS){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? {att:(cur.att|0)+1} : undefined); return darkLeave(); }
+  if (r.start && !r.clear && darkNow() > r.start + darkLimit(r)){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? {att:(cur.att|0)+1} : undefined); return darkLeave(); }
   if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
     net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; const hp = Math.max(0, cur.hp - dmg); return {...cur, hp, ...(npc === 'tori' && !cur.rageAt && hp > 0 && hp <= cur.max/2 ? {rageAt:darkNow()} : {}), ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
   if (!darkBossUp(r)){ darkSlams = []; return; }
@@ -6499,7 +6504,7 @@ function darkHud(){
   const q = $('quest'); if (!q || !me) return;
   if (!zoneId.startsWith('dark:')) return;
   const npc = zoneId.slice(5), r = roomOf(npc), n = darkPuzzles(npc).length;
-  const left = r.start ? Math.max(0, r.start + DARK_LIMIT_MS - darkNow()) : DARK_LIMIT_MS, hh = Math.floor(left/3600000), mm = Math.floor(left/60000)%60, ss = Math.floor(left/1000)%60;
+  const left = r.start ? Math.max(0, r.start + darkLimit(r) - darkNow()) : DARK_LIMIT_MS, hh = Math.floor(left/3600000), mm = Math.floor(left/60000)%60, ss = Math.floor(left/1000)%60;
   const time = `${hh}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   q.hidden = false;
   if (darkDown){ q.hidden = false; q.innerHTML = `<b style="color:#ff4f87">쓰러졌어요</b>살리기 ${Math.max(0, DARK_REVIVES - (r.rv|0))}/${DARK_REVIVES} · 남은 시간 ${time}`; placeTop(); return; }
@@ -7583,7 +7588,7 @@ function adminDarkTgtSec(regs){
 }
 function adminDarkSec(){
   const i = darkIdx(), npc = darkToday(), r = npc ? roomOf(npc) : {}, n = npc ? darkPuzzles(npc).length : 0;
-  const left = r.start ? Math.max(0, r.start + DARK_LIMIT_MS - darkNow()) : 0, inRoom = npc ? [...others.values()].filter(o=>o.z==='dark:'+npc).length : 0;
+  const left = r.start ? Math.max(0, r.start + darkLimit(r) - darkNow()) : 0, inRoom = npc ? [...others.values()].filter(o=>o.z==='dark:'+npc).length : 0;
   const state = !npc ? (i >= DARK_ORDER.length ? '12 방이 모두 끝났어요' : '열린 방이 없어요')
     : r.clear ? `꿰매짐 ✓ (${esc(String(r.clear.nick||'').slice(0,8))} 님 마지막 일격)` : darkBossUp(r) ? `보스전 ${Math.ceil(r.hp).toLocaleString()}/${r.max.toLocaleString()} · 남은 ${Math.ceil(left/60000)} 분`
     : r.start ? `문제 ${darkSolvedN(r)}/${n} · 남은 ${Math.ceil(left/60000)} 분 · ${(r.att|0)+1} 번째 도전` : '아직 아무도 안 들어갔어요';
