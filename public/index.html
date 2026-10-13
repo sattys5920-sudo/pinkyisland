@@ -555,6 +555,7 @@ button.adm-r{background:none;border:0;color:inherit;text-align:left;padding:1px 
 <div id="toast" class="pill" style="opacity:0"></div>
 <div id="ob"><div class="obc" id="obc"><h1>핑키 디저트 아일랜드</h1><p class="sub">섬에 연결하는 중이에요.......</p></div></div>
 
+<script src="swords.js"></script>
 <script type="module">
 import { firebaseConfig } from './firebase-config.js';
 import { bossAudio } from './bossaudio.js';
@@ -1339,7 +1340,8 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz;
-    Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, pet2: s.pet2 && PET_DRAW[s.pet2.sp] ? {sp:s.pet2.sp, col:Math.max(0, Math.min(2, s.pet2.col|0)), name:String(s.pet2.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
+    Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, pet2: s.pet2 && PET_DRAW[s.pet2.sp] ? {sp:s.pet2.sp, col:Math.max(0, Math.min(2, s.pet2.col|0)), name:String(s.pet2.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', wp:WEAPONS[s.wp] ? s.wp : '', nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
+    if (typeof s.sw==='number' && s.sw !== o.swT){ const fresh = o.swT !== undefined && Date.now() - s.sw < 1500; o.swT = s.sw; if (fresh){ o.swAt = performance.now(); o.swDir = ['up','down','left','right'].includes(s.sd) ? s.sd : o.dir; } }
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
   }
@@ -3243,7 +3245,7 @@ function tmapTick(force){
 }
 setInterval(() => { try { tmapTick(); } catch(e){} }, 300);
 const DIRV = {left:[-1,0], right:[1,0], up:[0,-1], down:[0,1]};
-let swingAt = -1e9, swingDir = 'down', lunge = 0;
+let swingAt = -1e9, swingDir = 'down', lunge = 0, mySwingT = 0;
 function pushPlayer(dx, dy, dist){
   const l = Math.hypot(dx,dy)||1, nx = pos.x + dx/l*dist, ny = pos.y + dy/l*dist;
   if (!blocked(nx, pos.y)) pos.x = nx; if (!blocked(pos.x, ny)) pos.y = ny;
@@ -3256,7 +3258,7 @@ function swing(){
   if (!me.inv.sword){ toast('검이 없어요. 마을 광장의 콩이에게 가 봐요'); return; }
   const t = performance.now(); if (t - swingAt < 380) return;
   if (fishing) return;
-  swingAt = t; swingDir = pos.dir; lunge = .12; target = null; swingTired = !useSta('swing');
+  swingAt = t; swingDir = pos.dir; mySwingT = Date.now(); lunge = .12; target = null; swingTired = !useSta('swing');
   const [vx,vy] = DIRV[pos.dir] || DIRV.down;
   const cx = pos.x + vx*26, cy = pos.y + vy*26;
   for (const mob of [...mobs]){
@@ -3275,7 +3277,20 @@ function swing(){
 function updateSwing(dt){
   if (lunge > 0){ lunge -= dt; const [vx,vy] = DIRV[swingDir] || DIRV.down; pushPlayer(vx, vy, 170*dt); }
 }
+// 손에 든 검 (swords.js): 모양 + 손은 저장 그림으로 한 번만 그리고, 아우라만 매 프레임 그려요
+const SW_HOLD = { down:[9.4, -10.5, -1.25], up:[-9.4, -10.5, -1.9], side:[7.8, -10.5, -.9] };
+function swingShowing(k, since){ const K = typeof SWFX !== 'undefined' && SWFX.K[k]; return since < (K ? K.ms*1.9 : 420); }
+function drawHeld(c, x, y, dir, k, skin, t){
+  if (typeof SWORD_SHAPES === 'undefined' || !SWORD_SHAPES[k]) return;
+  const m = dir === 'left' ? -1 : 1, [hx, hy, ang] = SW_HOLD[dir === 'left' || dir === 'right' ? 'side' : dir] || SW_HOLD.down, sk = skin || '#ffd9c4';
+  const sp = sprite('sw|'+k+'|'+dir+'|'+sk+'|'+Math.round(view.dpr*view.zoom*2), 90, 90, 45, 70, d=>{ const x = d.ctx; if (m < 0) x.scale(-1, 1); drawHeldSword(x, k, hx, hy, ang, .68, m < 0, false); if (dir !== 'up'){ CLAY.setLight(0, m < 0); CLAY.paint(x, CLAY.EL(hx, hy, 2.6, 3), sk, [hx, hy, 3], {noShadow:true}); } });
+  c.drawImage(sp.c, x - sp.ox, y - sp.oy, sp.c.width/sp.sc, sp.c.height/sp.sc);
+  c.save(); c.translate(x, y); if (m < 0) c.scale(-1, 1); drawHeldSwordAura(c, k, hx, hy, ang, .68, t/1000); c.restore();
+}
+function drawSwingAt(c, x, y, k, dir, ms, seed){ if (typeof SWFX === 'undefined') return; const base = {right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[dir] ?? Math.PI/2;
+  c.save(); c.translate(x, y - 16); c.scale(.8, .8); SWFX.draw(c, k, 0, 0, base, ms, seed, (WEAPONS[k] || WEAPONS.w1).color); c.restore(); }
 function drawSwing(c, t){
+  if (typeof SWFX !== 'undefined'){ if (me && me.inv) drawSwingAt(c, pos.x, pos.y, me.inv.weapon || 'w1', swingDir, t - swingAt, Math.floor(swingAt) % 9973); return; }
   const a = (t - swingAt)/180; if (a < 0 || a > 1) return;
   const base = {right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[swingDir] ?? Math.PI/2;
   const from = base - 1.2, to = from + 2.4*Math.min(1, a*1.6), col = weapon().color;
@@ -6892,7 +6907,7 @@ let lastPres = 0, presSig = '', lastTarget = null;
 function sendPresence(t){
   if (!net || !me || admin || kicked) return; // 다른 곳에서 접속해 밀려난 창은 위치를 안 보내요
   const tgt = target && !keyMoving ? target : null;
-  const p = {z:zoneId, ...(darkDown ? {down:1} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : '', ...(me.inv?.ring ? {rg:me.inv.ring} : {})};
+  const p = {z:zoneId, ...(darkDown ? {down:1} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : '', ...(me.inv?.ring ? {rg:me.inv.ring} : {}), ...(me.inv?.sword ? {wp:me.inv.weapon || 'w1'} : {}), ...(mySwingT ? {sw:mySwingT, sd:swingDir} : {})};
   if (isRain() && umbKey() && snowOutside()) p.um = umbKey();
   const wps = walkingPets(), pp = wp => ({sp:wp.sp, col:wp.col|0, name:String(wp.name||'').slice(0,8)}); if (wps[0]) p.pet = pp(wps[0]); if (wps[1]) p.pet2 = pp(wps[1]);
   if (tgt){ p.tx = Math.round(tgt.x); p.ty = Math.round(tgt.y); }
@@ -7227,7 +7242,7 @@ function frameBody(t){
     view.cx = Math.max(0, Math.min(W-vw, pos.x - vw/2)); view.cy = Math.max(Y0-it, Math.min(Y0+HH-vh+ib, pos.y - 20 - it - band/2));
     if (vw > W) view.cx = (W-vw)/2; if (band > HH) view.cy = Y0 + HH/2 - it - band/2;
     ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = Z().theme==='room' ? '#4a3a44' : shade((THEME[Z().theme]||THEME.grass).edge, -.12); ctx.fillRect(0,0,cv.width,cv.height);
-    const s = view.dpr*z; ctx.setTransform(s,0,0,s,-view.cx*s,-view.cy*s);
+    const s = view.dpr*z, [shx, shy] = (typeof SWFX !== 'undefined' && me && me.inv) ? SWFX.shake(me.inv.weapon || 'w1', t - swingAt) : [0, 0]; ctx.setTransform(s,0,0,s,(shx-view.cx)*s,(shy-view.cy)*s);
     ctx.drawImage(staticLayer, 0, 0, W, H);
     const d = painter(ctx), now = Date.now();
     if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const g = id===uid ? me.gardens : (p.gardens||[]); slotsOf(p.lot, id===uid ? me.plots : p.plots).forEach((sl,i)=>drawSlot(d, sl, g[i], now, id===uid)); }
@@ -7241,14 +7256,14 @@ function frameBody(t){
       ...bridgeEntities(d, t),
       ...resortEntities(d, t),
       ...NPCS.filter(n=>n.zone===zoneId && npcVisible(n)).map(n=>({y:n.y, draw:()=>drawCritter(ctx,n.x,n.y,n.look||{kind:n.sp.kind,fur:n.sp.fur},t/1000,!!n.mv,1,!!n.flip), label:()=>{ const ly = n.y-(n.look?.a1 ? 68 : 50) - (dlgNpc===n.id ? Math.abs(Math.sin(t/1000*6))*5 : 0); tag(ctx, n.name, n.x, ly, dlgNpc===n.id ? (NPC_COLOR[n.id]||null) : null); if (!admin) dlvMark(ctx, n, ly); }})),
-      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.adm) return drawOtumoAny(d, ctx, o.x, o.y, o.dir||'down', t/1000, !!o.mv, o.look); if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); const um = o.um && isRain() && snowOutside(); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'back'); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'front', o.look?.skin); }, label:()=>{ if (o.adm){ otumoLabel(ctx, o.x, o.y); talkBubble(k,o.x,o.y,t); return; } if (o.down){ const dw = downWords(); tag(ctx, `${realNick(o.uid,o.nick)} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,realNick(o.uid,o.nick),o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
+      ...[...others.entries()].filter(([k,o])=>o.z===zoneId).map(([k,o])=>({y:o.y, draw:()=>{ if (o.adm) return drawOtumoAny(d, ctx, o.x, o.y, o.dir||'down', t/1000, !!o.mv, o.look); if (o.down) return drawDowned(ctx, o.x, o.y, o.look, t, k); const um = o.um && isRain() && snowOutside(); if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'back'); drawPlayer(ctx,o.x,o.y,o.look,o.dir||'down',t/1000,!!o.mv,1,o.ex||'dot'); if (o.wp){ const sm = o.swAt ? t - o.swAt : 1e9; if (!swingShowing(o.wp, sm)) drawHeld(ctx, o.x, o.y, o.dir||'down', o.wp, o.look?.skin, t); if (sm < 1500) drawSwingAt(ctx, o.x, o.y, o.wp, o.swDir || o.dir || 'down', sm, (o.swT|0) % 9973); } if (um) drawUmbrella(ctx, o.x, o.y, o.um, o.dir||'down', t, !!o.mv, 'front', o.look?.skin); }, label:()=>{ if (o.adm){ otumoLabel(ctx, o.x, o.y); talkBubble(k,o.x,o.y,t); return; } if (o.down){ const dw = downWords(); tag(ctx, `${realNick(o.uid,o.nick)} · ${dw.down} (눌러서 ${dw.help})`, o.x, o.y-40, '#ff4f87'); return; } nameTag(ctx,realNick(o.uid,o.nick),o.x,o.y+nameDy(o.rg),o.uid&&players[o.uid]?ROOFS[players[o.uid].roof][1]:null,o.rg,t); if (o.ti) titleTag(ctx, o.ti, o.x, o.y-76); talkBubble(k,o.x,o.y,t); }})),
       ...mobs.map(mob=>({y:mob.y, draw:()=>drawMob(d, mob, t), label:()=>{ if (admin) adminMobLabel(ctx, mob); }})),
       ...(bossAlive() ? [{y:BOSS.y, draw:()=>drawBoss(d, t), label:()=>{}}] : []),
       ...(Z().house ? furnOf(Z().house).map(f=>({y:f.y, draw:()=>drawFurn(d, f, f.x, f.y), label:()=>{}})) : []),
       ...petEntities(d, t),
       ...snowmenHere().map(([,s])=>({y:s.y, draw:()=>drawSnowman(d, s, t), label:()=>{}})),
       ...(admin && admWalk ? [{y:pos.y, draw:()=>drawOtumoAny(d, ctx, pos.x, pos.y, pos.dir, t/1000, pos.moving, otumoDress && otumoDressLook(otumoDress)), label:()=>{ otumoLabel(ctx, pos.x, pos.y); if (admRevive){ const k = Math.min(1, (t - admRevive.at)/ADM_REVIVE_MS); ctx.save(); ctx.strokeStyle = '#7fe3a0'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pos.x, pos.y-104, 9, -Math.PI/2, -Math.PI/2 + k*6.283); ctx.stroke(); ctx.restore(); } }}] : []),
-      ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); const um = umbKey() && isRain() && snowOutside(); if (um) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving, 'back'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (um) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving, 'front', me.look.skin); }, label:()=>{ if (darkDown){ tag(ctx, `${realNick(uid,me.nick)} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } nameTag(ctx,realNick(uid,me.nick),pos.x,pos.y+nameDy(me.inv?.ring),ROOFS[me.roof][1],me.inv?.ring,t); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-76); talkBubble('me',pos.x,pos.y,t); }}]),
+      ...(admin ? [] : [{y:pos.y, draw:()=>{ if (darkDown) return drawDowned(ctx, pos.x, pos.y, me.look, t, 'me'); const um = umbKey() && isRain() && snowOutside(); if (um) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving, 'back'); drawPlayer(ctx,pos.x,pos.y,me.look,pos.dir,t/1000,pos.moving,1,myExpr()); if (me.inv && me.inv.sword && !fishing && !swingShowing(me.inv.weapon || 'w1', t - swingAt)) drawHeld(ctx, pos.x, pos.y, pos.dir, me.inv.weapon || 'w1', me.look && me.look.skin, t); if (um) drawUmbrella(ctx, pos.x, pos.y, umbKey(), pos.dir, t, pos.moving, 'front', me.look.skin); }, label:()=>{ if (darkDown){ tag(ctx, `${realNick(uid,me.nick)} · ${downWords().down}`, pos.x, pos.y-40, '#ff4f87'); return; } nameTag(ctx,realNick(uid,me.nick),pos.x,pos.y+nameDy(me.inv?.ring),ROOFS[me.roof][1],me.inv?.ring,t); if (me.title) titleTag(ctx, titleOf(me.title), pos.x, pos.y-76); talkBubble('me',pos.x,pos.y,t); }}]),
     ].sort((a,b)=>a.y-b.y);
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
