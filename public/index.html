@@ -3878,13 +3878,13 @@ function errandPanel(){
 // ===== 보리 공방: 텃밭 늘리기 · 가구 =====
 const PLOT_COST = {3:[3000,'ore:o11',3], 4:[7500,'ore:o12',3], 5:[18000,'ore:o21',2], 6:[36000,'ore:o30',1], 7:[60000,'ore:o21',4], 8:[90000,'ore:o30',2], 9:[130000,'ore:o36',1], 10:[180000,'ore:o37',1]}; // 울타리 안 최대 10 칸
 // [이름, 골드, 재료, 개수, 모양, 색]
-const FURN_LIST = [...FURN_ALL, ...PLUSH.map((p, k)=>[p[0] + ' 인형', 0, 'ore:o01', 0, 'plush' + k, p[1], 1]), ...FURN_MORE]; // 가구 43 종 (art/furniture.js) + 오락실 경품 인형 20 종 (공방에서는 못 만들어요)
+const FURN_LIST = [...FURN_ALL, ...PLUSH.map((p, k)=>[p[0] + ' 인형', 0, 'ore:o01', 0, 'plush' + k, p[1], 1]), ...FURN_MORE.map(f => [...f, 0, 1])]; // 2 차 가구 20 종은 오투모 경품 전용 (공방에서는 못 만들어요) // 가구 43 종 (art/furniture.js) + 오락실 경품 인형 20 종 (공방에서는 못 만들어요)
 const PLUSH_FURN = PLUSH.map((_, k)=>'u' + String(FURN_ALL.length + k + 1).padStart(2, '0'));
-const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5], prize:!!f[6]}]));
+const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5], prize:!!f[6], excl:!!f[7]}]));
 function workshopPanel(){
   const plots = me.plots || 2, next = plots + 1, pc = PLOT_COST[next];
   const plotRow = pc ? `<button class="np" data-id="plot"><span class="np-name">텃밭 늘리기 (${plots} → ${next} 칸) <small>${pc[0].toLocaleString()} G + ${itemName(pc[1])} ${pc[2]}</small></span><span class="np-place">${me.inv.gold>=pc[0]&&invCount(pc[1])>=pc[2]?'늘리기':'재료 부족'}</span></button>` : `<div class="np"><span class="np-name">텃밭이 최대 10 칸이에요</span></div>`;
-  openPanel('보리 공방 · 💰 '+me.inv.gold+' G', plotRow + Object.entries(FURN).filter(([,f])=>!f.prize).map(([id,f])=>{
+  openPanel('보리 공방 · 💰 '+me.inv.gold+' G', plotRow + Object.entries(FURN).filter(([,f])=>!f.prize && !f.excl).map(([id,f])=>{
     const ok = me.inv.gold >= f.gold && invCount(f.need) >= f.n;
     return `<button class="np" data-id="${id}" ${ok?'':'style="opacity:.55"'}><span class="np-name">${f.name} <small>${f.gold.toLocaleString()} G + ${itemName(f.need)} ${f.n}</small></span><span class="np-place">${ok?'만들기':'재료 부족'}</span>${invCount('furn:'+id)?`<span class="np-day">가진 것 ${invCount('furn:'+id)}</span>`:''}</button>`;
   }).join('') + '<p class="mnote">만든 가구는 내 집 안에서 [꾸미기]로 놓아요.</p>', b=>{
@@ -4024,6 +4024,7 @@ const FLOORS = {
   f19:{name:'모래사장', price:34000, draw:(c,d,x,y,w,h)=>{ c.fillStyle='#f3dfae'; c.fillRect(x,y,w,h); c.fillStyle='rgba(200,160,90,.3)'; for (let i=0;i<w*h/300;i++) c.fillRect(x+(i*83)%w, y+(i*37)%h, 2, 2); for (const [fx, fy, col] of [[.2,.3,'#ff9fb3'],[.7,.6,'#fff'],[.45,.8,'#ffc8a0']]){ c.fillStyle=col; c.beginPath(); c.arc(x+w*fx, y+h*fy, 6, Math.PI, 0); c.fill(); } }},
   f20:{name:'돌 판석', price:40000, draw:(c,d,x,y,w,h)=>{ c.fillStyle='#8fa080'; c.fillRect(x,y,w,h); for (let j=y+6, a=0; j<y+h; j+=56, a++) for (let i=x+6+(a%2)*30; i<x+w; i+=86){ c.fillStyle=(i+j)%3 ? '#c8c2b6' : '#b8b2a6'; c.beginPath(); c.roundRect(i, j, 74, 46, 14); c.fill(); } }},
 };
+for (let i = 13; i <= 22; i++) WALLS['w' + i].excl = 1; for (let i = 11; i <= 20; i++) FLOORS['f' + i].excl = 1; // 2 차 벽지 · 바닥은 오투모 경품 전용 (가진 사람만 목록에 보여요)
 const swatchCache = new Map();
 function swatchURL(kind, id){
   const k = kind+id; if (swatchCache.has(k)) return swatchCache.get(k);
@@ -4080,7 +4081,7 @@ function housePanel(){
   const up = nx ? `<button class="np" data-id="up"><span class="np-name">집 늘리기 (${H.lv} → ${H.lv+1} 단계 '${nx.name}') <small>${nx.gold.toLocaleString()} G + ${itemName(nx.need)} ${nx.n} 개 · 가구 ${nx.max} 개까지</small></span><span class="np-place">${me.inv.gold>=nx.gold && invCount(nx.need)>=nx.n ? '늘리기' : '재료 부족'}</span></button>`
     : `<div class="np"><span class="np-name">가장 큰 집이에요! <small>꿈의 저택 · 가구 ${cur.max} 개까지</small></span></div>`;
   const list = tab==='wall' ? WALLS : FLOORS, owned = tab==='wall' ? H.walls : H.floors, using = tab==='wall' ? H.wall : H.floor;
-  const tiles = Object.entries(list).map(([id, it])=>{ const n = invCount(tab+':'+id), own = n > 0 || it.price===0, on = using===id;
+  const tiles = Object.entries(list).filter(([id, it])=>!it.excl || invCount(tab+':'+id) > 0 || using===id).map(([id, it])=>{ const n = invCount(tab+':'+id), own = n > 0 || it.price===0, on = using===id;
     return `<button class="tile ${on?'on':''}" data-t="${id}" title="${esc(it.name)}"><img class="ic" src="${swatchURL(tab, id)}" alt=""><em>${esc(it.name)}</em><s style="color:${own?'var(--soft)':me.inv.gold>=it.price?'#e48fac':'#c9b3bc'}">${on ? '쓰는 중' : n ? `가방에 ${n} · 바르기` : it.price===0 ? '무료 · 바꾸기' : it.price.toLocaleString()+' G'}</s></button>`; }).join('');
   openPanel(`집 늘리기·인테리어 · 💰 ${me.inv.gold} G`,
     `<div class="np"><span class="np-name">지금 집: ${H.lv} 단계 '${cur.name}' <small>가구 ${furnOf(uid).length}/${cur.max} 개</small></span></div>${up}
@@ -4096,6 +4097,7 @@ function housePanel(){
     const id = b.dataset.t, it = list[id], key = tab==='wall' ? 'walls' : 'floors', cur = tab==='wall' ? 'wall' : 'floor';
     if (H[cur]===id) return;
     if (invCount(tab+':'+id) > 0){ useInterior(tab+':'+id); return housePanel(); }
+    if (it.excl) return toast('오투모 경매나 OX 퀴즈 상품으로만 받을 수 있어요');
     if (it.price===0){ if (list[H[cur]]?.price > 0) invAdd(tab+':'+H[cur], 1); H[cur] = id; saveMe(); staticSig = ''; toast(`${it.name}(으)로 바꿨어요 · 쓰던 건 가방에 넣었어요`); return housePanel(); }
     say(it.name, `${it.price.toLocaleString()} G예요. 사면 가방에 들어가요. 살까요?`, [['사기', ()=>{ closeTalk(); if (me.inv.gold < it.price) return toast('골드가 모자라요');
       me.inv.gold -= it.price; invAdd(tab+':'+id, 1); if (!H[key].includes(id)) H[key] = [...H[key], id]; stat('interiorBought'); syncStats(); saveMe(true); renderHud(); housePanel(); toast(`${it.name}을(를) 샀어요 · 가방에 넣었어요`); }]]); });
@@ -8245,11 +8247,11 @@ const admAuc = {aucK:'ring:r10', aucN:'1', aucStart:'100000', aucDur:'60'};
 function aucItems(){
   // 원가: 반지는 공방에서 만드는 값, 가구는 상점 값, 광석·요리는 기본 판매가 (시세·보너스 빼고)
   const paid = (list, pre) => Object.entries(list).filter(([id, it]) => id !== 'none' && it && !it.otumo && (it.price || 0) > 0).map(([id, it]) => [pre + id, it.name + (pre === 'umb:' ? ' 우산' : ''), it.price]);
-  const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1], r[3]])], ...CH.CATS.map(([, l, list]) => [l, paid(list, 'wear:')]).filter(([, l]) => l.length), ['우산', paid(UMB, 'umb:')], ['벽지', paid(WALLS, 'wall:')], ['바닥', paid(FLOORS, 'floor:')], ['가구', FURN_ALL.map((f, i) => { const id = 'u' + String(i + 1).padStart(2, '0'); return ['furn:' + id, f[0], FURN[id]?.gold || 0]; })],
+  const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1], r[3]])], ...CH.CATS.map(([, l, list]) => [l, paid(list, 'wear:')]).filter(([, l]) => l.length), ['우산', paid(UMB, 'umb:')], ['벽지', paid(WALLS, 'wall:')], ['바닥', paid(FLOORS, 'floor:')], ['가구', Object.entries(FURN).filter(([, f]) => !f.prize).map(([id, f]) => ['furn:' + id, f.name, f.gold])],
     ['광석', Object.keys(ORES).map(id => ['ore:' + id, ORES[id].name, itemPrice('ore:' + id)])], ['요리', Object.keys(DISHES).map(id => ['dish:' + id, DISHES[id].name, itemPrice('dish:' + id)])]];
   // 상품 고를 때: 이미 가진 주민 수를 보여 줘요 (🆕 = 아직 아무도 없음 · 👥N = N 명이 가짐 · ★ = 상품 전용 옷)
   const own = prizeOwners();
-  return o.map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n, p]) => { const c = own(k), ex = k.startsWith('wear:') && CH.ITEM(k.slice(5))?.excl;
+  return o.map(([g, l]) => `<optgroup label="${g}">${l.map(([k, n, p]) => { const c = own(k), ex = (k.startsWith('wear:') && CH.ITEM(k.slice(5))?.excl) || (k.startsWith('furn:') && FURN[k.slice(5)]?.excl) || (k.startsWith('wall:') && WALLS[k.slice(5)]?.excl) || (k.startsWith('floor:') && FLOORS[k.slice(5)]?.excl);
     return `<option value="${k}"${admAuc.aucK === k ? ' selected' : ''} style="color:${c == null ? '' : c ? '#9a8a9a' : '#d0306a'}">${c == null ? '' : c ? `👥${c} ` : '🆕 '}${ex ? '★ ' : ''}${esc(n)} · 원가 ${(p || 0).toLocaleString()} G${c ? ` · ${c} 명이 가짐` : c === 0 ? ' · 아무도 없음' : ''}</option>`; }).join('')}</optgroup>`).join('');
 }
 // 주민들이 그 물건을 가졌는지 (옷 · 반지 · 가구 · 우산 · 벽지 · 바닥). 광석 · 요리처럼 쌓이는 건 null

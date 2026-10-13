@@ -1661,7 +1661,7 @@ const TOPS_PRIZE = {
         (cy,ox)=>{ if (g.side){ d.ell(ox+R*1.1,cy-R*.86,2.2,2.6,'#4a4550',ff); return; } d.ell(ox,cy-R*.86,2.4,2.9,'#4a4550',ff); d.dot(ox-.7,cy-R*.95,.55,'#ffffff',.6); for (const sx of [-1,1]) d.dot(ox+sx*R*.5,cy-R*1.0,.85,'#2b2228'); }); }},
 };
 Object.assign(HATS, HATS_PRIZE); Object.assign(ACCS, ACCS_PRIZE); Object.assign(TOPS, TOPS_PRIZE);
-// ===== 새 옷 2 차 (세트 20 · 모자 10 · 액세서리 10): 힙한 스트릿 · 운동복 · 특색 있는 옷 + 맞춤 모자 =====
+// ===== 새 옷 2 차 (세트 20 · 모자 10 · 액세서리 10 · 오투모 경품 전용): 힙한 스트릿 · 운동복 · 특색 있는 옷 + 맞춤 모자 =====
 const txt = (g, t, x, y, sz, col) => { g.c.save(); g.c.font = `bold ${sz}px sans-serif`; g.c.textAlign = 'center'; g.c.fillStyle = col; g.c.fillText(t, x, y); g.c.restore(); };
 const belt = (d, g, col, buckle) => { d.rr(-g.bw/2, BY+BH*.56, g.bw, 1.8, .9, col, ff); if (buckle && !g.up) d.rr(-1.3, BY+BH*.56-.3, 2.6, 2.4, .6, buckle, ff); };
 const cargo = (d, g, col) => { pants(d,g,col,.42); for (const f of feet(g)){ d.rr(f.x-2.4,-8.8-f.lift,4.8,8.8,1.8,shade(col,f)); if (!g.up) d.rr(f.x+(g.side?-.4:(f.x<0?-2.6:1)),-6.6-f.lift,1.8,2.4,.5,shade(mixHex(col,'#2a1a24',.18),f),ff); } };
@@ -1714,6 +1714,7 @@ const ACCS_MORE = {
   flyscarf:{name:'비행 스카프', price:96000, draw:(d,g)=>{ const w='#efe2c6'; d.rr(-g.bw/2-.6,BY-1.6,g.bw+1.2,3.2,1.6,w); const sx = g.side ? -1 : 1, t = Date.now()/400; d.shape(c=>{ c.beginPath(); c.moveTo(sx*2,BY); c.quadraticCurveTo(sx*9,BY+1+Math.sin(t)*1.2,sx*14,BY-1+Math.sin(t+1)*1.6); c.lineTo(sx*13.4,BY+2.4+Math.sin(t+1)*1.6); c.quadraticCurveTo(sx*8,BY+4+Math.sin(t)*1.2,sx*2,BY+2.6); c.closePath(); }, w, [sx*8,BY+1,6]); }},
 };
 Object.assign(HATS, HATS_MORE); Object.assign(ACCS, ACCS_MORE);
+for (const T of [SETS_MORE, HATS_MORE, ACCS_MORE]) for (const it of Object.values(T)) it.excl = 1; // 2 차 옷은 모두 오투모 경품 전용 (경매 · OX 퀴즈 상품)
 export const CATS = [['top','상의',TOPS],['bottom','하의',BOTTOMS],['set','세트',SETS],['hat','모자',HATS],['acc','액세서리',ACCS],['shoes','신발',SHOES]];
 export const FREE = ['t01','t02','t11','t12','t13','b01','b02','b11','b12','b13','sh01','sh06','sh11'];
 export const HAIR_M = Object.keys(HAIR).filter(k=>HAIR[k].g==='m'), HAIR_F = Object.keys(HAIR).filter(k=>HAIR[k].g==='f');
