@@ -6452,12 +6452,16 @@ function darkAssignTick(npc, r, t){
   if (admin || t < asgT || !r.start || r.clear || darkBossUp(r)) return; asgT = t + 1500;
   const mem = darkMembers(); if (!mem.length || mem[0] !== uid) return;
   const now = performance.now(); for (const k of Object.keys(asgMiss)) if (mem.includes(k)) delete asgMiss[k];
+  // 문제는 차례로 하나씩 열려요 → 열린 문제는 맡은 사람을 그대로 두고, 그 뒤는 돌아가며 한 명씩 (먼저 들어온 사람에게 몰리지 않게)
   const plan = cur => { const solved = cur.solved || {}, a0 = cur.asg || {}, a = {}, list = darkPuzzles(npc).filter(p => !p.film && !solved[p.id]);
-    const alive = u => mem.includes(u) || now - (asgMiss[u] ??= now) < 10000;
-    for (const p of list) if (a0[p.id] && alive(a0[p.id])) a[p.id] = a0[p.id];
-    const cnt = u => list.reduce((n, p) => n + (a[p.id] === u ? 1 : 0), 0), tie = (p, u) => hash(String(cur.start) + p.id + u);
-    for (const p of list) if (!a[p.id]) a[p.id] = mem.slice().sort((x, y) => cnt(x) - cnt(y) || tie(p, x) - tie(p, y))[0];
-    for (let k = 0; k < 30; k++){ const by = mem.slice().sort((x, y) => cnt(x) - cnt(y)), lo = by[0], hi = by[by.length - 1]; if (cnt(hi) - cnt(lo) < 2) break; const mv = list.filter(p => a[p.id] === hi).pop(); a[mv.id] = lo; } // 새로 들어온 사람에게도 고르게
+    if (!list.length) return a;
+    const alive = u => mem.includes(u) || now - (asgMiss[u] ??= now) < 10000, tie = u => hash(String(cur.start) + npc + u);
+    const order = mem.slice().sort((x, y) => tie(x) - tie(y) || (x < y ? -1 : 1));
+    const did = u => Object.values(solved).filter(v => v && v.uid === u).length; // 이미 많이 푼 사람은 뒤로
+    const first = list[0], keep = a0[first.id] && alive(a0[first.id]) ? a0[first.id] : null;
+    const start = keep || order.slice().sort((x, y) => did(x) - did(y) || order.indexOf(x) - order.indexOf(y))[0];
+    a[first.id] = start; const k0 = Math.max(0, order.indexOf(start));
+    list.slice(1).forEach((p, j) => { a[p.id] = order[(k0 + j + 1) % order.length]; });
     return a; };
   const same = (x, y) => JSON.stringify(Object.entries(x || {}).sort()) === JSON.stringify(Object.entries(y || {}).sort());
   if (same(plan(r), r.asg)) return;
