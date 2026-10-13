@@ -1,9 +1,9 @@
-// 검 10 종: 점토 모양 · 들고 있을 때 아우라 · 휘두르기 연출 (비싼 검일수록 화려하게)
+// 검 11 종: 점토 모양 · 들고 있을 때 아우라 · 휘두르기 연출 (비싼 검일수록 화려하게)
 // 렉 줄이기: 손에 든 검 그림은 index.html 의 sprite() 저장 그림으로 한 번만 그리고, 아우라와 휘두르기만 매 프레임 그려요
 // 검 모양 10 종 · 캐릭터와 같은 점토(클레이) 칠하기: 테두리 없이 빛(왼쪽 위) → 그늘, 아래 그림자, 안쪽 어둠
 // 날밑(0,0) 에서 +x 로 칼날, -x 로 손잡이 · 칼을 돌려 그려도 빛은 늘 화면 왼쪽 위에서 와요
-const SWORD_LEN = { w1:23, w2:21, w3:27, w4:30, w5:28, w6:28, w7:28, w8:29, w9:30, w10:35 };
-const SWORD_GRIP = { w1:8, w2:7, w3:8, w4:8, w5:8, w6:9, w7:8, w8:8, w9:8, w10:11 };
+const SWORD_LEN = { w1:23, w2:21, w3:27, w4:30, w5:28, w6:28, w7:28, w8:29, w9:30, w10:35, w11:34 };
+const SWORD_GRIP = { w1:8, w2:7, w3:8, w4:8, w5:8, w6:9, w7:8, w8:8, w9:8, w10:11, w11:10 };
 const CLAY = (() => {
   let LX = -.45, LY = -.9, SX = .5, SY = 1; // 칼 좌표에서 빛 · 그림자 방향
   const hex = h => { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join(''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); };
@@ -59,6 +59,12 @@ const SWORD_SHAPES = (() => {
     w10(c, L){ grip(c, 11, 3.3, '#2a1a30', '#7a3aa0'); knob(c, -11.8, 2.5, '#4a2a5a'); paint(c, bladePath(L, 3.4, 3.2, 7), '#3a2a48', [L/2, 0, L/2], { seam:true, shine:.3, dark:.4 });
       c.save(); c.shadowColor = '#c060ff'; c.shadowBlur = 3; c.strokeStyle = '#d090ff'; c.lineWidth = .8; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(3, 0); c.lineTo(L*.32, -1.2); c.lineTo(L*.48, 1); c.lineTo(L*.66, -.8); c.lineTo(L*.8, .4); c.stroke(); c.restore(); gloss(c, L*.4, -2, L*.25, .5, .3);
       for (const s of [-1, 1]) paint(c, cc => { cc.beginPath(); cc.moveTo(1.4, -.6*s); cc.quadraticCurveTo(3, 5*s, .2, 8.6*s); cc.quadraticCurveTo(-1.6, 6*s, -1.4, .6*s); cc.closePath(); }, '#4a2a5a', [0, 4*s, 4.4]); knob(c, -.1, 1.5, '#c060ff'); },
+    // 불꽃 고래 검: 붉은 칼날에 용암 금 · 날밑은 고래 꼬리 · 손잡이 끝에 불씨
+    w11(c, L){ grip(c, 10, 3, '#3a1a14', '#ff6a3a'); knob(c, -10.8, 2.3, '#ffb347'); paint(c, CI(-10.8, 0, 1), '#fff0b0', [-10.8, 0, 1], { noShadow:true });
+      c.save(); c.shadowColor = 'rgba(255,120,40,.9)'; c.shadowBlur = 2.5; paint(c, bladePath(L, 3, 2.7, 7, -.8), '#c8321e', [L/2, 0, L/2], { seam:true, shine:.42, dark:.38 }); c.restore();
+      c.save(); c.strokeStyle = '#ffd23f'; c.lineWidth = .9; c.lineCap = 'round'; c.lineJoin = 'round'; c.globalAlpha *= .9; c.beginPath(); c.moveTo(2, .4); c.lineTo(L*.25, -.9); c.lineTo(L*.4, .5); c.lineTo(L*.58, -1); c.lineTo(L*.74, .2); c.lineTo(L*.86, -.9); c.stroke(); c.restore(); gloss(c, L*.42, -1.8, L*.26, .45, .45);
+      for (const sd of [-1, 1]) paint(c, cc => { cc.beginPath(); cc.moveTo(1, 0); cc.quadraticCurveTo(1.6, 3.2*sd, -.6, 4.6*sd); cc.quadraticCurveTo(2.6, 6.2*sd, 4.6, 8.2*sd); cc.quadraticCurveTo(-.8, 8.8*sd, -2.6, 5.4*sd); cc.quadraticCurveTo(-2.2, 2.4*sd, -1.4, 0); cc.closePath(); }, '#5a2a3a', [0, 4.5*sd, 4.6]);
+      knob(c, 0, 1.5, '#ff7a2f'); },
   };
 })();
 function drawHeldSword(c, k, hx, hy, ang, s = 1, mirror = false, aura = true){ const L = SWORD_LEN[k] || 26, G = SWORD_GRIP[k] || 8; CLAY.setLight(ang, mirror); c.save(); c.translate(hx, hy); c.rotate(ang); c.scale(s, s); c.translate(G*.5, 0); (SWORD_SHAPES[k] || SWORD_SHAPES.w1)(c, L); c.restore(); if (aura && typeof drawHeldSwordAura === 'function') drawHeldSwordAura(c, k, hx, hy, ang, s); }
@@ -86,6 +92,10 @@ const SWORD_AURA = (() => {
       rise(c, L, t, 6, 1.6, up, (x, y, p, i) => star4(c, x, y, 1.8*(1 - p) + .5, i % 2 ? '#ffffff' : '#ffe07a', (1 - p))); },
     w10(c, L, t, up){ glow(c, L, 6, 'rgba(170,70,240,.6)', .45 + .3*Math.sin(t*2)); for (let i = 0; i < 7; i++){ const p = (t*.7 + h(i)) % 1, x = h(i, 5)*L, r = 1.5 + p*4; dot(c, x + up[0]*p*16 + Math.sin(t*3 + i)*1.5, up[1]*p*16, r, i % 2 ? '#2a1038' : '#5a2a80', (1 - p)*.45); }
       for (let i = 0; i < 3; i++){ const a = t*1.5 + i*2.1; dot(c, L*.5 + Math.cos(a)*L*.45, Math.sin(a)*6, .9, '#d890ff', .8); } },
+    w11(c, L, t, up){ glow(c, L, 6, 'rgba(255,110,40,.65)', .5 + .25*Math.sin(t*7) + .1*Math.sin(t*19));
+      for (let i = 0; i < 9; i++){ const p = (t*1.4 + h(i)) % 1, x = h(i, 6)*L*.95 + 1, ang = Math.atan2(up[1], up[0]); c.globalAlpha = (1 - p)*.9; c.fillStyle = i % 3 === 0 ? '#ffe07a' : i % 2 ? '#ff9a3a' : '#ff3b1f'; c.beginPath(); c.ellipse(x + up[0]*p*14 + Math.sin(t*6 + i)*1.2, up[1]*p*14, 2.6*(1 - p) + .5, 1.3*(1 - p) + .4, ang, 0, 7); c.fill(); }
+      rise(c, L, t, 4, 1.1, up, (x, y, p) => dot(c, x, y, .7, '#ffe8a0', (1 - p)));
+      const sp = (t/2.6) % 1; if (sp < .35){ const q = sp/.35; for (let i = 0; i < 5; i++){ const a = (i - 2)*.35; dot(c, L + up[0]*q*14 + Math.cos(a)*q*5, up[1]*q*14 + Math.sin(a)*q*5, .9*(1 - q) + .3, '#ffd27a', 1 - q); } } },
   };
 })();
 function drawHeldSwordAura(c, k, hx, hy, ang, s = 1, t = performance.now()/1000){ const L = SWORD_LEN[k] || 26, G = SWORD_GRIP[k] || 9, f = SWORD_AURA[k]; if (!f) return;
@@ -93,7 +103,7 @@ function drawHeldSwordAura(c, k, hx, hy, ang, s = 1, t = performance.now()/1000)
   const up = [Math.cos(-Math.PI/2 - ang), Math.sin(-Math.PI/2 - ang)];
   c.save(); c.translate(hx, hy); c.rotate(ang); c.scale(s, s); c.translate(G*.5, 0); f(c, L, t, up); c.restore(); }
 
-// 검마다 다른 휘두르기 연출 · 비싼 검일수록 화려하게 (단계 1 → 10)
+// 검마다 다른 휘두르기 연출 · 비싼 검일수록 화려하게 (단계 1 → 11)
 // 상태 없이 "휘두른 뒤 지난 시간(ms)" 과 seed 만으로 그려요
 const SWFX = (() => {
   const hash = (s, i) => { let h = (s*374761393 + i*668265263) | 0; h = (h ^ (h >>> 13))*1274126177; return ((h ^ (h >>> 16)) >>> 0)/4294967295; };
@@ -171,6 +181,15 @@ const SWFX = (() => {
       if (life > .12){ const b = Math.min(1, (life - .12)*3); c.save(); A(c, (1 - life)*.9); c.strokeStyle = '#140818'; c.lineWidth = 3; c.lineCap = 'round'; for (let i = 0; i < 6; i++){ const ang = hash(s, i + 20)*Math.PI*2; c.beginPath(); c.moveTo(hx, hy + 18); c.lineTo(hx + Math.cos(ang)*50*b, hy + 18 + Math.sin(ang)*18*b); c.lineTo(hx + Math.cos(ang + .35)*90*b, hy + 18 + Math.sin(ang + .35)*30*b); c.stroke(); } c.restore(); }
       c.save(); for (let i = 0; i < 14; i++){ const ang = from + hash(s, i)*(to - from), d = 58, t = life; const x = Math.cos(ang)*d + (hash(s, i + 3) - .5)*50*t, y = Math.sin(ang)*d - 50*t; A(c, (1 - life)*.5); dot(c, x, y, 8 + 22*t, i % 2 ? '#1a0824' : '#4a1a70'); } c.restore();
       if (life < .3){ glowDisc(c, hx, hy, 80, 'rgba(160,60,240,.8)', 1 - life/.3); glowDisc(c, 0, 0, 200, 'rgba(20,0,30,.45)', (1 - life/.3)); } } },
+    // 11 불꽃 고래 검: 세 겹 불꽃 칼바람 + 불꽃 고래 꼬리가 바닥을 내려침 + 용암 기둥 + 불씨 폭풍 + 붉은 번쩍 + 화면 흔들림
+    w11: { ms: 270, life: 1200, R: 60, span: 3.2, shake: 8, draw(c, a, p, s, col, from, to, life){
+      const f = Math.max(0, 1 - life*1.2); crescent(c, 66, from, to, 44, 'rgba(255,190,80,.5)', f); crescent(c, 62, from + .05, to, 28, '#ff6a2f', f*.9); crescent(c, 60, from + .1, to, 12, '#ff2f1a', f); crescent(c, 60, from + .16, to, 4, '#fff0b0', f); if (a <= 1) blade(c, to);
+      const [hx, hy] = hitAt(from, to, 64);
+      if (life > .08 && life < .7){ const b = (life - .08)/.62, tx = hx, ty = hy - 40 + b*30; c.save(); A(c, Math.sin(b*Math.PI)*.9); c.fillStyle = '#ff7a2f'; c.translate(tx, ty); c.scale(1.4, 1.4); c.beginPath(); c.moveTo(0, 14); c.quadraticCurveTo(-4, 2, -18, -8); c.quadraticCurveTo(-6, -6, 0, 2); c.quadraticCurveTo(6, -6, 18, -8); c.quadraticCurveTo(4, 2, 0, 14); c.fill(); c.fillStyle = '#ffd23f'; c.scale(.55, .55); c.beginPath(); c.moveTo(0, 12); c.quadraticCurveTo(-4, 2, -16, -6); c.quadraticCurveTo(-5, -4, 0, 3); c.quadraticCurveTo(5, -4, 16, -6); c.quadraticCurveTo(4, 2, 0, 12); c.fill(); c.restore(); }
+      for (const [d, k] of [[.18, 1], [.32, .7]]){ if (life > d){ const b = (life - d)/(1 - d); c.save(); A(c, (1 - b)*k); c.strokeStyle = '#ff5a1f'; c.lineWidth = 5*(1 - b) + 1; c.beginPath(); c.ellipse(hx, hy + 18, 20 + 130*b, (20 + 130*b)*.35, 0, 0, 7); c.stroke(); c.restore(); } }
+      if (life > .2 && life < .85){ const b = (life - .2)/.65; c.save(); for (let i = 0; i < 5; i++){ const ang = hash(s, i + 30)*Math.PI*2, d = 30 + hash(s, i + 31)*70, x = hx + Math.cos(ang)*d, y = hy + 18 + Math.sin(ang)*d*.35, hgt = 70*Math.sin(Math.min(1, b*1.6)*Math.PI)*(.6 + hash(s, i + 32)*.6); A(c, (1 - b)*.9); const q = c.createLinearGradient(0, y, 0, y - hgt); q.addColorStop(0, '#ff3b1f'); q.addColorStop(.6, '#ffb347'); q.addColorStop(1, 'rgba(255,240,170,0)'); c.fillStyle = q; c.beginPath(); c.moveTo(x - 6, y); c.quadraticCurveTo(x - 3, y - hgt*.6, x, y - hgt); c.quadraticCurveTo(x + 3, y - hgt*.6, x + 6, y); c.closePath(); c.fill(); } c.restore(); }
+      c.save(); burst(c, s, 22, hx, hy, ease(life), 110, (x, y, ang, i) => { A(c, 1 - life); dot(c, x, y - life*40, 2.6*(1 - life) + .5, i % 3 === 0 ? '#ffe07a' : i % 2 ? '#ff9a3a' : '#ff3b1f'); }); c.restore();
+      if (life < .3){ glowDisc(c, hx, hy, 90, 'rgba(255,110,40,.85)', 1 - life/.3); glowDisc(c, 0, 0, 220, 'rgba(255,60,20,.3)', (1 - life/.3)); } } },
   };
   function draw(c, kind, x, y, base, ms, seed, col){ CUR = K[kind] ? kind : 'w1'; const k = K[kind] || K.w1; const total = k.ms + k.life; if (ms < 0 || ms > total) return false;
     const a = ms/k.ms, p = ease(Math.min(1, a)), from = base - k.span/2, to = from + k.span*p, life = Math.max(0, (ms - k.ms*.5)/(total - k.ms*.5));
