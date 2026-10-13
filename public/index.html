@@ -6541,7 +6541,7 @@ function fwShapes(){ if (fwShape.otumo) return fwShape;
     x.fillStyle = '#3a3a5a'; x.beginPath(); x.roundRect(cx - 52, cy - 10, 104, 34, 17); x.fill();
     x.fillStyle = '#7fe8ff'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*17, cy + 7, 6, 8, 0, 0, 7); x.fill(); }
     x.fillStyle = '#ff9fc4'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*34, cy + 36, 7, 4, 0, 0, 7); x.fill(); } }, 180, 150, 5);
-  fwShape.thanks = shapePts((x, w, h) => { const L1 = '폐장 전', L2 = '다리 놓기 가능해?'; let fs = 62; do { x.font = `bold ${fs}px "Dongle", sans-serif`; } while (x.measureText(L2).width > w - 30 && --fs > 20); x.textAlign = 'center'; x.textBaseline = 'middle';
+  fwShape.thanks = shapePts((x, w, h) => { const L1 = '오늘도', L2 = '수고했어'; let fs = 62; do { x.font = `bold ${fs}px "Dongle", sans-serif`; } while (x.measureText(L2).width > w - 30 && --fs > 20); x.textAlign = 'center'; x.textBaseline = 'middle';
     const gr = x.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ff7fb0'); gr.addColorStop(.5, '#ffe07a'); gr.addColorStop(1, '#9fd8ff'); x.fillStyle = gr; x.fillText(L1, w/2, h*.3); x.fillText(L2, w/2, h*.74); }, 400, 130, 3);
   return fwShape; }
 function shapeBurst(x, y, pts, scale){ skyP.flashes.push({x, y, t:0, col:'#ffffff', r:150}); skyP.glow.push({t:0, col:'#ffe07a'});
