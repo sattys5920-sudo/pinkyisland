@@ -2573,8 +2573,9 @@ function drawGlitch(c, t){
     c.globalCompositeOperation = 'multiply'; c.globalAlpha = g; c.fillStyle = inRoom ? '#c4bccc' : '#a49cb4'; c.fillRect(0, 0, W, H);
     c.globalCompositeOperation = 'source-over'; c.globalAlpha = .1*g; c.fillStyle = '#3a3048'; c.fillRect(0, 0, W, H);
     const v = c.createRadialGradient(W/2, H/2, Math.min(W, H)*.3, W/2, H/2, Math.max(W, H)*.75); v.addColorStop(0, 'rgba(5,0,10,0)'); v.addColorStop(1, `rgba(5,0,10,${.32*g})`); c.globalAlpha = 1; c.fillStyle = v; c.fillRect(0, 0, W, H); }
-  // 색 어긋남: 기물이 살짝 겹쳐 어긋나 보여요 (지직거리지 않게 늘 같은 세기로 천천히 흔들려요)
-  if (darkOn()){ const o = (2.5 + Math.sin(t/1700)*1.5)*dpr; c.globalAlpha = (inRoom ? .1 : .14)*Math.min(1, (t - glitchBurst)/900); try { c.drawImage(cv, o, 0); c.drawImage(cv, -o, 0); } catch(e){} c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
+  // 색 어긋남: 평소엔 또렷하고, 15 초쯤에 한 번 1 초 동안만 기물이 살짝 겹쳐 어긋났다 돌아와요 (눈이 편하게)
+  if (darkOn()){ const cyc = 15000, ph = (t + (hash(String(Math.floor(t/cyc))) % 5000)) % cyc, d = 1000;
+    if (ph < d){ const e = Math.sin(ph/d*Math.PI), o = (2 + 2*e)*dpr; c.globalAlpha = (inRoom ? .1 : .14)*e; try { c.drawImage(cv, o, 0); c.drawImage(cv, -o, 0); } catch(e2){} c.globalAlpha = 1; } }
   // 지직거림 (찢어지는 띠 · 노이즈 · 주사선 · 깜빡임) 은 관리자 '지지직' 때만
   if (!glRun){ c.restore(); return; }
   // 가로로 찢어지는 띠
