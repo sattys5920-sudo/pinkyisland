@@ -153,4 +153,6 @@ export function titleFxText(f){ if (!f) return ''; const o = [];
   if (f.hp) o.push(`최대 체력 +${f.hp}`); if (f.sta) o.push(`최대 기력 +${f.sta}`); if (f.atk) o.push(`공격력 +${PCT(f.atk)}`); if (f.dr) o.push(`받는 피해 -${PCT(f.dr)}`);
   if (f.regen) o.push(`체력 회복 +${PCT(f.regen)}`); if (f.revive) o.push('하루 한 번 즉시 부활'); if (f.fish) o.push(`희귀 물고기 +${PCT(f.fish)}`); if (f.ore) o.push(`희귀 광석 +${PCT(f.ore)}`);
   if (f.crop) o.push(`수확 +1 확률 ${PCT(f.crop)}`); if (f.sell) o.push(`판매가 +${PCT(f.sell)}`); if (f.loot) o.push(`몬스터 골드 +${PCT(f.loot)}`); if (f.speed) o.push(`이동 속도 +${PCT(f.speed)}`);
-  if (f.xp) o.push(`경험치 +${PCT(f.xp)}`); if (f.free) o.push(`기력 안 쓸 확률 ${PCT(f.free)}`); if (f.food) o.push(`음식 회복 +${PCT(f.food)}`); if (f.tmap) o.push(`보물 지도 조각 +${PCT(f.tmap)}`); return o.join(' · '); }
+  if (f.xp) o.push(`경험치 +${PCT(f.xp)}`); if (f.free) o.push(`기력 안 쓸 확률 ${PCT(f.free)}`); if (f.food) o.push(`음식 회복 +${PCT(f.food)}`); if (f.tmap) o.push(`보물 지도 조각 +${PCT(f.tmap)}`);
+  if (f.crop3) o.push(`작물 3 배 수확 ${PCT(f.crop3)}`); if (f.dish) o.push(`요리 판매가 +${PCT(f.dish)}`); if (f.ore2) o.push(`광석 2 배 ${PCT(f.ore2)}`); if (f.quest) o.push(`퀘스트 골드 +${PCT(f.quest)}`); if (f.wood2) o.push(`목재 2 배 ${PCT(f.wood2)}`);
+  if (f.wearoff) o.push(`옷 가게 ${PCT(f.wearoff)} 할인`); if (f.dlv) o.push(`배달 보상 +${PCT(f.dlv)}`); if (f.fish2) o.push(`물고기 2 마리 ${PCT(f.fish2)}`); if (f.forage) o.push(`채집 2 배 ${PCT(f.forage)}`); return o.join(' · '); }

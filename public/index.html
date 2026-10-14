@@ -567,7 +567,7 @@ import { LORE } from './lore.js';
 import { ACHIEVEMENTS, TITLE_FX, titleFxText } from './achievements.js';
 import { SITUATIONS } from './situations.js';
 import { UI, EMOJI_UI } from './art/ui.js';
-import { FURN_ALL, FURN_MORE, FURN_DRAW } from './art/furniture.js';
+import { FURN_ALL, FURN_MORE, FURN_KEEP, FURN_DRAW } from './art/furniture.js';
 import { PLUSH, drawPlush, PLUSH_TIER } from './art/plush.js';
 import { drawOtumo, OTUMO_HP } from './art/otumo.js';
 import * as TB from './art/toriboss.js';
@@ -1882,7 +1882,7 @@ function sizePrev(){ const c = $('obprev'); if (!c) return; const r = c.getBound
 
 // ===== 게임 =====
 function enterGame(doc){
-  me = doc; obStep = null; $('ob').hidden = true; migrateItems(); capHearts();
+  me = doc; obStep = null; $('ob').hidden = true; migrateItems(); capHearts(); setTimeout(friendBackfill, 1500);
   for (const id of ['hud','quest','bar','chatbox','sideBtns']) $(id).hidden = false;
   $('npcBtn').onclick = ()=>togglePanel('npcPanel', renderNpcPanel);
   $('mapBtn').onclick = ()=>togglePanel('mapPanel', renderMap);
@@ -2121,9 +2121,10 @@ function playEvents(n, list){
   const ev = (n.events && n.events[h]) || {title:'조금 더 가까워졌어요', pages:['(조금 더 가까워진 것 같다)'], keepsake:''};
   const evCh = chaptersOf(n).find(c=>c.kind==='event' && c.key===h), r = relOf(n.id), rc = evCh && !r['ev'+h] ? recallLine(n, evCh) : '';
   const first = !r['ev'+h];
-  if (first){ r['ev'+h] = true; me.inv.gold += STORY_GOLD[h]; if (ev.keepsake){ me.keep = me.keep || {}; me.keep[n.id] = [...(me.keep[n.id]||[]), fillName(ev.keepsake)]; } r.storyDay = today(); gainExp({4:80, 7:150, 10:250}[h] || 50); }
+  let fr = null; if (first && h === 10) fr = friendReward(n.id);
+  if (first){ r['ev'+h] = true; me.inv.gold += STORY_GOLD[h]; if (ev.keepsake && h !== 10){ me.keep = me.keep || {}; me.keep[n.id] = [...(me.keep[n.id]||[]), fillName(ev.keepsake)]; } r.storyDay = today(); gainExp({4:80, 7:150, 10:250}[h] || 50); }
   const rest = list.slice(1);
-  const reward = first ? [{who:'narr', text:`관계가 '${TIERS[tierOf(h)]}'(으)로 깊어졌어요 · ${STORY_GOLD[h]} G${ev.keepsake ? ` · 기념품 '${fillName(ev.keepsake)}'` : ''}`}] : [];
+  const reward = first ? [{who:'narr', text:`관계가 '${TIERS[tierOf(h)]}'(으)로 깊어졌어요 · ${STORY_GOLD[h]} G${fr ? ` · ${fr}` : ev.keepsake && h !== 10 ? ` · 기념품 '${fillName(ev.keepsake)}'` : ''}`}] : [];
   story({n, title:{sub:`${n.name} 이야기 · ${evCh ? evCh.i+1 : ''}화`, main:ev.title, star:true}, beats:[...toBeats([rc, ...ev.pages]), ...reward], acts: rest.length ? [['다음 이야기', ()=>playEvents(n, rest)]] : npcActions(n), hint: rest.length ? '' : storyHint(n)});
 }
 function npcActions(n){
@@ -2536,7 +2537,7 @@ function catchFish(){
   const ratio = Math.pow(Math.random(), 1.5), size = Math.round((f.min + (f.max-f.min)*ratio)*10)/10;
   const st = ratio >= .85 ? 3 : ratio >= .5 ? 2 : 1, k = fishKey(id, st);
   setExpr(st===3 || f.weight < 10 ? 'sparkle' : 'happy', 2500); stat('fishCaught'); if (st===3) stat('fish3Star'); gainExp(3 + st*2); questEvent('catch', 'fish:'+k);
-  invAdd('fish:'+k, 1); tmapDrop(); darkKeyDrop();
+  invAdd('fish:'+k, 1); if (Math.random() < tfx('fish2') && invRoom('fish:'+k) > 0){ invAdd('fish:'+k, 1); setTimeout(()=>toast('펭펭의 친구 · 한 마리 더 낚았어요!', 'fish:'+k), 900); } tmapDrop(); darkKeyDrop();
   me.dex = me.dex || {}; const dx = me.dex[id] || {n:0, best:0, st:0};
   const record = size > dx.best; me.dex[id] = {n:dx.n+1, best:Math.max(dx.best,size), st:Math.max(dx.st,st)};
   saveMe(); renderHud(); contestSubmit(id, size); festFishSubmit(id, size);
@@ -2732,7 +2733,7 @@ function mineRock(r){
   fx.push({x:r.x, y:r.y-14, text:'탕!', t:performance.now(), color:'#7a6a72'});
   if (rockHits[key] < 3){ toast(`바위를 캐는 중.... (${rockHits[key]}/3)`); return; }
   delete rockHits[key];
-  const id = rollOre(zoneId), o = ORES[id], n = o.tier===1 ? 1 + Math.floor(Math.random()*3) : 1;
+  const id = rollOre(zoneId), o = ORES[id]; let n = o.tier===1 ? 1 + Math.floor(Math.random()*3) : 1; if (Math.random() < tfx('ore2')){ n *= 2; setTimeout(()=>toast('도도의 친구 · 2 배로 캤어요!'), 900); } // 도도의 친구
   invAdd('ore:'+id, n); tmapDrop(); darkKeyDrop(); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200); stat('oreMined', n); questEvent('mine', 'ore:'+id, n); gainExp(o.tier*2*n);
   me.mined = me.mined || {}; const m = me.mined[zoneId];
   me.mined[zoneId] = {h:rockKey(), done: (m && m.h===rockKey() ? m.done+',' : '') + r.i};
@@ -3543,7 +3544,8 @@ function useSlot(i){
     const c = cropNow(g.crop, now); g.crop = c; const cd = CROPS[c.type] || CROPS.c01;
     if (c.stage>=4){
       if (!useSta('harvest')) return;
-      const n = cd.y1 + Math.floor(Math.random()*(cd.y2-cd.y1+1)) + (Math.random() < tfx('crop') ? 1 : 0); // 칭호: 수확 +1 확률
+      let n = cd.y1 + Math.floor(Math.random()*(cd.y2-cd.y1+1)) + (Math.random() < tfx('crop') ? 1 : 0); // 칭호: 수확 +1 확률
+      if (Math.random() < tfx('crop3')){ n *= 3; setTimeout(()=>toast('하나의 친구 · 3 배로 수확했어요!'), 900); } // 하나의 친구
       g.crop = null; invAdd('crop:'+c.type, n); setExpr('happy', 2000); stat('cropsHarvested', n); gainExp(2 + Math.floor(cd.min/30));
       if (me.quest<=5 && me.quest>=3){ me.quest = 6; invAdd('seed:c01', 2); say('하나 · 꼬마 농부', '첫 수확 축하해! 기념으로 토마토 씨앗 2 개 더 줄게! 다른 씨앗은 마을 광장 모모 가게에서 살 수 있어! 이제 섬 구경 가 봐! 등대 해변 펭펭이 낚시 알려 줄 거야!'); }
       else toast(`${cd.name} ${n} 개를 수확했어요!`, 'crop:'+c.type);
@@ -3884,7 +3886,7 @@ function errandPanel(){
 // ===== 보리 공방: 텃밭 늘리기 · 가구 =====
 const PLOT_COST = {3:[3000,'ore:o11',3], 4:[7500,'ore:o12',3], 5:[18000,'ore:o21',2], 6:[36000,'ore:o30',1], 7:[60000,'ore:o21',4], 8:[90000,'ore:o30',2], 9:[130000,'ore:o36',1], 10:[180000,'ore:o37',1]}; // 울타리 안 최대 10 칸
 // [이름, 골드, 재료, 개수, 모양, 색]
-const FURN_LIST = [...FURN_ALL, ...PLUSH.map((p, k)=>[p[0] + ' 인형', 0, 'ore:o01', 0, 'plush' + k, p[1], 1]), ...FURN_MORE.map(f => [...f, 0, 1])]; // 2 차 가구 20 종은 오투모 경품 전용 (공방에서는 못 만들어요) // 가구 43 종 (art/furniture.js) + 오락실 경품 인형 20 종 (공방에서는 못 만들어요)
+const FURN_LIST = [...FURN_ALL, ...PLUSH.map((p, k)=>[p[0] + ' 인형', 0, 'ore:o01', 0, 'plush' + k, p[1], 1]), ...FURN_MORE.map(f => [...f, 0, 1]), ...FURN_KEEP.map(f => [...f, 0, 1])]; // 2 차 가구 20 종은 오투모 경품 전용 (공방에서는 못 만들어요) // 가구 43 종 (art/furniture.js) + 오락실 경품 인형 20 종 (공방에서는 못 만들어요)
 const PLUSH_FURN = PLUSH.map((_, k)=>'u' + String(FURN_ALL.length + k + 1).padStart(2, '0'));
 const FURN = Object.fromEntries(FURN_LIST.map((f,i)=>['u'+String(i+1).padStart(2,'0'), {name:f[0], gold:f[1], need:f[2], n:f[3], shape:f[4], color:f[5], prize:!!f[6], excl:!!f[7]}]));
 function workshopPanel(){
@@ -4201,7 +4203,7 @@ function clothesPanel(){
 }
 // 색 고르기: 같은 옷의 다섯 색을 입어 본 모습으로 보여 주고, 가진 색은 바로 입고 없는 색은 사요
 function colorPanel(slot, id){
-  const it = CH.ITEM(id), cols = CH.colorsOf(slot, id), cur = wearing(id) ? (me.look.cc?.[slot] || 0) : -1, free = freeItem(it);
+  const it0 = CH.ITEM(id), it = it0 && it0.price && !freeItem(it0) ? {...it0, price:Math.round(it0.price*(1 - tfx('wearoff')))} : it0, cols = CH.colorsOf(slot, id), cur = wearing(id) ? (me.look.cc?.[slot] || 0) : -1, free = freeItem(it);
   const cost = it.need ? `${it.price ? it.price+' G + ' : ''}${itemName(it.need)} ${it.n} 개` : `${it.price} G`;
   const can = it.need ? (me.inv.gold >= it.price && invCount(it.need) >= it.n) : me.inv.gold >= it.price;
   const tiles = cols.map((col, c)=>{ const own = owns(id, c);
@@ -4634,7 +4636,7 @@ function buyerBonus(n, key){
 const SELL_BOOST = {crop:1.5, forage:1.5, fish:1.5, ore:1.5, loot:1.5, dish:1.5};
 const sellBase = key => itemPrice(key) * (SELL_BOOST[key.split(':')[0]] || 1);
 function unitPrice(key, n, extra=0){ if (key.startsWith('star:')) return STAR_PRICE; // 별 조각은 시세 없이 늘 같은 값
-  return Math.max(1, Math.round(sellBase(key) * marketMul(key) * glut(key, extra) * (n ? buyerBonus(n, key) : 1) * (1 + tfx('sell')))); }
+  return Math.max(1, Math.round(sellBase(key) * marketMul(key) * glut(key, extra) * (n ? buyerBonus(n, key) : 1) * (1 + tfx('sell') + (key.startsWith('dish:') ? tfx('dish') : 0)))); }
 function sellTotal(key, cnt, n){ let s = 0; for (let i=0;i<cnt;i++) s += unitPrice(key, n, i); return s; }
 function sellItem(key, cnt, n){
   cnt = Math.min(cnt, invCount(key)); if (cnt <= 0) return 0;
@@ -5050,6 +5052,18 @@ function flushAch(){ if (!achQueue.length) return; const a = achQueue.shift(); t
 // 업적이 아닌 특별 칭호 (오늘의 섬 목표 기여 1위 등)
 const SPECIAL_TITLES = {goal1:'고급 노동자', bridge1:'다리를 놓은 사람'};
 const SPECIAL_DESC = {goal1:'오늘의 섬 목표 기여 1위', bridge1:'섬 복구 다리 기여 1위'};
+// 주민과 ♥10: '○○의 친구' 칭호 (주민마다 다른 효과) · 기념품 가구 · 그 주민 코스튬 3 종
+const FRIEND_FX = {hana:{crop3:.1}, momo:{dish:.15}, dodo:{ore2:.1}, toto:{quest:.2}, bori:{wood2:.1}, mongsil:{wearoff:.1}, tori:{dlv:.25}, olly:{tmap:.3}, pengpeng:{fish2:.1}, dandan:{food:.25}, kongi:{atk:.08, dr:.05}, bami:{forage:.1}};
+const KEEP_SHAPE = {hana:'kGoldCan', momo:'kTopper', dodo:'kPick', toto:'kPromise', bori:'kMusicBox', mongsil:'kDress', tori:'kLetter', olly:'kPlaque', pengpeng:'kFeather', dandan:'kRecipe', kongi:'kRibbon', bami:'kStarflower'};
+for (const [id, f] of Object.entries(FRIEND_FX)){ const nm = NPC[id]?.name || id; SPECIAL_TITLES['f_' + id] = `${nm}의 친구`; SPECIAL_DESC['f_' + id] = `${nm}${(nm.charCodeAt(nm.length - 1) - 0xAC00) % 28 ? '과' : '와'} ♥10`; TITLE_FX['f_' + id] = f; }
+const keepFurn = id => Object.keys(FURN).find(k => FURN[k].shape === KEEP_SHAPE[id]);
+function friendReward(id, quiet){ if (!me || !FRIEND_FX[id]) return null; me.friendGot = me.friendGot || {}; if (me.friendGot[id]) return null; me.friendGot[id] = 1;
+  me.stitles = [...new Set([...(me.stitles||[]), 'f_' + id])]; const fu = keepFurn(id); if (fu) invAdd('furn:' + fu, 1);
+  for (const w of ['cs_' + id, 'ch_' + id, 'ca_' + id]){ invAdd('wear:' + w, 1); if (!CLOSET().includes(w)) CLOSET().push(w); } // 옷 · 귀 머리띠 · 꼬리
+  const nm = NPC[id]?.name || ''; return `칭호 '${nm}의 친구' · 가구 '${fu ? FURN[fu].name : ''}' · ${nm} 코스튬 (옷 · 귀 머리띠 · 꼬리)`; }
+// 예전에 ♥10 을 찍은 사람은 들어올 때 한꺼번에 받아요
+function friendBackfill(){ if (!me || admin) return; const got = []; for (const n of NPCS) if (relOf(n.id).ev10){ const r = friendReward(n.id, true); if (r) got.push(n.name); }
+  if (got.length){ syncStats(); saveMe(true); setTimeout(()=>toast(`♥10 선물이 도착했어요 · ${got.join(' · ')} (칭호 · 가구 · 코스튬) · 가방과 업적에서 확인해요`), 2500); } }
 const titleOf = id => SPECIAL_TITLES[id] || (ACHIEVEMENTS.find(a=>a.id===id)||{}).reward?.title || '';
 function achPanel(){
   syncStats(); const st = stats(), done = me.ach || [];
@@ -5091,7 +5105,7 @@ function questActions(n){
   if (questComplete(qq)) return [[`✅ 완료: ${qq.title}`, ()=>{
     if (qq.type==='collect') invAdd(qq.key, -qq.n);
     q.done.push(qq.id); delete q.active[n.id]; delete q.prog[qq.id];
-    me.inv.gold += qq.reward.gold||0; for (const [k,c] of (qq.reward.items||[])){ if (k.startsWith('hat:')){ CLOSET().push(k.slice(4)); invAdd('wear:'+k.slice(4), 1); } else invAdd(k, c); }
+    me.inv.gold += Math.round((qq.reward.gold||0) * (1 + tfx('quest'))); for (const [k,c] of (qq.reward.items||[])){ if (k.startsWith('hat:')){ CLOSET().push(k.slice(4)); invAdd('wear:'+k.slice(4), 1); } else invAdd(k, c); }
     if (qq.reward.pts) addPts(n, qq.reward.pts);
     stat('questsDone'); gainExp(60); setExpr('happy', 3000);
     const rw = [qq.reward.gold ? qq.reward.gold+' G' : '', ...(qq.reward.items||[]).map(([k,c])=>k.startsWith('hat:') ? `${CH.HATS[k.slice(4)]?.name||'모자'}` : `${itemName(k)} ${c}`), qq.reward.pts ? `호감도 +${qq.reward.pts}` : ''].filter(Boolean).join(' · ');
@@ -5342,6 +5356,7 @@ function chopAt(s){
   else if (zoneId==='jungle'){ got.push(['w2', 2]); if (Math.random() < .25) got.push(['w3', 1]); }
   else if (zoneId==='forest' || zoneId==='meadow' || zoneId==='workshop'){ got.push(['w2', 1 + (Math.random() < .3 ? 1 : 0)]); }
   else if (Math.random() < .6) got.push(['w2', 1]);
+  if (Math.random() < tfx('wood2')){ for (const g2 of got) g2[1] *= 2; setTimeout(()=>toast('보리의 친구 · 목재를 2 배로 얻었어요!'), 900); } // 보리의 친구
   const msg = []; let best = 1;
   for (const [id, n] of got){ const k = 'wood:'+id, a = invAdd(k, n); if (a > 0) msg.push(`${WOOD[id].name} ${a}`); best = Math.max(best, WOOD[id].rare); }
   me.chopped = me.chopped || {}; const m = me.chopped[zoneId] = me.chopped[zoneId] || {}; m[s.i] = Date.now();
@@ -8456,7 +8471,7 @@ function dlvGive(o){
   if (dlvHave(o.k) < o.n) return toast(`${dlvName(o.k)} ${o.n} 개가 필요해요 (지금 ${dlvHave(o.k)} 개)`);
   if (dlvDone() >= DLV_DAY) return toast(`오늘 배달은 ${DLV_DAY} 건까지예요 · 내일 또 해요`);
   if (o.k === 'fish:*'){ let left = o.n; for (const [fk, c] of anyFishKeys()){ const t = Math.min(left, c); invAdd(fk, -t); left -= t; if (!left) break; } } else invAdd(o.k, -o.n);
-  const onTime = dlvLeft(o) > 0, g = onTime ? o.reward : Math.round(o.reward / 2 / 10) * 10;
+  const onTime = dlvLeft(o) > 0, g = Math.round((onTime ? o.reward : Math.round(o.reward / 2 / 10) * 10) * (1 + tfx('dlv')));
   me.inv.gold += g; me.earned = (me.earned||0) + g; me.dlvN = dlvDone() + 1; me.orders = me.orders.filter(x => x !== o);
   if (onTime) addPts(n, DLV_PTS); stat('deliveries'); syncStats(); saveMe(true); renderHud();
   say(title(n), onTime ? `와, 딱 맞춰 왔네! ${dlvName(o.k)} ${o.n} 개 고마워. 이건 수고비야!` : `조금 늦었지만... 그래도 고마워. ${dlvName(o.k)} 잘 쓸게.`, npcActions(n), `배달 완료 · +${g.toLocaleString()} G${onTime ? ` · 호감도 +${DLV_PTS}` : ' (늦어서 반값)'}`);

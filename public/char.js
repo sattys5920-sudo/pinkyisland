@@ -1924,10 +1924,10 @@ function cosFace(d, g, F){ if (g.up) return; const side = g.side, fx = side ? R*
 for (const [id, [nm, kind, fur, lk]] of Object.entries(NPC_COS)){
   const A = {kind, fur, fur2:mixHex(fur, '#ffffff', .55), dark:mixHex(fur, '#2a1a24', .28)}, cc = lk.cc || {}, AN = () => ANIMALS[kind] || {};
   const capOnly = !AN().ears || ['whale', 'penguin'].includes(kind), front = ['tiger', 'mole', 'bear', 'panda'].includes(kind); // 귀가 없는 동물은 털색 모자로 · 동그란 귀는 머리카락 위로
-  SETS['c_' + id] = {excl:1, npc:id, fixed:1, name:`${nm} 옷`, price:300000, main:fur,
+  SETS['cs_' + id] = {excl:1, npc:id, fixed:1, name:`${nm} 옷`, price:300000, main:fur,
     draw:(d, g)=>{ if (lk.set) SETS[lk.set].draw(tinted(d, 'set', lk.set, cc.set || 0, g.sk), g); else { BOTTOMS[lk.bottom].draw(tinted(d, 'bottom', lk.bottom, cc.bottom || 0, g.sk), g); TOPS[lk.top].draw(tinted(d, 'top', lk.top, cc.top || 0, g.sk), g); } },
     over:(d, g)=>{ const it = lk.set ? SETS[lk.set] : TOPS[lk.top]; if (it?.over) it.over(tinted(d, lk.set ? 'set' : 'top', lk.set || lk.top, (lk.set ? cc.set : cc.top) || 0, g.sk), g); } };
-  HATS['c_' + id] = {excl:1, npc:id, fixed:1, name:`${nm} 귀 머리띠`, price:200000, main:fur,
+  HATS['ch_' + id] = {excl:1, npc:id, fixed:1, name:`${nm} 귀 머리띠`, price:200000, main:fur,
     back:(d, g)=>{ if (!capOnly && !front) AN().ears(cosP(d, g, A)); },
     head:(d, g)=>{ if (COS_FACE[kind]?.head && AN().head) AN().head(cosP(d, g, A)); },
     draw:(d, g)=>{ const P = cosP(d, g, A); if (COS_FACE[kind]) cosFace(d, g, COS_FACE[kind]);
@@ -1935,6 +1935,6 @@ for (const [id, [nm, kind, fur, lk]] of Object.entries(NPC_COS)){
       else if (!g.up) d.line(k=>{ k.ellipse(0, HY - R*.1, R*1.02, R*.9, 0, Math.PI*1.08, Math.PI*1.92); }, SH(fur, -.35), 1.6, .95);
       if (front) AN().ears(P); if (AN().over) AN().over(P); if (AN().top) AN().top(P);
       if (lk.acc && ACCS[lk.acc]) ACCS[lk.acc].draw(tinted(d, 'acc', lk.acc, cc.acc || 0, g.sk), g); } };
-  ACCS['c_' + id] = {excl:1, npc:id, fixed:1, name:`${nm} 꼬리`, price:150000, main:fur,
+  ACCS['ca_' + id] = {excl:1, npc:id, fixed:1, name:`${nm} 꼬리`, price:150000, main:fur,
     back:(d, g)=>{ if (AN().tail) AN().tail(cosP(d, g, A)); }, draw:()=>{} };
 }
