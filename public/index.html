@@ -7086,7 +7086,7 @@ function adminNightSec(){
     ${ph ? (ph === 'wait' ? '<button data-a="meteorcancel" class="adm-btn warn">별똥별 예약 취소</button>' : '') : '<button data-a="meteorgo" class="adm-btn">🌠 별똥별 예약 (10분 뒤)</button>'}
     <button data-a="fwgo" class="adm-btn"${fw ? ' disabled' : ''}>🎆 불꽃놀이 지금 열기</button>
     <button data-a="balgo" class="adm-btn"${balOn() ? ' disabled' : ''}>🎈 풍선 날리기 (10 초 · 낮 이벤트)</button></div>
-    <div class="adm-sec"><b>🌦️ 날씨 바꾸기</b><small>지금 ${wxNow()[1]} ${wxNow()[0]}${wxForced() ? ` · 관리자가 정함 · ${fmtLeft(+world.wx.until - n)} 남음` : ' · 자동'}</small>
+    <div class="adm-sec"><b>🌦️ 날씨 바꾸기</b><small>지금 ${wxNow()[1]} ${wxNow()[0]}${wxForced() ? ` · ${fmtLeft(+world.wx.until - n)} 남음` : ''}</small>
     <div class="adm-wrow">${Object.entries(WX).map(([k, [nm, ic]]) => `<button data-a="wxset" data-k="${k}" class="adm-btn"${wxForced() === k ? ' disabled' : ''}>${ic} ${nm}</button>`).join('')}</div>
     <div class="adm-wrow"><button data-a="wxhrs" data-h="1" class="adm-btn"${wxHrs === 1 ? ' style="background:#ffd6e4;font-weight:bold"' : ''}>1 시간</button><button data-a="wxhrs" data-h="4" class="adm-btn"${wxHrs === 4 ? ' style="background:#ffd6e4;font-weight:bold"' : ''}>4 시간</button><button data-a="wxhrs" data-h="24" class="adm-btn"${wxHrs === 24 ? ' style="background:#ffd6e4;font-weight:bold"' : ''}>하루</button><button data-a="wxauto" class="adm-btn"${wxForced() ? '' : ' disabled'}>자동으로</button></div></div>`;
 }
