@@ -2535,7 +2535,7 @@ function catchFish(){
   const ratio = Math.pow(Math.random(), 1.5), size = Math.round((f.min + (f.max-f.min)*ratio)*10)/10;
   const st = ratio >= .85 ? 3 : ratio >= .5 ? 2 : 1, k = fishKey(id, st);
   setExpr(st===3 || f.weight < 10 ? 'sparkle' : 'happy', 2500); stat('fishCaught'); if (st===3) stat('fish3Star'); gainExp(3 + st*2); questEvent('catch', 'fish:'+k);
-  invAdd('fish:'+k, 1); tmapDrop();
+  invAdd('fish:'+k, 1); tmapDrop(); darkKeyDrop();
   me.dex = me.dex || {}; const dx = me.dex[id] || {n:0, best:0, st:0};
   const record = size > dx.best; me.dex[id] = {n:dx.n+1, best:Math.max(dx.best,size), st:Math.max(dx.st,st)};
   saveMe(); renderHud(); contestSubmit(id, size); festFishSubmit(id, size);
@@ -2732,7 +2732,7 @@ function mineRock(r){
   if (rockHits[key] < 3){ toast(`바위를 캐는 중.... (${rockHits[key]}/3)`); return; }
   delete rockHits[key];
   const id = rollOre(zoneId), o = ORES[id], n = o.tier===1 ? 1 + Math.floor(Math.random()*3) : 1;
-  invAdd('ore:'+id, n); tmapDrop(); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200); stat('oreMined', n); questEvent('mine', 'ore:'+id, n); gainExp(o.tier*2*n);
+  invAdd('ore:'+id, n); tmapDrop(); darkKeyDrop(); setExpr(o.tier >= 4 ? 'sparkle' : 'happy', 2200); stat('oreMined', n); questEvent('mine', 'ore:'+id, n); gainExp(o.tier*2*n);
   me.mined = me.mined || {}; const m = me.mined[zoneId];
   me.mined[zoneId] = {h:rockKey(), done: (m && m.h===rockKey() ? m.done+',' : '') + r.i};
   me.odex = me.odex || {}; const first = !me.odex[id]; me.odex[id] = (me.odex[id]||0) + n;
@@ -3009,7 +3009,7 @@ function mobReward(zone, slot, d){
   me.mobGot = me.mobGot || {}; const key = zone + ':' + slot; if ((me.mobGot[key]|0) >= d.gen) return; me.mobGot[key] = d.gen;
   const m = MONSTERS[d.id], gold = Math.round((m.gold || m.atk) * (0.8 + Math.random()*.4) * (1 + tfx('loot'))), crew = Object.keys(d.hits||{}).length;
   stat('monsterKills'); if (d.id==='m28') stat('caveBossKills'); questEvent('kill', d.id);
-  invAdd('loot:'+d.id, 1); me.inv.gold += gold; tmapDrop(!!m.boss);
+  invAdd('loot:'+d.id, 1); me.inv.gold += gold; tmapDrop(!!m.boss); darkKeyDrop();
   me.mdex = me.mdex || {}; const first = !me.mdex[d.id]; me.mdex[d.id] = (me.mdex[d.id]||0) + 1;
   const xp = m.boss ? Math.round(300 + m.hp/40) : Math.max(3, Math.round(m.hp/6 + m.atk)); gainExp(xp);
   saveMe(); renderHud();
@@ -5257,7 +5257,7 @@ function forageAt(s){
   if (!useSta('forage')) return;
   invAdd(key, 1); if (Math.random() < tfx('forage') && invRoom(key) > 0){ invAdd(key, 1); setTimeout(()=>toast(`다람쥐가 ${f.name}을(를) 하나 더 찾아 왔어요!`, key), 700); } me.foraged = me.foraged || {}; const fk = s.type === 'leafpile' ? zoneId + '~lp' : zoneId, fh = spotKey(s), m = me.foraged[fk]; me.foraged[fk] = {h:fh, done:(m && m.h === fh ? m.done + ',' : '') + s.i};
   me.gdex = me.gdex || {}; const first = !me.gdex[f.id]; me.gdex[f.id] = (me.gdex[f.id]||0) + 1;
-  stat('foraged'); tmapDrop(); gainExp(f.rare*2); setExpr(f.rare >= 4 ? 'sparkle' : 'happy', 1500); saveMe(); renderHud();
+  stat('foraged'); tmapDrop(); darkKeyDrop(); gainExp(f.rare*2); setExpr(f.rare >= 4 ? 'sparkle' : 'happy', 1500); saveMe(); renderHud();
   fx.push({x:s.x, y:s.y-40, text:'+1', t:performance.now(), color:'#ffffff'});
   toast(`${f.name}을(를) 주웠어요${first ? ' · 처음 찾은 채집물!' : ''}${f.rare >= 4 ? ' · ' + '◆'.repeat(f.rare) : ''}`, key);
 }
@@ -5345,7 +5345,7 @@ function chopAt(s){
   for (const [id, n] of got){ const k = 'wood:'+id, a = invAdd(k, n); if (a > 0) msg.push(`${WOOD[id].name} ${a}`); best = Math.max(best, WOOD[id].rare); }
   me.chopped = me.chopped || {}; const m = me.chopped[zoneId] = me.chopped[zoneId] || {}; m[s.i] = Date.now();
   for (const [i, at] of Object.entries(m)) if (Date.now() - at > CHOP_REGROW) delete m[i]; m[s.i] = Date.now(); // 다 자란 기록은 지워요
-  stat('treesChopped'); tmapDrop(); gainExp(2 + best); setExpr(best >= 3 ? 'sparkle' : 'happy', 1500); saveMe(); renderHud();
+  stat('treesChopped'); tmapDrop(); darkKeyDrop(); gainExp(2 + best); setExpr(best >= 3 ? 'sparkle' : 'happy', 1500); saveMe(); renderHud();
   fx.push({x:s.x, y:s.y-70, text:'쿵!', t:performance.now(), color:'#7a5034'});
   if (msg.length) toast(`나무를 베었어요 · ${msg.join(' · ')}${got.some(([id])=>id==='w4') ? ' · ✨ 별빛 고목!' : ''}`, 'wood:' + got[got.length-1][0]);
 }
@@ -5949,7 +5949,34 @@ function onDarkRooms(v){
   if (zoneId.startsWith('dark:')){ renderHud(); const r = roomOf(zoneId.slice(5)); if (!r.hp && !r.clear && darkSolvedN(r) >= darkPuzzles(zoneId.slice(5)).length) darkWake(zoneId.slice(5)); }
 }
 // ----- 문 (다크 모드 동안 주민 자리 옆에 생겨요) -----
-function darkDoorState(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(); if (roomOf(npc).clear) return 'clear'; if (i === di) return 'open'; return i < di ? 'missed' : 'locked'; }
+function darkDoorState(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(); if (roomOf(npc).clear) return 'clear'; if (i === di) return darkKeyDone(npc) || roomOf(npc).start || admin ? 'open' : 'sealed'; return i < di ? 'missed' : 'locked'; }
+// ===== 열쇠 조각: 오늘 열릴 집의 열쇠는 아홉 조각 (3 × 3 정사각형). 섬에서 주운 조각을 마을 게시판에 붙여야 모여요 =====
+const KEY_N = 9, KEY_P = .05;
+const darkKeys = npc => roomOf(npc).keys || {};
+const darkKeyN = npc => Object.keys(darkKeys(npc)).filter(k => +k >= 1 && +k <= KEY_N).length;
+const darkKeyDone = npc => darkKeyN(npc) >= KEY_N;
+const myKeys = npc => { const k = me && me.keyp; return k && k.npc === npc && k.at === (world.darkAt || 0) ? (k.have || []).filter(n => !darkKeys(npc)[n]) : []; };
+function darkKeyDrop(){
+  if (!darkOn() || admin || !me || Z().dark) return; const npc = darkToday(); if (!npc || darkDoorState(npc) !== 'sealed') return;
+  if (Math.random() >= KEY_P) return;
+  const have = myKeys(npc), free = []; for (let n = 1; n <= KEY_N; n++) if (!darkKeys(npc)[n] && !have.includes(n)) free.push(n); if (!free.length) return;
+  const n = free[Math.floor(Math.random()*free.length)]; me.keyp = {npc, at:world.darkAt || 0, have:[...have, n]}; saveMe();
+  setTimeout(() => toast(`🗝️ 녹슨 열쇠 조각을 주웠어요 (${n} 번) · 마을 게시판에 붙여요`), 700);
+}
+async function darkKeyPin(npc){
+  const have = myKeys(npc); if (!have.length) return toast('붙일 조각이 없어요');
+  const at = darkNow(), nick = String(me.nick || '').slice(0, 12);
+  const ok = await net.darkTx(npc, cur => { cur = cur || {}; const k = {...(cur.keys || {})}; let add = 0; for (const n of have) if (!k[n]){ k[n] = {nick, at}; add++; } return add ? {...cur, keys:k} : undefined; });
+  me.keyp = {npc, at:world.darkAt || 0, have:[]}; saveMe();
+  if (ok) toast(darkKeyDone(npc) ? `열쇠가 다 맞춰졌어요 · ${NPC[npc].name}의 집 문이 열려요` : `조각을 붙였어요 (${darkKeyN(npc)}/${KEY_N})`); else toast('누군가 먼저 같은 조각을 붙였어요');
+  missBoard();
+}
+function keyGridHtml(npc){ const k = darkKeys(npc); let h = '<div style="display:grid;grid-template-columns:repeat(3,48px);gap:3px;justify-content:center;margin:6px auto">';
+  for (let n = 1; n <= KEY_N; n++){ const v = k[n]; h += `<div style="height:48px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:12px;${v ? 'background:#c9a25a;color:#3a2410' : 'background:#e8dfd0;color:#a89880;border:1.5px dashed #b8a888'}">${v ? '🗝️<small style="font-size:10px;line-height:1">' + esc(String(v.nick).slice(0, 5)) + '</small>' : n}</div>`; }
+  return h + '</div>'; }
+let keyDoneSeen = {};
+setInterval(() => { try { if (!darkOn() || !me || admin) return; const npc = darkToday(); if (!npc) return; const done = darkKeyDone(npc);
+  if (keyDoneSeen[npc] === false && done) toast(`🗝️ 열쇠 아홉 조각이 다 모였어요 · ${NPC[npc].name}의 집 문이 열렸어요`); keyDoneSeen[npc] = done; } catch(e){} }, 1500);
 function drawDarkDoor(d, npc, t){
   const c = d.ctx, [x, y] = darkDoorOf(npc), st = darkDoorState(npc), glow = st === 'open' ? .55 + Math.sin(t/300)*.25 : 0;
   if (darkBldg(npc)?.hidden) drawHiddenHouse(d, x, y, t);
@@ -5971,7 +5998,7 @@ function drawDarkDoor(d, npc, t){
 function darkDoorLabel(c, npc, t){
   const [x, y] = darkDoorOf(npc), st = darkDoorState(npc), n = NPC[npc];
   if (darkBldg(npc)?.hidden && Math.hypot(pos.x-x, pos.y-y) > 260) return; // 숨겨진 집은 가까이 가야 이름이 보여요
-  tag(c, `${n.name}의 집 · ${{open:'열림', clear:'꿰매짐', locked:'잠김', missed:'닫힘'}[st]}`, x, y - ({lighthouse:215}[darkBldg(npc)?.kind] || (darkBldg(npc)?.hidden ? 160 : darkBldg(npc) ? 142 : 80)), st === 'open' ? '#ff4f87' : null);
+  tag(c, `${n.name}의 집 · ${{open:'열림', clear:'꿰매짐', locked:'잠김', missed:'닫힘', sealed:`열쇠 ${darkKeyN(npc)}/${KEY_N}`}[st]}`, x, y - ({lighthouse:215}[darkBldg(npc)?.kind] || (darkBldg(npc)?.hidden ? 160 : darkBldg(npc) ? 142 : 80)), st === 'open' ? '#ff4f87' : null);
 }
 // ----- 다크 모드: 주민이 서 있던 자리에 남은 물건 -----
 const xs = (c, x, y, r=2.2) => { c.moveTo(x-r, y-r); c.lineTo(x+r, y+r); c.moveTo(x+r, y-r); c.lineTo(x-r, y+r); }; // 검은 실 꿰맴 자국
@@ -6035,15 +6062,22 @@ function missPoster(id, name){
     <b class="mp-n">${esc(name)}</b><small>마지막으로 본 곳 : 자택</small><small>자기 방에서 게임에 접속한 채 사라졌어요<br>휴대 전화 화면은 아직 켜져 있었어요</small><em>보신 분은 꼭 연락 주세요</em></div>`;
 }
 function missBoard(only){
-  const L = missingList().filter(([id]) => !only || id === only); if (!L.length) return say('....', '빛바랜 게시판이에요. 종이를 떼어 낸 자국만 잔뜩 남아 있어요.');
-  openPanel(only ? '현관문에 붙은 전단' : '마을 게시판', `<div class="mp-grid">${L.map(([id, n]) => missPoster(id, n)).join('')}</div>`);
+  const L = missingList().filter(([id]) => !only || id === only), npc = only ? null : darkToday(), sealed = npc && darkDoorState(npc) === 'sealed';
+  const keyBox = npc && (sealed || darkKeyN(npc)) ? `<div class="np" style="display:block;text-align:center"><b>🗝️ ${esc(NPC[npc].name)}의 집 열쇠</b> · ${darkKeyN(npc)}/${KEY_N}${keyGridHtml(npc)}${sealed ? `<small style="color:#8a7a6a">섬 곳곳에서 녹슨 조각을 주워 여기에 붙여요. 아홉 조각이 다 붙으면 문이 열려요.</small>${myKeys(npc).length ? `<div style="margin-top:6px"><button class="btn" id="keyPin">가진 조각 ${myKeys(npc).length} 개 붙이기</button></div>` : ''}` : '<small style="color:#8a7a6a">다 맞춰졌어요 · 문이 열렸어요</small>'}</div>` : '';
+  if (!L.length && !keyBox) return say('....', '빛바랜 게시판이에요. 종이를 떼어 낸 자국만 잔뜩 남아 있어요.');
+  openPanel(only ? '현관문에 붙은 전단' : '마을 게시판', keyBox + (L.length ? `<div class="mp-grid">${L.map(([id, n]) => missPoster(id, n)).join('')}</div>` : ''));
+  if ($('keyPin')) $('keyPin').onclick = () => darkKeyPin(npc);
   darkImgFill($('npcPanel'));
 }
+
 const MISS_BOARD = {z:'village', x:950, y:460};
 function drawMissBoard(d){ const {x, y} = MISS_BOARD, c = d.ctx, n = missingList().length;
   c.save(); c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(x, y+2, 46, 8, 0, 0, 7); c.fill(); c.restore();
   d.rr(x-40, y-12, 7, 14, 2, '#5a4232'); d.rr(x+33, y-12, 7, 14, 2, '#5a4232'); d.rr(x-48, y-84, 96, 74, 6, '#7a5a40'); d.rr(x-43, y-79, 86, 64, 4, '#b89a72');
-  for (let i = 0; i < Math.min(n || 3, 8); i++){ const px = x - 38 + (i % 4) * 20, py = y - 74 + Math.floor(i / 4) * 30; c.save(); c.translate(px + 8, py + 12); c.rotate(((i * 37) % 9 - 4) * .03); d.rr(-8, -12, 17, 24, 1, n ? '#f4efe6' : '#d8ccb4'); if (n){ d.rr(-7, -11, 15, 4, 1, '#c4222a'); d.rr(-5, -5, 11, 9, 1, '#8a8a8a'); } c.restore(); } }
+  for (let i = 0; i < Math.min(n || 3, 8); i++){ const px = x - 38 + (i % 4) * 20, py = y - 74 + Math.floor(i / 4) * 30; c.save(); c.translate(px + 8, py + 12); c.rotate(((i * 37) % 9 - 4) * .03); d.rr(-8, -12, 17, 24, 1, n ? '#f4efe6' : '#d8ccb4'); if (n){ d.rr(-7, -11, 15, 4, 1, '#c4222a'); d.rr(-5, -5, 11, 9, 1, '#8a8a8a'); } c.restore(); }
+  const npc = darkToday(); if (npc && (darkDoorState(npc) === 'sealed' || darkKeyN(npc))){ const k = darkKeys(npc), gx = x - 17, gy = y - 120; // 게시판 위 열쇠 판 (3 × 3)
+    d.rr(gx - 5, gy - 5, 44, 44, 4, '#5a4232'); for (let n = 1; n <= KEY_N; n++){ const cx = gx + ((n - 1) % 3)*12, cy = gy + Math.floor((n - 1)/3)*12; d.rr(cx, cy, 10, 10, 2, k[n] ? '#d8b060' : '#2a1e18'); }
+    c.save(); c.strokeStyle = '#5a4232'; c.lineWidth = 2; c.beginPath(); c.moveTo(x, gy + 39); c.lineTo(x, y - 84); c.stroke(); c.restore(); } }
 // 우편함: 바깥에서 온 편지 (받는 사람은 진짜 이름)
 const homeLetter = () => { const nm = darkOn() && (world.darkNames || {})[uid]; if (!nm) return null; const g = givenName(nm);
   return {from:'', nick:'엄마', at:world.darkAt || 0, read: me?.homeMail === (world.darkAt || 1), home:true,
@@ -6188,8 +6222,9 @@ async function darkEnter(npc){
   const st = darkDoorState(npc), n = NPC[npc];
   if (st === 'locked') return say(`${n.name}의 집`, '문이 굳게 꿰매져 있어요.');
   if (st === 'missed') return say(`${n.name}의 집`, '이 집의 문은 이미 다시 닫혔어요.');
+  if (st === 'sealed') return say(`${n.name}의 집`, `문고리에 녹슨 자물쇠가 걸려 있어요. 열쇠 구멍이 아홉 칸으로 나뉘어 있어요.\n\n맞춰진 조각 ${darkKeyN(npc)}/${KEY_N}`, [['마을 게시판 보기', () => { closeTalk(); missBoard(); }]]);
   if (st === 'open' && darkBusy) return; darkBusy = true;
-  if (st === 'open') await net.darkTx(npc, cur => { const now = darkNow(); cur = cur || {}; if (cur.clear) return undefined; if (!cur.start) return {...cur, start:now}; if (now > cur.start + darkLimit(cur)) return {att:(cur.att|0)+1, start:now}; return undefined; });
+  if (st === 'open') await net.darkTx(npc, cur => { const now = darkNow(); cur = cur || {}; if (cur.clear) return undefined; if (!cur.start) return {...cur, start:now}; if (now > cur.start + darkLimit(cur)) return {att:(cur.att|0)+1, start:now, ...(cur.keys ? {keys:cur.keys} : {})}; return undefined; });
   darkBusy = false; darkGuard = 3;
   { const [ex, ey] = darkRoomOf(npc)?.door || DARK_ROOM.door; enterZone('dark:'+npc, null, ex, ey); }
 }
@@ -6491,7 +6526,7 @@ function updateDark(dt, t){
   // 방 안 사람이 모두 쓰러지면 (3 초 확인) 보스 체력과 살리기 횟수를 처음으로
   if (darkBossUp(r) && darkDown && t > darkWipeT){ darkWipeT = t + 3000; const mates = [...others.values()].filter(o=>o.z===zoneId && !o.adm);
     if (mates.every(o=>o.down) && darkNow() - darkDown > 2500){ const w = r.wipe|0; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && (cur.wipe|0) === w ? (({rageAt, ...c}) => ({...c, hp:cur.max, rv:0, wipe:w + 1, bossAt:darkNow()}))(cur) : undefined); } }
-  if (r.start && !r.clear && darkNow() > r.start + darkLimit(r)){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? {att:(cur.att|0)+1} : undefined); return darkLeave(); }
+  if (r.start && !r.clear && darkNow() > r.start + darkLimit(r)){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? {att:(cur.att|0)+1, ...(cur.keys ? {keys:cur.keys} : {})} : undefined); return darkLeave(); }
   if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
     net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; const hp = Math.max(0, cur.hp - dmg); return {...cur, hp, ...(npc === 'tori' && !cur.rageAt && hp > 0 && hp <= cur.max/2 ? {rageAt:darkNow()} : {}), ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
   if (!darkBossUp(r)){ darkSlams = []; return; }
