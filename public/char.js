@@ -1915,7 +1915,7 @@ const cosP = (d, g, A) => ({d, g, L:g.L, A, side:g.side, up:g.up, fx: g.side ? R
 // 얼굴 장식: head 무늬(얼굴 아래 · 호랑이 줄무늬 · 판다 눈 무늬 · 사슴 점) · nose 코 · whisk 수염 · blush 볼터치 · beak 부리
 const COS_FACE = { fox:{nose:'#3a2a2a', whisk:'#6a4a3a', blush:1}, tiger:{head:1, nose:'#e8899c', whisk:'#5a3a2a'}, mole:{nose:'#ff8fa6', big:1, blush:1}, whale:{blush:1},
   bear:{nose:'#3a2a2a', blush:1}, sheep:{nose:'#e8899c', blush:1}, squirrel:{nose:'#5a3a44', blush:1}, deer:{head:1, nose:'#3a2a2a'}, penguin:{beak:'#ffa94d', blush:1},
-  panda:{head:1, nose:'#2f2f3a'}, wolf:{nose:'#2f2f3a', whisk:'#7a7a8a'}, hedgehog:{nose:'#3a2a2a', blush:1} };
+  panda:{nose:'#2f2f3a'}, wolf:{nose:'#2f2f3a', whisk:'#7a7a8a'}, hedgehog:{nose:'#3a2a2a', blush:1} };
 function cosFace(d, g, F){ if (g.up) return; const side = g.side, fx = side ? R*.22 : 0, fy = HY + R*.28, nx = side ? R*1.02 : fx, ny = fy + 3.2;
   if (F.blush) for (const cx of (side ? [R*.5] : [-8.6, 8.6])) d.ell(cx, fy + 4.4, 2.6, 1.5, '#ff9fb6', {flat:true, noShadow:true});
   if (F.whisk) d.line(k=>{ for (const s of (side ? [1] : [-1, 1])) for (const dy of [-.8, 1]){ const x0 = side ? R*.78 : fx + s*5.2; k.moveTo(x0, fy + 4 + dy); k.lineTo(x0 + s*6, fy + 3.4 + dy*2.2); } }, F.whisk, .8, .85);
