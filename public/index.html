@@ -5894,7 +5894,7 @@ const darkImgHtml = (npc, pz) => pz.im ? `<img class="dk-img" data-dkimg="${npc}
   : (pz.img || []).map((src, i) => `<div class="dk-imw"><img class="dk-img on" alt="" src="${esc(src)}">${((pz.nm || {})[(pz.imgKey || [])[i]] || []).map(n => `<span class="dk-nm" data-s="${n.s}" style="left:${n.x*100}%;top:${n.y*100}%;color:${n.c};transform:translate(${n.al === 'left' ? 0 : -50}%,-50%)">${esc(n.t.replace('{n}', String(me.nick || '').slice(0, 10)).replace(/\{r(\d+)\}/g, (_, k) => darkNameList()[+k] || ''))}</span>`).join('')}</div>`).join(''); // 기본 그림 · 이름 칸은 내 닉네임
 const dkNmRO = window.ResizeObserver ? new ResizeObserver(es => { for (const e of es) for (const sp of e.target.parentNode.querySelectorAll('.dk-nm')) sp.style.fontSize = (+sp.dataset.s * e.target.clientHeight).toFixed(1) + 'px'; }) : null;
 // 사라진 사람들의 진짜 이름 (가나다 순) · 장부 · 조회 기록 그림 위에 써요
-const darkNameList = () => Object.values(world.darkNames || {}).filter(Boolean).map(String).sort((a, b) => a.localeCompare(b, 'ko')).slice(0, 12);
+const darkNameList = () => missingList().map(([, n]) => String(n)).slice(0, 12); // 실종 전단과 같은 사람 · 같은 순서
 function darkImgFill(root){ for (const im of (root || document).querySelectorAll('.dk-imw img')) if (im.parentNode.querySelector('.dk-nm')) dkNmRO?.observe(im);
   for (const el of (root || document).querySelectorAll('img[data-dkimg]')){ const [npc, pid, im] = el.dataset.dkimg.split('|'); darkImgGet(npc, pid, im, d => { if (d) { el.src = d; el.classList.add('on'); } }); } }
 // 관리자가 고른 그림을 줄여요 (긴 쪽 900px, JPEG). 너무 크면 한 번 더 줄여요
