@@ -6314,7 +6314,7 @@ const darkLimit = r => DARK_LIMIT_MS - ((r && r.pen) | 0);
 const DARK_CLOSE = 5*3600000, DARK_TOK = 1000000;
 const darkFirst = r => (r && (r.first || r.start)) || 0;
 const darkEnd = r => Math.min(r.start + darkLimit(r), darkFirst(r) ? darkFirst(r) + DARK_CLOSE : Infinity);
-const darkRetry = r => ({att:(r.att|0)+1, first:darkFirst(r), ...(r.keys ? {keys:r.keys} : {}), ...(r.solved ? {solved:r.solved} : {})});
+const darkRetry = ({start, hp, max, bossAt, rageAt, rv, wipe, pen, tok, ...r}) => ({...r, att:(r.att|0)+1, first:darkFirst({...r, start})}); // 다시 열면 보스 체력만 처음부터 (푼 문제 · 틀린 횟수 · 힌트 · 배정은 그대로, 시간은 새로 2 시간)
 const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
 function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of [...darkPuzzles(z.dark), ...darkProps(z.dark)]){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
 const DARK_HINT = 2; // 힌트는 그 문제를 두 번 틀린 뒤에 열려요
