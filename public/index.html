@@ -5949,7 +5949,7 @@ function onDarkRooms(v){
   if (zoneId.startsWith('dark:')){ renderHud(); const r = roomOf(zoneId.slice(5)); if (!r.hp && !r.clear && darkSolvedN(r) >= darkPuzzles(zoneId.slice(5)).length) darkWake(zoneId.slice(5)); }
 }
 // ----- 문 (다크 모드 동안 주민 자리 옆에 생겨요) -----
-function darkDoorState(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(); if (roomOf(npc).clear) return 'clear'; if (i === di){ const r = roomOf(npc); if (darkFirst(r) && darkNow() > darkFirst(r) + DARK_CLOSE && !admin) return 'missed'; if (r.start && darkNow() > darkEnd(r)) return admin ? 'open' : 'shut'; if (!r.start && darkFirst(r)) return admin ? 'open' : 'shut'; return darkKeyDone(npc) || r.start || admin ? 'open' : 'sealed'; } return i < di ? 'missed' : 'locked'; }
+function darkDoorState(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(); if (roomOf(npc).clear) return 'clear'; if (i === di){ const r = roomOf(npc); if (r.start && darkNow() > darkEnd(r)) return admin ? 'open' : 'shut'; if (!r.start && darkFirst(r)) return admin ? 'open' : 'shut'; return darkKeyDone(npc) || r.start || admin ? 'open' : 'sealed'; } return i < di ? 'missed' : 'locked'; }
 // ===== 열쇠 조각: 오늘 열릴 집의 열쇠는 아홉 조각 (3 × 3 정사각형). 섬에서 주운 조각을 마을 게시판에 붙여야 모여요 =====
 const KEY_N = 9, KEY_P = .05;
 const darkKeys = npc => roomOf(npc).keys || {};
@@ -6241,8 +6241,8 @@ async function darkEnter(npc){
   if (st === 'locked') return say(`${n.name}의 집`, '문이 굳게 꿰매져 있어요.');
   if (st === 'missed') return say(`${n.name}의 집`, '이 집의 문은 이미 다시 닫혔어요.');
   if (st === 'sealed') return say(`${n.name}의 집`, `문고리에 녹슨 자물쇠가 걸려 있어요. 열쇠 구멍이 아홉 칸으로 나뉘어 있어요.\n\n맞춰진 조각 ${darkKeyN(npc)}/${KEY_N}`, [['마을 게시판 보기', () => { closeTalk(); missBoard(); }]]);
-  if (st === 'shut'){ const r = roomOf(npc), left = Math.max(0, darkFirst(r) + DARK_CLOSE - darkNow()), have = me.inv.dtok|0;
-    return say(`${n.name}의 집`, `문이 다시 닫혀 있어요. 문고리 옆에 동전 넣는 구멍이 하나 있어요.\n\n문이 아주 닫히기까지 ${Math.floor(left/3600000)} 시간 ${Math.floor(left/60000)%60} 분`, have ? [['토큰 넣기', () => { closeTalk(); darkTokOpen(npc); }]] : [['토큰 교환기 보기', () => { closeTalk(); tokMachine(); }]], `가진 토큰 ${have} 개`); }
+  if (st === 'shut'){ const have = me.inv.dtok|0;
+    return say(`${n.name}의 집`, `문이 다시 닫혀 있어요. 문고리 옆에 동전 넣는 구멍이 하나 있어요.`, have ? [['토큰 넣기', () => { closeTalk(); darkTokOpen(npc); }]] : [['토큰 교환기 보기', () => { closeTalk(); tokMachine(); }]], `가진 토큰 ${have} 개`); }
   if (st === 'open' && darkBusy) return; darkBusy = true;
   let aft = null; const ok = st === 'open' && await net.darkTx(npc, cur => { const now = darkNow(); cur = cur || {}; aft = cur; let v; if (cur.clear) return undefined; if (!cur.start && !darkFirst(cur)) v = {...cur, start:now, first:now}; else if (!cur.start && admin) v = {...cur, start:now}; else if (cur.start && now > darkEnd(cur) && admin) v = {...darkRetry(cur), start:now}; if (v) aft = v; return v; });
   darkBusy = false; if (!ok) aft = roomOf(npc);
@@ -6253,7 +6253,7 @@ async function darkEnter(npc){
 // 토큰 한 개면 그 방이 2 시간 동안 모두에게 열려요 (누가 넣든 한 번이면 돼요)
 async function darkTokOpen(npc){
   if (darkBusy || (me.inv.dtok|0) < 1) return; darkBusy = true; let used = false;
-  const ok = await net.darkTx(npc, cur => { used = false; const now = darkNow(); if (!cur || cur.clear || !darkFirst(cur) || now > darkFirst(cur) + DARK_CLOSE) return undefined; if (cur.start && now <= darkEnd(cur)) return undefined; used = true; return {...(cur.start ? darkRetry(cur) : cur), start:now, tok:{nick:String(me.nick||'').slice(0,16), at:now}}; });
+  const ok = await net.darkTx(npc, cur => { used = false; const now = darkNow(); if (!cur || cur.clear || !darkFirst(cur)) return undefined; if (cur.start && now <= darkEnd(cur)) return undefined; used = true; return {...(cur.start ? darkRetry(cur) : cur), start:now, tok:{nick:String(me.nick||'').slice(0,16), at:now}}; });
   darkBusy = false;
   if (ok && used){ me.inv.dtok = (me.inv.dtok|0) - 1; if (!me.inv.dtok) delete me.inv.dtok; saveMe(true); renderHud(); toast('철컥. 문이 다시 열렸어요'); return darkEnter(npc); }
   if (roomOf(npc).start && darkNow() <= darkEnd(roomOf(npc))) return darkEnter(npc); // 누가 먼저 열었어요 · 토큰은 그대로
@@ -6310,10 +6310,10 @@ function updateDown(dt, t){
 // ----- 문제 -----
 const DARK_FREE = 3, DARK_PEN = 10*60000; // 문제마다 3 번까지는 틀려도 괜찮고, 그 뒤로는 틀릴 때마다 제한 시간 10 분이 줄어요
 const darkLimit = r => DARK_LIMIT_MS - ((r && r.pen) | 0);
-// 처음 문이 열린 뒤 5 시간이 지나면 문이 아주 닫혀요. 그 안에서는 토큰으로 다시 열 수 있어요 (한 번 열면 2 시간 · 푼 문제는 그대로)
-const DARK_CLOSE = 5*3600000, DARK_TOK = 1000000;
+// 처음 2 시간이 지나면 그날(자정 전)까지는 토큰으로 다시 열 수 있어요 (한 번 열면 2 시간 · 푼 문제는 그대로)
+const DARK_TOK = 1000000;
 const darkFirst = r => (r && (r.first || r.start)) || 0;
-const darkEnd = r => Math.min(r.start + darkLimit(r), darkFirst(r) ? darkFirst(r) + DARK_CLOSE : Infinity);
+const darkEnd = r => r.start + darkLimit(r);
 const darkRetry = ({start, hp, max, bossAt, rageAt, rv, wipe, pen, tok, ...r}) => ({...r, att:(r.att|0)+1, first:darkFirst({...r, start})}); // 다시 열면 보스 체력만 처음부터 (푼 문제 · 틀린 횟수 · 힌트 · 배정은 그대로, 시간은 새로 2 시간)
 const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
 function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of [...darkPuzzles(z.dark), ...darkProps(z.dark)]){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
