@@ -347,6 +347,9 @@
       "notice": {
         ".validate": "newData.hasChildren(['t','at']) && newData.child('t').isString() && newData.child('t').val().length <= 80 && newData.child('at').isNumber()"
       },
+      "wx": {
+        ".validate": "newData.hasChildren(['k', 'until']) && newData.child('k').isString() && newData.child('k').val().matches(/^(sun|cloud|rain|snow|rainbow)$/) && newData.child('until').isNumber()"
+      },
       "$other": {
         ".validate": false
       }
