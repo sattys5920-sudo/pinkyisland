@@ -6117,60 +6117,6 @@ const endCall = () => { const nm = (world.darkNames || {})[uid] || (admin ? '민
 function endSky(c, top, bot){ const q = c.createLinearGradient(0, 0, 0, END_H); q.addColorStop(0, top); q.addColorStop(1, bot); c.fillStyle = q; c.fillRect(0, 0, END_W, END_H); }
 function endRR(c, x, y, w, h, r, f){ c.beginPath(); c.roundRect(x, y, w, h, r); c.fillStyle = f; c.fill(); }
 function endTxt(c, t, x, y, s, col, w = 400, al = 'center'){ c.font = `${w} ${s}px "Maple",sans-serif`; c.textAlign = al; c.textBaseline = 'middle'; c.fillStyle = col; c.fillText(t, x, y); }
-// 콩이 인형: loose = 실밥이 풀린 정도 (조일 때는 거꾸로)
-function endDoll(c, p, tight){ endSky(c, '#1a1018', '#08040a'); const cx = 360, cy = 420, k = tight ? 1 - p : p, col = '#f2d2a0', dk = '#c8a070';
-  c.save(); const lg = c.createRadialGradient(cx, cy - 40, 10, cx, cy, 320); lg.addColorStop(0, `rgba(255,220,180,${.08 + k*.25})`); lg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = lg; c.fillRect(0, 0, END_W, END_H);
-  c.fillStyle = 'rgba(0,0,0,.4)'; c.beginPath(); c.ellipse(cx, cy + 150, 170, 26, 0, 0, 7); c.fill();
-  c.translate(cx, cy + 20); c.rotate(-.18 + Math.sin(p*3)*.02);
-  endRR(c, -110, -10, 220, 160, 70, col); c.fillStyle = '#fff2dc'; c.beginPath(); c.ellipse(0, 70, 70, 60, 0, 0, 7); c.fill();
-  c.fillStyle = col; for (const sx of [-1, 1]){ c.beginPath(); c.moveTo(sx*40, -170); c.lineTo(sx*96, -238 + (sx > 0 ? k*30 : 0)); c.lineTo(sx*104, -120); c.closePath(); c.fill(); c.fillStyle = '#e8a0a0'; c.beginPath(); c.moveTo(sx*58, -164); c.lineTo(sx*92, -214 + (sx > 0 ? k*26 : 0)); c.lineTo(sx*94, -136); c.closePath(); c.fill(); c.fillStyle = col; }
-  c.beginPath(); c.arc(0, -90, 105, 0, 7); c.fill(); c.fillStyle = '#fff2dc'; c.beginPath(); c.ellipse(0, -52, 62, 44, 0, 0, 7); c.fill(); c.fillStyle = '#2a1a10'; c.beginPath(); c.ellipse(0, -72, 16, 11, 0, 0, 7); c.fill();
-  c.strokeStyle = '#2a1a10'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -62); c.lineTo(0, -46); c.moveTo(-16, -38); c.quadraticCurveTo(0, -30, 16, -38); c.stroke();
-  c.fillStyle = '#c83a4a'; c.fillRect(-80, -8, 160, 16);
-  // 눈: 단추 (풀리면 하나가 늘어져요)
-  c.fillStyle = '#1a1010'; c.beginPath(); c.arc(-40, -112, 12, 0, 7); c.fill(); c.beginPath(); c.arc(40, -112 + k*26, 12, 0, 7); c.fill();
-  c.strokeStyle = '#d8c0a0'; c.lineWidth = 2; c.beginPath(); c.moveTo(40, -112); c.lineTo(40, -112 + k*26); c.stroke();
-  // 경비대 배지
-  c.fillStyle = '#d8b050'; c.beginPath(); for (let i = 0; i < 10; i++){ const a = i/10*Math.PI*2 - Math.PI/2, r = i % 2 ? 12 : 26; c.lineTo(-58 + Math.cos(a)*r, 40 + Math.sin(a)*r); } c.fill();
-  // 실밥: 가슴 한가운데 · k 만큼 풀려 늘어져요
-  c.strokeStyle = '#f0e0c8'; c.lineWidth = 3; for (let i = 0; i < 7; i++){ const y = -20 + i*20, open = k*(10 + i*3); c.beginPath(); c.moveTo(-14 - open, y); c.lineTo(14 + open, y + 8); c.stroke(); if (k > .3){ c.beginPath(); c.moveTo(14 + open, y + 8); c.quadraticCurveTo(30 + open, y + 30 + k*40, 20 + open, y + 50 + k*80); c.stroke(); } }
-  if (k > .2){ const g2 = c.createRadialGradient(0, 40, 2, 0, 40, 30 + k*60); g2.addColorStop(0, `rgba(255,250,235,${k*.9})`); g2.addColorStop(1, 'rgba(255,250,235,0)'); c.fillStyle = g2; c.beginPath(); c.arc(0, 40, 30 + k*60, 0, 7); c.fill(); }
-  c.restore(); }
-// 빛의 문: closing 이면 닫히고 실로 꿰매져요
-function endDoor(c, p, closing, shut){ endSky(c, '#0a0610', '#040206'); const o = shut ? Math.max(0, .12 - p*.3)*(1 + Math.sin(p*60)*.5) : closing ? 1 - Math.min(1, p*1.6) : Math.min(1, p*1.3), w = 200, h = 380, x = 360 - w/2, y = 170;
-  c.fillStyle = '#2a1e2a'; c.fillRect(x - 16, y - 16, w + 32, h + 32); c.fillStyle = '#120a12'; c.fillRect(x, y, w, h);
-  const lw = w*o; if (lw > 1){ const g2 = c.createLinearGradient(0, y, 0, y + h); g2.addColorStop(0, '#fffaf0'); g2.addColorStop(1, '#ffe8f0'); c.fillStyle = g2; c.fillRect(360 - lw/2, y, lw, h);
-    c.save(); c.globalAlpha = o*.6; const q = c.createRadialGradient(360, y + h/2, 50, 360, y + h/2, 420); q.addColorStop(0, 'rgba(255,245,235,.9)'); q.addColorStop(1, 'rgba(255,245,235,0)'); c.fillStyle = q; c.fillRect(0, 0, END_W, END_H); c.restore(); }
-  if (closing){ const sh = shut ? 0 : Math.max(0, Math.min(1, (p - .25)/.35)); if (sh > 0 && sh < 1){ c.fillStyle = `rgba(20,14,20,${1 - Math.abs(sh - .5)*2})`; c.beginPath(); c.ellipse(360 - 30 + sh*60, y + 120, 26, 32, 0, 0, 7); c.fill(); c.fillRect(360 - 56 + sh*60, y + 150, 52, 160); }
-    const st = Math.max(0, (p - .6)/.4); c.strokeStyle = '#d04060'; c.lineWidth = 6; for (let i = 0; i < Math.floor(st*9); i++){ const yy = y + 30 + i*40; c.beginPath(); c.moveTo(x - 10, yy); c.lineTo(x + w + 10, yy + 26); c.moveTo(x + w + 10, yy); c.lineTo(x - 10, yy + 26); c.stroke(); } }
-  if (!closing && p > .7){ c.fillStyle = `rgba(255,252,246,${(p - .7)/.3})`; c.fillRect(0, 0, END_W, END_H); } }
-// 내 방: 밤 · 모니터 불빛 · 휴대 전화 · 뜯긴 분홍 상자 (phone: 화면 깜빡임 · hall: 문틈 불빛)
-function endRoom(c, p, o = {}){ endSky(c, '#141a2a', '#0a0c14'); const zoom = 1 + p*.06; c.save(); c.translate(360, 360); c.scale(zoom, zoom); c.translate(-360, -360);
-  c.fillStyle = '#1a2236'; c.fillRect(470, 90, 180, 200); c.fillStyle = '#26324c'; c.fillRect(480, 100, 75, 85); c.fillRect(565, 100, 75, 85); c.fillRect(480, 195, 75, 85); c.fillRect(565, 195, 75, 85); c.fillStyle = '#e8ecf4'; c.beginPath(); c.arc(600, 135, 18, 0, 7); c.fill();
-  c.fillStyle = '#2a1e18'; c.fillRect(40, 390, 420, 20); c.fillRect(60, 410, 16, 230); c.fillRect(424, 410, 16, 230);
-  endRR(c, 120, 230, 240, 160, 8, '#101014'); const sc = c.createLinearGradient(0, 240, 0, 380); sc.addColorStop(0, '#ffb8d0'); sc.addColorStop(1, '#f07aa0'); endRR(c, 130, 240, 220, 136, 4, sc);
-  c.fillStyle = '#8fd0e8'; c.beginPath(); c.ellipse(240, 330, 70, 18, 0, 0, 7); c.fill(); c.fillStyle = '#9ed67a'; c.beginPath(); c.ellipse(236, 318, 34, 14, 0, 0, 7); c.fill(); endTxt(c, '♥', 262, 300, 18, '#ff4f87', 700);
-  c.fillStyle = '#101014'; c.fillRect(230, 390, 20, -6); c.save(); c.globalAlpha = .35; const mg = c.createRadialGradient(240, 310, 20, 240, 330, 340); mg.addColorStop(0, 'rgba(255,150,190,.8)'); mg.addColorStop(1, 'rgba(255,150,190,0)'); c.fillStyle = mg; c.fillRect(0, 0, END_W, END_H); c.restore();
-  const ph = o.phone ? (Math.sin(p*40) > 0 ? 1 : .55) : .25; endRR(c, 380, 368, 44, 20, 4, '#0a0a0e'); c.fillStyle = `rgba(200,230,255,${ph})`; c.fillRect(384, 371, 36, 14);
-  if (o.phone){ c.save(); c.globalAlpha = Math.min(1, p*3); endRR(c, 330, 300, 150, 46, 10, 'rgba(10,12,20,.85)'); endTxt(c, '부재중 전화 128', 405, 323, 18, '#fff', 700); c.restore(); }
-  // 의자 · 사람 뒷모습 (body: 앉아 있는 몸)
-  c.fillStyle = '#20263a'; endRR(c, 190, 430, 120, 150, 14, '#20263a'); c.fillRect(240, 580, 20, 60);
-  if (o.body){ c.fillStyle = '#2e2a30'; c.beginPath(); c.arc(250, 400 - (o.wake ? p*14 : 0), 38, 0, 7); c.fill(); endRR(c, 200, 430 - (o.wake ? p*14 : 0), 100, 110, 30, '#3a3440'); }
-  // 뜯긴 분홍 상자
-  c.save(); c.translate(560, 590); c.rotate(.08); c.fillStyle = '#f49ab6'; c.fillRect(-70, -40, 140, 80); c.fillStyle = '#f7b8cc'; c.beginPath(); c.moveTo(-70, -40); c.lineTo(-95, -78); c.lineTo(-10, -70); c.lineTo(0, -40); c.fill(); c.beginPath(); c.moveTo(70, -40); c.lineTo(100, -70); c.lineTo(20, -76); c.lineTo(0, -40); c.fill(); c.fillStyle = 'rgba(230,200,140,.7)'; c.fillRect(-6, -40, 12, 80); c.restore();
-  if (o.hall){ c.save(); c.globalAlpha = Math.min(1, p*2); c.fillStyle = '#ffd890'; c.fillRect(640, 640, 70, 6); const hg = c.createLinearGradient(0, 640, 0, 720); hg.addColorStop(0, 'rgba(255,216,144,.5)'); hg.addColorStop(1, 'rgba(255,216,144,0)'); c.fillStyle = hg; c.beginPath(); c.moveTo(640, 646); c.lineTo(710, 646); c.lineTo(720, 720); c.lineTo(560, 720); c.fill(); c.restore(); }
-  c.restore(); c.save(); const v = c.createRadialGradient(360, 360, 220, 360, 360, 520); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)'); c.fillStyle = v; c.fillRect(0, 0, END_W, END_H); c.restore(); }
-// 방문이 열리고 복도 불빛 · 엄마 그림자
-function endMom(c, p){ endSky(c, '#0e1220', '#06080e'); const o = Math.min(1, p*1.5), x = 260, y = 120, w = 200, h = 470;
-  c.fillStyle = '#1a1e2a'; c.fillRect(x - 14, y - 14, w + 28, h + 14); const g2 = c.createLinearGradient(0, y, 0, y + h); g2.addColorStop(0, '#ffe6b0'); g2.addColorStop(1, '#f0c080'); c.fillStyle = g2; c.fillRect(x, y, w*o, h);
-  c.fillStyle = '#2a2430'; c.fillRect(x + w*o, y, w*(1 - o) + 2, h); c.fillStyle = '#c8a050'; c.beginPath(); c.arc(x + w*o + w*(1 - o) - 22, y + 250, 7, 0, 7); c.fill();
-  if (o > .5){ const a = Math.min(1, (o - .5)*2); c.fillStyle = `rgba(40,30,30,${a})`; c.beginPath(); c.arc(x + w*.5*o + 10, y + 150, 36, 0, 7); c.fill(); endRR(c, x + w*.5*o - 40, y + 186, 100, 284, 40, `rgba(40,30,30,${a})`); }
-  c.save(); c.globalAlpha = .5*o; const q = c.createLinearGradient(0, y + h, 0, END_H); q.addColorStop(0, 'rgba(255,220,150,.7)'); q.addColorStop(1, 'rgba(255,220,150,0)'); c.fillStyle = q; c.beginPath(); c.moveTo(x, y + h); c.lineTo(x + w*o, y + h); c.lineTo(x + w*o + 120, END_H); c.lineTo(x - 80, END_H); c.fill(); c.restore(); }
-// 뉴스 화면
-function endNews(c, p, head, sub){ endSky(c, '#101828', '#0a0e18'); endRR(c, 40, 120, 640, 420, 18, '#05070c'); const s = c.createLinearGradient(0, 140, 0, 520); s.addColorStop(0, '#2a3a5a'); s.addColorStop(1, '#1a2238'); endRR(c, 60, 140, 600, 380, 8, s);
-  c.fillStyle = 'rgba(255,255,255,.08)'; for (let i = 0; i < 6; i++) c.fillRect(80 + i*96, 180, 70, 150); endRR(c, 80, 170, 120, 30, 4, '#d8202a'); endTxt(c, '속보', 140, 186, 18, '#fff', 700);
-  const a = Math.min(1, p*2.5); c.save(); c.globalAlpha = a; c.fillStyle = 'rgba(200,24,36,.95)'; c.fillRect(60, 380, 600, 70); endTxt(c, head, 360, 415, 27, '#fff', 700); c.fillStyle = 'rgba(10,14,24,.92)'; c.fillRect(60, 450, 600, 46); c.restore();
-  c.save(); c.beginPath(); c.rect(60, 450, 600, 46); c.clip(); endTxt(c, sub, 660 - p*900, 474, 19, '#e8ecf4', 400, 'left'); c.restore(); endRR(c, 330, 540, 60, 50, 4, '#05070c'); endRR(c, 270, 590, 180, 12, 6, '#05070c'); }
 // 거울: 웃는 입꼬리가 한쪽만 올라가요
 function endMirror(c, p){ endSky(c, '#141018', '#08060a'); c.fillStyle = '#c8a050'; c.beginPath(); c.ellipse(360, 340, 210, 280, 0, 0, 7); c.fill(); const m = c.createLinearGradient(160, 60, 560, 620); m.addColorStop(0, '#4a5462'); m.addColorStop(1, '#1e2430'); c.fillStyle = m; c.beginPath(); c.ellipse(360, 340, 194, 264, 0, 0, 7); c.fill();
   c.save(); c.beginPath(); c.ellipse(360, 340, 194, 264, 0, 0, 7); c.clip(); c.fillStyle = '#e8c8b0'; c.beginPath(); c.ellipse(360, 330, 120, 150, 0, 0, 7); c.fill(); c.fillStyle = '#3a2a24'; c.beginPath(); c.ellipse(360, 230, 130, 80, 0, Math.PI, 0); c.fill(); c.fillRect(230, 230, 30, 160); c.fillRect(460, 230, 30, 160);
@@ -6305,22 +6251,100 @@ function endRainMail(c, p, t, call){ endSky(c, '#0e1422', '#05070c'); const z = 
     c.strokeStyle = 'rgba(120,140,170,.25)'; c.lineWidth = 1; for (let i = 0; i < 7; i++){ c.beginPath(); c.moveTo(-200, -90 + i*38); c.lineTo(200, -90 + i*38); c.stroke(); }
     endTxt(c, `${call}, 엄마야.`, -190, -110, 30, '#2a2a4a', 400, 'left'); endTxt(c, '오늘도 현관 불 켜 뒀어.', -190, -40, 24, '#3a3a5a', 400, 'left'); endTxt(c, '언제든 들어와.', -190, 0, 24, '#3a3a5a', 400, 'left');
     for (let i = 0; i < 5; i++){ c.fillStyle = 'rgba(60,80,120,.18)'; c.beginPath(); c.arc(-120 + i*70 + endRnd(i)*30, 60 + endRnd(i + 5)*60, 8 + endRnd(i + 2)*10, 0, 7); c.fill(); } c.restore(); } }
+// ① 콩이 (게임 속 모습 그대로): 가슴의 실밥이 풀리며 빛이 새어 나와요
+function endKongi(c, p, t){ const n = NPC.kongi, look = n.look || {kind:n.sp.kind, fur:n.sp.fur, acc:n.sp.acc}, bx = 360, by = 560, z = 1 + endSeg(p, 0, 1)*.55;
+  c.fillStyle = '#07040a'; c.fillRect(0, 0, END_W, END_H); c.save(); c.translate(bx, by - 150); c.scale(z, z); c.translate(-bx, -(by - 150));
+  endDust(c, t, 60, '#d8c0b0', .5); c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, bx, 120, 380, 'rgba(255,220,200,A)', .12); c.restore();
+  c.fillStyle = 'rgba(0,0,0,.55)'; c.beginPath(); c.ellipse(bx, by + 6, 120, 20, 0, 0, 7); c.fill();
+  c.save(); c.translate(bx, by); c.rotate(-.06 + Math.sin(t*.8)*.01); drawCritter(c, 0, 0, look, 0, false, 4.6); c.restore();
+  // 가슴의 실밥 · 풀리며 빛
+  const k = endSeg(p, .15, .8), cx = bx + 4, cy = by - 170; c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, cx, cy, 40 + k*220, 'rgba(255,246,230,A)', .15 + k*.75); c.restore();
+  c.strokeStyle = '#e8d8c8'; c.lineWidth = 3; for (let i = 0; i < 6; i++){ const y = cy - 60 + i*24, op = k*(6 + i*4); c.beginPath(); c.moveTo(cx - 14 - op, y); c.lineTo(cx + 14 + op, y + 10); c.stroke(); if (k > .25){ c.beginPath(); c.moveTo(cx + 14 + op, y + 10); c.bezierCurveTo(cx + 40 + op, y + 30, cx + 30 + op + Math.sin(t*2 + i)*20, y + 70 + k*60, cx + 50 + op + Math.sin(t*1.4 + i)*30, y + 120 + k*120); c.stroke(); } }
+  for (let i = 0; i < 30; i++){ const q = (t*.35 + endRnd(i)) % 1; if (k < .2) break; c.fillStyle = `rgba(255,240,220,${(1 - q)*k})`; c.fillRect(cx + (endRnd(i + 3) - .5)*60*(1 + q*3), cy - q*260, 2.5, 2.5); }
+  c.restore(); if (p > .86){ c.fillStyle = `rgba(255,250,244,${(p - .86)/.14})`; c.fillRect(0, 0, END_W, END_H); } }
+// ② 빛 속으로: 빛줄기가 스쳐 지나가요
+function endRush(c, p, t){ c.fillStyle = '#fffaf4'; c.fillRect(0, 0, END_W, END_H); const a = 1 - endSeg(p, .6, 1);
+  c.save(); c.translate(360, 360); for (let i = 0; i < 90; i++){ const ang = endRnd(i)*Math.PI*2, sp = .6 + endRnd(i + 1)*1.4, d = ((t*sp*.9 + endRnd(i + 2)) % 1), r0 = 30 + d*d*560, r1 = r0 + 40 + d*160;
+    c.strokeStyle = `rgba(${200 + endRnd(i + 4)*55 | 0},${180 + endRnd(i + 5)*60 | 0},${200 + endRnd(i + 6)*55 | 0},${.5*d*a})`; c.lineWidth = 1 + d*4; c.beginPath(); c.moveTo(Math.cos(ang)*r0, Math.sin(ang)*r0); c.lineTo(Math.cos(ang)*r1, Math.sin(ang)*r1); c.stroke(); }
+  c.restore(); c.save(); c.globalAlpha = .35*a; endGlow(c, 360, 360, 300, 'rgba(255,190,210,A)', .6); c.restore(); }
+// ③ 눈을 뜨면 내 방: 눈꺼풀 · 손떨림 · 모니터 불빛
+function endWake(c, p, t){ const sway = Math.sin(t*.9)*6, z = 1.12 - endSeg(p, 0, 1)*.08; c.save(); c.translate(360 + sway, 360 + Math.cos(t*.7)*4); c.scale(z, z); c.translate(-360, -360);
+  endSky(c, '#0e1220', '#06080e');
+  c.fillStyle = '#121a2c'; c.fillRect(470, 70, 200, 230); c.fillStyle = '#1a2640'; c.fillRect(482, 82, 84, 98); c.fillRect(576, 82, 84, 98); c.fillRect(482, 192, 84, 98); c.fillRect(576, 192, 84, 98); c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, 620, 120, 70, 'rgba(200,215,255,A)', .5); c.restore(); c.fillStyle = '#e8ecf4'; c.beginPath(); c.arc(620, 120, 16, 0, 7); c.fill();
+  c.fillStyle = '#1e1612'; c.fillRect(20, 400, 470, 22); c.fillRect(44, 422, 16, 260); c.fillRect(450, 422, 16, 260);
+  // 모니터: 섬 화면 → 끊김
+  endRR(c, 110, 220, 270, 180, 8, '#0a0a0e'); const off = endSeg(p, .55, .62); const sg = c.createLinearGradient(0, 230, 0, 390); sg.addColorStop(0, '#ffb8d0'); sg.addColorStop(1, '#f07aa0'); c.fillStyle = sg; c.fillRect(120, 230, 250, 160);
+  c.fillStyle = '#8fd0e8'; c.beginPath(); c.ellipse(245, 340, 80, 20, 0, 0, 7); c.fill(); c.fillStyle = '#9ed67a'; c.beginPath(); c.ellipse(240, 326, 40, 15, 0, 0, 7); c.fill();
+  if (off > 0){ c.fillStyle = `rgba(6,6,10,${off})`; c.fillRect(120, 230, 250, 160); if (p > .62) endTxt(c, '연결이 끊어졌어요', 245, 310, 16, `rgba(200,200,220,${.6 - endSeg(p, .8, 1)*.6})`); if (p < .62){ c.fillStyle = '#fff'; c.fillRect(120, 308, 250, 4); } }
+  c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, 245, 320, 360, 'rgba(255,120,170,A)', .28*(1 - off*.85)); c.restore(); endRR(c, 230, 400, 30, -4, 2, '#0a0a0e');
+  c.save(); for (let i = 0; i < 40; i++){ const q = (t*.05 + endRnd(i)) % 1; c.fillStyle = `rgba(255,200,220,${.5*(1 - off)})`; c.fillRect(150 + endRnd(i + 1)*220 + Math.sin(t + i)*10, 420 - q*260, 2, 2); } c.restore();
+  // 의자 · 상자 (림 라이트)
+  endRR(c, 190, 440, 130, 160, 16, '#151a28'); c.fillRect(248, 600, 16, 80);
+  c.save(); c.translate(580, 620); c.rotate(.08); c.fillStyle = '#c87a96'; c.fillRect(-80, -44, 160, 88); c.fillStyle = '#e898b4'; c.beginPath(); c.moveTo(-80, -44); c.lineTo(-108, -86); c.lineTo(-12, -78); c.lineTo(0, -44); c.fill(); c.beginPath(); c.moveTo(80, -44); c.lineTo(112, -78); c.lineTo(22, -84); c.lineTo(0, -44); c.fill(); c.fillStyle = 'rgba(230,200,140,.5)'; c.fillRect(-6, -44, 12, 88); c.restore();
+  c.restore();
+  // 눈꺼풀: 천천히 뜨고 한 번 깜빡여요
+  const o = Math.min(endSeg(p, 0, .22), 1 - endSeg(p, .3, .33) + endSeg(p, .34, .4)), top = 360*(1 - o) - 420, bot = 360 + o*420 + 420; c.fillStyle = '#000'; c.beginPath(); c.ellipse(360, top, 640, 420, 0, 0, Math.PI); c.lineTo(-300, -500); c.lineTo(1000, -500); c.fill(); c.beginPath(); c.ellipse(360, bot, 640, 420, 0, Math.PI, 0); c.lineTo(1000, 1300); c.lineTo(-300, 1300); c.fill(); }
+// ④ 책상 위 휴대 전화: 알림이 쏟아져요
+function endPhone(c, p, t){ const buzz = Math.floor(t*3) % 2 && p < .8 ? (Math.random() - .5)*5 : 0; endSky(c, '#0c1018', '#05070c');
+  c.save(); c.filter = 'blur(6px)'; c.fillStyle = '#c87a96'; c.fillRect(470, 420, 240, 160); c.fillStyle = '#1e1612'; c.fillRect(0, 600, END_W, 120); c.restore();
+  c.save(); c.translate(360 + buzz, 380); c.rotate(-.06); endRR(c, -150, -270, 300, 560, 36, '#0c0c10'); const sg = c.createLinearGradient(0, -250, 0, 260); sg.addColorStop(0, '#1c2438'); sg.addColorStop(1, '#0e1220'); endRR(c, -136, -256, 272, 532, 28, sg);
+  endTxt(c, '03:47', 0, -190, 54, '#e8ecf4', 400); endTxt(c, '10월 14일 화요일', 0, -140, 16, 'rgba(232,236,244,.7)');
+  const N = [['엄마', '부재중 전화 47 통'], ['엄마', '제발 전화 받아'], ['아빠', '부재중 전화 31 통'], ['경찰서', '부재중 전화'], ['엄마', '어디야 너'], ['엄마', '밥은 먹었어?']];
+  N.forEach(([a, b], i) => { const k = endSeg(p, .05 + i*.1, .15 + i*.1); if (k <= 0) return; const y = -96 + i*62 + (1 - k)*-30; c.save(); c.globalAlpha = k; endRR(c, -124, y, 248, 54, 14, 'rgba(255,255,255,.12)'); endRR(c, -112, y + 12, 30, 30, 8, a === '경찰서' ? '#3a5a9a' : '#5ac87a'); endTxt(c, a, -72, y + 18, 15, '#fff', 700, 'left'); endTxt(c, b, -72, y + 38, 14, 'rgba(255,255,255,.75)', 400, 'left'); c.restore(); });
+  c.restore(); c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, 360, 380, 360, 'rgba(120,150,220,A)', .25); c.restore(); }
+// ⑤ 방문이 열리고 따뜻한 복도 불빛 · 엄마가 달려와요
+function endHome(c, p, t){ endSky(c, '#0a0c14', '#04050a'); const o = endSeg(p, .05, .45), w = 230, h = 520, x = 360 - w/2, y = 110;
+  c.fillStyle = '#141824'; c.fillRect(x - 16, y - 16, w + 32, h + 16); const g2 = c.createLinearGradient(0, y, 0, y + h); g2.addColorStop(0, '#ffe2a8'); g2.addColorStop(1, '#f0b878'); c.fillStyle = g2; c.fillRect(x, y, w*o, h); c.fillStyle = '#20202c'; c.fillRect(x + w*o, y, w*(1 - o) + 2, h);
+  c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, 360, 360, 520, 'rgba(255,210,150,A)', .45*o); c.globalAlpha = .4*o; c.fillStyle = 'rgba(255,220,160,.6)'; c.beginPath(); c.moveTo(x, y + h); c.lineTo(x + w*o, y + h); c.lineTo(x + w*o + 200, END_H); c.lineTo(x - 160, END_H); c.fill(); c.restore();
+  for (let i = 0; i < 40; i++){ const q = (t*.06 + endRnd(i)) % 1; c.fillStyle = `rgba(255,236,200,${.6*o})`; c.fillRect(x + endRnd(i + 2)*w*o, y + h - q*h, 2, 2); }
+  const run = endSeg(p, .35, .85); if (run > 0){ const s = .55 + run*2.1, px = 360, py = y + h - 10 + run*260; c.save(); c.globalAlpha = Math.min(1, run*3); c.fillStyle = '#2a201c'; c.beginPath(); c.arc(px, py - 168*s, 20*s, 0, 7); c.fill(); c.beginPath(); c.moveTo(px - 26*s, py - 146*s); c.quadraticCurveTo(px - 40*s, py - 60*s, px - 34*s, py); c.lineTo(px + 34*s, py); c.quadraticCurveTo(px + 40*s, py - 60*s, px + 26*s, py - 146*s); c.fill();
+    c.strokeStyle = '#2a201c'; c.lineCap = 'round'; c.lineWidth = 12*s; const arm = endSeg(p, .55, .8); c.beginPath(); c.moveTo(px - 22*s, py - 138*s); c.lineTo(px - (40 + arm*60)*s, py - (90 + arm*40)*s); c.moveTo(px + 22*s, py - 138*s); c.lineTo(px + (40 + arm*60)*s, py - (90 + arm*40)*s); c.stroke(); c.restore(); }
+  if (p > .82){ c.fillStyle = `rgba(255,236,206,${(p - .82)/.18})`; c.fillRect(0, 0, END_W, END_H); } }
+// ⑥ 어두운 거실의 텔레비전 뉴스 · 열두 사람 사진에 '귀가'
+function endNewsTV(c, p, t, head, back){ endSky(c, '#0c0e16', '#05060a'); const fl = .7 + Math.sin(t*9)*.08 + Math.sin(t*23)*.05, z = 1 + endSeg(p, 0, 1)*.18;
+  c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, 360, 300, 420, 'rgba(110,140,220,A)', .25*fl); c.restore(); c.save(); c.translate(360, 320); c.scale(z, z); c.translate(-360, -320);
+  endRR(c, 70, 110, 580, 380, 14, '#030406'); const sg = c.createLinearGradient(0, 124, 0, 476); sg.addColorStop(0, '#1e2a48'); sg.addColorStop(1, '#121a30'); endRR(c, 84, 124, 552, 352, 6, sg);
+  endRR(c, 100, 138, 64, 24, 4, '#d8202a'); endTxt(c, '속보', 132, 151, 14, '#fff', 700);
+  for (let i = 0; i < 12; i++){ const gx = 112 + (i % 6)*86, gy = 176 + Math.floor(i/6)*96, k = endSeg(p, .1 + i*.03, .2 + i*.03); if (k <= 0) continue; c.save(); c.globalAlpha = k; endRR(c, gx, gy, 70, 84, 4, '#2a3450'); c.fillStyle = '#4a5878'; c.beginPath(); c.arc(gx + 35, gy + 32, 15, 0, 7); c.fill(); endRR(c, gx + 13, gy + 50, 44, 34, 14, '#4a5878');
+    const st = endSeg(p, .5 + i*.015, .56 + i*.015); if (st > 0){ c.globalAlpha = k*st; if (i < back){ c.strokeStyle = '#ffd24a'; c.lineWidth = 3; c.strokeRect(gx + 4, gy + 54, 62, 24); endTxt(c, '귀가', gx + 35, gy + 67, 15, '#ffd24a', 700); } else { c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(gx, gy, 70, 84); } } c.restore(); }
+  const hk = endSeg(p, .3, .45); c.save(); c.globalAlpha = hk; c.fillStyle = 'rgba(200,24,36,.95)'; c.fillRect(84, 380, 552, 52); endTxt(c, head, 360, 406, 22, '#fff', 700); c.fillStyle = 'rgba(8,10,18,.95)'; c.fillRect(84, 432, 552, 40); c.restore();
+  c.save(); c.beginPath(); c.rect(84, 432, 552, 40); c.clip(); endTxt(c, '19 년 전 섬 여행 중 실종된 서하람 씨도 함께 발견 · 경찰, 보낸 사람 없는 택배 조사 중', 640 - p*1000, 452, 16, '#e8ecf4', 400, 'left'); c.restore();
+  c.restore(); c.fillStyle = 'rgba(0,0,0,.6)'; c.beginPath(); c.ellipse(360, 690, 380, 60, 0, 0, 7); c.fill(); c.fillStyle = `rgba(110,140,220,${.08*fl})`; c.fillRect(0, 0, END_W, END_H); }
+// ⑦ 진엔딩 마지막: 새벽, 창밖이 밝아져요 · 문 앞에 내놓은 빈 상자
+function endDawn(c, p, t){ const k = endSeg(p, 0, 1); const sky = c.createLinearGradient(0, 0, 0, 520); sky.addColorStop(0, `rgb(${40 + k*120 | 0},${50 + k*90 | 0},${90 + k*80 | 0})`); sky.addColorStop(1, `rgb(${120 + k*135 | 0},${90 + k*110 | 0},${110 + k*60 | 0})`); c.fillStyle = sky; c.fillRect(0, 0, END_W, END_H);
+  c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, 360, 520 - k*120, 420, 'rgba(255,200,150,A)', .2 + k*.5); c.restore();
+  for (let i = 0; i < 18; i++){ const w = 30 + endRnd(i)*40, h = 80 + endRnd(i + 5)*200, x = i*42 - 20; c.fillStyle = `rgba(${20 + k*30 | 0},${20 + k*25 | 0},${36 + k*30 | 0},1)`; c.fillRect(x, 520 - h, w, h + 200); for (let j = 0; j < 6; j++) if (endRnd(i*7 + j) > .6){ c.fillStyle = `rgba(255,220,160,${.7 - k*.5})`; c.fillRect(x + 6 + (j % 2)*14, 530 - h + 14 + Math.floor(j/2)*22, 6, 8); } }
+  c.fillStyle = '#0a0a10'; c.fillRect(0, 0, END_W, 40); c.fillRect(0, 0, 40, END_H); c.fillRect(680, 0, 40, END_H); c.fillRect(0, 560, END_W, 160); c.fillRect(352, 0, 16, 560); c.fillRect(0, 290, END_W, 12);
+  c.save(); c.globalAlpha = .18 + k*.25; c.fillStyle = '#ffd8b0'; c.beginPath(); c.moveTo(40, 560); c.lineTo(680, 560); c.lineTo(720, 720); c.lineTo(0, 720); c.fill(); c.restore();
+  for (let i = 0; i < 4; i++){ c.save(); c.globalAlpha = .08; c.translate(360, 520 - k*120); c.rotate(-.9 + i*.6 + Math.sin(t*.2)*.05); c.fillStyle = '#fff2e0'; c.beginPath(); c.moveTo(0, 0); c.lineTo(900, -50); c.lineTo(900, 50); c.fill(); c.restore(); } }
+// ⑧ 돌아온 사람들: 창가에 선 누군가 · 유리에 비친 얼굴이 아주 잠깐 웃어요
+function endReflect(c, p, t){ endSky(c, '#0a0e18', '#04060a'); const z = 1 + endSeg(p, 0, 1)*.3; c.save(); c.translate(360, 340); c.scale(z, z); c.translate(-360, -340);
+  c.fillStyle = '#121a2a'; c.fillRect(150, 60, 420, 470); c.fillStyle = '#0a0e18'; c.fillRect(352, 60, 16, 470); c.fillRect(150, 290, 420, 12);
+  for (let i = 0; i < 30; i++){ c.fillStyle = `rgba(255,220,170,${.2 + endRnd(i)*.4})`; c.fillRect(170 + endRnd(i + 1)*380, 330 + endRnd(i + 2)*180, 4, 6); }
+  // 유리 속 얼굴 (비친 모습)
+  const fy = 210; c.save(); c.globalAlpha = .22; c.fillStyle = '#c8d0e0'; c.beginPath(); c.ellipse(360, fy, 56, 70, 0, 0, 7); c.fill(); c.globalAlpha = .5; c.fillStyle = '#0a0e18'; c.beginPath(); c.ellipse(338, fy - 6, 7, 5, 0, 0, 7); c.ellipse(382, fy - 6, 7, 5, 0, 0, 7); c.fill();
+  const sm = endSeg(p, .62, .7)*(1 - endSeg(p, .78, .84)); c.strokeStyle = 'rgba(10,14,24,.7)'; c.lineWidth = 3; c.beginPath(); c.moveTo(340, fy + 30); c.quadraticCurveTo(360, fy + 32 + sm*6, 380, fy + 30 - sm*16); c.stroke();
+  if (sm > .3){ c.globalAlpha = sm; c.globalCompositeOperation = 'lighter'; endGlow(c, 338, fy - 6, 10, 'rgba(255,90,150,A)', .9); endGlow(c, 382, fy - 6, 10, 'rgba(255,90,150,A)', .9); } c.restore();
+  c.fillStyle = '#05070c'; c.beginPath(); c.arc(360, 420, 64, 0, 7); c.fill(); c.beginPath(); c.moveTo(250, 720); c.quadraticCurveTo(250, 500, 360, 480); c.quadraticCurveTo(470, 500, 470, 720); c.fill();
+  c.restore(); }
 // --- 각본 ---
 function endScript(kind){
   const call = endCall(), miss = DARK_ORDER.filter(n => !roomOf(n).clear), back = DARK_ORDER.length - miss.filter(n => world.darkTgt?.[n]).length;
   const mine = miss.find(n => world.darkTgt?.[n] === uid) || miss.find(n => n !== 'kongi') || 'toto';
   const open = [
-    {s:(c, p) => endDoll(c, p), d:7500, snd:'box', t:['실밥이 모두 풀렸다.', '인형 안에서 작은 목소리가 들렸다.', '"…이제 문 열어도 돼."']},
-    {s:(c, p) => endDoor(c, p), d:5200, snd:'drone', t:['섬의 출구가 열렸다.']}];
+    {s:(c, p, t) => endKongi(c, p, t), d:8500, snd:'box', t:['실밥이 모두 풀렸다.', '콩이 안에서 작은 목소리가 들렸다.', '"…이제 문 열어도 돼."']},
+    {s:(c, p, t) => endRush(c, p, t), d:4500, snd:'drone', t:['섬의 출구가 열렸다.']}];
   const home = [
-    {s:(c, p) => endRoom(c, p, {}), d:7000, t:[`"${call}."`, '눈을 뜨자, 모니터 불빛만 켜진 내 방이었다.']},
-    {s:(c, p) => endRoom(c, p, {phone:true}), d:6500, t:['휴대 전화에 부재중 전화가 잔뜩 와 있었다.', '발밑에는 뜯긴 분홍 상자가 그대로 있었다.']},
-    {s:(c, p) => endMom(c, p), d:7000, snd:'warm', t:['현관 불이 켜져 있었다.', '"…왔구나."']}];
+    {s:(c, p, t) => endWake(c, p, t), d:9000, t:[`"${call}."`, '눈을 뜨자, 모니터 불빛만 켜진 내 방이었다.', '화면 속 섬이 꺼졌다.']},
+    {s:(c, p, t) => endPhone(c, p, t), d:7500, t:['휴대 전화가 쉬지 않고 떨렸다.']},
+    {s:(c, p, t) => endHome(c, p, t), d:8500, snd:'warm', t:['방문 너머로 현관 불이 켜져 있었다.', '"…왔구나."']}];
   if (kind === 'true') return [...open, ...home,
-    {s:(c, p) => endNews(c, p, '같은 날 사라진 12 명, 모두 귀가', '19 년 전 섬 여행 중 실종된 서하람 씨도 함께 돌아와 · 가족들 "믿기지 않는다" · 경찰, 보낸 사람 없는 택배 조사 중'), d:9000, t:['다음 날 아침, 뉴스가 나왔다.', '열두 명 모두, 집으로 돌아왔다.']},
+    {s:(c, p, t) => endNewsTV(c, p, t, '같은 날 사라진 12 명, 모두 귀가', 12), d:10000, t:['다음 날 아침, 뉴스가 나왔다.', '열두 명 모두, 집으로 돌아왔다.']},
+    {s:(c, p, t) => endDawn(c, p, t), d:8500, snd:'warm', t:['창밖이 천천히 밝아 왔다.', '분홍 상자는 문 앞에 내놓았다.']},
     {s:(c, p) => endTitle(c, p, '집으로', '열두 방을 모두 꿰맸어요'), d:6000, t:[]}];
   if (kind === 'home') return [...open, ...home,
-    {s:(c, p) => endNews(c, p, `같은 날 사라진 12 명 중 ${back} 명 귀가`, '돌아오지 못한 사람들의 가족은 오늘도 현관 불을 켜 두고 있다 · 경찰, 보낸 사람 없는 택배 조사 중'), d:9000, t:['돌아온 사람 중 몇은', '예전과 조금 달라졌다고 했다.']},
+    {s:(c, p, t) => endNewsTV(c, p, t, `같은 날 사라진 12 명 중 ${back} 명 귀가`, back), d:10000, t:['돌아오지 못한 사람들의 집에는', '오늘도 현관 불이 켜져 있다.']},
+    {s:(c, p, t) => endReflect(c, p, t), d:9000, snd:'heart', t:['돌아온 사람 중 몇은', '예전과 조금 달라졌다고 했다.']},
     {s:(c, p) => endTitle(c, p, '돌아온 사람들', `꿰매지 못한 방 ${miss.length} 개`), d:6000, t:[]}];
   if (kind === 'taken') return [open[0],
     {s:(c, p, t) => endCorridor(c, p, t), d:8500, snd:'drone', t:['출구가 열렸다.', '그런데 누군가 내 앞에서 먼저 빛 속으로 걸어갔다.', '내 얼굴을 하고.']},
