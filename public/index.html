@@ -5557,7 +5557,7 @@ const KIOSK_SNACKS = KIOSK_DISH_LIST.map((_, i) => 'dish:d' + (31 + i));
 const kioskPrice = k => DISHES[k.slice(5)]?.kiosk || Math.max(50, Math.round(itemPrice(k)*1.5/10)*10);
 // 강화 [골드, 재료] · +1 ~ +5 · 늘 성공해요
 const WP_UP = [[30000, [['loot:m78', 1], ['loot:m74', 5]]], [50000, [['loot:m78', 1], ['loot:m76', 8]]], [80000, [['loot:m78', 2], ['loot:m73', 10]]], [120000, [['loot:m78', 2], ['loot:m77', 12]]], [180000, [['loot:m78', 3], ['loot:m75', 15], ['ore:o38', 2]]]];
-function kioskTalk(){ say('끼룩이', KIOSK_LINES[Math.floor(Math.random()*KIOSK_LINES.length)], [['매점', kioskShop], ['검 손질', kioskForge]]); }
+function kioskTalk(){ if (darkOn()) return say('매점 팻말', KIOSK_SIGN); say('끼룩이', KIOSK_LINES[Math.floor(Math.random()*KIOSK_LINES.length)], [['매점', kioskShop], ['검 손질', kioskForge]]); }
 function kioskShop(){
   const own = (me.inv.weapons || []).includes('w11'), w = WEAPONS.w11;
   const snack = KIOSK_SNACKS.map(k => `<button class="np" data-id="${k}"><span class="np-name">${iconImg(k)}${itemName(k)}</span><span class="np-place">${kioskPrice(k).toLocaleString()} G</span><span class="np-day">가방에 ${invCount(k)} 개</span></button>`).join('');
@@ -5611,8 +5611,13 @@ function drawKiosk(c, t){
   c.strokeStyle = '#c8a070'; c.lineWidth = 3; c.beginPath(); c.moveTo(x - 58, y - 60); c.lineTo(x - 58, y - 104); c.moveTo(x + 34, y - 60); c.lineTo(x + 34, y - 104); c.stroke();
   for (let i = 0; i < 8; i++){ c.fillStyle = i % 2 ? '#ff7a8a' : '#ffffff'; c.beginPath(); c.moveTo(x - 70 + i*14.5, y - 110); c.lineTo(x - 70 + (i + 1)*14.5, y - 110); c.lineTo(x - 70 + (i + 1)*14.5 - 1, y - 96); c.quadraticCurveTo(x - 70 + (i + .5)*14.5, y - 90, x - 70 + i*14.5 + 1, y - 96); c.fill(); }
   c.fillStyle = '#ff7a8a'; c.beginPath(); c.roundRect(x - 72, y - 116, 120, 8, 4); c.fill();
-  c.restore(); drawGull(c, x - 34, y + 12, t/1000, 1.15);
+  c.restore(); if (!darkOn()) drawGull(c, x - 34, y + 12, t/1000, 1.15); else drawKioskSign(c, x - 34, y + 14);
 }
+// 다크 모드: 끼룩이는 급히 관리소에 알리러 갔어요 · 자리엔 팻말만
+const KIOSK_SIGN = '급한 일로 관리소에 다녀옵니다.\n매점과 검 손질은 잠시 쉬어요.\n\n돌아올 때까지\n다리 너머로는 혼자 다니지 마세요.\n\n— 끼룩';
+function drawKioskSign(c, x, y){ c.save(); c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(x, y + 2, 16, 4, 0, 0, 7); c.fill();
+  c.fillStyle = '#9a7048'; c.fillRect(x - 2, y - 30, 4, 32); c.save(); c.translate(x, y - 40); c.rotate(-.06); c.fillStyle = '#c89a68'; c.beginPath(); c.roundRect(-24, -14, 48, 26, 3); c.fill(); c.strokeStyle = '#8a6040'; c.lineWidth = 1.5; c.stroke();
+  c.fillStyle = '#4a2e1c'; c.font = '13px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillText('잠시 자리 비움', 0, -1); c.font = '10px "Dongle",sans-serif'; c.fillText('— 끼룩', 10, 8); c.restore(); c.restore(); }
 function resortObstacles(o){ o.rects.push({x:KIOSK.x - 62, y:KIOSK.y - 52, w:100, h:40}, {x:KIOSK.x + 58, y:KIOSK.y - 24, w:44, h:18}); RS_PLOTS.forEach(([x, y], i)=>{ if (rsPlot(i)) o.rects.push({x:x - 56, y:y - 80, w:112, h:76}); }); }
 function resortTap(w){ if (zoneId !== 'resort') return null; if (Math.abs(w.x - KIOSK.x + 10) < 80 && w.y > KIOSK.y - 120 && w.y < KIOSK.y + 24) return {x:KIOSK.x - 34, y:KIOSK.y + 26, act:kioskTalk}; for (let i = 0; i < 12; i++){ const [x, y] = RS_PLOTS[i]; if (Math.abs(w.x - x) < 64 && w.y > y - 110 && w.y < y + 28) return {x, y:y + 30, act:()=>rsPanel(i)}; } return null; }
 // 가게 창: 주인이면 관리, 아니면 놀러 가기
