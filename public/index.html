@@ -5946,10 +5946,10 @@ function onDarkRooms(v){
   if (me && !admin) for (const npc of Object.keys(darkRooms)) darkClaim(npc);
   if (admin) renderAdmin();
   for (const npc of Object.keys(darkRooms)){ darkOpenSound(npc, roomOf(npc)); clueSync(npc, roomOf(npc)); }
-  if (zoneId.startsWith('dark:')){ renderHud(); const r = roomOf(zoneId.slice(5)); if (!r.hp && !r.clear && darkSolvedN(r) >= darkPuzzles(zoneId.slice(5)).length) darkWake(zoneId.slice(5)); }
+  if (zoneId.startsWith('dark:')){ renderHud(); const r = roomOf(zoneId.slice(5)); if (!r.hp && !r.clear && r.start && darkNow() <= darkEnd(r) && darkSolvedN(r) >= darkPuzzles(zoneId.slice(5)).length) darkWake(zoneId.slice(5)); }
 }
 // ----- 문 (다크 모드 동안 주민 자리 옆에 생겨요) -----
-function darkDoorState(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(); if (roomOf(npc).clear) return 'clear'; if (i === di){ const r = roomOf(npc); if (r.start && darkNow() > darkEnd(r)) return admin ? 'open' : 'shut'; if (!r.start && darkFirst(r)) return admin ? 'open' : 'shut'; return darkKeyDone(npc) || r.start || admin ? 'open' : 'sealed'; } return i < di ? 'missed' : 'locked'; }
+function darkDoorState(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(); if (roomOf(npc).clear) return 'clear'; if (i < di && darkLive(npc)){ const r = roomOf(npc); return admin || (r.start && darkNow() <= darkEnd(r)) ? 'open' : 'shut'; } if (i === di){ const r = roomOf(npc); if (darkFirst(r) && darkNow() > darkFirst(r) + DARK_GRACE && !admin) return 'missed'; if (r.start && darkNow() > darkEnd(r)) return admin ? 'open' : 'shut'; if (!r.start && darkFirst(r)) return admin ? 'open' : 'shut'; return darkKeyDone(npc) || r.start || admin ? 'open' : 'sealed'; } return i < di ? 'missed' : 'locked'; }
 // ===== 열쇠 조각: 오늘 열릴 집의 열쇠는 아홉 조각 (3 × 3 정사각형). 섬에서 주운 조각을 마을 게시판에 붙여야 모여요 =====
 const KEY_N = 9, KEY_P = .05;
 const darkKeys = npc => roomOf(npc).keys || {};
@@ -6241,10 +6241,10 @@ async function darkEnter(npc){
   if (st === 'locked') return say(`${n.name}의 집`, '문이 굳게 꿰매져 있어요.');
   if (st === 'missed') return say(`${n.name}의 집`, '이 집의 문은 이미 다시 닫혔어요.');
   if (st === 'sealed') return say(`${n.name}의 집`, `문고리에 녹슨 자물쇠가 걸려 있어요. 열쇠 구멍이 아홉 칸으로 나뉘어 있어요.\n\n맞춰진 조각 ${darkKeyN(npc)}/${KEY_N}`, [['마을 게시판 보기', () => { closeTalk(); missBoard(); }]]);
-  if (st === 'shut'){ const have = me.inv.dtok|0;
-    return say(`${n.name}의 집`, `문이 다시 닫혀 있어요. 문고리 옆에 동전 넣는 구멍이 하나 있어요.`, have ? [['토큰 넣기', () => { closeTalk(); darkTokOpen(npc); }]] : [['토큰 교환기 보기', () => { closeTalk(); tokMachine(); }]], `가진 토큰 ${have} 개`); }
+  if (st === 'shut'){ const left = Math.max(0, darkFirst(roomOf(npc)) + DARK_GRACE - darkNow()), have = me.inv.dtok|0;
+    return say(`${n.name}의 집`, `문이 다시 닫혀 있어요. 문고리 옆에 동전 넣는 구멍이 하나 있어요.\n\n문이 아주 닫히기까지 ${Math.floor(left/3600000)} 시간 ${Math.floor(left/60000)%60} 분`, have ? [['토큰 넣기', () => { closeTalk(); darkTokOpen(npc); }]] : [['토큰 교환기 보기', () => { closeTalk(); tokMachine(); }]], `가진 토큰 ${have} 개`); }
   if (st === 'open' && darkBusy) return; darkBusy = true;
-  let aft = null; const ok = st === 'open' && await net.darkTx(npc, cur => { const now = darkNow(); cur = cur || {}; aft = cur; let v; if (cur.clear) return undefined; if (!cur.start && !darkFirst(cur)) v = {...cur, start:now, first:now}; else if (!cur.start && admin) v = {...cur, start:now}; else if (cur.start && now > darkEnd(cur) && admin) v = {...darkRetry(cur), start:now}; if (v) aft = v; return v; });
+  let aft = null; const ok = st === 'open' && await net.darkTx(npc, cur => { const now = darkNow(); cur = cur || {}; aft = cur; let v; if (cur.clear) return undefined; if (!cur.start && !darkFirst(cur)) v = {...cur, start:now, first:now}; else if (!cur.start && admin) v = {...cur, start:now}; else if (cur.start && now > darkEnd(cur) && admin) v = {...darkRetry(npc, cur), start:now}; if (v) aft = v; return v; });
   darkBusy = false; if (!ok) aft = roomOf(npc);
   if (!admin && aft && !aft.clear && (!aft.start || darkNow() > darkEnd(aft))){ const s2 = darkDoorState(npc); return s2 === 'shut' || s2 === 'missed' ? darkEnter(npc) : toast('문이 열리지 않았어요'); }
   darkGuard = 3;
@@ -6253,7 +6253,7 @@ async function darkEnter(npc){
 // 토큰 한 개면 그 방이 2 시간 동안 모두에게 열려요 (누가 넣든 한 번이면 돼요)
 async function darkTokOpen(npc){
   if (darkBusy || (me.inv.dtok|0) < 1) return; darkBusy = true; let used = false;
-  const ok = await net.darkTx(npc, cur => { used = false; const now = darkNow(); if (!cur || cur.clear || !darkFirst(cur)) return undefined; if (cur.start && now <= darkEnd(cur)) return undefined; used = true; return {...(cur.start ? darkRetry(cur) : cur), start:now, tok:{nick:String(me.nick||'').slice(0,16), at:now}}; });
+  const ok = await net.darkTx(npc, cur => { used = false; const now = darkNow(); if (!cur || cur.clear || !darkFirst(cur) || now > darkFirst(cur) + DARK_GRACE) return undefined; if (cur.start && now <= darkEnd(cur)) return undefined; used = true; return {...(cur.start ? darkRetry(npc, cur) : cur), start:now, tok:{nick:String(me.nick||'').slice(0,16), at:now}}; });
   darkBusy = false;
   if (ok && used){ me.inv.dtok = (me.inv.dtok|0) - 1; if (!me.inv.dtok) delete me.inv.dtok; saveMe(true); renderHud(); toast('철컥. 문이 다시 열렸어요'); return darkEnter(npc); }
   if (roomOf(npc).start && darkNow() <= darkEnd(roomOf(npc))) return darkEnter(npc); // 누가 먼저 열었어요 · 토큰은 그대로
@@ -6310,11 +6310,15 @@ function updateDown(dt, t){
 // ----- 문제 -----
 const DARK_FREE = 3, DARK_PEN = 10*60000; // 문제마다 3 번까지는 틀려도 괜찮고, 그 뒤로는 틀릴 때마다 제한 시간 10 분이 줄어요
 const darkLimit = r => DARK_LIMIT_MS - ((r && r.pen) | 0);
-// 처음 2 시간이 지나면 그날(자정 전)까지는 토큰으로 다시 열 수 있어요 (한 번 열면 2 시간 · 푼 문제는 그대로)
+// 처음 2 시간이 지나면 처음 들어간 뒤 48 시간 안에는 토큰으로 다시 열 수 있어요 (한 번 열면 2 시간 · 푼 문제는 그대로)
 const DARK_TOK = 1000000;
 const darkFirst = r => (r && (r.first || r.start)) || 0;
 const darkEnd = r => r.start + darkLimit(r);
-const darkRetry = ({start, hp, max, bossAt, rageAt, rv, wipe, pen, tok, ...r}) => ({...r, att:(r.att|0)+1, first:darkFirst({...r, start})}); // 다시 열면 보스 체력만 처음부터 (푼 문제 · 틀린 횟수 · 힌트 · 배정은 그대로, 시간은 새로 2 시간)
+// 문제를 다 푼 뒤(보스전)에 시간이 다 되면 보스 체력만 처음부터, 문제를 풀던 중이면 문제도 모두 처음부터 (열쇠는 그대로)
+const darkRetry = (npc, {start, hp, max, bossAt, rageAt, rv, wipe, pen, tok, ...r}) => darkSolvedN(r) >= darkPuzzles(npc).length ? {...r, att:(r.att|0)+1, first:darkFirst({...r, start})} : {att:(r.att|0)+1, first:darkFirst({...r, start}), ...(r.keys ? {keys:r.keys} : {})};
+// 열쇠로 처음 들어간 뒤 48 시간 안에 못 꿰매면 기회가 사라져요 (날이 바뀌어도 48 시간 안이면 토큰으로 다시 열 수 있어요)
+const DARK_GRACE = 48*3600000;
+function darkLive(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(), r = roomOf(npc); if (i < 0 || i > di || r.clear) return false; if (i === di) return !darkFirst(r) || darkNow() <= darkFirst(r) + DARK_GRACE; return !!darkFirst(r) && darkNow() <= darkFirst(r) + DARK_GRACE; }
 const darkNorm = s => String(s || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
 function darkNear(){ const z = Z(); if (!z.dark) return null; let best = null, bd = 70; for (const pz of [...darkPuzzles(z.dark), ...darkProps(z.dark)]){ const dd = Math.hypot(pos.x-pz.x, pos.y-pz.y-20); if (dd < bd){ bd = dd; best = pz; } } return best; }
 const DARK_HINT = 2; // 힌트는 그 문제를 두 번 틀린 뒤에 열려요
@@ -6429,7 +6433,7 @@ function filmSnd(k){ if (!bgmOn()) return; try { const A = filmAc || (filmAc = n
   else if (k === 'snap'){ tone(0, 2200, .05, .2, 'square', 1200); hiss(0, .06, .25, 2000); [523, 659, 784, 1047, 1319].forEach((f, i) => { tone(.1 + i*.09, f, 1.5, .07, 'triangle'); tone(.1 + i*.09, f*2.01, .9, .02); }); }
 } catch(e){} }
 // ----- 보스: 문제를 다 풀면 그 주민이 깨어나요. 체력은 모두가 같이 깎아요 -----
-function darkWake(npc){ net.darkTx(npc, cur => cur && cur.start && !cur.clear && !(cur.hp > 0) && darkSolvedN(cur) >= darkPuzzles(npc).length ? {...cur, hp:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, max:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, bossAt:darkNow()} : undefined); }
+function darkWake(npc){ net.darkTx(npc, cur => cur && cur.start && darkNow() <= darkEnd(cur) && !cur.clear && !(cur.hp > 0) && darkSolvedN(cur) >= darkPuzzles(npc).length ? {...cur, hp:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, max:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, bossAt:darkNow()} : undefined); }
 // ----- 토리??? (토리 방 보스): 모두에게 같은 시계(bossAt · rageAt)로 움직여서 누구 화면이든 같은 자리·같은 공격이에요 -----
 // 1 페이즈: 정해진 자리를 뒤뚱뒤뚱 돌며, 멈추면 8 방향 편지 탄막, 걸을 땐 쿵 할 때마다 발밑에서 편지 고리
 // 체력 절반: 화면이 붉게 번쩍이고 뒤뚱뒤뚱 돌아서요 → 등의 실밥이 끊어지며 갈라지고 손이 나와요
@@ -6562,7 +6566,7 @@ function updateDark(dt, t){
   if (t > darkHudT){ darkHudT = t + 1000; if (zoneId.startsWith('dark:')) darkHud(); }
   const z = Z(); if (!z.dark) return; const npc = z.dark, r = roomOf(npc);
   darkGuard -= dt; darkHurtT -= dt;
-  if (darkOn() && npc !== darkToday() && !r.clear) return darkLeave();
+  if (darkOn() && !darkLive(npc) && !r.clear && !admin) return darkLeave();
   if (!r.start && !r.clear && darkGuard < 0) return darkLeave(); // 관리자가 방을 되돌렸어요
   if (r.clear && darkDown) darkStandUp();
   darkAssignTick(npc, r, t);
@@ -6571,7 +6575,7 @@ function updateDark(dt, t){
   // 방 안 사람이 모두 쓰러지면 (3 초 확인) 보스 체력과 살리기 횟수를 처음으로
   if (darkBossUp(r) && darkDown && t > darkWipeT){ darkWipeT = t + 3000; const mates = [...others.values()].filter(o=>o.z===zoneId && !o.adm);
     if (mates.every(o=>o.down) && darkNow() - darkDown > 2500){ const w = r.wipe|0; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && (cur.wipe|0) === w ? (({rageAt, ...c}) => ({...c, hp:cur.max, rv:0, wipe:w + 1, bossAt:darkNow()}))(cur) : undefined); } }
-  if (r.start && !r.clear && darkNow() > darkEnd(r)){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? darkRetry(cur) : undefined); return darkLeave(); }
+  if (r.start && !r.clear && darkNow() > darkEnd(r)){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? darkRetry(npc, cur) : undefined); return darkLeave(); }
   if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
     net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; const hp = Math.max(0, cur.hp - dmg); return {...cur, hp, ...(npc === 'tori' && !cur.rageAt && hp > 0 && hp <= cur.max/2 ? {rageAt:darkNow()} : {}), ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
   if (!darkBossUp(r)){ darkSlams = []; return; }
