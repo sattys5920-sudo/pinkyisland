@@ -4276,7 +4276,9 @@ function weatherOf(dayOrBlock, isBlock){
   const table = [['sun',45],['cloud',20],['rain',17],['snow',13],['rainbow',5]]; // 계절 없이 언제나 같은 확률
   let r = hash('wx'+b) % 100; for (const [k,w] of table){ if ((r -= w) < 0) return [...WX[k], k]; } return [...WX.sun, 'sun'];
 }
-const wxNow = () => weatherOf(wxBlock(), true);
+// 관리자가 고른 날씨 (world.wx = {k, until}): 정한 시간 동안 섬 전체가 그 날씨예요
+const wxForced = () => { const o = world && world.wx; return o && WX[o.k] && Date.now() + serverOffset < +o.until ? o.k : null; };
+const wxNow = () => { const k = wxForced(); return k ? [...WX[k], k] : weatherOf(wxBlock(), true); };
 const isRain = () => wxNow()[2]==='rain';
 const isSnow = () => wxNow()[2]==='snow';
 const isRainbow = () => wxNow()[2]==='rainbow';
@@ -7076,13 +7078,17 @@ function wishPress(){
 }
 setInterval(nightTick, 250);
 // --- 관리자: 밤 이벤트 열기 ---
+let wxHrs = 4; // 관리자 날씨: 고른 날씨가 이어질 시간
 function adminNightSec(){
   const ph = meteorPhase(), m = meteorAt(), n = wNow(), fw = fwOn();
   const st = ph === 'wait' ? `별똥별 예약됨 · ${fmtLeft(m - n)} 뒤 (예약부터 끝날 때까지 별빛 언덕 몬스터 없음)` : ph === 'fall' ? '지금 별똥별이 떨어지는 중' : ph === 'after' ? `별똥별 끝 · 몬스터는 ${fmtLeft(m + METEOR_LEN + METEOR_TAIL - n)} 뒤에 다시 나와요` : '예약된 별똥별 없음';
   return `<div class="adm-sec"><b>🌠 이벤트 (별똥별 · 불꽃놀이 · 풍선)</b><small>${st}</small>${fw ? `<small>🎆 불꽃놀이 중 · ${fmtLeft(+world.fwAt + FW_LEN - n)} 남음</small>` : ''}
     ${ph ? (ph === 'wait' ? '<button data-a="meteorcancel" class="adm-btn warn">별똥별 예약 취소</button>' : '') : '<button data-a="meteorgo" class="adm-btn">🌠 별똥별 예약 (10분 뒤)</button>'}
     <button data-a="fwgo" class="adm-btn"${fw ? ' disabled' : ''}>🎆 불꽃놀이 지금 열기</button>
-    <button data-a="balgo" class="adm-btn"${balOn() ? ' disabled' : ''}>🎈 풍선 날리기 (10 초 · 낮 이벤트)</button></div>`;
+    <button data-a="balgo" class="adm-btn"${balOn() ? ' disabled' : ''}>🎈 풍선 날리기 (10 초 · 낮 이벤트)</button></div>
+    <div class="adm-sec"><b>🌦️ 날씨 바꾸기</b><small>지금 ${wxNow()[1]} ${wxNow()[0]}${wxForced() ? ` · 관리자가 정함 · ${fmtLeft(+world.wx.until - n)} 남음` : ' · 자동'}</small>
+    <div class="adm-wrow">${Object.entries(WX).map(([k, [nm, ic]]) => `<button data-a="wxset" data-k="${k}" class="adm-btn"${wxForced() === k ? ' disabled' : ''}>${ic} ${nm}</button>`).join('')}</div>
+    <div class="adm-wrow"><button data-a="wxhrs" data-h="1" class="adm-btn"${wxHrs === 1 ? ' style="background:#ffd6e4;font-weight:bold"' : ''}>1 시간</button><button data-a="wxhrs" data-h="4" class="adm-btn"${wxHrs === 4 ? ' style="background:#ffd6e4;font-weight:bold"' : ''}>4 시간</button><button data-a="wxhrs" data-h="24" class="adm-btn"${wxHrs === 24 ? ' style="background:#ffd6e4;font-weight:bold"' : ''}>하루</button><button data-a="wxauto" class="adm-btn"${wxForced() ? '' : ' disabled'}>자동으로</button></div></div>`;
 }
 // ===== 풍선 시간 (낮 이벤트): 오투모가 열면 10 초 동안 풍선이 화면 아래에서 올라와요 =====
 // 모두 같은 풍선(같은 씨앗)을 봐요. 눌러서 터뜨리면 10~5,000 G, 가장 먼저 누른 한 사람만 받아요 (balloons/<이벤트>/<번호> 먼저 쓴 사람)
@@ -7153,10 +7159,13 @@ function adminBalloon(){ if (balOn()) return toast('풍선이 아직 날아가�
   if (!confirm('지금 풍선을 날릴까요? 10 초 동안 모두의 화면에 풍선이 올라가요.')) return;
   const at = wNow() + 1500, faces = [...new Set([...others.values()].filter(o => !o.adm && o.uid).map(o => o.uid))].slice(0, 12);
   Promise.resolve(net.setWorld({balloon:{id:'b' + at.toString(36), at, seed:(Math.random()*2e9)|0, faces}})).then(()=>toast('풍선을 날렸어요')).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
-function adminNightClick(a){
+function adminNightClick(a, b){
   const fail = ()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요');
   if (a === 'meteorgo'){ if (confirm('10 분 뒤 별빛 언덕에 별똥별을 떨어뜨릴까요? 지금 바로 모두에게 알림이 가요.')) Promise.resolve(net.setWorld({meteorAt:wNow() + METEOR_LEAD})).then(()=>toast('별똥별을 예약했어요 · 모두에게 알림이 갔어요')).catch(fail); }
   else if (a === 'meteorcancel'){ if (confirm('별똥별 예약을 취소할까요?')) Promise.resolve(net.setWorld({meteorAt:0})).then(()=>toast('별똥별 예약을 취소했어요')).catch(fail); }
+  else if (a === 'wxset'){ const k = b.dataset.k; Promise.resolve(net.setWorld({wx:{k, until:wNow() + wxHrs*3600000}})).then(()=>toast(`날씨를 ${WX[k][0]}(으)로 바꿨어요 · ${wxHrs} 시간`)).catch(()=>toast('바꾸지 못했어요. 관리자 권한을 확인해 주세요')); }
+  else if (a === 'wxhrs'){ wxHrs = +b.dataset.h; renderAdmin(); }
+  else if (a === 'wxauto'){ Promise.resolve(net.setWorld({wx:null})).then(()=>toast('날씨를 자동으로 되돌렸어요')).catch(()=>{}); }
   else if (a === 'fwgo'){ if (confirm('지금 불꽃놀이를 열까요? 바깥에 있는 모두에게 30 초 동안 보여요.')) Promise.resolve(net.setWorld({fwAt:wNow()})).then(()=>toast('불꽃놀이를 열었어요')).catch(fail); }
 }
 
@@ -7856,7 +7865,8 @@ let adminLetterData = {}, admPost = false, admDrafts = {}; // 주민·오투모�
 let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
 let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
 let reloadSeen; // 관리자 [전원 새로고침]: 처음 본 값에서 바뀌면 저장하고 새로고침해요
-function onWorld(w){ const was = darkOn(), nmSig = JSON.stringify([world.dark, world.darkNames]); world = w || {};
+function onWorld(w){ const was = darkOn(), nmSig = JSON.stringify([world.dark, world.darkNames]), wxSig = JSON.stringify(world.wx || null); world = w || {};
+  if (me && wxSig !== JSON.stringify(world.wx || null)) setTimeout(()=>{ staticSig = ''; renderHud(); }, 0); // 관리자가 날씨를 바꾸면 바로
   if (me && !admin && nmSig !== JSON.stringify([world.dark, world.darkNames])){ setTimeout(()=>{ renderHud(); renderChatHist(); }, 0); } // 다크 모드 이름이 바뀌면 상단 · 채팅도 바로
   glitchCheck(); if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('눈앞이 하얘졌다가.... 정신을 차려 보니 밖이에요'); glitchBurst = performance.now(); if (darkOn()){ darkSwitchAt = performance.now(); if (!admin) glitchSound(1900, [{t:120, d:90}, {t:620, d:140}, {t:1150, d:70}, {t:1500, d:110}]); } if (darkOn() && !admin){ // 아무 말 없이 바로: 주민과 하던 이야기는 끊겨요
     if (dlg && dlg.n) dlgClose(); if (!$('talk').hidden && talkNpcOpen()) closeTalk(); const p = $('npcPanel'); if (p && !p.hidden && p.dataset.kind === 'npc') p.hidden = true; } } }
@@ -8212,7 +8222,7 @@ function adminClick(e){
   else if (b.dataset.a==='oxend'){ if (confirm('끝내고 살아남은 사람에게 상품을 줄까요?')) adminOxEnd(false); }
   else if (FEST_ACTS.has(b.dataset.a)) adminFestClick(b);
   else if (b.dataset.a==='oxcancel'){ if (confirm('OX 퀴즈를 취소할까요?')) adminOxEnd(true); }
-  else if (['meteorgo','meteorcancel','fwgo'].includes(b.dataset.a)) adminNightClick(b.dataset.a);
+  else if (['meteorgo','meteorcancel','fwgo','wxset','wxhrs','wxauto'].includes(b.dataset.a)) adminNightClick(b.dataset.a, b);
   else if (b.dataset.a==='balgo') adminBalloon();
   else if (b.dataset.a==='aucend'){ if (confirm('지금 최고가로 낙찰 확정할까요?')) adminAucEnd(false); }
   else if (b.dataset.a==='auccancel'){ if (confirm('경매를 취소할까요? 부른 사람들은 골드를 돌려받아요')) adminAucEnd(true); }
