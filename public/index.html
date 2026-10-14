@@ -5890,7 +5890,7 @@ function rsRollPlush(){ const r = Math.random(), tier = r < .01 ? 4 : r < .10 ? 
 // 다 풀면 그 주민이 아주 강한 보스로 깨어나요. 첫 입장부터 2 시간 안에 못 끝내면 방이 처음으로 돌아가요.
 // 방 상태는 모두 함께 써요: darkRooms/<주민> = {start, att(몇 번째 도전), solved:{p01:{uid,nick,at}}, asg:{p01:uid} (문제를 맡은 사람), hp, max, bossAt, clear:{at,nick}}
 const hashU = v => { let h = 7; for (const ch of String(v)) h = (h*31 + ch.charCodeAt(0)) >>> 0; return h; }; let darkSlamSlot = {};
-let darkRooms = {}, darkPending = 0, darkFlushT = 0, darkTouchCd = 0, darkSlams = [], darkSlamT = 0, darkHurtT = 0, darkGuard = 0, darkHudT = 0, darkBusy = false;
+let darkWakeT = 0, darkRooms = {}, darkPending = 0, darkFlushT = 0, darkTouchCd = 0, darkSlams = [], darkSlamT = 0, darkHurtT = 0, darkGuard = 0, darkHudT = 0, darkBusy = false;
 const darkOn = () => !!(world && world.dark);
 const kstDayOf = ms => Math.floor((ms + 9*3600000) / 86400000);
 const darkNow = () => Date.now() + serverOffset;
@@ -6867,6 +6867,7 @@ function updateDark(dt, t){
   // 방 안 사람이 모두 쓰러지면 (3 초 확인) 보스 체력과 살리기 횟수를 처음으로
   if (darkBossUp(r) && darkDown && t > darkWipeT){ darkWipeT = t + 3000; const mates = [...others.values()].filter(o=>o.z===zoneId && !o.adm);
     if (mates.every(o=>o.down) && darkNow() - darkDown > 2500){ const w = r.wipe|0; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && (cur.wipe|0) === w ? (({rageAt, ...c}) => ({...c, hp:cur.max, rv:0, wipe:w + 1, bossAt:darkNow()}))(cur) : undefined); } }
+  if (!r.hp && !r.clear && r.start && darkNow() <= darkEnd(r) && darkSolvedN(r) >= darkPuzzles(npc).length && t > darkWakeT){ darkWakeT = t + 3000; darkWake(npc); } // 문제를 다 푼 방에 다시 들어오면 (토큰 재도전 등) 보스를 깨워요
   if (r.start && !r.clear && darkNow() > darkEnd(r)){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? darkRetry(npc, cur) : undefined); return darkLeave(); }
   if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
     net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; const hp = Math.max(0, cur.hp - dmg); return {...cur, hp, ...(npc === 'tori' && !cur.rageAt && hp > 0 && hp <= cur.max/2 ? {rageAt:darkNow()} : {}), ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
