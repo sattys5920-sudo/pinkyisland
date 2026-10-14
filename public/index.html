@@ -5255,8 +5255,8 @@ function forageItemAt(s){
   const list = s.lp && LP_NIGHT.has(zoneId) ? (tmOk('night') ? [FG.g45] : []) // 다른 구역에 더 놓은 낙엽 더미: 밤에만 새 깃털
     : FORAGE.filter(f=>f.zone === zoneId && SPOT_OF[f.kind] === s.type && fwOk(f.wx) && tmOk(f.tm));
   if (!list.length) return null;
-  const rng = seeded(hash(`fg:${zoneId}:${s.i}:${spotKey(s)}`)), tot = list.reduce((a,f)=>a+FORAGE_W[f.rare], 0); let r = rng()*tot;
-  for (const f of list){ if ((r -= FORAGE_W[f.rare]) < 0) return f; } return list[0];
+  const W = f => f.w ?? FORAGE_W[f.rare], rng = seeded(hash(`fg:${zoneId}:${s.i}:${spotKey(s)}`)), tot = list.reduce((a,f)=>a+W(f), 0); let r = rng()*tot; // f.w: 따로 정한 나올 무게
+  for (const f of list){ if ((r -= W(f)) < 0) return f; } return list[0];
 }
 const forageSpots = () => (Z().fspots || []);
 function forageEntities(d, t){
