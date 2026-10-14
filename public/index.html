@@ -4954,11 +4954,11 @@ function glitchRun(len, big){
 }
 let tvCh = 'news';
 const NEWS = [
-  {loc:'서울 ○○구 · 실종자 자택 아파트', tag:'속보', s2:'사회', head:'자택서 게임하던 12명, 같은 시각 동시 실종', sub:'방에는 켜진 휴대폰만… 서로 모르는 사이'},
-  {loc:'실종자 방 내부 · 경찰 제공', rec:'자료 화면', tag:'단독', s2:'이민서 기자', head:'"방 안엔 휴대폰만… 게임 화면 그대로 켜져 있어"', sub:'문은 안에서 잠겨 있었고, 창문도 닫혀 있어'},
-  {loc:'현장 연결 · 실종자 자택 앞 복도', tag:'현장', s2:'사회', head:'경찰, 게임사에 접속 기록 요청… "등록된 게임 없다"', sub:'12명 휴대폰, 같은 시각 같은 게임에 접속한 채 발견'},
+  {loc:'서울 ○○구 · 실종자 자택 아파트', tag:'속보', s2:'사회', head:'자택서 게임하던 12명, 같은 시각 동시 실종', sub:'방에는 켜진 휴대 전화만… 서로 모르는 사이'},
+  {loc:'실종자 방 내부 · 경찰 제공', rec:'자료 화면', tag:'단독', s2:'이민서 기자', head:'"방 안엔 휴대 전화만… 게임 화면 그대로 켜져 있어"', sub:'문은 안에서 잠겨 있었고, 창문도 닫혀 있어'},
+  {loc:'현장 연결 · 실종자 자택 앞 복도', tag:'현장', s2:'사회', head:'경찰, 게임사에 접속 기록 요청… "등록된 게임 없다"', sub:'12명 휴대 전화, 같은 시각 같은 게임에 접속한 채 발견'},
   {list:true, tag:'속보', s2:'사회', head:'실종자 12명… 마지막으로 본 곳 모두 "자택"', sub:'보신 분은 112 로 제보해 주세요'}];
-const NEWS_TICK = '경찰 "강제로 들어온 흔적 없어" · 실종자 휴대폰 12대 모두 같은 게임 화면 · 게임사 "그런 게임은 등록돼 있지 않다" · 휴대폰 화면 속 캐릭터는 지금도 움직이는 중 · 가족들 "아이 이름을 부르는 소리가 화면에서 들린다" · 목격자 제보 112 · ';
+const NEWS_TICK = '경찰 "강제로 들어온 흔적 없어" · 실종자 휴대 전화 12대 모두 같은 게임 화면 · 게임사 "그런 게임은 등록돼 있지 않다" · 휴대 전화 화면 속 캐릭터는 지금도 움직이는 중 · 가족들 "아이 이름을 부르는 소리가 화면에서 들린다" · 목격자 제보 112 · ';
 let newsI = 0, newsTimer = 0, newsFontOn = false; const newsImg = [];
 function newsFont(){ if (newsFontOn) return; newsFontOn = true; const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap'; document.head.appendChild(l); }
 function newsBg(i){ if (!newsImg[i]){ const c = document.createElement('canvas'); c.width = 960; c.height = 540; NEWS_SCENES[i](c.getContext('2d')); newsImg[i] = c.toDataURL('image/jpeg', .85); } return newsImg[i]; }
@@ -4969,7 +4969,7 @@ function newsScene(){
     <div class="nw-l3"><div><span class="nw-tag">${N.tag}</span><span class="nw-s2">${N.s2}</span></div><div class="nw-h">${esc(N.head)}</div><div class="nw-sub">${esc(N.sub)}</div></div>`;
 }
 // 앵커 목소리: 녹음해 둔 뉴스 한 편(46초)을 틀고, 문단이 바뀌는 때에 맞춰 장면을 넘겨요. 끝나면 잠깐 쉬고 처음부터
-const NEWS_MP3 = 'art/news.mp3', NEWS_CUT = [0, 10.6, 22.95, 36.95];
+const NEWS_MP3 = 'art/news.mp3', NEWS_CUT = [0, 10.6, 22.78, 36.8];
 let newsMute = false, newsAud = null, newsWatch = 0;
 function newsDuck(on){ try { if (bgmAudio) bgmAudio.volume = on ? .05 : BGM_VOL; if (bgmGain) bgmGain.gain.value = on ? .05 : BGM_VOL; } catch(e){} }
 function newsHush(){ clearTimeout(newsTimer); clearInterval(newsWatch); if (newsAud){ newsAud.pause(); newsAud.onended = null; } newsDuck(false); }
@@ -6032,7 +6032,7 @@ const missPhotoAt = id => darkQ?.missing?.[id]?.im || 0;
 function missPoster(id, name){
   const at = missPhotoAt(id);
   return `<div class="mp-card"><b class="mp-h">사람을 찾습니다</b><div class="mp-ph">${at ? `<img data-dkimg="missing|${esc(id)}|${at}" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">` : '<i></i>'}</div>
-    <b class="mp-n">${esc(name)}</b><small>마지막으로 본 곳 : 자택</small><small>자기 방에서 게임에 접속한 채 사라졌어요<br>휴대폰 화면은 아직 켜져 있었어요</small><em>보신 분은 꼭 연락 주세요</em></div>`;
+    <b class="mp-n">${esc(name)}</b><small>마지막으로 본 곳 : 자택</small><small>자기 방에서 게임에 접속한 채 사라졌어요<br>휴대 전화 화면은 아직 켜져 있었어요</small><em>보신 분은 꼭 연락 주세요</em></div>`;
 }
 function missBoard(only){
   const L = missingList().filter(([id]) => !only || id === only); if (!L.length) return say('....', '빛바랜 게시판이에요. 종이를 떼어 낸 자국만 잔뜩 남아 있어요.');
@@ -6047,7 +6047,7 @@ function drawMissBoard(d){ const {x, y} = MISS_BOARD, c = d.ctx, n = missingList
 // 우편함: 바깥에서 온 편지 (받는 사람은 진짜 이름)
 const homeLetter = () => { const nm = darkOn() && (world.darkNames || {})[uid]; if (!nm) return null; const g = givenName(nm);
   return {from:'', nick:'엄마', at:world.darkAt || 0, read: me?.homeMail === (world.darkAt || 1), home:true,
-    text:`${g}${josaA(g)}, 엄마야.\n\n연락이 안 된 지 벌써 며칠째야. 네 방 불은 켜져 있고, 휴대폰 화면에는 게임이 그대로 켜져 있는데 너만 없어.\n\n밥은 먹고 있니? 춥지는 않니?\n이 편지가 어디로 가는지도 모르겠지만, 혹시 닿으면 꼭 대답해 줘.\n\n— 엄마가` }; };
+    text:`${g}${josaA(g)}, 엄마야.\n\n연락이 안 된 지 벌써 며칠째야. 네 방 불은 켜져 있고, 휴대 전화 화면에는 게임이 그대로 켜져 있는데 너만 없어.\n\n밥은 먹고 있니? 춥지는 않니?\n이 편지가 어디로 가는지도 모르겠지만, 혹시 닿으면 꼭 대답해 줘.\n\n— 엄마가` }; };
 const allLetters = () => { const h = homeLetter(); return h ? {...letters, __home:h} : letters; };
 // 접속을 끊은 사람: 마지막 자리에 몸만 남아요
 const husksHere = () => !darkOn() || Z().dark || Z().house ? [] : Object.entries(players).filter(([id, p]) => id !== uid && p && !p.adm && p.lot != null && p.zone === zoneId && typeof p.zx === 'number' && ![...others.values()].some(o => o.uid === id));

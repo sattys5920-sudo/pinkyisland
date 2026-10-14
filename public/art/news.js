@@ -12,7 +12,7 @@ function sceneA(x){const W=960,H=540;seed=7;
  x.filter='blur(14px)';for(let i=0;i<8;i++)bokeh(x,120+i*110+R()*40,470+R()*30,40+R()*30,i%2?'rgba(255,40,40,A)':'rgba(40,90,255,A)',.55);
  x.filter='blur(30px)';bokeh(x,300,500,240,'rgba(255,30,40,A)',.35);bokeh(x,700,500,260,'rgba(30,70,255,A)',.35);
  x.filter='none';x.fillStyle='rgba(0,0,0,.25)';x.fillRect(0,0,W,H);vign(x,W,H,.8);grain(x,W,H,.12);}
-// B: 어두운 방 · 책상 위 켜진 휴대폰 (얕은 심도)
+// B: 어두운 방 · 책상 위 켜진 휴대 전화 (얕은 심도)
 function sceneB(x){const W=960,H=540;seed=11;
  x.fillStyle='#07070a';x.fillRect(0,0,W,H);
  x.filter='blur(10px)';x.fillStyle='#14161e';x.fillRect(80,30,240,130);x.fillStyle='#1d2432';x.fillRect(96,42,208,106);x.fillStyle='rgba(40,60,90,.5)';x.fillRect(96,42,208,34);
