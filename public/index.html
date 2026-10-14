@@ -5891,8 +5891,10 @@ function darkPuzzles(npc){ const base = darkBase(npc), o = darkQ[npc]; if (!o) r
 const darkImgCache = {};
 function darkImgGet(npc, pid, im, cb){ const k = `${npc}|${pid}|${im}`; if (!darkImgCache[k]) darkImgCache[k] = Promise.resolve(net.darkImg(npc, pid)).catch(() => { delete darkImgCache[k]; return ''; }); darkImgCache[k].then(d => cb(d || '')); }
 const darkImgHtml = (npc, pz) => pz.im ? `<img class="dk-img" data-dkimg="${npc}|${pz.id}|${pz.im}" alt="문제 그림" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">`
-  : (pz.img || []).map((src, i) => `<div class="dk-imw"><img class="dk-img on" alt="" src="${esc(src)}">${((pz.nm || {})[(pz.imgKey || [])[i]] || []).map(n => `<span class="dk-nm" data-s="${n.s}" style="left:${n.x*100}%;top:${n.y*100}%;color:${n.c};transform:translate(${n.al === 'left' ? 0 : -50}%,-50%)">${esc(n.t.replace('{n}', String(me.nick || '').slice(0, 10)))}</span>`).join('')}</div>`).join(''); // 기본 그림 · 이름 칸은 내 닉네임
+  : (pz.img || []).map((src, i) => `<div class="dk-imw"><img class="dk-img on" alt="" src="${esc(src)}">${((pz.nm || {})[(pz.imgKey || [])[i]] || []).map(n => `<span class="dk-nm" data-s="${n.s}" style="left:${n.x*100}%;top:${n.y*100}%;color:${n.c};transform:translate(${n.al === 'left' ? 0 : -50}%,-50%)">${esc(n.t.replace('{n}', String(me.nick || '').slice(0, 10)).replace(/\{r(\d+)\}/g, (_, k) => darkNameList()[+k] || ''))}</span>`).join('')}</div>`).join(''); // 기본 그림 · 이름 칸은 내 닉네임
 const dkNmRO = window.ResizeObserver ? new ResizeObserver(es => { for (const e of es) for (const sp of e.target.parentNode.querySelectorAll('.dk-nm')) sp.style.fontSize = (+sp.dataset.s * e.target.clientHeight).toFixed(1) + 'px'; }) : null;
+// 사라진 사람들의 진짜 이름 (가나다 순) · 장부 · 조회 기록 그림 위에 써요
+const darkNameList = () => Object.values(world.darkNames || {}).filter(Boolean).map(String).sort((a, b) => a.localeCompare(b, 'ko')).slice(0, 12);
 function darkImgFill(root){ for (const im of (root || document).querySelectorAll('.dk-imw img')) if (im.parentNode.querySelector('.dk-nm')) dkNmRO?.observe(im);
   for (const el of (root || document).querySelectorAll('img[data-dkimg]')){ const [npc, pid, im] = el.dataset.dkimg.split('|'); darkImgGet(npc, pid, im, d => { if (d) { el.src = d; el.classList.add('on'); } }); } }
 // 관리자가 고른 그림을 줄여요 (긴 쪽 900px, JPEG). 너무 크면 한 번 더 줄여요
@@ -6059,7 +6061,7 @@ const missPhotoAt = id => darkQ?.missing?.[id]?.im || 0;
 function missPoster(id, name){
   const at = missPhotoAt(id);
   return `<div class="mp-card"><b class="mp-h">사람을 찾습니다</b><div class="mp-ph">${at ? `<img data-dkimg="missing|${esc(id)}|${at}" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">` : '<i></i>'}</div>
-    <b class="mp-n">${esc(name)}</b><small>마지막으로 본 곳 : 자택</small><small>자기 방에서 게임에 접속한 채 사라졌어요<br>휴대 전화 화면은 아직 켜져 있었어요</small><em>보신 분은 꼭 연락 주세요</em></div>`;
+    <b class="mp-n">${esc(name)}</b><small>마지막으로 본 곳 : 자택</small><small>자기 방에서 게임에 접속한 채 사라졌어요<br>휴대 전화 화면은 아직 켜져 있었어요<br>방에 보낸 사람이 없는 택배 상자가 있었어요</small><em>보신 분은 꼭 연락 주세요</em></div>`;
 }
 function missBoard(only){
   const L = missingList().filter(([id]) => !only || id === only), npc = only ? null : darkToday(), sealed = npc && darkDoorState(npc) === 'sealed';
@@ -6080,10 +6082,10 @@ function drawMissBoard(d){ const {x, y} = MISS_BOARD, c = d.ctx, n = missingList
     c.save(); c.strokeStyle = '#5a4232'; c.lineWidth = 2; c.beginPath(); c.moveTo(x, gy + 39); c.lineTo(x, y - 84); c.stroke(); c.restore(); } }
 // 우편함: 바깥에서 온 편지 (받는 사람은 진짜 이름)
 const HOME_LETTERS = [
-  `{A}, 엄마야.\n\n연락이 안 된 지 사흘째야. 네 방 불은 켜져 있고 휴대 전화도 책상 위에 켜진 채 그대로인데 너만 없어.\n\n이 편지가 어디로 가는지 모르겠지만, 보면 꼭 연락해.`,
+  `{A}, 엄마야.\n\n연락이 안 된 지 사흘째야. 네 방 불은 켜져 있고 휴대 전화도 책상 위에 켜진 채 그대로인데 너만 없어.\n책상 밑에는 뜯긴 택배 상자가 하나 있더라. 보낸 사람 칸이 비어 있어.\n\n이 편지가 어디로 가는지 모르겠지만, 보면 꼭 연락해.`,
   `{A}, 엄마야.\n\n오늘 경찰서에 실종 신고를 했어. 담당 형사님이 네 사진을 몇 장 더 달래.\n앨범을 뒤지다가 네가 초등학생 때 찍은 사진 앞에서 한참 앉아 있었어.`,
   `{A}, 엄마야.\n\n네 휴대 전화는 충전기에 꽂아 뒀어. 꺼지면 네가 연락할 때 못 받을까 봐.\n밤마다 두세 번씩 일어나서 화면을 확인해.`,
-  `{A}, 엄마야.\n\n네 친구들한테 전화를 돌렸어. 다들 마지막으로 같이 게임을 했대.\n그런데 그중 몇 명은 너처럼 연락이 안 된대. 그 부모님들이랑 내일 경찰서에서 만나기로 했어.`,
+  `{A}, 엄마야.\n\n네 친구들한테 전화를 돌렸어. 다들 마지막으로 같이 게임을 했대.\n그런데 그중 몇 명은 너처럼 연락이 안 된대. 그 집에도 똑같은 분홍색 빈 상자가 있었대.\n그 부모님들이랑 내일 경찰서에서 만나기로 했어.`,
   `{A}, 엄마야.\n\n아빠가 회사에 휴가를 내고 동네를 돌아다니고 있어. 네가 자주 가던 편의점, 공원, 버스 정류장.\n다들 너를 기억하더라. 우리 {I}가 생각보다 인사를 잘하고 다녔나 봐.`,
   `{A}, 엄마야.\n\n오늘 전단을 붙였어. 네 얼굴이 동네 전봇대마다 있어.\n지나가다 보면 엄마가 더 무너져서, 오늘은 좀 일찍 들어왔어.`,
   `{A}, 엄마야.\n\n학교에서 담임 선생님이 전화하셨어. 반 친구들이 네 책상에 쪽지를 잔뜩 붙여 놨대.\n다 모아서 네 방에 두었어. 돌아오면 읽어 봐.`,
@@ -6355,6 +6357,7 @@ function darkPuzzlePanel(pz){
 const darkProps = npc => (darkRoomOf(npc)?.props || []).map(p => p.prop ? p : Object.assign(p, {prop:true}));
 function drawDarkProp(c, p){ const x = p.x, y = p.y - 34; c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 6;
   if (p.film){ if (filmOf(Z().dark)[p.film] && !filmFree(p.film)){ c.restore(); return; } c.fillStyle = 'rgba(215,232,240,.5)'; c.fillRect(x-15, y-10, 30, 18); c.shadowBlur = 0; c.strokeStyle = 'rgba(240,250,255,.9)'; c.lineWidth = 1.5; c.strokeRect(x-15, y-10, 30, 18); c.fillStyle = 'rgba(20,14,22,.7)'; for (let i = 0; i < 30; i++) c.fillRect(x-13 + (i*7 % 26), y-8 + (i*5 % 14), 2, 2); }
+  else if (p.box){ c.translate(x, y + 4); c.fillStyle = '#b8875a'; c.fillRect(-15, -12, 30, 22); c.shadowBlur = 0; c.fillStyle = '#9a6e44'; c.fillRect(-15, -12, 30, 5); c.fillStyle = 'rgba(230,200,140,.8)'; c.fillRect(-3, -12, 6, 22); }
   else { c.translate(x, y); c.rotate(-.12); c.fillStyle = '#eadfc4'; c.fillRect(-14, -12, 28, 22); c.shadowBlur = 0; c.fillStyle = 'rgba(80,60,40,.5)'; for (let i = 0; i < 4; i++) c.fillRect(-10, -7 + i*5, 18 - (i%2)*6, 1.5); }
   c.restore(); }
 function darkPropLabel(d, p, t){ const c = d.ctx, x = p.x, y = p.y - 86, b = Math.sin(t/260 + x) * 3; if (p.film && filmOf(Z().dark)[p.film] && !filmFree(p.film)) return;

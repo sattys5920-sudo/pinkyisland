@@ -51,6 +51,41 @@ export const DARK_ROOMS = {
   toto: totoRoom(),
   kongi: kongiRoom(),
 };
+// 방마다 하나씩: 섬 밖으로 보낸 택배의 흔적 (앞 방일수록 흐릿하고, 뒤로 갈수록 또렷해요)
+const TRACE = {
+  tori: '찢긴 상자 조각', bori: '봉인 스티커', olly: '연습장', mongsil: '분홍 부스러기 자루', pengpeng: '해도', dandan: '카드 초안',
+  momo: '배달 운행표', hana: '접힌 빈 상자', dodo: '틀에 꽂힌 팩', bami: '향 주머니', toto: '장부 마지막 장', kongi: '조회 기록',
+};
+const TRACE_NM = {
+  toto: [
+    { t: '{r0}', x: .5735, y: 0.1361, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r1}', x: .5735, y: 0.2028, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r2}', x: .5735, y: 0.2694, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r3}', x: .5735, y: 0.3361, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r4}', x: .5735, y: 0.4028, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r5}', x: .5735, y: 0.4694, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r6}', x: .5735, y: 0.5361, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r7}', x: .5735, y: 0.6028, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r8}', x: .5735, y: 0.6694, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r9}', x: .5735, y: 0.7361, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r10}', x: .5735, y: 0.8028, s: .03, c: '#2a1a10', al: 'left' },
+    { t: '{r11}', x: .5735, y: 0.8694, s: .03, c: '#2a1a10', al: 'left' }],
+  kongi: [
+    { t: '{r0}', x: .1146, y: 0.2444, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r1}', x: .1146, y: 0.3000, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r2}', x: .1146, y: 0.3556, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r3}', x: .1146, y: 0.4111, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r4}', x: .1146, y: 0.4667, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r5}', x: .1146, y: 0.5222, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r6}', x: .1146, y: 0.5778, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r7}', x: .1146, y: 0.6333, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r8}', x: .1146, y: 0.6889, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r9}', x: .1146, y: 0.7444, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r10}', x: .1146, y: 0.8000, s: .028, c: '#2a2a3a', al: 'left' },
+    { t: '{r11}', x: .1146, y: 0.8556, s: .028, c: '#2a2a3a', al: 'left' }],
+};
+for (const [npc, title] of Object.entries(TRACE)){ const R = DARK_ROOMS[npc], [x, y] = R.floors ? [150, floorTop(1) + 300] : [340, 620];
+  (R.props || (R.props = [])).push({ id: 'trace', box: true, ...(R.floors ? { floor: 1 } : {}), x, y, title, img: ['art/pz/' + npc + '/trace.jpg'], imgKey: ['trace'], ...(TRACE_NM[npc] ? { nm: { trace: TRACE_NM[npc] } } : {}) }); }
 
 // ===== 여러 층짜리 방: 층마다 1100 × 900, 층 사이 300 은 비어 있는 어둠. 1 층이 맨 아래(입구), 3 층이 맨 위 =====
 // 토리의 우체국: 1 층 접수실 · 2 층 분류실 · 3 층 다락방 (그림은 art/tori/f1~3.jpg)
