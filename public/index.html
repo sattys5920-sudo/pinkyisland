@@ -185,6 +185,7 @@ body:has(#npcPanel:not([hidden])) #dim,body:has(#mapPanel:not([hidden])) #dim{di
 .cl-tabs{display:flex;gap:6px}.cl-tabs .on{background:#3b2418;color:#f2d16b}.cl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cl-th{background:#fff;padding:4px 4px 6px;border:0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.25);font:inherit;cursor:pointer;text-align:left;color:var(--ink)}
 .cl-th em{font-style:normal;font-size:15px;display:block;margin-top:4px;line-height:1.2}.cl-th.off{background:#e6dcca;cursor:default}.cl-q{aspect-ratio:4/3;background:#3a2529;color:#a88a8a;display:flex;align-items:center;justify-content:center;font-size:34px;border-radius:6px}.cl-hud{margin-right:6px;pointer-events:auto}
 .dk-img{display:block;max-width:100%;max-height:0;margin:0 auto 8px;border-radius:12px;object-fit:contain;cursor:zoom-in;transition:max-height .2s}.dk-img.on{max-height:42vh}.dk-img.big{max-height:80vh;cursor:zoom-out}.adm-qimg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.adm-qimg img{height:70px;border-radius:8px;background:#fff}.adm-qimg label.adm-btn{cursor:pointer}
+#endBox{position:fixed;inset:0;z-index:200;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}#endCv{width:min(100vw,62vh);height:min(100vw,62vh)}#endTx{min-height:20vh;width:min(92vw,560px);text-align:center;color:#f4e8ee;font-family:"Maple",sans-serif;font-size:clamp(16px,4.4vw,22px);line-height:1.55}#endTx p{margin:4px 0;opacity:0;animation:endIn 1.2s ease forwards}@keyframes endIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}#endSkip{position:fixed;right:14px;bottom:14px;background:rgba(255,255,255,.12);color:#ddd;border:0;border-radius:14px;padding:6px 12px;font-family:"Maple",sans-serif;font-size:14px}
 .dk-imw{position:relative;width:fit-content;max-width:100%;margin:0 auto 8px}.dk-imw .dk-img{margin:0}.dk-nm{position:absolute;white-space:nowrap;font-family:"Maple",sans-serif;font-weight:400;line-height:1;pointer-events:none}
 body.celon #npcPanel .dk-img{filter:url(#celR)}
 #filmBox{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 110px);transform:translateX(-50%);z-index:9;background:rgba(28,20,30,.94);border-radius:18px;padding:8px;box-shadow:0 8px 30px rgba(0,0,0,.6)}#filmCv{display:block;width:min(84vw,380px);height:auto;touch-action:none;border-radius:12px;cursor:grab}#filmX{position:absolute;right:10px;top:10px}
@@ -6101,6 +6102,148 @@ const homeLetter = () => { const nm = darkOn() && (world.darkNames || {})[uid]; 
   const text = HOME_LETTERS[k].replace(/\{A\}/g, g + josaA(g)).replace(/\{I\}/g, g + (bat ? '이' : '')) + '\n\n— 엄마가';
   return {from:'', nick:'엄마', at:world.darkAt || 0, read: me?.homeMail === (world.darkAt || 1), home:true, text}; };
 const allLetters = () => { const h = homeLetter(); return h ? {...letters, __home:h} : letters; };
+// ===== 엔딩 (콩이 방이 끝나면 사람마다 한 번) =====
+// true: 열두 방을 모두 꿰맴 · home: 놓친 방이 있지만 나는 돌아감 · taken: 놓친 방이 노리던 몸이 나 · closed: 콩이 방을 놓침
+function endingKind(){
+  if (!darkOn() || admin || !me) return null;
+  if (roomOf('kongi').clear){ if (DARK_ORDER.some(n => darkLive(n))) return null; const miss = DARK_ORDER.filter(n => !roomOf(n).clear);
+    return !miss.length ? 'true' : miss.some(n => world.darkTgt?.[n] === uid) ? 'taken' : 'home'; }
+  return darkDoorState('kongi') === 'missed' ? 'closed' : null;
+}
+let endRun = null;
+const END_W = 720, END_H = 720;
+const endCall = () => { const nm = (world.darkNames || {})[uid] || (admin ? '민준' : me?.nick) || ''; const g = givenName(nm); return g + josaA(g); };
+// --- 장면 (720 × 720 · p 는 0 → 1) ---
+function endSky(c, top, bot){ const q = c.createLinearGradient(0, 0, 0, END_H); q.addColorStop(0, top); q.addColorStop(1, bot); c.fillStyle = q; c.fillRect(0, 0, END_W, END_H); }
+function endRR(c, x, y, w, h, r, f){ c.beginPath(); c.roundRect(x, y, w, h, r); c.fillStyle = f; c.fill(); }
+function endTxt(c, t, x, y, s, col, w = 400, al = 'center'){ c.font = `${w} ${s}px "Maple",sans-serif`; c.textAlign = al; c.textBaseline = 'middle'; c.fillStyle = col; c.fillText(t, x, y); }
+// 콩이 인형: loose = 실밥이 풀린 정도 (조일 때는 거꾸로)
+function endDoll(c, p, tight){ endSky(c, '#1a1018', '#08040a'); const cx = 360, cy = 420, k = tight ? 1 - p : p, col = '#f2d2a0', dk = '#c8a070';
+  c.save(); const lg = c.createRadialGradient(cx, cy - 40, 10, cx, cy, 320); lg.addColorStop(0, `rgba(255,220,180,${.08 + k*.25})`); lg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = lg; c.fillRect(0, 0, END_W, END_H);
+  c.fillStyle = 'rgba(0,0,0,.4)'; c.beginPath(); c.ellipse(cx, cy + 150, 170, 26, 0, 0, 7); c.fill();
+  c.translate(cx, cy + 20); c.rotate(-.18 + Math.sin(p*3)*.02);
+  endRR(c, -110, -10, 220, 160, 70, col); c.fillStyle = '#fff2dc'; c.beginPath(); c.ellipse(0, 70, 70, 60, 0, 0, 7); c.fill();
+  c.fillStyle = col; for (const sx of [-1, 1]){ c.beginPath(); c.moveTo(sx*40, -170); c.lineTo(sx*96, -238 + (sx > 0 ? k*30 : 0)); c.lineTo(sx*104, -120); c.closePath(); c.fill(); c.fillStyle = '#e8a0a0'; c.beginPath(); c.moveTo(sx*58, -164); c.lineTo(sx*92, -214 + (sx > 0 ? k*26 : 0)); c.lineTo(sx*94, -136); c.closePath(); c.fill(); c.fillStyle = col; }
+  c.beginPath(); c.arc(0, -90, 105, 0, 7); c.fill(); c.fillStyle = '#fff2dc'; c.beginPath(); c.ellipse(0, -52, 62, 44, 0, 0, 7); c.fill(); c.fillStyle = '#2a1a10'; c.beginPath(); c.ellipse(0, -72, 16, 11, 0, 0, 7); c.fill();
+  c.strokeStyle = '#2a1a10'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -62); c.lineTo(0, -46); c.moveTo(-16, -38); c.quadraticCurveTo(0, -30, 16, -38); c.stroke();
+  c.fillStyle = '#c83a4a'; c.fillRect(-80, -8, 160, 16);
+  // 눈: 단추 (풀리면 하나가 늘어져요)
+  c.fillStyle = '#1a1010'; c.beginPath(); c.arc(-40, -112, 12, 0, 7); c.fill(); c.beginPath(); c.arc(40, -112 + k*26, 12, 0, 7); c.fill();
+  c.strokeStyle = '#d8c0a0'; c.lineWidth = 2; c.beginPath(); c.moveTo(40, -112); c.lineTo(40, -112 + k*26); c.stroke();
+  // 경비대 배지
+  c.fillStyle = '#d8b050'; c.beginPath(); for (let i = 0; i < 10; i++){ const a = i/10*Math.PI*2 - Math.PI/2, r = i % 2 ? 12 : 26; c.lineTo(-58 + Math.cos(a)*r, 40 + Math.sin(a)*r); } c.fill();
+  // 실밥: 가슴 한가운데 · k 만큼 풀려 늘어져요
+  c.strokeStyle = '#f0e0c8'; c.lineWidth = 3; for (let i = 0; i < 7; i++){ const y = -20 + i*20, open = k*(10 + i*3); c.beginPath(); c.moveTo(-14 - open, y); c.lineTo(14 + open, y + 8); c.stroke(); if (k > .3){ c.beginPath(); c.moveTo(14 + open, y + 8); c.quadraticCurveTo(30 + open, y + 30 + k*40, 20 + open, y + 50 + k*80); c.stroke(); } }
+  if (k > .2){ const g2 = c.createRadialGradient(0, 40, 2, 0, 40, 30 + k*60); g2.addColorStop(0, `rgba(255,250,235,${k*.9})`); g2.addColorStop(1, 'rgba(255,250,235,0)'); c.fillStyle = g2; c.beginPath(); c.arc(0, 40, 30 + k*60, 0, 7); c.fill(); }
+  c.restore(); }
+// 빛의 문: closing 이면 닫히고 실로 꿰매져요
+function endDoor(c, p, closing){ endSky(c, '#0a0610', '#040206'); const o = closing ? 1 - Math.min(1, p*1.6) : Math.min(1, p*1.3), w = 200, h = 380, x = 360 - w/2, y = 170;
+  c.fillStyle = '#2a1e2a'; c.fillRect(x - 16, y - 16, w + 32, h + 32); c.fillStyle = '#120a12'; c.fillRect(x, y, w, h);
+  const lw = w*o; if (lw > 1){ const g2 = c.createLinearGradient(0, y, 0, y + h); g2.addColorStop(0, '#fffaf0'); g2.addColorStop(1, '#ffe8f0'); c.fillStyle = g2; c.fillRect(360 - lw/2, y, lw, h);
+    c.save(); c.globalAlpha = o*.6; const q = c.createRadialGradient(360, y + h/2, 50, 360, y + h/2, 420); q.addColorStop(0, 'rgba(255,245,235,.9)'); q.addColorStop(1, 'rgba(255,245,235,0)'); c.fillStyle = q; c.fillRect(0, 0, END_W, END_H); c.restore(); }
+  if (closing){ const sh = Math.max(0, Math.min(1, (p - .25)/.35)); if (sh > 0 && sh < 1){ c.fillStyle = `rgba(20,14,20,${1 - Math.abs(sh - .5)*2})`; c.beginPath(); c.ellipse(360 - 30 + sh*60, y + 120, 26, 32, 0, 0, 7); c.fill(); c.fillRect(360 - 56 + sh*60, y + 150, 52, 160); }
+    const st = Math.max(0, (p - .6)/.4); c.strokeStyle = '#d04060'; c.lineWidth = 6; for (let i = 0; i < Math.floor(st*9); i++){ const yy = y + 30 + i*40; c.beginPath(); c.moveTo(x - 10, yy); c.lineTo(x + w + 10, yy + 26); c.moveTo(x + w + 10, yy); c.lineTo(x - 10, yy + 26); c.stroke(); } }
+  if (!closing && p > .7){ c.fillStyle = `rgba(255,252,246,${(p - .7)/.3})`; c.fillRect(0, 0, END_W, END_H); } }
+// 내 방: 밤 · 모니터 불빛 · 휴대 전화 · 뜯긴 분홍 상자 (phone: 화면 깜빡임 · hall: 문틈 불빛)
+function endRoom(c, p, o = {}){ endSky(c, '#141a2a', '#0a0c14'); const zoom = 1 + p*.06; c.save(); c.translate(360, 360); c.scale(zoom, zoom); c.translate(-360, -360);
+  c.fillStyle = '#1a2236'; c.fillRect(470, 90, 180, 200); c.fillStyle = '#26324c'; c.fillRect(480, 100, 75, 85); c.fillRect(565, 100, 75, 85); c.fillRect(480, 195, 75, 85); c.fillRect(565, 195, 75, 85); c.fillStyle = '#e8ecf4'; c.beginPath(); c.arc(600, 135, 18, 0, 7); c.fill();
+  c.fillStyle = '#2a1e18'; c.fillRect(40, 390, 420, 20); c.fillRect(60, 410, 16, 230); c.fillRect(424, 410, 16, 230);
+  endRR(c, 120, 230, 240, 160, 8, '#101014'); const sc = c.createLinearGradient(0, 240, 0, 380); sc.addColorStop(0, '#ffb8d0'); sc.addColorStop(1, '#f07aa0'); endRR(c, 130, 240, 220, 136, 4, sc);
+  c.fillStyle = '#8fd0e8'; c.beginPath(); c.ellipse(240, 330, 70, 18, 0, 0, 7); c.fill(); c.fillStyle = '#9ed67a'; c.beginPath(); c.ellipse(236, 318, 34, 14, 0, 0, 7); c.fill(); endTxt(c, '♥', 262, 300, 18, '#ff4f87', 700);
+  c.fillStyle = '#101014'; c.fillRect(230, 390, 20, -6); c.save(); c.globalAlpha = .35; const mg = c.createRadialGradient(240, 310, 20, 240, 330, 340); mg.addColorStop(0, 'rgba(255,150,190,.8)'); mg.addColorStop(1, 'rgba(255,150,190,0)'); c.fillStyle = mg; c.fillRect(0, 0, END_W, END_H); c.restore();
+  const ph = o.phone ? (Math.sin(p*40) > 0 ? 1 : .55) : .25; endRR(c, 380, 368, 44, 20, 4, '#0a0a0e'); c.fillStyle = `rgba(200,230,255,${ph})`; c.fillRect(384, 371, 36, 14);
+  if (o.phone){ c.save(); c.globalAlpha = Math.min(1, p*3); endRR(c, 330, 300, 150, 46, 10, 'rgba(10,12,20,.85)'); endTxt(c, '부재중 전화 128', 405, 323, 18, '#fff', 700); c.restore(); }
+  // 의자 · 사람 뒷모습 (body: 앉아 있는 몸)
+  c.fillStyle = '#20263a'; endRR(c, 190, 430, 120, 150, 14, '#20263a'); c.fillRect(240, 580, 20, 60);
+  if (o.body){ c.fillStyle = '#2e2a30'; c.beginPath(); c.arc(250, 400 - (o.wake ? p*14 : 0), 38, 0, 7); c.fill(); endRR(c, 200, 430 - (o.wake ? p*14 : 0), 100, 110, 30, '#3a3440'); }
+  // 뜯긴 분홍 상자
+  c.save(); c.translate(560, 590); c.rotate(.08); c.fillStyle = '#f49ab6'; c.fillRect(-70, -40, 140, 80); c.fillStyle = '#f7b8cc'; c.beginPath(); c.moveTo(-70, -40); c.lineTo(-95, -78); c.lineTo(-10, -70); c.lineTo(0, -40); c.fill(); c.beginPath(); c.moveTo(70, -40); c.lineTo(100, -70); c.lineTo(20, -76); c.lineTo(0, -40); c.fill(); c.fillStyle = 'rgba(230,200,140,.7)'; c.fillRect(-6, -40, 12, 80); c.restore();
+  if (o.hall){ c.save(); c.globalAlpha = Math.min(1, p*2); c.fillStyle = '#ffd890'; c.fillRect(640, 640, 70, 6); const hg = c.createLinearGradient(0, 640, 0, 720); hg.addColorStop(0, 'rgba(255,216,144,.5)'); hg.addColorStop(1, 'rgba(255,216,144,0)'); c.fillStyle = hg; c.beginPath(); c.moveTo(640, 646); c.lineTo(710, 646); c.lineTo(720, 720); c.lineTo(560, 720); c.fill(); c.restore(); }
+  c.restore(); c.save(); const v = c.createRadialGradient(360, 360, 220, 360, 360, 520); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)'); c.fillStyle = v; c.fillRect(0, 0, END_W, END_H); c.restore(); }
+// 방문이 열리고 복도 불빛 · 엄마 그림자
+function endMom(c, p){ endSky(c, '#0e1220', '#06080e'); const o = Math.min(1, p*1.5), x = 260, y = 120, w = 200, h = 470;
+  c.fillStyle = '#1a1e2a'; c.fillRect(x - 14, y - 14, w + 28, h + 14); const g2 = c.createLinearGradient(0, y, 0, y + h); g2.addColorStop(0, '#ffe6b0'); g2.addColorStop(1, '#f0c080'); c.fillStyle = g2; c.fillRect(x, y, w*o, h);
+  c.fillStyle = '#2a2430'; c.fillRect(x + w*o, y, w*(1 - o) + 2, h); c.fillStyle = '#c8a050'; c.beginPath(); c.arc(x + w*o + w*(1 - o) - 22, y + 250, 7, 0, 7); c.fill();
+  if (o > .5){ const a = Math.min(1, (o - .5)*2); c.fillStyle = `rgba(40,30,30,${a})`; c.beginPath(); c.arc(x + w*.5*o + 10, y + 150, 36, 0, 7); c.fill(); endRR(c, x + w*.5*o - 40, y + 186, 100, 284, 40, `rgba(40,30,30,${a})`); }
+  c.save(); c.globalAlpha = .5*o; const q = c.createLinearGradient(0, y + h, 0, END_H); q.addColorStop(0, 'rgba(255,220,150,.7)'); q.addColorStop(1, 'rgba(255,220,150,0)'); c.fillStyle = q; c.beginPath(); c.moveTo(x, y + h); c.lineTo(x + w*o, y + h); c.lineTo(x + w*o + 120, END_H); c.lineTo(x - 80, END_H); c.fill(); c.restore(); }
+// 뉴스 화면
+function endNews(c, p, head, sub){ endSky(c, '#101828', '#0a0e18'); endRR(c, 40, 120, 640, 420, 18, '#05070c'); const s = c.createLinearGradient(0, 140, 0, 520); s.addColorStop(0, '#2a3a5a'); s.addColorStop(1, '#1a2238'); endRR(c, 60, 140, 600, 380, 8, s);
+  c.fillStyle = 'rgba(255,255,255,.08)'; for (let i = 0; i < 6; i++) c.fillRect(80 + i*96, 180, 70, 150); endRR(c, 80, 170, 120, 30, 4, '#d8202a'); endTxt(c, '속보', 140, 186, 18, '#fff', 700);
+  const a = Math.min(1, p*2.5); c.save(); c.globalAlpha = a; c.fillStyle = 'rgba(200,24,36,.95)'; c.fillRect(60, 380, 600, 70); endTxt(c, head, 360, 415, 27, '#fff', 700); c.fillStyle = 'rgba(10,14,24,.92)'; c.fillRect(60, 450, 600, 46); c.restore();
+  c.save(); c.beginPath(); c.rect(60, 450, 600, 46); c.clip(); endTxt(c, sub, 660 - p*900, 474, 19, '#e8ecf4', 400, 'left'); c.restore(); endRR(c, 330, 540, 60, 50, 4, '#05070c'); endRR(c, 270, 590, 180, 12, 6, '#05070c'); }
+// 거울: 웃는 입꼬리가 한쪽만 올라가요
+function endMirror(c, p){ endSky(c, '#141018', '#08060a'); c.fillStyle = '#c8a050'; c.beginPath(); c.ellipse(360, 340, 210, 280, 0, 0, 7); c.fill(); const m = c.createLinearGradient(160, 60, 560, 620); m.addColorStop(0, '#4a5462'); m.addColorStop(1, '#1e2430'); c.fillStyle = m; c.beginPath(); c.ellipse(360, 340, 194, 264, 0, 0, 7); c.fill();
+  c.save(); c.beginPath(); c.ellipse(360, 340, 194, 264, 0, 0, 7); c.clip(); c.fillStyle = '#e8c8b0'; c.beginPath(); c.ellipse(360, 330, 120, 150, 0, 0, 7); c.fill(); c.fillStyle = '#3a2a24'; c.beginPath(); c.ellipse(360, 230, 130, 80, 0, Math.PI, 0); c.fill(); c.fillRect(230, 230, 30, 160); c.fillRect(460, 230, 30, 160);
+  const e = Math.min(1, p*1.4); c.fillStyle = '#1a1010'; c.beginPath(); c.ellipse(312, 320, 13, 15 - e*5, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(408, 320, 13, 15 - e*2, 0, 0, 7); c.fill();
+  c.strokeStyle = '#8a3a3a'; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(316, 410); c.quadraticCurveTo(360, 420 + e*12, 404, 410 - e*34); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.08)'; c.beginPath(); c.ellipse(280, 200, 40, 120, -.4, 0, 7); c.fill(); c.restore(); }
+// 섬: 밤 · 숲 끝 출구 문에 실이 감겨요
+function endIsland(c, p){ endSky(c, '#1a1028', '#0a0614'); c.fillStyle = '#e8e0f0'; for (let i = 0; i < 60; i++){ const x = (i*137) % END_W, y = (i*71) % 300; c.globalAlpha = .3 + (i % 5)*.12; c.fillRect(x, y, 2, 2); } c.globalAlpha = 1;
+  c.fillStyle = '#1e3a4a'; c.fillRect(0, 470, END_W, 250); c.fillStyle = '#2a2a3a'; c.beginPath(); c.ellipse(360, 480, 300, 90, 0, Math.PI, 0); c.fill();
+  for (let i = 0; i < 9; i++){ const x = 110 + i*62, h = 70 + (i*37) % 50; c.fillStyle = '#1a2a24'; c.beginPath(); c.moveTo(x, 470 - h); c.lineTo(x - 26, 470); c.lineTo(x + 26, 470); c.fill(); }
+  endRR(c, 330, 370, 60, 100, 6, '#3a2430'); c.strokeStyle = '#d04060'; c.lineWidth = 3; const n = Math.floor(Math.min(1, p*1.3)*8); for (let i = 0; i < n; i++){ const y = 378 + i*11; c.beginPath(); c.moveTo(322, y); c.lineTo(398, y + 8); c.moveTo(398, y); c.lineTo(322, y + 8); c.stroke(); }
+  c.save(); c.globalAlpha = .18 + Math.sin(p*20)*.05; c.fillStyle = '#ffb0c8'; c.fillRect(0, 0, END_W, END_H); c.restore(); }
+// 우체통: 편지가 쌓여요
+function endMail(c, p){ endSky(c, '#141a2a', '#0a0c14'); c.fillStyle = '#5a3a2a'; c.fillRect(350, 420, 20, 240); endRR(c, 250, 280, 220, 150, 20, '#c83a4a'); c.fillStyle = '#1a0a0e'; c.fillRect(290, 320, 140, 16);
+  const n = Math.floor(p*14); for (let i = 0; i < n; i++){ c.save(); c.translate(260 + (i*53) % 200, 600 - Math.floor(i/4)*18); c.rotate(((i*29) % 9 - 4)*.06); endRR(c, -40, -24, 80, 48, 3, '#f4ece0'); c.strokeStyle = 'rgba(120,80,60,.5)'; c.lineWidth = 2; c.beginPath(); c.moveTo(-40, -24); c.lineTo(0, 4); c.lineTo(40, -24); c.stroke(); c.restore(); }
+  endTxt(c, String(12 + n), 560, 340, 64, 'rgba(255,240,240,.18)', 700); }
+function endTitle(c, p, title, sub){ c.fillStyle = '#000'; c.fillRect(0, 0, END_W, END_H); const a = Math.min(1, p*2.2); c.save(); c.globalAlpha = a; endTxt(c, title, 360, 330, 54, '#fff4f8', 700); if (sub){ c.globalAlpha = a*.75; endTxt(c, sub, 360, 400, 22, '#e8d0dc', 400); } c.globalAlpha = a*.5; endTxt(c, '핑키 디저트 아일랜드', 360, 620, 18, '#c8b0bc', 400); c.restore(); }
+// --- 소리: 오르골 · 낮은 울림 · 심장 소리 ---
+function endSound(kind){ try { const A = endRun.A; if (!A) return; const t0 = A.currentTime + .02, out = A.createGain(); out.gain.value = .5; out.connect(A.destination);
+  if (kind === 'box'){ [784, 659, 587, 523, 587, 659, 523].forEach((f, i) => { const o = A.createOscillator(), g = A.createGain(); o.type = 'sine'; o.frequency.value = f*1.5; g.gain.setValueAtTime(0, t0 + i*.42); g.gain.linearRampToValueAtTime(.18, t0 + i*.42 + .01); g.gain.exponentialRampToValueAtTime(.001, t0 + i*.42 + 1.4); o.connect(g); g.connect(out); o.start(t0 + i*.42); o.stop(t0 + i*.42 + 1.5); }); }
+  if (kind === 'drone'){ const o = A.createOscillator(), lp = A.createBiquadFilter(), g = A.createGain(); o.type = 'sawtooth'; o.frequency.value = 55; lp.type = 'lowpass'; lp.frequency.value = 180; g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(.12, t0 + 2); g.gain.linearRampToValueAtTime(0, t0 + 7); o.connect(lp); lp.connect(g); g.connect(out); o.start(t0); o.stop(t0 + 7.2); }
+  if (kind === 'heart'){ for (let i = 0; i < 8; i++) for (const d of [0, .22]){ const o = A.createOscillator(), g = A.createGain(), t = t0 + i*.9 + d; o.type = 'sine'; o.frequency.setValueAtTime(70, t); o.frequency.exponentialRampToValueAtTime(40, t + .15); g.gain.setValueAtTime(.35, t); g.gain.exponentialRampToValueAtTime(.001, t + .2); o.connect(g); g.connect(out); o.start(t); o.stop(t + .25); } }
+  if (kind === 'warm'){ [261.6, 329.6, 392, 523.3].forEach((f, i) => { const o = A.createOscillator(), g = A.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0, t0 + i*.15); g.gain.linearRampToValueAtTime(.06, t0 + i*.15 + .8); g.gain.linearRampToValueAtTime(0, t0 + 6); o.connect(g); g.connect(out); o.start(t0 + i*.15); o.stop(t0 + 6.2); }); }
+  if (kind === 'sew'){ for (let i = 0; i < 8; i++){ const nb = A.createBuffer(1, A.sampleRate*.12, A.sampleRate), d = nb.getChannelData(0); for (let j = 0; j < d.length; j++) d[j] = (Math.random()*2 - 1)*(1 - j/d.length); const s = A.createBufferSource(), bp = A.createBiquadFilter(), g = A.createGain(); s.buffer = nb; bp.type = 'bandpass'; bp.frequency.value = 2400; g.gain.value = .5; s.connect(bp); bp.connect(g); g.connect(out); s.start(t0 + .4 + i*.5); } }
+} catch(e){} }
+// --- 각본 ---
+function endScript(kind){
+  const call = endCall(), miss = DARK_ORDER.filter(n => !roomOf(n).clear), back = DARK_ORDER.length - miss.filter(n => world.darkTgt?.[n]).length;
+  const mine = miss.find(n => world.darkTgt?.[n] === uid) || 'toto';
+  const open = [
+    {s:(c, p) => endDoll(c, p), d:7500, snd:'box', t:['실밥이 모두 풀렸다.', '인형 안에서 작은 목소리가 들렸다.', '"…이제 문 열어도 돼."']},
+    {s:(c, p) => endDoor(c, p), d:5200, snd:'drone', t:['섬의 출구가 열렸다.']}];
+  const home = [
+    {s:(c, p) => endRoom(c, p, {}), d:7000, t:[`"${call}."`, '눈을 뜨자, 모니터 불빛만 켜진 내 방이었다.']},
+    {s:(c, p) => endRoom(c, p, {phone:true}), d:6500, t:['휴대 전화에 부재중 전화가 잔뜩 와 있었다.', '발밑에는 뜯긴 분홍 상자가 그대로 있었다.']},
+    {s:(c, p) => endMom(c, p), d:7000, snd:'warm', t:['현관 불이 켜져 있었다.', '"…왔구나."']}];
+  if (kind === 'true') return [...open, ...home,
+    {s:(c, p) => endNews(c, p, '같은 날 사라진 12 명, 모두 귀가', '19 년 전 섬 여행 중 실종된 서하람 씨도 함께 돌아와 · 가족들 "믿기지 않는다" · 경찰, 보낸 사람 없는 택배 조사 중'), d:9000, t:['다음 날 아침, 뉴스가 나왔다.', '열두 명 모두, 집으로 돌아왔다.']},
+    {s:(c, p) => endTitle(c, p, '집으로', '열두 방을 모두 꿰맸어요'), d:6000, t:[]}];
+  if (kind === 'home') return [...open, ...home,
+    {s:(c, p) => endNews(c, p, `같은 날 사라진 12 명 중 ${back} 명 귀가`, '돌아오지 못한 사람들의 가족은 오늘도 현관 불을 켜 두고 있다 · 경찰, 보낸 사람 없는 택배 조사 중'), d:9000, t:['돌아온 사람 중 몇은', '예전과 조금 달라졌다고 했다.']},
+    {s:(c, p) => endTitle(c, p, '돌아온 사람들', `꿰매지 못한 방 ${miss.length} 개`), d:6000, t:[]}];
+  if (kind === 'taken') return [open[0],
+    {s:(c, p) => endDoor(c, p, true), d:6500, snd:'drone', t:['출구가 열렸다.', '그런데 누군가 내 앞에서 먼저 문을 지나갔다.']},
+    {s:(c, p) => endRoom(c, p, {body:true, wake:true}), d:7500, snd:'heart', t:['내 방. 내 의자. 내 몸이 눈을 떴다.', '나는 그걸 화면 안에서 보고 있었다.']},
+    {s:(c, p) => endMom(c, p), d:6500, t:[`"${call}, 왔구나."`, '엄마가 내 몸을 꼭 안았다.']},
+    {s:(c, p) => endMirror(c, p), d:8000, t:['내 몸이 거울을 보고 웃었다.', '나는 저렇게 웃지 않는다.']},
+    {s:(c, p) => endDoll(c, p, true), d:6500, snd:'sew', t:['실밥이 조여 온다.', '이제 이 섬의 주민은 나다.']},
+    {s:(c, p) => endTitle(c, p, '빼앗긴 몸', `${NPC[mine]?.name || ''}의 방을 꿰매지 못했어요`), d:6000, t:[]}];
+  return [
+    {s:(c, p) => endDoor(c, p, true), d:7500, snd:'drone', t:['콩이의 방은 끝내 꿰매지 못했다.', '출구가 열리고, 누군가 혼자 걸어 나갔다.']},
+    {s:(c, p) => endIsland(c, p), d:7500, snd:'sew', t:['그리고 문은 다시 꿰매졌다.', '밖으로 나가는 길은 이제 없다.']},
+    {s:(c, p) => endMail(c, p), d:8500, t:['우체통에는 오늘도 편지가 온다.', `"${call}, 엄마야."`]},
+    {s:(c, p) => endTitle(c, p, '닫힌 섬', '아직, 섬에 있어요'), d:6000, t:[]}];
+}
+function playEnding(kind, done){
+  if (endRun) return; const steps = endScript(kind); if (!steps.length) return;
+  const box = document.createElement('div'); box.id = 'endBox'; box.innerHTML = '<canvas id="endCv" width="720" height="720"></canvas><div id="endTx"></div><button id="endSkip" hidden>건너뛰기</button>'; document.body.appendChild(box);
+  let A = null; try { A = new (window.AudioContext || window.webkitAudioContext)(); A.resume?.(); } catch(e){}
+  endRun = {A, i:-1, t0:0}; bgmStop();
+  const cv = $('endCv'), c = cv.getContext('2d'), tx = $('endTx'), total = steps.reduce((a, s) => a + s.d, 0), T0 = performance.now();
+  setTimeout(() => { if ($('endSkip')) $('endSkip').hidden = false; }, 3000);
+  const finish = () => { if (!endRun) return; try { A?.close(); } catch(e){} endRun = null; box.remove(); if (bgmOn()) bgmStart(); done?.(); };
+  $('endSkip').onclick = finish;
+  const frame = () => { if (!endRun) return; let e = performance.now() - T0, k = 0; if (e >= total) return finish(); while (e >= steps[k].d){ e -= steps[k].d; k++; }
+    const st = steps[k], p = e/st.d; if (k !== endRun.i){ endRun.i = k; tx.innerHTML = st.t.map((l, j) => `<p style="animation-delay:${(.4 + j*st.d/1000/(st.t.length + .6)).toFixed(2)}s">${esc(l)}</p>`).join(''); if (st.snd) endSound(st.snd); }
+    c.save(); st.s(c, p); c.restore(); const f = Math.min(1, p*6, (1 - p)*6); if (f < 1){ c.fillStyle = `rgba(0,0,0,${1 - f})`; c.fillRect(0, 0, END_W, END_H); }
+    requestAnimationFrame(frame); };
+  requestAnimationFrame(frame);
+}
+// 다크 모드가 켜진 동안 끝이 정해지면 한 번 (다시 접속해도 한 번만)
+setInterval(() => { try { if (endRun || !me || admin || !darkOn() || !$('talk').hidden) return; const k = endingKind(); if (!k) return; const key = `${world.darkAt || 0}:${k}`; if (me.endSeen === key) return;
+  playEnding(k, () => { me.endSeen = key; saveMe(true); }); } catch(e){} }, 4000);
 // 접속을 끊은 사람: 마지막 자리에 몸만 남아요
 const husksHere = () => !darkOn() || Z().dark || Z().house ? [] : Object.entries(players).filter(([id, p]) => id !== uid && p && !p.adm && p.lot != null && p.zone === zoneId && typeof p.zx === 'number' && ![...others.values()].some(o => o.uid === id));
 function huskLook(id){ say('....', ['불러도 대답이 없어요. 눈은 뜨고 있는데, 아무것도 보지 않아요.', '어깨를 흔들어도 인형처럼 흔들리기만 해요.', '숨소리 대신 어디선가 게임 배경음악이 작게 들려요.'][Math.floor(Math.random()*3)]); }
@@ -7699,7 +7842,8 @@ function adminDarkSec(){
     : r.start ? `문제 ${darkSolvedN(r)}/${n} · 남은 ${Math.ceil(left/60000)} 분 · ${(r.att|0)+1} 번째 도전` : '아직 아무도 안 들어갔어요';
   return `<div class="adm-dark"><b>${i+1} 일 차 · ${npc ? esc(NPC[npc].name)+'의 방' : '-'}</b><small>${state} · 방 안 ${inRoom} 명</small>
     <div class="adm-wrow"><button data-a="dkprev" class="adm-btn">◀ 이전 방</button><button data-a="dknext" class="adm-btn">다음 방 ▶</button></div>
-    <div class="adm-wrow"><button data-a="dkview" class="adm-btn" ${npc ? '' : 'disabled'}>방 보기</button><button data-a="dkreset" class="adm-btn warn" ${npc ? '' : 'disabled'}>이 방 처음으로</button></div></div>`;
+    <div class="adm-wrow"><button data-a="dkview" class="adm-btn" ${npc ? '' : 'disabled'}>방 보기</button><button data-a="dkreset" class="adm-btn warn" ${npc ? '' : 'disabled'}>이 방 처음으로</button></div>
+    <small>엔딩 미리 보기 (나만 봐요)</small><div class="adm-wrow"><button data-a="dkend" data-k="true" class="adm-btn">집으로</button><button data-a="dkend" data-k="home" class="adm-btn">돌아온 사람들</button></div><div class="adm-wrow"><button data-a="dkend" data-k="taken" class="adm-btn">빼앗긴 몸</button><button data-a="dkend" data-k="closed" class="adm-btn">닫힌 섬</button></div></div>`;
 }
 // 주민 캐릭터·옷·우산·펫·가방 옷, 집(단계·벽지·바닥·가구·텃밭)을 한눈에. [집 안 보기]로 CCTV를 그 집으로
 function setOtumoDress(D){ otumoDress = D; try { D ? localStorage.setItem('otumoDress', JSON.stringify(D)) : localStorage.removeItem('otumoDress'); } catch(e){} admPresSig = ''; }
@@ -7908,6 +8052,7 @@ function adminClick(e){
   else if (b.dataset.rv){ net.reviveSend(b.dataset.rv, '관리자').then(()=>toast('깨웠어요')); }
   else if (b.dataset.a==='reloadall'){ if (confirm('지금 접속한 사람 모두의 게임을 새로고침할까요? 진행 상황은 저장한 뒤 새로고침돼요.')) Promise.resolve(net.setWorld({reloadAt:Date.now() + serverOffset})).then(()=>toast('전원 새로고침을 보냈어요')).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.a==='dkreset'){ const npc = darkToday(); if (npc && confirm(`${NPC[npc].name}의 방을 처음 상태로 되돌릴까요? 푼 문제·시간·보스 체력이 모두 지워져요.`)) net.darkWipe(npc); }
+  else if (b.dataset.a==='dkend') playEnding(b.dataset.k);
   else if (b.dataset.a==='dkview'){ const npc = darkToday(); if (npc){ admSide = false; cam.follow = null; cam.zone = 'dark:'+npc; const [vx, vy] = darkRoomOf(npc)?.door || [DARK_ROOM.W/2, DARK_ROOM.H/2]; enterZone('dark:'+npc, null, vx, vy); renderAdmin(); } }
   else if (b.dataset.a==='glitch1' || b.dataset.a==='glitch2'){ Promise.resolve(net.setWorld({glitch:{at:wNow(), lv:b.dataset.a==='glitch2' ? 2 : 1}})).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.a==='dkq'){ admQ = admQ === null ? (darkToday() || DARK_ORDER[0]) : null; if (admQ){ admDm = null; admPost = false; admTbl = null; admChat = null; admWipe = false; admLook = null; admSide = false; } renderAdmin(); }
