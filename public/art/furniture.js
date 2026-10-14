@@ -124,3 +124,49 @@ export const FURN_MORE = [
   ['소반', 9000, 'ore:o01', 2, 'soban', '#a8744f'], ['병풍', 22000, 'ore:o01', 3, 'byeongpung', '#f6efdc'], ['장독대', 16000, 'ore:o05', 4, 'jangdok', '#7a4a32'], ['고딕 촛대', 15000, 'ore:o12', 2, 'candelabra', '#d8b04a'],
   ['증기 기관 모형', 34000, 'ore:o03', 4, 'steam', '#c8943a'], ['마네킹', 14000, 'ore:o01', 2, 'mannequin', '#f3e2c8'], ['레코드 장', 19000, 'ore:o01', 3, 'records', '#c98e5b'], ['스프레이 캔 선반', 15000, 'ore:o01', 3, 'spraycan', '#8a8e98'],
 ];
+
+// 주민 기념품 가구 12 (♥10 이야기 선물 · 공방에서 못 만들어요). FURN_MORE 뒤에 붙여요
+export const FURN_KEEP = [
+  ['할머니의 황금 물뿌리개', 0, 'ore:o01', 0, 'kGoldCan', '#f2c84a'], ['이름 새긴 케이크 토퍼', 0, 'ore:o01', 0, 'kTopper', '#ff9fc4'], ['도도의 곡괭이', 0, 'ore:o01', 0, 'kPick', '#9aa0a6'],
+  ['약속 나무 열매 화분', 0, 'ore:o01', 0, 'kPromise', '#7cc46a'], ['보리의 오르골', 0, 'ore:o01', 0, 'kMusicBox', '#b98256'], ['몽실의 맞춤옷 마네킹', 0, 'ore:o01', 0, 'kDress', '#c9a6ff'],
+  ['토리의 첫 편지 액자', 0, 'ore:o01', 0, 'kLetter', '#d9894f'], ['이름 명판', 0, 'ore:o01', 0, 'kPlaque', '#c8a050'], ['등대지기의 깃털 등불', 0, 'ore:o01', 0, 'kFeather', '#5b8cff'],
+  ['단단 할머니의 레시피북', 0, 'ore:o01', 0, 'kRecipe', '#e8d8c0'], ['산책 동행 리본 집', 0, 'ore:o01', 0, 'kRibbon', '#5361b3'], ['별꽃 꽃다발 화병', 0, 'ore:o01', 0, 'kStarflower', '#ffb3d9'],
+];
+const star = (d, x, y, r, col) => d.shape(c => { c.beginPath(); for (let i = 0; i < 10; i++) { const a = -PI / 2 + i * PI / 5, rr = i % 2 ? r * .45 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); }, col, [x, y, r]);
+Object.assign(FURN_DRAW, {
+  // 받침 위 황금 물뿌리개
+  kGoldCan: (d, x, y, col) => { d.rr(x - 20, y - 16, 40, 16, 5, '#a8744f'); d.rr(x - 16, y - 46, 30, 30, 10, col); d.line(c => { c.moveTo(x + 12, y - 36); c.lineTo(x + 30, y - 52); }, tone(col, -.2), 5); oval(d, x + 31, y - 53, 6, 4, -.6, tone(col, -.1));
+    d.line(c => { c.moveTo(x - 14, y - 40); c.quadraticCurveTo(x - 30, y - 56, x - 4, y - 52); }, tone(col, -.2), 3.4); shine(d, x - 8, y - 40, 3); for (const [dx, dy] of [[36, -46], [40, -40], [38, -34]]) d.dot(x + dx, y + dy, 1.6, '#9fd6ff', .9); },
+  // 유리 진열장 속 케이크 · 이름 깃발
+  kTopper: (d, x, y, col) => { d.rr(x - 22, y - 12, 44, 12, 4, '#fffaf2'); d.rr(x - 16, y - 34, 32, 22, 6, col); d.rr(x - 16, y - 34, 32, 6, 3, '#fffaf2', flat); d.line(c => { c.moveTo(x, y - 34); c.lineTo(x, y - 58); }, '#c8a050', 1.6); d.rr(x, y - 58, 16, 10, 2, '#fff3a8');
+    d.line(c => { c.moveTo(x + 3, y - 53); c.lineTo(x + 13, y - 53); }, '#c9657a', 1.2); d.line(c => { c.moveTo(x - 24, y - 12); c.lineTo(x - 24, y - 40); c.ellipse(x, y - 40, 24, 26, 0, PI, 0); c.lineTo(x + 24, y - 12); }, '#cfe8ff', 2.2); d.line(c => { c.moveTo(x - 16, y - 50); c.quadraticCurveTo(x - 14, y - 60, x - 6, y - 64); }, '#ffffff', 1.6); },
+  // 수정 박힌 바위에 꽂힌 곡괭이
+  kPick: (d, x, y, col) => { oval(d, x, y - 10, 26, 12, 0, '#7a6a72'); for (const [dx, h, c2] of [[-14, 18, '#c9a6ff'], [12, 14, '#8fd3f5'], [2, 10, '#ffb3d9']]) d.shape(c => { c.beginPath(); c.moveTo(x + dx - 4, y - 14); c.lineTo(x + dx, y - 14 - h); c.lineTo(x + dx + 4, y - 14); c.closePath(); }, c2, [x + dx, y - 20, 6]);
+    d.line(c => { c.moveTo(x - 4, y - 16); c.lineTo(x + 8, y - 64); }, '#8a5a3a', 4.4); d.shape(c => { c.beginPath(); c.moveTo(x - 10, y - 58); c.quadraticCurveTo(x + 8, y - 72, x + 28, y - 62); c.lineTo(x + 26, y - 58); c.quadraticCurveTo(x + 8, y - 66, x - 8, y - 54); c.closePath(); }, col, [x + 8, y - 62, 18]); },
+  // 반짝이는 열매가 달린 작은 약속 나무
+  kPromise: (d, x, y, col) => { d.rr(x - 16, y - 20, 32, 20, 6, '#c98e5b'); d.rr(x - 3, y - 50, 6, 32, 3, '#8a5a3a'); d.circle(x, y - 60, 22, col); d.circle(x - 14, y - 52, 13, tone(col, -.1)); d.circle(x + 14, y - 52, 13, tone(col, -.1));
+    for (const [dx, dy] of [[-8, -64], [9, -58], [-12, -48], [4, -72]]) { d.circle(x + dx, y + dy, 4, '#ffd23f'); d.dot(x + dx - 1.2, y + dy - 1.2, 1.2, '#ffffff', .8); } },
+  // 태엽 오르골 · 떠오르는 음표
+  kMusicBox: (d, x, y, col) => { d.rr(x - 22, y - 30, 44, 30, 6, col); d.rr(x - 24, y - 36, 48, 9, 4, tone(col, .15)); d.rr(x - 18, y - 24, 36, 16, 3, tone(col, -.22), flat); d.circle(x, y - 16, 4, '#ffd23f'); d.rr(x + 22, y - 22, 8, 4, 2, '#c8a050');
+    d.line(c => { c.moveTo(x - 6, y - 44); c.lineTo(x - 6, y - 58); c.lineTo(x + 2, y - 60); c.lineTo(x + 2, y - 46); }, '#4a3a44', 1.6); d.circle(x - 8, y - 44, 2.6, '#4a3a44'); d.circle(x, y - 46, 2.6, '#4a3a44'); d.line(c => { c.moveTo(x + 14, y - 50); c.lineTo(x + 14, y - 64); c.lineTo(x + 19, y - 60); }, '#4a3a44', 1.4); d.circle(x + 12, y - 50, 2.4, '#4a3a44'); },
+  // 맞춤옷을 입은 마네킹
+  kDress: (d, x, y, col) => { legs(d, x, y, 2, 20, '#8a6440', 2); oval(d, x, y - 2, 12, 3.6, 0, '#8a6440'); d.shape(c => { c.beginPath(); c.moveTo(x - 10, y - 66); c.lineTo(x + 10, y - 66); c.lineTo(x + 22, y - 22); c.quadraticCurveTo(x, y - 16, x - 22, y - 22); c.closePath(); }, col, [x, y - 40, 22]);
+    d.rr(x - 10, y - 70, 20, 10, 4, tone(col, .2)); d.circle(x, y - 78, 6, '#f3e2c8'); for (const dx of [-12, 0, 12]) d.dot(x + dx, y - 26, 1.8, '#fffaf2', .9); d.shape(c => { c.beginPath(); c.moveTo(x - 5, y - 62); c.lineTo(x, y - 56); c.lineTo(x + 5, y - 62); c.closePath(); }, '#fffaf2', [x, y - 60, 5]); },
+  // 이젤 위 첫 편지 액자
+  kLetter: (d, x, y, col) => { d.line(c => { c.moveTo(x - 14, y); c.lineTo(x - 4, y - 70); c.moveTo(x + 14, y); c.lineTo(x + 4, y - 70); c.moveTo(x, y - 4); c.lineTo(x, y - 30); }, '#8a5a3a', 3); d.rr(x - 22, y - 70, 44, 40, 4, col); d.rr(x - 18, y - 66, 36, 32, 2, '#fffaf2');
+    for (let i = 0; i < 4; i++) d.rr(x - 13, y - 61 + i * 6, 22 - (i % 2) * 6, 1.6, 1, '#8a8a9a', flat); d.circle(x + 10, y - 40, 3.4, '#e8505f'); },
+  // 받침대 위 금빛 이름 명판
+  kPlaque: (d, x, y, col) => { d.rr(x - 14, y - 40, 28, 40, 4, '#e8dcc8'); d.rr(x - 18, y - 44, 36, 6, 3, '#f4ecdc'); d.rr(x - 22, y - 72, 44, 28, 4, '#4a3a2a'); d.rr(x - 19, y - 69, 38, 22, 3, col); for (let i = 0; i < 2; i++) d.rr(x - 12, y - 64 + i * 7, 24 - i * 8, 2, 1, tone(col, -.35), flat); shine(d, x - 13, y - 66, 2); },
+  // 작은 등대 등불 · 따뜻한 깃털
+  kFeather: (d, x, y, col) => { d.rr(x - 14, y - 52, 28, 52, 6, '#fffaf2'); for (const yy of [-40, -20]) d.rr(x - 14, y + yy, 28, 8, 2, '#e85d5d', flat); d.rr(x - 10, y - 68, 20, 16, 4, '#fff3a8'); d.dot(x, y - 60, 9, '#ffe066', .5); d.rr(x - 13, y - 74, 26, 7, 3, col);
+    d.shape(c => { c.beginPath(); c.moveTo(x + 20, y - 6); c.quadraticCurveTo(x + 36, y - 30, x + 26, y - 50); c.quadraticCurveTo(x + 22, y - 28, x + 20, y - 6); c.closePath(); }, '#9fd6ff', [x + 26, y - 28, 14]); },
+  // 받침대 위 펼친 레시피북
+  kRecipe: (d, x, y, col) => { d.rr(x - 3, y - 36, 6, 36, 3, '#8a5a3a'); oval(d, x, y - 2, 12, 3.6, 0, '#8a5a3a'); d.shape(c => { c.beginPath(); c.moveTo(x - 26, y - 46); c.lineTo(x, y - 40); c.lineTo(x + 26, y - 46); c.lineTo(x + 24, y - 64); c.lineTo(x, y - 58); c.lineTo(x - 24, y - 64); c.closePath(); }, col, [x, y - 52, 26]);
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) d.line(c => { c.moveTo(x + s * 6, y - 56 + i * 5); c.lineTo(x + s * 20, y - 59 + i * 5); }, '#8a7a6a', 1); d.rr(x - 6, y - 72, 12, 10, 4, '#fffaf2'); d.rr(x - 8, y - 64, 16, 4, 2, '#fffaf2'); },
+  // 리본 달린 작은 집 (산책 동행)
+  kRibbon: (d, x, y, col) => { d.rr(x - 24, y - 40, 48, 40, 6, '#e8d6c6'); d.shape(c => { c.beginPath(); c.moveTo(x - 30, y - 38); c.lineTo(x, y - 64); c.lineTo(x + 30, y - 38); c.closePath(); }, col, [x, y - 50, 30]); d.rr(x - 10, y - 26, 20, 26, 10, '#4a3a44');
+    for (const s of [-1, 1]) d.shape(c => { c.beginPath(); c.moveTo(x, y - 56); c.lineTo(x + s * 12, y - 64); c.lineTo(x + s * 12, y - 50); c.closePath(); }, '#ff7aa8', [x + s * 6, y - 57, 8]); d.circle(x, y - 57, 3, '#ff5f8f'); },
+  // 별꽃 꽃다발이 꽂힌 화병
+  kStarflower: (d, x, y, col) => { d.shape(c => { c.beginPath(); c.moveTo(x - 10, y - 40); c.quadraticCurveTo(x - 22, y - 10, x - 12, y); c.lineTo(x + 12, y); c.quadraticCurveTo(x + 22, y - 10, x + 10, y - 40); c.closePath(); }, '#a9c7ef', [x, y - 20, 18]);
+    for (const [dx, dy] of [[-12, -62], [0, -70], [12, -60], [-6, -52], [8, -50]]) { d.line(c => { c.moveTo(x, y - 40); c.lineTo(x + dx, y + dy + 6); }, '#6cc46a', 1.6); star(d, x + dx, y + dy, 7, col); d.circle(x + dx, y + dy, 2, '#fff3a8'); } },
+});

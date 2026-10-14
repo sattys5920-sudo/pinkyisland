@@ -1750,14 +1750,17 @@ export function figure(d, L, dir, t, walk, expr){
   const hat = HATS[L.hat] || HATS.none, acc = ACCS[L.acc] || ACCS.none, shoes = SHOES[L.shoes] || SHOES.sh01;
   const AN = L.animal && ANIMALS[L.animal.kind], AP = AN && {d, g, L, A:L.animal, side, up, fx: side ? R*.22 : 0, fy: HY+R*.28};
   if (AN?.tail && !up) AN.tail(AP);
+  if (acc.back && !up) acc.back(tinted(d, 'acc', L.acc, (L.cc||{}).acc || 0, L.skin), g);
   if (!up) hair(d, 0, HY, L, side, R, 'back');
   // 하의(다리) → 신발 → 상의. 세트는 한 번에 그리고 신발을 마지막에
   const cc = L.cc || {}, P = (cat, id) => tinted(d, cat, id, cc[cat] || 0, L.skin);
   if (set){ set.draw(P('set', L.set), g); shoes.draw(P('shoes', L.shoes), g); } else { bottom.draw(P('bottom', L.bottom), g); shoes.draw(P('shoes', L.shoes), g); top.draw(P('top', L.top), g); }
   // 머리
   if (AN?.tail && up) AN.tail(AP);
+  if (acc.back && up) acc.back(tinted(d, 'acc', L.acc, (L.cc||{}).acc || 0, L.skin), g);
   if (AN?.ears) AN.ears(AP);
   else if (!side) { d.circle(-R*1.13, HY+R*.18, 4.3, L.skin); d.circle(R*1.13, HY+R*.18, 4.3, L.skin); }
+  if (hat.back) hat.back(tinted(d, 'hat', L.hat, (L.cc||{}).hat || 0, L.skin), g);
   headShape(d, 0, HY, R, L.skin);
   if (AN?.head) AN.head(AP);
   if (!up) face(d, side ? R*.22 : 0, HY+R*.28, L, side, expr);
@@ -1898,3 +1901,29 @@ export const ANIMALS = {
     head:P=>{ const {d, side, up, A} = P; if (up){ d.shape(k=>{ k.beginPath(); k.ellipse(0, HY - R*.1, R*1.14, R*1.0, 0, 0, Math.PI*2); }, A.dark, [0, HY, R]); return; } d.shape(k=>{ k.beginPath(); k.ellipse(side ? -R*.55 : 0, HY - R*.62, side ? R*.62 : R*1.1, R*.48, 0, Math.PI, 0); }, A.dark, [0, HY - R*.7, R], {flat:true}); },
     snout:P=>muzzle(P, P.A.fur2, 3.8, 2.6, '#3a2a2a', 1) },
 };
+
+// ===== 주민 코스튬 (♥10 선물 · 상점에서 안 팔아요): 그 주민과 똑같은 옷 · 귀 머리띠 · 꼬리 =====
+// [이름, 동물, 털색, 주민이 입은 옷]. 머리띠에는 주민의 장신구(안경 · 나비넥타이 · 목도리 · 가방)도 함께 달려 있어요
+export const NPC_COS = {
+  hana:['하나', 'fox', '#ff9a4d', {set:'s09'}], momo:['모모', 'tiger', '#ffa94d', {set:'s08', acc:'bowtie'}], dodo:['도도', 'mole', '#7a6a72', {top:'t14', bottom:'b21'}],
+  toto:['토토', 'whale', '#7fa8d9', {top:'t28', bottom:'b04', acc:'glassR'}], bori:['보리', 'bear', '#b98256', {top:'t14', bottom:'b01', cc:{top:3}}], mongsil:['몽실', 'sheep', '#fffaf0', {set:'s02'}],
+  tori:['토리', 'squirrel', '#d9894f', {top:'t17', bottom:'b30', acc:'backpack'}], olly:['올리', 'deer', '#c98e5b', {set:'s13', acc:'glassR'}], pengpeng:['펭펭', 'penguin', '#454a63', {top:'t02', bottom:'b11', acc:'scarf', cc:{acc:3}}],
+  dandan:['단단', 'panda', '#ffffff', {set:'s08', acc:'bowtie', cc:{acc:2}}], kongi:['콩이', 'wolf', '#9aa3b5', {set:'s21'}], bami:['밤이', 'hedgehog', '#e8c9a6', {top:'t25', bottom:'b20'}],
+};
+const cosP = (d, g, A) => ({d, g, L:g.L, A, side:g.side, up:g.up, fx: g.side ? R*.22 : 0, fy: HY + R*.28});
+for (const [id, [nm, kind, fur, lk]] of Object.entries(NPC_COS)){
+  const A = {kind, fur, fur2:mixHex(fur, '#ffffff', .55), dark:mixHex(fur, '#2a1a24', .28)}, cc = lk.cc || {}, AN = () => ANIMALS[kind] || {};
+  const capOnly = !AN().ears || ['whale', 'penguin'].includes(kind), front = ['tiger', 'mole', 'bear', 'panda'].includes(kind); // 귀가 없는 동물은 털색 모자로 · 동그란 귀는 머리카락 위로
+  SETS['c_' + id] = {excl:1, npc:id, fixed:1, name:`${nm} 옷`, price:300000, main:fur,
+    draw:(d, g)=>{ if (lk.set) SETS[lk.set].draw(tinted(d, 'set', lk.set, cc.set || 0, g.sk), g); else { BOTTOMS[lk.bottom].draw(tinted(d, 'bottom', lk.bottom, cc.bottom || 0, g.sk), g); TOPS[lk.top].draw(tinted(d, 'top', lk.top, cc.top || 0, g.sk), g); } },
+    over:(d, g)=>{ const it = lk.set ? SETS[lk.set] : TOPS[lk.top]; if (it?.over) it.over(tinted(d, lk.set ? 'set' : 'top', lk.set || lk.top, (lk.set ? cc.set : cc.top) || 0, g.sk), g); } };
+  HATS['c_' + id] = {excl:1, npc:id, fixed:1, name:`${nm} 귀 머리띠`, price:200000, main:fur,
+    back:(d, g)=>{ if (!capOnly && !front) AN().ears(cosP(d, g, A)); },
+    draw:(d, g)=>{ const P = cosP(d, g, A);
+      if (capOnly) cap(d, kind === 'penguin' ? '#2f3346' : fur, 1.3, 1.36, -.45, .06);
+      else if (!g.up) d.line(k=>{ k.ellipse(0, HY - R*.1, R*1.02, R*.9, 0, Math.PI*1.08, Math.PI*1.92); }, SH(fur, -.35), 1.6, .95);
+      if (front) AN().ears(P); if (AN().over) AN().over(P); if (AN().top) AN().top(P);
+      if (lk.acc && ACCS[lk.acc]) ACCS[lk.acc].draw(tinted(d, 'acc', lk.acc, cc.acc || 0, g.sk), g); } };
+  ACCS['c_' + id] = {excl:1, npc:id, fixed:1, name:`${nm} 꼬리`, price:150000, main:fur,
+    back:(d, g)=>{ if (AN().tail) AN().tail(cosP(d, g, A)); }, draw:()=>{} };
+}
