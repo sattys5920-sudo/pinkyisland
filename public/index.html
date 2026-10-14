@@ -2569,10 +2569,10 @@ function drawGlitch(c, t){
   c.save(); c.setTransform(1,0,0,1,0,0);
   // 색 보정: 채도를 빼고 어둡고 흐릿하게 (전환 순간엔 서서히 내려앉아요)
   if (darkOn()){ const g = Math.min(1, (t - glitchBurst)/900);
-    c.globalCompositeOperation = 'saturation'; c.globalAlpha = .55*g; c.fillStyle = '#808080'; c.fillRect(0, 0, W, H);
-    c.globalCompositeOperation = 'multiply'; c.globalAlpha = g; c.fillStyle = inRoom ? '#c4bccc' : '#a49cb4'; c.fillRect(0, 0, W, H);
-    c.globalCompositeOperation = 'source-over'; c.globalAlpha = .1*g; c.fillStyle = '#3a3048'; c.fillRect(0, 0, W, H);
-    const v = c.createRadialGradient(W/2, H/2, Math.min(W, H)*.3, W/2, H/2, Math.max(W, H)*.75); v.addColorStop(0, 'rgba(5,0,10,0)'); v.addColorStop(1, `rgba(5,0,10,${.32*g})`); c.globalAlpha = 1; c.fillStyle = v; c.fillRect(0, 0, W, H); }
+    c.globalCompositeOperation = 'saturation'; c.globalAlpha = .32*g; c.fillStyle = '#808080'; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = 'multiply'; c.globalAlpha = g; c.fillStyle = inRoom ? '#e2dce8' : '#d4cee0'; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = 'source-over'; c.globalAlpha = .04*g; c.fillStyle = '#3a3048'; c.fillRect(0, 0, W, H);
+    const v = c.createRadialGradient(W/2, H/2, Math.min(W, H)*.3, W/2, H/2, Math.max(W, H)*.75); v.addColorStop(0, 'rgba(5,0,10,0)'); v.addColorStop(1, `rgba(5,0,10,${.2*g})`); c.globalAlpha = 1; c.fillStyle = v; c.fillRect(0, 0, W, H); }
   // 색 어긋남: 평소엔 또렷하고, 15 초쯤에 한 번 1 초 동안만 기물이 살짝 겹쳐 어긋났다 돌아와요 (눈이 편하게)
   if (darkOn()){ const cyc = 15000, ph = (t + (hash(String(Math.floor(t/cyc))) % 5000)) % cyc, d = 1000;
     if (ph < d){ const e = Math.sin(ph/d*Math.PI), o = (2 + 2*e)*dpr; c.globalAlpha = (inRoom ? .1 : .14)*e; try { c.drawImage(cv, o, 0); c.drawImage(cv, -o, 0); } catch(e2){} c.globalAlpha = 1; } }
@@ -6161,8 +6161,8 @@ function drawDarkRoomStatic(c, d, z){
 // 손전등처럼 내 주변만 밝아요
 function drawDarkFx(c, t){
   const z = Z(); if (!z.dark) return;
-  const fl = 1 + Math.sin(t/90)*.02 + (Math.random() < .02 ? -.08 : 0), x = admin ? z.W/2 : pos.x, y = admin ? z.H/2 : pos.y - 20, R = admin ? 900 : 330*fl;
-  c.save(); const g = c.createRadialGradient(x, y, R*.35, x, y, R); g.addColorStop(0, 'rgba(8,2,12,0)'); g.addColorStop(1, 'rgba(8,2,12,.82)'); c.fillStyle = g; c.fillRect(0, 0, z.W, z.H); c.restore();
+  const fl = 1 + Math.sin(t/1400)*.015, x = admin ? z.W/2 : pos.x, y = admin ? z.H/2 : pos.y - 20, R = admin ? 900 : 440*fl; // 눈이 편하게: 넓고 깜빡이지 않는 불빛
+  c.save(); const g = c.createRadialGradient(x, y, R*.35, x, y, R); g.addColorStop(0, 'rgba(8,2,12,0)'); g.addColorStop(1, 'rgba(8,2,12,.62)'); c.fillStyle = g; c.fillRect(0, 0, z.W, z.H); c.restore();
 }
 // ----- 들어가기 · 나가기 -----
 function darkTap(w){
