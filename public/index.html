@@ -6177,17 +6177,6 @@ function endMirror(c, p){ endSky(c, '#141018', '#08060a'); c.fillStyle = '#c8a05
   const e = Math.min(1, p*1.4); c.fillStyle = '#1a1010'; c.beginPath(); c.ellipse(312, 320, 13, 15 - e*5, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(408, 320, 13, 15 - e*2, 0, 0, 7); c.fill();
   c.strokeStyle = '#8a3a3a'; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(316, 410); c.quadraticCurveTo(360, 420 + e*12, 404, 410 - e*34); c.stroke();
   c.fillStyle = 'rgba(255,255,255,.08)'; c.beginPath(); c.ellipse(280, 200, 40, 120, -.4, 0, 7); c.fill(); c.restore(); }
-// 섬: 밤 · 숲 끝 출구 문에 실이 감겨요
-function endIsland(c, p, many){ endSky(c, '#1a1028', '#0a0614'); c.fillStyle = '#e8e0f0'; for (let i = 0; i < 60; i++){ const x = (i*137) % END_W, y = (i*71) % 300; c.globalAlpha = .3 + (i % 5)*.12; c.fillRect(x, y, 2, 2); } c.globalAlpha = 1;
-  c.fillStyle = '#1e3a4a'; c.fillRect(0, 470, END_W, 250); c.fillStyle = '#2a2a3a'; c.beginPath(); c.ellipse(360, 480, 300, 90, 0, Math.PI, 0); c.fill();
-  for (let i = 0; i < 9; i++){ const x = 110 + i*62, h = 70 + (i*37) % 50; c.fillStyle = '#1a2a24'; c.beginPath(); c.moveTo(x, 470 - h); c.lineTo(x - 26, 470); c.lineTo(x + 26, 470); c.fill(); }
-  endRR(c, 330, 370, 60, 100, 6, '#3a2430'); c.strokeStyle = '#d04060'; c.lineWidth = 3; const n = Math.floor(Math.min(1, p*1.3)*8); for (let i = 0; i < n; i++){ const y = 378 + i*11; c.beginPath(); c.moveTo(322, y); c.lineTo(398, y + 8); c.moveTo(398, y); c.lineTo(322, y + 8); c.stroke(); }
-  if (many){ for (let i = 0; i < 12; i++){ const x = 90 + i*49 + (i % 2)*8, y = 600 + (i % 3)*22, a = Math.min(1, p*2 - i*.05); if (a <= 0) continue; c.fillStyle = `rgba(10,6,14,${a})`; c.beginPath(); c.arc(x, y - 44, 11, 0, 7); c.fill(); endRR(c, x - 13, y - 33, 26, 36, 9, `rgba(10,6,14,${a})`); } }
-  c.save(); c.globalAlpha = .18 + Math.sin(p*20)*.05; c.fillStyle = '#ffb0c8'; c.fillRect(0, 0, END_W, END_H); c.restore(); }
-// 우체통: 편지가 쌓여요
-function endMail(c, p){ endSky(c, '#141a2a', '#0a0c14'); c.fillStyle = '#5a3a2a'; c.fillRect(350, 420, 20, 240); endRR(c, 250, 280, 220, 150, 20, '#c83a4a'); c.fillStyle = '#1a0a0e'; c.fillRect(290, 320, 140, 16);
-  const n = Math.floor(p*14); for (let i = 0; i < n; i++){ c.save(); c.translate(260 + (i*53) % 200, 600 - Math.floor(i/4)*18); c.rotate(((i*29) % 9 - 4)*.06); endRR(c, -40, -24, 80, 48, 3, '#f4ece0'); c.strokeStyle = 'rgba(120,80,60,.5)'; c.lineWidth = 2; c.beginPath(); c.moveTo(-40, -24); c.lineTo(0, 4); c.lineTo(40, -24); c.stroke(); c.restore(); }
-  endTxt(c, String(12 + n), 560, 340, 64, 'rgba(255,240,240,.18)', 700); }
 function endTitle(c, p, title, sub){ c.fillStyle = '#000'; c.fillRect(0, 0, END_W, END_H); const a = Math.min(1, p*2.2); c.save(); c.globalAlpha = a; endTxt(c, title, 360, 330, 54, '#fff4f8', 700); if (sub){ c.globalAlpha = a*.75; endTxt(c, sub, 360, 400, 22, '#e8d0dc', 400); } c.globalAlpha = a*.5; endTxt(c, '핑키 디저트 아일랜드', 360, 620, 18, '#c8b0bc', 400); c.restore(); }
 // --- 소리: 오르골 · 낮은 울림 · 심장 소리 ---
 function endSound(kind){ try { const A = endRun.A; if (!A) return; const t0 = A.currentTime + .02, out = A.createGain(); out.gain.value = .5; out.connect(A.destination);
@@ -6197,25 +6186,125 @@ function endSound(kind){ try { const A = endRun.A; if (!A) return; const t0 = A.
   if (kind === 'warm'){ [261.6, 329.6, 392, 523.3].forEach((f, i) => { const o = A.createOscillator(), g = A.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0, t0 + i*.15); g.gain.linearRampToValueAtTime(.06, t0 + i*.15 + .8); g.gain.linearRampToValueAtTime(0, t0 + 6); o.connect(g); g.connect(out); o.start(t0 + i*.15); o.stop(t0 + 6.2); }); }
   if (kind === 'sew'){ for (let i = 0; i < 8; i++){ const nb = A.createBuffer(1, A.sampleRate*.12, A.sampleRate), d = nb.getChannelData(0); for (let j = 0; j < d.length; j++) d[j] = (Math.random()*2 - 1)*(1 - j/d.length); const s = A.createBufferSource(), bp = A.createBiquadFilter(), g = A.createGain(); s.buffer = nb; bp.type = 'bandpass'; bp.frequency.value = 2400; g.gain.value = .5; s.connect(bp); bp.connect(g); g.connect(out); s.start(t0 + .4 + i*.5); } }
 } catch(e){} }
-// 사람 모양 넋 (빛나는 실루엣)
-function endSoulFig(c, x, y, s, a){ c.save(); c.globalAlpha = a; c.shadowColor = 'rgba(200,230,255,.9)'; c.shadowBlur = 30; c.fillStyle = 'rgba(220,236,255,.85)'; c.beginPath(); c.arc(x, y - 150*s, 34*s, 0, 7); c.fill(); endRR(c, x - 44*s, y - 112*s, 88*s, 112*s, 36*s, 'rgba(220,236,255,.85)'); c.restore(); }
-// 넋이 그 방 주민 인형 속으로 빨려 들어가고, 실밥이 꿰매져요
-function endSoulIn(c, p, npc){ endSky(c, '#140c18', '#060308'); const n = NPC[npc] || NPC.toto, look = n.look || {kind:n.sp.kind, fur:n.sp.fur}, bx = 360, by = 560;
-  c.save(); const lg = c.createRadialGradient(bx, by - 120, 10, bx, by - 120, 300); lg.addColorStop(0, `rgba(255,200,220,${.1 + Math.max(0, p - .55)*.6})`); lg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = lg; c.fillRect(0, 0, END_W, END_H); c.restore();
-  c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(bx, by + 4, 120, 20, 0, 0, 7); c.fill();
-  c.save(); c.translate(bx, by); c.rotate(p < .6 ? -.12 : -.12*(1 - (p - .6)/.4)); drawCritter(c, 0, 0, look, 0, false, 4.2); c.restore();
-  const q = Math.min(1, p/.62), e = q*q*(3 - 2*q); if (p < .7) endSoulFig(c, bx, 330 + e*190, 1 - e*.75, p < .62 ? .9 : (.7 - p)/.08*.9);
-  if (p > .6 && p < .72){ c.fillStyle = `rgba(255,250,245,${1 - Math.abs(p - .66)/.06})`; c.fillRect(0, 0, END_W, END_H); }
-  if (p > .7){ const st = Math.min(1, (p - .7)/.25); c.strokeStyle = '#d04060'; c.lineWidth = 5; for (let i = 0; i < Math.floor(st*7); i++){ const y = by - 250 + i*26; c.beginPath(); c.moveTo(bx - 20, y); c.lineTo(bx + 20, y + 12); c.moveTo(bx + 20, y); c.lineTo(bx - 20, y + 12); c.stroke(); } } }
-// 다시 분홍빛 아침의 핑키 섬 · 그 자리에 가만히 서 있는 인형 (나)
-function endPinky(c, p, npc){ const n = NPC[npc] || NPC.toto, look = n.look || {kind:n.sp.kind, fur:n.sp.fur}, z = 1.18 - p*.2;
-  endSky(c, '#ffd8e6', '#c8ecff'); c.save(); c.translate(360, 430); c.scale(z, z); c.translate(-360, -430);
-  c.fillStyle = 'rgba(255,255,255,.85)'; for (let i = 0; i < 4; i++){ const x = ((i*230 + p*120) % 900) - 90, y = 80 + i*36; c.beginPath(); c.ellipse(x, y, 60, 20, 0, 0, 7); c.ellipse(x + 40, y - 10, 40, 18, 0, 0, 7); c.fill(); }
-  c.fillStyle = '#a8e0a0'; c.fillRect(-200, 360, 1120, 600); c.fillStyle = '#f4e4c8'; c.beginPath(); c.moveTo(300, 360); c.lineTo(420, 360); c.lineTo(560, 920); c.lineTo(160, 920); c.fill();
-  for (const [x, y, s2] of [[120, 380, 1], [600, 370, .9], [40, 470, 1.2], [690, 480, 1.1], [210, 330, .7], [520, 320, .65]]){ c.fillStyle = '#8a5a3a'; c.fillRect(x - 6*s2, y - 40*s2, 12*s2, 44*s2); c.fillStyle = ['#ffb0cc', '#ffc8dc', '#f49ab6'][Math.round(x) % 3]; c.beginPath(); c.arc(x, y - 66*s2, 44*s2, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.arc(x - 14*s2, y - 80*s2, 14*s2, 0, 7); c.fill(); }
-  c.fillStyle = 'rgba(0,0,0,.15)'; c.beginPath(); c.ellipse(360, 552, 60, 12, 0, 0, 7); c.fill(); drawCritter(c, 360, 550, look, 0, false, 2.6);
-  for (let i = 0; i < 14; i++){ const x = (i*97 + p*60*(1 + i % 3)) % 760 - 20, y = (i*53 + p*400) % 720; c.fillStyle = 'rgba(255,170,200,.8)'; c.beginPath(); c.ellipse(x, y, 5, 3, i, 0, 7); c.fill(); }
-  c.restore(); c.save(); c.globalAlpha = .25*p; c.fillStyle = '#20141c'; c.fillRect(0, 0, END_W, END_H); c.restore(); }
+// ===== 영화 같은 장면 (빼앗긴 몸 · 닫힌 섬) =====
+const endEase = x => x <= 0 ? 0 : x >= 1 ? 1 : x*x*(3 - 2*x);
+const endSeg = (p, a, b) => endEase((p - a)/(b - a));
+const endRnd = i => { const x = Math.sin(i*127.1 + 311.7)*43758.5453; return x - Math.floor(x); };
+function endShake(c, amt){ if (amt > 0) c.translate((Math.random() - .5)*amt, (Math.random() - .5)*amt); }
+function endGlow(c, x, y, r, col, a){ const q = c.createRadialGradient(x, y, 0, x, y, r); q.addColorStop(0, col.replace('A', a)); q.addColorStop(1, col.replace('A', 0)); c.fillStyle = q; c.fillRect(x - r, y - r, r*2, r*2); }
+function endDust(c, t, n, col, spd = 1){ for (let i = 0; i < n; i++){ const x = (endRnd(i)*END_W + Math.sin(t*.7 + i)*20) % END_W, y = (endRnd(i + 99)*END_H - t*spd*(20 + endRnd(i + 7)*40)) % END_H, yy = y < 0 ? y + END_H : y; c.globalAlpha = .25 + endRnd(i + 3)*.5; c.fillStyle = col; c.fillRect(x, yy, 1.5 + endRnd(i + 5)*2, 1.5 + endRnd(i + 5)*2); } c.globalAlpha = 1; }
+// 사람 실루엣 (걷는 자세 · s 배율 · 다리 흔들림 w)
+function endPerson(c, x, y, s, col, w = 0, glow){ c.save(); c.translate(x, y); c.scale(s, s); if (glow){ c.shadowColor = glow; c.shadowBlur = 40; } c.fillStyle = col;
+  c.beginPath(); c.arc(0, -168, 20, 0, 7); c.fill(); c.beginPath(); c.moveTo(-22, -146); c.quadraticCurveTo(-30, -100, -20, -72); c.lineTo(20, -72); c.quadraticCurveTo(30, -100, 22, -146); c.closePath(); c.fill();
+  c.lineCap = 'round'; c.strokeStyle = col; c.lineWidth = 13; c.beginPath(); c.moveTo(-10, -76); c.lineTo(-10 + Math.sin(w)*16, 0); c.moveTo(10, -76); c.lineTo(10 - Math.sin(w)*16, 0); c.stroke();
+  c.lineWidth = 10; c.beginPath(); c.moveTo(-20, -138); c.lineTo(-24 - Math.sin(w)*10, -84); c.moveTo(20, -138); c.lineTo(24 + Math.sin(w)*10, -84); c.stroke(); c.restore(); }
+// 화면 마감: 필름 알갱이 · 가장자리 어둡게 · 위아래 검은 띠
+let endGrain = null;
+function endFinish(c, t){ if (!endGrain){ endGrain = document.createElement('canvas'); endGrain.width = endGrain.height = 180; const g = endGrain.getContext('2d'), im = g.createImageData(180, 180); for (let i = 0; i < im.data.length; i += 4){ const v = Math.random()*255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 22; } g.putImageData(im, 0, 0); }
+  c.save(); const v = c.createRadialGradient(360, 360, 250, 360, 360, 520); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)'); c.fillStyle = v; c.fillRect(0, 0, END_W, END_H);
+  c.globalCompositeOperation = 'overlay'; const ox = Math.floor(Math.random()*180), oy = Math.floor(Math.random()*180); c.fillStyle = c.createPattern(endGrain, 'repeat'); c.translate(-ox, -oy); c.fillRect(ox, oy, END_W, END_H); c.restore();
+  c.fillStyle = '#000'; c.fillRect(0, 0, END_W, 64); c.fillRect(0, END_H - 64, END_W, 64); }
+
+// ① 복도: 내 얼굴을 한 누군가가 먼저 빛으로 걸어가고, 문이 닫혀요
+function endCorridor(c, p, t){ const shake = p > .66 && p < .8 ? 14*(1 - (p - .66)/.14) : 0; c.save(); endShake(c, shake);
+  const z = 1 + p*.25; c.translate(360, 330); c.scale(z, z); c.translate(-360, -330); const vx = 360, vy = 330;
+  c.fillStyle = '#07050a'; c.fillRect(-100, -100, 920, 920);
+  const dw = 60 + p*20, dh = 120 + p*40, open = p < .66 ? 1 : Math.max(0, 1 - (p - .66)/.04);
+  // 벽 · 바닥 · 천장 (소실점으로 모여요)
+  const wall = (pts, a, b) => { const q = c.createLinearGradient(pts[0][0], 0, pts[1][0], 0); q.addColorStop(0, a); q.addColorStop(1, b); c.fillStyle = q; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); };
+  wall([[-100, -100], [vx - dw/2, vy - dh/2], [vx - dw/2, vy + dh/2], [-100, 820]], '#120c16', '#2a1e2e'); wall([[820, -100], [vx + dw/2, vy - dh/2], [vx + dw/2, vy + dh/2], [820, 820]], '#120c16', '#2a1e2e');
+  c.fillStyle = '#100a12'; c.beginPath(); c.moveTo(-100, 820); c.lineTo(vx - dw/2, vy + dh/2); c.lineTo(vx + dw/2, vy + dh/2); c.lineTo(820, 820); c.fill();
+  c.strokeStyle = 'rgba(255,220,230,.06)'; c.lineWidth = 2; for (let i = 1; i < 9; i++){ const k = Math.pow(i/9, 2.2), y = vy + dh/2 + (820 - vy - dh/2)*k; c.beginPath(); c.moveTo(vx - dw/2 - (vx + 100 - dw/2)*k, y); c.lineTo(vx + dw/2 + (820 - vx - dw/2)*k, y); c.stroke(); }
+  // 빛의 문
+  if (open > 0){ c.fillStyle = '#fffaf2'; c.fillRect(vx - dw/2*open, vy - dh/2, dw*open, dh); c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, vx, vy, 360*open, 'rgba(255,236,226,A)', .55); c.restore();
+    c.save(); c.globalAlpha = .18*open; c.fillStyle = '#ffe8e0'; c.beginPath(); c.moveTo(vx - dw/2, vy + dh/2); c.lineTo(vx + dw/2, vy + dh/2); c.lineTo(620, 820); c.lineTo(100, 820); c.fill(); c.restore(); }
+  else { c.fillStyle = '#1a1018'; c.fillRect(vx - dw/2, vy - dh/2, dw, dh); const st = endSeg(p, .72, .98); c.strokeStyle = '#c8344e'; c.lineWidth = 3; for (let i = 0; i < Math.floor(st*8); i++){ const y = vy - dh/2 + 10 + i*(dh - 20)/8; c.beginPath(); c.moveTo(vx - dw/2 - 6, y); c.lineTo(vx + dw/2 + 6, y + 9); c.moveTo(vx + dw/2 + 6, y); c.lineTo(vx - dw/2 - 6, y + 9); c.stroke(); } }
+  // 걸어가는 사람 (가까이에서 멀어지며 작아져요) · 뒤로 긴 그림자
+  const wk = endSeg(p, 0, .62); if (wk < 1){ const k = Math.pow(1 - wk, 1.6), x = vx + (k - .1)*30, y = vy + dh/2 + (800 - vy - dh/2)*k, s = .25 + k*2.4;
+    c.save(); c.globalAlpha = .5; c.fillStyle = '#000'; c.beginPath(); c.moveTo(x - 14*s, y); c.lineTo(x + 14*s, y); c.lineTo(x + 40*s, 830); c.lineTo(x - 40*s, 830); c.fill(); c.restore();
+    endPerson(c, x, y, s, '#050307', t*7); if (wk > .8){ c.fillStyle = 'rgba(255,240,240,.9)'; c.fillRect(x - 6*s, y - 172*s, 3*s, 2*s); } }
+  // 앞에 뻗은 내 손 (넋이라 희미하게 비쳐요)
+  const hd = endSeg(p, .45, .66)*(1 - endSeg(p, .7, .9)); if (hd > 0){ c.save(); c.globalAlpha = .55*hd; c.shadowColor = 'rgba(190,220,255,.9)'; c.shadowBlur = 30; c.fillStyle = 'rgba(200,225,255,.7)'; c.translate(560 - hd*60, 760 - hd*120); c.rotate(-.5); endRR(c, -30, 0, 60, 260, 28, 'rgba(200,225,255,.7)'); c.beginPath(); c.ellipse(0, -10, 34, 42, 0, 0, 7); c.fill(); for (let i = 0; i < 4; i++){ endRR(c, -28 + i*15, -78, 12, 52, 6, 'rgba(200,225,255,.7)'); } c.restore(); }
+  if (p > .66 && p < .7){ c.fillStyle = `rgba(255,250,248,${1 - (p - .66)/.04})`; c.fillRect(-100, -100, 920, 920); }
+  c.restore(); }
+
+// ② 실에 감겨 인형 속으로: 사방에서 실이 뻗어 와 넋을 감고 끌어내려요
+function endThreads(c, p, t, npc){ const n = NPC[npc] || NPC.toto, look = n.look || {kind:n.sp.kind, fur:n.sp.fur}, bx = 360, by = 560, zoom = 1 + endSeg(p, .35, .75)*.9;
+  c.fillStyle = '#060308'; c.fillRect(0, 0, END_W, END_H); c.save(); c.translate(bx, by - 120); c.scale(zoom, zoom); c.translate(-bx, -(by - 120));
+  endDust(c, t, 70, '#c8b0d0', .6); endGlow(c, bx, by - 110, 260, 'rgba(200,60,100,A)', .18 + endSeg(p, .5, .7)*.3);
+  // 인형 (그 방 주민)
+  c.fillStyle = 'rgba(0,0,0,.5)'; c.beginPath(); c.ellipse(bx, by + 4, 110, 18, 0, 0, 7); c.fill(); c.save(); c.translate(bx, by); c.rotate(-.1*(1 - endSeg(p, .62, .8))); drawCritter(c, 0, 0, look, 0, false, 4.4); c.restore();
+  // 넋: 위에서 버티다 끌려 내려와요
+  const pull = endSeg(p, .18, .64), sx = bx + Math.sin(t*3)*14*(1 - pull), sy = 300 + pull*220 + Math.sin(t*9)*4*(1 - pull), ss = 1 - pull*.8, sa = 1 - endSeg(p, .6, .66);
+  // 실: 화면 가장자리에서 넋으로 (흔들리며 팽팽해져요)
+  const tight = endSeg(p, .1, .5); c.lineWidth = 2; for (let i = 0; i < 16; i++){ const a = i/16*Math.PI*2 + .2, ex = 360 + Math.cos(a)*560, ey = 360 + Math.sin(a)*560, reach = endSeg(p, i*.012, .14 + i*.012); if (reach <= 0) continue;
+    const tx = ex + (sx - ex)*reach, ty = ey + (sy - 90*ss - ey)*reach, mx = (ex + tx)/2 + Math.sin(t*2 + i)*40*(1 - tight), my = (ey + ty)/2 + Math.cos(t*2.3 + i)*40*(1 - tight) + 40*(1 - tight);
+    c.strokeStyle = `rgba(214,52,90,${.55 + .35*tight})`; c.beginPath(); c.moveTo(ex, ey); c.quadraticCurveTo(mx, my, tx, ty); c.stroke(); }
+  if (sa > 0){ c.save(); c.globalAlpha = sa; endGlow(c, sx, sy - 90*ss, 160*ss, 'rgba(180,215,255,A)', .5); endPerson(c, sx, sy, ss, 'rgba(225,238,255,.92)', Math.sin(t*12)*.5*(1 - pull), 'rgba(170,210,255,1)');
+    // 감기는 실 (나선)
+    const wr = endSeg(p, .25, .6); c.strokeStyle = 'rgba(214,52,90,.85)'; c.lineWidth = 2.5*ss; c.beginPath(); for (let k = 0; k < wr*60; k++){ const yy = sy - 10*ss - k*3*ss, xx = sx + Math.sin(k*.55 + t*4)*30*ss; k ? c.lineTo(xx, yy) : c.moveTo(xx, yy); } c.stroke();
+    for (let i = 0; i < 24; i++){ const k = (t*.8 + endRnd(i)) % 1; c.fillStyle = `rgba(200,225,255,${(1 - k)*.7})`; c.fillRect(sx + (endRnd(i + 40) - .5)*90*ss, sy - k*220*ss, 2.5, 2.5); } c.restore(); }
+  if (p > .62 && p < .68){ c.fillStyle = `rgba(255,240,245,${1 - Math.abs(p - .65)/.03})`; c.fillRect(-200, -200, 1200, 1200); }
+  // 꿰매기: 바늘이 오가며 실밥이 생겨요
+  const sw = endSeg(p, .68, .95); if (sw > 0){ const N = 7, done = sw*N; c.strokeStyle = '#d6345a'; c.lineWidth = 4; for (let i = 0; i < Math.floor(done); i++){ const y = by - 236 + i*24; c.beginPath(); c.moveTo(bx - 18, y); c.lineTo(bx + 18, y + 11); c.moveTo(bx + 18, y); c.lineTo(bx - 18, y + 11); c.stroke(); }
+    const fr = done % 1, ny = by - 236 + Math.floor(done)*24; if (done < N){ c.save(); c.translate(bx - 30 + fr*60, ny - 18 + Math.sin(fr*Math.PI)*-20); c.rotate(-.6); c.fillStyle = '#e8e8f0'; c.fillRect(-2, -40, 4, 60); c.restore(); } }
+  c.restore();
+  if (p > .9){ c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, bx + 30, by - 230, 26, 'rgba(255,255,255,A)', (p - .9)*8); c.restore(); } }
+
+// ③ 다시 분홍빛 아침: 주민들이 지나가고, 나는 그 자리에 서 있어요. 카메라가 얼굴로 다가가요
+function endMorning(c, p, t, npc){ const n = NPC[npc] || NPC.toto, look = n.look || {kind:n.sp.kind, fur:n.sp.fur}, z = 1 + endSeg(p, .35, 1)*1.6, fx = 360, fy = 470, ax = 360, ay = 500;
+  c.save(); c.translate(ax, ay - endSeg(p, .35, 1)*60); c.scale(z, z); c.translate(-ax, -ay);
+  endSky(c, '#ffd4e4', '#cfeaff'); c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, 560, 150, 260, 'rgba(255,240,200,A)', .55); for (let i = 0; i < 6; i++){ c.save(); c.translate(560, 150); c.rotate(i*.5 + t*.05); c.fillStyle = 'rgba(255,240,210,.06)'; c.beginPath(); c.moveTo(0, 0); c.lineTo(900, -60); c.lineTo(900, 60); c.fill(); c.restore(); } c.restore();
+  c.fillStyle = '#e4c8ec'; c.beginPath(); c.moveTo(-50, 330); for (let x = -50; x <= 780; x += 30) c.lineTo(x, 300 - Math.sin(x*.012 + 1)*30 - t*0); c.lineTo(780, 400); c.lineTo(-50, 400); c.fill();
+  c.fillStyle = '#b8e4b0'; c.fillRect(-50, 360, 830, 500); c.fillStyle = '#f6e6cc'; c.beginPath(); c.moveTo(320, 360); c.lineTo(400, 360); c.lineTo(600, 760); c.lineTo(120, 760); c.fill();
+  for (let i = 0; i < 8; i++){ const x = 40 + i*92 + (i % 2)*20, y = 372 + (i % 3)*6, s2 = .8 + (i % 3)*.12; if (x > 280 && x < 440) continue; c.fillStyle = '#9a6a4a'; c.fillRect(x - 5*s2, y - 40*s2, 10*s2, 42*s2); c.fillStyle = ['#ffb4ce', '#ffc6da', '#f7a2bc'][i % 3]; c.beginPath(); c.arc(x, y - 64*s2, 40*s2, 0, 7); c.arc(x - 22*s2, y - 50*s2, 26*s2, 0, 7); c.arc(x + 22*s2, y - 50*s2, 26*s2, 0, 7); c.fill(); }
+  // 지나가는 주민들 (나를 보지 않아요)
+  const walkers = NPCS.filter(v => v.id !== npc && v.id !== 'kongi').slice(0, 3);
+  walkers.forEach((v, i) => { const sp = 60 + i*25, x = ((t*sp + i*300) % 1000) - 140, y = 420 + i*28, L = v.look || {kind:v.sp.kind, fur:v.sp.fur}; drawCritter(c, i % 2 ? 720 - x : x, y, L, t, true, 1.3 + i*.15, !!(i % 2)); });
+  c.fillStyle = 'rgba(0,0,0,.14)'; c.beginPath(); c.ellipse(fx, fy + 82, 54, 11, 0, 0, 7); c.fill(); drawCritter(c, fx, fy + 80, look, 0, false, 2.2);
+  // 한 순간, 인형 속에 갇힌 내가 비쳐요
+  if (p > .8 && p < .835){ c.save(); c.globalAlpha = .6; endPerson(c, fx, fy + 70, .42, 'rgba(200,225,255,.9)', 0, 'rgba(170,210,255,1)'); c.restore(); }
+  c.restore();
+  for (let i = 0; i < 26; i++){ const d = .4 + endRnd(i)*1.4, x = (endRnd(i + 1)*900 + t*30*d) % 900 - 90, y = (endRnd(i + 2)*720 + t*45*d) % 760 - 20; c.fillStyle = `rgba(255,170,200,${.35 + d*.3})`; c.beginPath(); c.ellipse(x, y, 4*d, 2.5*d, t + i, 0, 7); c.fill(); }
+  for (let i = 0; i < 5; i++){ c.save(); c.globalAlpha = .18; endGlow(c, (endRnd(i + 60)*720 + t*70) % 820 - 50, 120 + endRnd(i + 70)*500, 60 + endRnd(i)*40, 'rgba(255,190,215,A)', .8); c.restore(); }
+  if (p > .8 && p < .835){ c.save(); c.globalCompositeOperation = 'difference'; c.fillStyle = 'rgba(255,255,255,.15)'; c.fillRect(0, 300 + Math.random()*200, END_W, 30); c.restore(); }
+  c.save(); c.globalAlpha = endSeg(p, .6, 1)*.45; c.fillStyle = '#1a0e16'; c.fillRect(0, 0, END_W, END_H); c.restore(); }
+
+// ④ 닫힌 섬: 열두 명이 문으로 달려가지만 열리지 않아요
+function endGate(c, p, t){ const pound = p > .42 && p < .7, shake = pound ? (Math.sin(t*28) > .3 ? 10 : 0) : 0; c.save(); endShake(c, shake);
+  endSky(c, '#120a1c', '#050308'); endDust(c, t, 50, '#a890c0', .4);
+  const gx = 360, gy = 300, light = p < .45 ? .9 : Math.max(0, .9 - (p - .45)*3);
+  c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, gx, gy, 280, 'rgba(255,200,215,A)', .35*light); c.restore();
+  // 숲 (양옆 겹겹이)
+  for (let L = 0; L < 3; L++) for (let i = 0; i < 6; i++){ const side = i % 2 ? 1 : -1, x = gx + side*(150 + L*90 + (i >> 1)*40), h = 260 + L*120; c.fillStyle = ['#1a1424', '#120c1a', '#080510'][L]; c.beginPath(); c.moveTo(x, gy + 160 - h); c.lineTo(x - 70 - L*20, gy + 170); c.lineTo(x + 70 + L*20, gy + 170); c.fill(); }
+  c.fillStyle = '#0a0610'; c.fillRect(0, gy + 160, END_W, 400);
+  // 문 · 틈새 빛 · 실밥
+  endRR(c, gx - 70, gy - 120, 140, 280, 8, '#2a1a26'); c.fillStyle = `rgba(255,236,240,${light})`; c.fillRect(gx - 2, gy - 112, 4, 264); c.fillRect(gx - 70, gy + 158, 140, 3*light);
+  const st = endSeg(p, .55, .95); c.strokeStyle = '#d6345a'; c.lineWidth = 4; for (let i = 0; i < Math.floor(st*10); i++){ const y = gy - 104 + i*26; c.beginPath(); c.moveTo(gx - 60, y); c.lineTo(gx + 60, y + 14); c.moveTo(gx + 60, y); c.lineTo(gx - 60, y + 14); c.stroke(); }
+  // 열두 사람: 아래에서 문으로 달려와요
+  for (let i = 0; i < 12; i++){ const run = endSeg(p, i*.012, .4 + i*.008), k = 1 - run, lane = (i - 5.5)/5.5, x = gx + lane*(70 + k*360), y = gy + 160 + k*400 + (i % 3)*6, s = .36 + k*1.1;
+    const hit = pound && (Math.floor(t*6 + i) % 2) ? -4 : 0; endPerson(c, x, y + hit, s, '#030205', run < 1 ? t*10 + i : 0); }
+  c.restore(); }
+// ⑤ 하늘에서 내려다본 섬: 바다 위에 실로 꿰매져 멀어져요
+function endSeam(c, p, t){ c.fillStyle = '#04060c'; c.fillRect(0, 0, END_W, END_H); const z = 1.7 - endSeg(p, 0, 1)*1.05; c.save(); c.translate(360, 380); c.scale(z, z);
+  c.strokeStyle = 'rgba(120,150,190,.12)'; c.lineWidth = 2; for (let i = 0; i < 26; i++){ const r = 120 + i*26 + (t*14 % 26); c.beginPath(); c.ellipse(0, 0, r*1.3, r, 0, 0, 7); c.stroke(); }
+  c.fillStyle = '#1e2a24'; c.beginPath(); for (let i = 0; i <= 40; i++){ const a = i/40*Math.PI*2, r = 150 + Math.sin(a*3) * 18 + Math.sin(a*7)*9; i ? c.lineTo(Math.cos(a)*r*1.3, Math.sin(a)*r) : c.moveTo(Math.cos(a)*r*1.3, Math.sin(a)*r); } c.fill(); c.fillStyle = '#2a3a30'; c.beginPath(); c.ellipse(-20, -10, 120, 80, .2, 0, 7); c.fill();
+  for (let i = 0; i < 12; i++){ const a = i/12*Math.PI*2 + .3, r = 60 + endRnd(i)*60, x = Math.cos(a)*r*1.3, y = Math.sin(a)*r, b = .4 + .6*Math.abs(Math.sin(t*2 + i)); c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, x, y, 14, 'rgba(255,210,170,A)', b); c.restore(); }
+  const sw = endSeg(p, .1, .7); c.strokeStyle = '#d6345a'; c.lineWidth = 5/z; const N = 46; for (let i = 0; i < Math.floor(sw*N); i++){ const a = i/N*Math.PI*2, r = 205, x = Math.cos(a)*r*1.3, y = Math.sin(a)*r, nx = Math.cos(a), ny = Math.sin(a); c.beginPath(); c.moveTo(x - nx*12 - ny*8, y - ny*12 + nx*8); c.lineTo(x + nx*12 + ny*8, y + ny*12 - nx*8); c.stroke(); }
+  c.restore(); for (let i = 0; i < 4; i++){ c.save(); c.globalAlpha = .12 + endSeg(p, .6, 1)*.25; endGlow(c, (endRnd(i)*720 + t*25*(i + 1)) % 900 - 90, 200 + i*120, 260, 'rgba(160,150,190,A)', .9); c.restore(); } }
+// ⑥ 비 오는 밤 우체통 · 마지막 편지
+function endRainMail(c, p, t, call){ endSky(c, '#0e1422', '#05070c'); const z = 1 + endSeg(p, .5, 1)*.9; c.save(); c.translate(360, 420); c.scale(z, z); c.translate(-360, -420);
+  c.save(); c.globalCompositeOperation = 'lighter'; endGlow(c, 560, 140, 220, 'rgba(255,220,160,A)', .25); c.restore(); c.fillStyle = '#2a2a30'; c.fillRect(554, 140, 8, 520);
+  c.fillStyle = '#0a0d14'; c.fillRect(0, 600, END_W, 200); c.fillStyle = 'rgba(255,220,160,.08)'; c.beginPath(); c.ellipse(560, 640, 160, 20, 0, 0, 7); c.fill();
+  c.fillStyle = '#3a2a24'; c.fillRect(352, 420, 16, 200); endRR(c, 270, 300, 180, 130, 18, '#9a2c3a'); c.fillStyle = '#12060a'; c.fillRect(300, 335, 120, 12);
+  const n = Math.floor(endSeg(p, 0, .6)*16); for (let i = 0; i < n; i++){ c.save(); c.translate(250 + endRnd(i)*220, 612 - Math.floor(i/5)*10); c.rotate((endRnd(i + 9) - .5)*.6); endRR(c, -34, -20, 68, 40, 3, '#d8d0c4'); c.strokeStyle = 'rgba(100,70,60,.5)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-34, -20); c.lineTo(0, 2); c.lineTo(34, -20); c.stroke(); c.restore(); }
+  for (let i = 0; i < 6; i++){ const k = (t*.9 + endRnd(i)) % 1; c.strokeStyle = `rgba(180,200,230,${(1 - k)*.4})`; c.lineWidth = 1.2; c.beginPath(); c.ellipse(120 + endRnd(i + 3)*480, 640 + endRnd(i + 4)*60, 30*k, 6*k, 0, 0, 7); c.stroke(); }
+  c.restore();
+  c.strokeStyle = 'rgba(190,210,240,.35)'; c.lineWidth = 1.3; for (let i = 0; i < 120; i++){ const x = (endRnd(i)*800 + t*60) % 800 - 40, y = (endRnd(i + 200)*800 + t*900*(.8 + endRnd(i)*.4)) % 800 - 40; c.beginPath(); c.moveTo(x, y); c.lineTo(x - 6, y + 22); c.stroke(); }
+  const lt = endSeg(p, .62, .8); if (lt > 0){ c.save(); c.globalAlpha = lt; c.translate(360, 380); c.rotate(-.04); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 30; endRR(c, -230, -150, 460, 300, 6, '#efe6d6'); c.shadowColor = 'transparent';
+    c.strokeStyle = 'rgba(120,140,170,.25)'; c.lineWidth = 1; for (let i = 0; i < 7; i++){ c.beginPath(); c.moveTo(-200, -90 + i*38); c.lineTo(200, -90 + i*38); c.stroke(); }
+    endTxt(c, `${call}, 엄마야.`, -190, -110, 30, '#2a2a4a', 400, 'left'); endTxt(c, '오늘도 현관 불 켜 뒀어.', -190, -40, 24, '#3a3a5a', 400, 'left'); endTxt(c, '언제든 들어와.', -190, 0, 24, '#3a3a5a', 400, 'left');
+    for (let i = 0; i < 5; i++){ c.fillStyle = 'rgba(60,80,120,.18)'; c.beginPath(); c.arc(-120 + i*70 + endRnd(i)*30, 60 + endRnd(i + 5)*60, 8 + endRnd(i + 2)*10, 0, 7); c.fill(); } c.restore(); } }
 // --- 각본 ---
 function endScript(kind){
   const call = endCall(), miss = DARK_ORDER.filter(n => !roomOf(n).clear), back = DARK_ORDER.length - miss.filter(n => world.darkTgt?.[n]).length;
@@ -6234,14 +6323,14 @@ function endScript(kind){
     {s:(c, p) => endNews(c, p, `같은 날 사라진 12 명 중 ${back} 명 귀가`, '돌아오지 못한 사람들의 가족은 오늘도 현관 불을 켜 두고 있다 · 경찰, 보낸 사람 없는 택배 조사 중'), d:9000, t:['돌아온 사람 중 몇은', '예전과 조금 달라졌다고 했다.']},
     {s:(c, p) => endTitle(c, p, '돌아온 사람들', `꿰매지 못한 방 ${miss.length} 개`), d:6000, t:[]}];
   if (kind === 'taken') return [open[0],
-    {s:(c, p) => endDoor(c, p, true), d:6500, snd:'drone', t:['출구가 열렸다.', '그런데 누군가 내 앞에서 먼저 문을 지나갔다.', '내 얼굴을 하고.']},
-    {s:(c, p) => endSoulIn(c, p, mine), d:9000, snd:'sew', t:['무언가가 나를 끌어당겼다.', `${NPC[mine]?.name || ''}의 인형 속으로.`, '실밥이 하나씩 조여 왔다.']},
-    {s:(c, p) => endPinky(c, p, mine), d:11000, snd:'box', t:['아침이 왔다. 섬은 다시 분홍빛이다.', `나는 ${NPC[mine]?.name || ''}의 자리에 서 있다.`, '아무도 나를 알아보지 못한다.', '입이 저절로 웃는다.']},
+    {s:(c, p, t) => endCorridor(c, p, t), d:8500, snd:'drone', t:['출구가 열렸다.', '그런데 누군가 내 앞에서 먼저 빛 속으로 걸어갔다.', '내 얼굴을 하고.']},
+    {s:(c, p, t) => endThreads(c, p, t, mine), d:10500, snd:'sew', t:['사방에서 실이 뻗어 와 나를 감았다.', `${NPC[mine]?.name || ''}의 인형 속으로.`, '실밥이 하나씩 조여 왔다.']},
+    {s:(c, p, t) => endMorning(c, p, t, mine), d:13000, snd:'box', t:['아침이 왔다. 섬은 다시 분홍빛이다.', `나는 ${NPC[mine]?.name || ''}의 자리에 서 있다.`, '아무도 나를 알아보지 못한다.', '입이 저절로 웃는다.']},
     {s:(c, p) => endTitle(c, p, '빼앗긴 몸', `${NPC[mine]?.name || ''}의 방을 꿰매지 못했어요`), d:6000, t:[]}];
   return [
-    {s:(c, p) => endDoor(c, p, true, true), d:7000, snd:'drone', t:['콩이의 방은 끝내 꿰매지 못했다.', '출구는 열리지 않았다.']},
-    {s:(c, p) => endIsland(c, p, true), d:8500, snd:'sew', t:['문은 다시 꿰매졌다.', '열두 명 중 누구도 나가지 못했다.', '밖으로 가는 길은 이제 없다.']},
-    {s:(c, p) => endMail(c, p), d:8500, t:['우체통에는 오늘도 편지가 온다.', `"${call}, 엄마야."`]},
+    {s:(c, p, t) => endGate(c, p, t), d:9500, snd:'heart', t:['콩이의 방은 끝내 꿰매지 못했다.', '열두 명이 출구로 달려갔다.', '문은 열리지 않았다.']},
+    {s:(c, p, t) => endSeam(c, p, t), d:9500, snd:'sew', t:['문은 다시 꿰매졌다.', '섬이 바다 위에 꿰매어졌다.', '누구도 나가지 못했다.']},
+    {s:(c, p, t) => endRainMail(c, p, t, call), d:10500, t:['우체통에는 오늘도 편지가 온다.', '받을 사람이 없는 편지가.']},
     {s:(c, p) => endTitle(c, p, '닫힌 섬', '열두 명 모두, 섬에 갇혔어요'), d:6000, t:[]}];
 }
 function playEnding(kind, done){
@@ -6255,7 +6344,7 @@ function playEnding(kind, done){
   $('endSkip').onclick = finish;
   const frame = () => { if (!endRun) return; let e = performance.now() - T0, k = 0; if (e >= total) return finish(); while (e >= steps[k].d){ e -= steps[k].d; k++; }
     const st = steps[k], p = e/st.d; if (k !== endRun.i){ endRun.i = k; tx.innerHTML = st.t.map((l, j) => `<p style="animation-delay:${(.4 + j*st.d/1000/(st.t.length + .6)).toFixed(2)}s">${esc(l)}</p>`).join(''); if (st.snd) endSound(st.snd); }
-    c.save(); st.s(c, p); c.restore(); const f = Math.min(1, p*6, (1 - p)*6); if (f < 1){ c.fillStyle = `rgba(0,0,0,${1 - f})`; c.fillRect(0, 0, END_W, END_H); }
+    c.save(); st.s(c, p, (performance.now() - T0)/1000); c.restore(); endFinish(c); const f = Math.min(1, p*6, (1 - p)*6); if (f < 1){ c.fillStyle = `rgba(0,0,0,${1 - f})`; c.fillRect(0, 0, END_W, END_H); }
     requestAnimationFrame(frame); };
   requestAnimationFrame(frame);
 }
