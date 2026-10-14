@@ -1763,6 +1763,7 @@ export function figure(d, L, dir, t, walk, expr){
   if (hat.back) hat.back(tinted(d, 'hat', L.hat, (L.cc||{}).hat || 0, L.skin), g);
   headShape(d, 0, HY, R, L.skin);
   if (AN?.head) AN.head(AP);
+  if (hat.head && !up) hat.head(tinted(d, 'hat', L.hat, (L.cc||{}).hat || 0, L.skin), g);
   if (!up) face(d, side ? R*.22 : 0, HY+R*.28, L, side, expr);
   if (AN?.snout && !up) AN.snout(AP);
   hair(d, 0, HY, L, side, R, 'front', up);
@@ -1911,6 +1912,15 @@ export const NPC_COS = {
   dandan:['단단', 'panda', '#ffffff', {set:'s08', acc:'bowtie', cc:{acc:2}}], kongi:['콩이', 'wolf', '#9aa3b5', {set:'s21'}], bami:['밤이', 'hedgehog', '#e8c9a6', {top:'t25', bottom:'b20'}],
 };
 const cosP = (d, g, A) => ({d, g, L:g.L, A, side:g.side, up:g.up, fx: g.side ? R*.22 : 0, fy: HY + R*.28});
+// 얼굴 장식: head 무늬(얼굴 아래 · 호랑이 줄무늬 · 판다 눈 무늬 · 사슴 점) · nose 코 · whisk 수염 · blush 볼터치 · beak 부리
+const COS_FACE = { fox:{nose:'#3a2a2a', whisk:'#6a4a3a', blush:1}, tiger:{head:1, nose:'#e8899c', whisk:'#5a3a2a'}, mole:{nose:'#ff8fa6', big:1, blush:1}, whale:{blush:1},
+  bear:{nose:'#3a2a2a', blush:1}, sheep:{nose:'#e8899c', blush:1}, squirrel:{nose:'#5a3a44', blush:1}, deer:{head:1, nose:'#3a2a2a'}, penguin:{beak:'#ffa94d', blush:1},
+  panda:{head:1, nose:'#2f2f3a'}, wolf:{nose:'#2f2f3a', whisk:'#7a7a8a'}, hedgehog:{nose:'#3a2a2a', blush:1} };
+function cosFace(d, g, F){ if (g.up) return; const side = g.side, fx = side ? R*.22 : 0, fy = HY + R*.28, nx = side ? R*1.02 : fx, ny = fy + 3.2;
+  if (F.blush) for (const cx of (side ? [R*.5] : [-8.6, 8.6])) d.ell(cx, fy + 4.4, 2.6, 1.5, '#ff9fb6', {flat:true, noShadow:true});
+  if (F.whisk) d.line(k=>{ for (const s of (side ? [1] : [-1, 1])) for (const dy of [-.8, 1]){ const x0 = side ? R*.78 : fx + s*5.2; k.moveTo(x0, fy + 4 + dy); k.lineTo(x0 + s*6, fy + 3.4 + dy*2.2); } }, F.whisk, .8, .85);
+  if (F.nose) d.ell(nx, ny, F.big ? 2.6 : 1.5, F.big ? 2.1 : 1.15, F.nose, {noShadow:true});
+  if (F.beak) d.shape(k=>{ k.beginPath(); if (side){ k.moveTo(R*.98, ny - 1.4); k.lineTo(R*1.26, ny); k.lineTo(R*.98, ny + 1.4); } else { k.moveTo(nx - 2.2, ny - .8); k.lineTo(nx + 2.2, ny - .8); k.lineTo(nx, ny + 1.6); } k.closePath(); }, F.beak, [nx, ny, 2.4], {noShadow:true}); }
 for (const [id, [nm, kind, fur, lk]] of Object.entries(NPC_COS)){
   const A = {kind, fur, fur2:mixHex(fur, '#ffffff', .55), dark:mixHex(fur, '#2a1a24', .28)}, cc = lk.cc || {}, AN = () => ANIMALS[kind] || {};
   const capOnly = !AN().ears || ['whale', 'penguin'].includes(kind), front = ['tiger', 'mole', 'bear', 'panda'].includes(kind); // 귀가 없는 동물은 털색 모자로 · 동그란 귀는 머리카락 위로
@@ -1919,7 +1929,8 @@ for (const [id, [nm, kind, fur, lk]] of Object.entries(NPC_COS)){
     over:(d, g)=>{ const it = lk.set ? SETS[lk.set] : TOPS[lk.top]; if (it?.over) it.over(tinted(d, lk.set ? 'set' : 'top', lk.set || lk.top, (lk.set ? cc.set : cc.top) || 0, g.sk), g); } };
   HATS['c_' + id] = {excl:1, npc:id, fixed:1, name:`${nm} 귀 머리띠`, price:200000, main:fur,
     back:(d, g)=>{ if (!capOnly && !front) AN().ears(cosP(d, g, A)); },
-    draw:(d, g)=>{ const P = cosP(d, g, A);
+    head:(d, g)=>{ if (COS_FACE[kind]?.head && AN().head) AN().head(cosP(d, g, A)); },
+    draw:(d, g)=>{ const P = cosP(d, g, A); if (COS_FACE[kind]) cosFace(d, g, COS_FACE[kind]);
       if (capOnly) cap(d, kind === 'penguin' ? '#2f3346' : fur, 1.3, 1.36, -.45, .06);
       else if (!g.up) d.line(k=>{ k.ellipse(0, HY - R*.1, R*1.02, R*.9, 0, Math.PI*1.08, Math.PI*1.92); }, SH(fur, -.35), 1.6, .95);
       if (front) AN().ears(P); if (AN().over) AN().over(P); if (AN().top) AN().top(P);
