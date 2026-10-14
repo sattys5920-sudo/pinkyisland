@@ -2560,10 +2560,10 @@ function drawDepth(ctx){
   ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height); ctx.restore();
 }
 // 다크 모드: 세상이 고장 난 화면처럼 지직거려요 (가로로 찢어지는 줄 · 색 번짐 · 노이즈 조각 · 깜빡임). 바뀌는 순간엔 크게
-let glitchBurst = -1e9, scanPat = null;
+let glitchBurst = -1e9, scanPat = null, darkSwitchAt = -1e9; const DARK_SW = 2600; // darkSwitchAt: 다크 모드로 바뀐 순간 (그때 한 번만 크게 지직거려요)
 function drawGlitch(c, t){
   if (!darkOn() && t - glitchBurst > 1400) return;
-  const burst = Math.max(0, 1 - (t - glitchBurst)/1400), inRoom = Z().dark, base = !darkOn() ? 0 : inRoom ? .25 : .6, k = Math.min(1, base + burst);
+  const sw = Math.max(0, 1 - (t - darkSwitchAt)/DARK_SW), burst = Math.max(sw, glRun ? Math.max(0, 1 - (t - glitchBurst)/1400) : 0), inRoom = Z().dark, base = !darkOn() ? 0 : inRoom ? .25 : .6, k = Math.min(1, base + burst);
   if (k <= 0) return;
   const W = cv.width, H = cv.height, R = Math.random, dpr = view.dpr || 1;
   c.save(); c.setTransform(1,0,0,1,0,0);
@@ -2577,7 +2577,9 @@ function drawGlitch(c, t){
   if (darkOn()){ const cyc = 15000, ph = (t + (hash(String(Math.floor(t/cyc))) % 5000)) % cyc, d = 1000;
     if (ph < d){ const e = Math.sin(ph/d*Math.PI), o = (2 + 2*e)*dpr; c.globalAlpha = (inRoom ? .1 : .14)*e; try { c.drawImage(cv, o, 0); c.drawImage(cv, -o, 0); } catch(e2){} c.globalAlpha = 1; } }
   // 지직거림 (찢어지는 띠 · 노이즈 · 주사선 · 깜빡임) 은 관리자 '지지직' 때만
-  if (!glRun){ c.restore(); return; }
+  if (!glRun && sw <= 0){ c.restore(); if (cv.style.transform && !glRun) cv.style.transform = ''; return; }
+  if (sw > 0 && !glRun){ cv.style.transform = sw > .08 ? `translate(${((R() - .5)*14*sw).toFixed(1)}px,${((R() - .5)*6*sw).toFixed(1)}px)` : '';
+    if (sw > .35 && sw < .75 && R() < .1){ c.fillStyle = `rgba(4,0,8,${.55 + R()*.35})`; c.fillRect(0, 0, W, H); } } // 신호가 끊긴 듯 잠깐 깜깜
   // 가로로 찢어지는 띠
   if (R() < .25 + k*.65){ const n = 1 + Math.floor(R()*(3 + k*7)); for (let i=0;i<n;i++){ const y = R()*H, h = (3 + R()*50*k)*dpr, dx = (R()-.5)*(20 + 120*k)*dpr; try { c.drawImage(cv, 0, y, W, h, dx, y, W, h); } catch(e){}
     if (R() < .6){ c.globalCompositeOperation = 'screen'; c.fillStyle = R() < .5 ? `rgba(255,40,120,${.10+.2*k})` : `rgba(40,255,230,${.08+.18*k})`; c.fillRect(dx*1.6, y, W, h); c.globalCompositeOperation = 'source-over'; } } }
@@ -7474,7 +7476,7 @@ let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: �
 let reloadSeen; // 관리자 [전원 새로고침]: 처음 본 값에서 바뀌면 저장하고 새로고침해요
 function onWorld(w){ const was = darkOn(), nmSig = JSON.stringify([world.dark, world.darkNames]); world = w || {};
   if (me && !admin && nmSig !== JSON.stringify([world.dark, world.darkNames])){ setTimeout(()=>{ renderHud(); renderChatHist(); }, 0); } // 다크 모드 이름이 바뀌면 상단 · 채팅도 바로
-  glitchCheck(); if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('눈앞이 하얘졌다가.... 정신을 차려 보니 밖이에요'); glitchBurst = performance.now(); if (darkOn() && !admin){ // 아무 말 없이 바로: 주민과 하던 이야기는 끊겨요
+  glitchCheck(); if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('눈앞이 하얘졌다가.... 정신을 차려 보니 밖이에요'); glitchBurst = performance.now(); if (darkOn()){ darkSwitchAt = performance.now(); if (!admin) glitchSound(1900, [{t:120, d:90}, {t:620, d:140}, {t:1150, d:70}, {t:1500, d:110}]); } if (darkOn() && !admin){ // 아무 말 없이 바로: 주민과 하던 이야기는 끊겨요
     if (dlg && dlg.n) dlgClose(); if (!$('talk').hidden && talkNpcOpen()) closeTalk(); const p = $('npcPanel'); if (p && !p.hidden && p.dataset.kind === 'npc') p.hidden = true; } } }
 const kstClock = () => new Date(Date.now() + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
 const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : z && z.startsWith('dark:') ? `${NPC[z.slice(5)]?.name || ''}의 방` : (ZONES[z]?.name || '집터');
