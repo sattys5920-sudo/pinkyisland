@@ -44,7 +44,7 @@ export const FORAGE = [
   {id:'g40', name:'불가사리', kind:'바닷가', draw:'starfish', col:'#ff9a5c', zone:'beach', wx:'', tm:'night', rare:2, price:55, uses:['선물','도감'], desc:'썰물 밤에 바위 위로 나와요.'},
   {id:'g41', name:'바다 유리', kind:'바닷가', draw:'seaglass', col:'#8fd6c8', zone:'beach', wx:'rain', tm:'', rare:3, price:150, uses:['선물','도감'], desc:'파도가 동글게 갈아 놓은 유리.'},
   {id:'g42', name:'산호 조각', kind:'바닷가', draw:'coral', col:'#ff7a88', zone:'seacave', wx:'', tm:'', rare:3, price:200, uses:['도감','판매'], desc:'동굴 물웅덩이에서.'},
-  {id:'g43', name:'진주 조개', kind:'바닷가', draw:'pearl', col:'#fff7f0', zone:'beach', wx:'sun', tm:'night', rare:4, w:30, price:600, uses:['선물','도감'], desc:'달빛 아래서만 입을 벌려요.'},
+  {id:'g43', name:'진주 조개', kind:'바닷가', draw:'pearl', col:'#fff7f0', zone:'beach', wx:'sun', tm:'night', rare:4, w:10, price:600, uses:['선물','도감'], desc:'달빛 아래서만 입을 벌려요.'},
   {id:'g44', name:'연못 조약돌', kind:'바닷가', draw:'pebble', col:'#b9b6c0', zone:'pond', wx:'', tm:'', rare:1, price:6, uses:['판매'], desc:'매끈매끈 손에 쏙.'},
   {id:'g45', name:'새 깃털', kind:'그 밖', draw:'feather', col:'#c9b8a6', zone:'forest', wx:'', tm:'day', rare:1, price:10, uses:['선물','판매'], desc:'바람에 떨어진 깃털.'},
   {id:'g46', name:'빨간 나뭇잎', kind:'그 밖', draw:'leaf', col:'#e5544f', zone:'museum', wx:'', tm:'', rare:1, price:5, uses:['선물'], desc:'책갈피로 딱이에요.'},

@@ -2537,6 +2537,7 @@ function catchFish(){
   const ratio = Math.pow(Math.random(), 1.5), size = Math.round((f.min + (f.max-f.min)*ratio)*10)/10;
   const st = ratio >= .85 ? 3 : ratio >= .5 ? 2 : 1, k = fishKey(id, st);
   setExpr(st===3 || f.weight < 10 ? 'sparkle' : 'happy', 2500); stat('fishCaught'); if (st===3) stat('fish3Star'); gainExp(3 + st*2); questEvent('catch', 'fish:'+k);
+  if ((zoneId === 'beach' || zoneId === 'seacave') && tmOk('night') && Math.random() < .05 && invRoom('forage:g43') > 0){ invAdd('forage:g43', 1); me.gdex = me.gdex || {}; me.gdex.g43 = (me.gdex.g43||0) + 1; setTimeout(()=>toast('낚싯줄에 진주 조개가 함께 걸려 왔어요!', 'forage:g43'), 1100); } // 밤바다 낚시: 가끔 진주 조개
   invAdd('fish:'+k, 1); if (Math.random() < tfx('fish2') && invRoom('fish:'+k) > 0){ invAdd('fish:'+k, 1); setTimeout(()=>toast('펭펭의 친구 · 한 마리 더 낚았어요!', 'fish:'+k), 900); } tmapDrop(); darkKeyDrop();
   me.dex = me.dex || {}; const dx = me.dex[id] || {n:0, best:0, st:0};
   const record = size > dx.best; me.dex[id] = {n:dx.n+1, best:Math.max(dx.best,size), st:Math.max(dx.st,st)};
