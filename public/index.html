@@ -1909,7 +1909,7 @@ function enterGame(doc){
   if (!solo){ net.cleanupClaims(me.roof, me.lot); net.sessionClaim(Math.random().toString(36).slice(2) + Date.now().toString(36)); }
   addLog(`${me.nick} 님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
   if (solo) addLog('혼자 보기 모드예요.', true);
-  syncStats(); checkAchievements();
+  syncStats(); checkAchievements(); friendBackfill(); // 예전에 ♥10 을 찍었는데 선물을 못 받은 사람은 여기서 받아요
   if (me.quest===0) setTimeout(()=>say('편지', '웰컴 팩이 도착했어요! 텃밭 2 칸과 토마토 씨앗 2 개가 들어 있어요.', [['열어 보기', ()=>{ me.inv.garden += 2; invAdd('seed:c01', 2); me.quest = 1; saveMe(); renderHud(); closeTalk(); toast('집 앞 빈자리를 눌러 텃밭을 놓아요'); }]], '', true), 400);
 }
 function renderHud(){
