@@ -5695,14 +5695,14 @@ function rsSettle(i, quiet){ const pl = rsPlot(i); if (!pl || pl.uid !== uid) re
 async function rsPlay(i){ const pl = rsPlot(i); if (!pl) return; const T = RS_TYPES[pl.type], own = pl.uid === uid;
   if (!rsFacN(pl)) return toast('아직 시설이 없어요');
   if (T.game === 'camp' && !isNight()) return toast('캠핑장은 밤에만 문을 열어요 (저녁 7 시 ~ 새벽 5 시)');
-  if (T.game === 'claw' && (me.rsCoin|0) < 3) return rsCoinShop(i);
+  if (T.game === 'claw' && !own && (me.rsCoin|0) < 3) return rsCoinShop(i); // 내 가게에선 코인 없이 공짜
   if (!own && pl.fee > me.inv.gold) return toast(`입장료 ${pl.fee} G 가 모자라요`);
   let opt = {};
   if (T.game === 'sauna'){ opt.room = await rsAsk('어느 방에 들어갈까요?', [['🔥 불가마 (최대 체력 +150)', 'hot1'], ['🧊 얼음방 (최대 기력 +80)', 'hot2'], ['🧂 소금방 (체력 +60 · 기력 +40)', 'hot3']]); if (!opt.room) return; }
   if (T.game === 'photo'){ const vis = me.photos || {}; opt.npc = await rsAsk('누구랑 찍을까요?', NPCS.map(n=>[`${vis[n.id] ? '✨ ' : ''}${n.name} (${n.animal})`, n.id])); if (!opt.npc) return; }
   if (!own){ if (pl.fee){ me.inv.gold -= pl.fee; renderHud(); } const r = (resortData.v[i] || {})[uid] || {n:0, paid:0}, wk = rsWeek(), wn = +((resortData.w[wk] || {})[i] || {})[uid] || 0;
     rsWrite({[`v/${i}/${uid}`]:{n:(+r.n||0) + 1, paid:(+r.paid||0) + (pl.fee|0)}, [`w/${wk}/${i}/${uid}`]:wn + 1}).catch(()=>{}); }
-  if (T.game === 'claw'){ me.rsCoin -= 3; }
+  if (T.game === 'claw' && !own){ me.rsCoin -= 3; }
   $('npcPanel').hidden = true; saveMe();
   const res = await rsGame(T.game, opt); stat('rsPlayed'); rsReward(T.game, res || {}, opt, i); }
 function rsAsk(q, opts){ return new Promise(res=>{ say('리조트', q, opts.map(([l, v])=>[l, ()=>{ closeTalk(); res(v); }]), '', false, true); const t = setInterval(()=>{ if ($('talk').hidden){ clearInterval(t); res(null); } }, 300); }); }
