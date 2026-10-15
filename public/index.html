@@ -6736,7 +6736,7 @@ function darkWake(npc){ net.darkTx(npc, cur => cur && cur.start && darkNow() <= 
 const TB_S = .62, TB_FEET = 190 * TB_S;
 const TB_P1 = {len:7, moves:[[.6,1.5,-150,-30,2],[2.2,3.55,150,-30,3],[4.2,5.1,0,40,2],[5.6,6.5,0,0,2]], stops:[.3,1.65,3.7,5.25]};
 const TB_P2 = {len:7, moves:[[.5,1.4,-130,-40,2],[2.1,3.45,130,-40,3],[4.6,5.5,0,0,2]], waves:[.2,2.6,5.0], fans:[1.0,3.6,6.0]};
-const TB_TURN = 1.8, TB_OPEN = 4.2, TB_DMG = {letter:65, ring:50, hand:150, touch:90}; // 토리: 피해 50 ~ 150
+const TB_TURN = 1.8, TB_OPEN = 4.2, TB_DMG = {letter:130, ring:100, hand:300, touch:180}; // 토리: 피해 100 ~ 300
 const tbLands = P => P.moves.flatMap(([t0, t1, , , n]) => Array.from({length:n}, (_, k) => t0 + (t1 - t0)*(k + 1)/n));
 const TB_L1 = tbLands(TB_P1), TB_L2 = tbLands(TB_P2);
 function tbMove(P, t, x0 = 0, y0 = 0){ let x = x0, y = y0;
@@ -6819,8 +6819,8 @@ function darkSwing(cx, cy, vx, vy, t){
   const dmg = swordAtk(); darkPending += dmg; darkHurtT = .2; bossFx('hit', 60); fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
   me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.start||0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
 }
-// 방 차례마다 보스 피해가 10 씩 세져요: 토리 50 ~ 150, 보리 60 ~ 160 … 콩이 160 ~ 260
-const darkAtkLo = npc => 50 + 10*Math.max(0, DARK_ORDER.indexOf(npc));
+// 방 차례마다 보스 피해가 20 씩 세져요: 토리 100 ~ 300, 보리 120 ~ 320 … 콩이 320 ~ 520
+const darkAtkLo = npc => 100 + 20*Math.max(0, DARK_ORDER.indexOf(npc));
 function darkHurt(n, t){ if (darkGuard > 0) return; n = ringDmg(n, true); /* 다크 보스도 보스예요: 반지의 '보스 피해 감소'가 적용돼요 */ if (!n) return; bossFx('hurt', 200); playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0) darkRespawn(); }
 // ===== 다크 보스전 음악 · 효과음 (주민마다 다른 테마곡 · 배경 음악을 끄면 같이 꺼져요) =====
 let bossRageKey = '', bossClearKey = '', bossSfxT = {};
@@ -6879,10 +6879,10 @@ function updateDark(dt, t){
   if (!darkBossUp(r)){ darkSlams = []; return; }
   if (darkDown){ darkSlams = []; return; }
   // 보스 공격: 가까이 있으면 할퀴기, 주기적으로 내 발밑에 내려찍기 (빨간 원이 커지면 피해요)
-  const [bx, by] = darkBossPos(r), rage = r.hp < r.max/2, lo = darkAtkLo(npc); // 피해 lo ~ lo+100: 할퀴기 lo (화나면 +30) · 내려찍기 lo+60 (화나면 lo+100)
+  const [bx, by] = darkBossPos(r), rage = r.hp < r.max/2, lo = darkAtkLo(npc); // 피해 lo ~ lo+200: 할퀴기 lo (화나면 +60) · 내려찍기 lo+120 (화나면 lo+200)
   darkTouchCd -= dt;
   if (npc === 'tori'){ if (Math.hypot(pos.x-bx, pos.y-by) < 100 && darkTouchCd <= 0 && $('npcPanel').hidden){ darkTouchCd = 1.1; pushPlayer(pos.x-bx, pos.y-by, 50); darkHurt(TB_DMG.touch, t); } toriAttack(dt, t, r); return; } // 토리???: 자기 패턴
-  if (Math.hypot(pos.x-bx, pos.y-by) < 80 && darkTouchCd <= 0 && $('npcPanel').hidden){ darkTouchCd = 1.1; pushPlayer(pos.x-bx, pos.y-by, 40); darkHurt(lo + (rage ? 30 : 0), t); }
+  if (Math.hypot(pos.x-bx, pos.y-by) < 80 && darkTouchCd <= 0 && $('npcPanel').hidden){ darkTouchCd = 1.1; pushPlayer(pos.x-bx, pos.y-by, 40); darkHurt(lo + (rage ? 60 : 0), t); }
   // 내려찍기: 보스 근처(480)에 있는 사람마다 발밑에. 서버 시각으로 차례를 정해서 같은 방 모두가 같은 경고를 봐요
   const gap = DARK_BOSS.slamGap*1000/(rage ? 1.6 : 1), now = darkNow();
   const ppl = [[uid, pos.x, pos.y], ...[...others.entries()].filter(([, o]) => o.z === zoneId && !o.down).map(([id, o]) => [id, o.x, o.y])];
@@ -6890,7 +6890,7 @@ function updateDark(dt, t){
     if (darkSlamSlot[id] === undefined || darkSlamSlot[id] > slot){ darkSlamSlot[id] = slot; continue; } if (slot === darkSlamSlot[id]) continue; darkSlamSlot[id] = slot;
     darkSlams.push({x, y, r:DARK_BOSS.slamR*(rage ? 1.15 : 1), at:t}); bossFx('warn', 250);
     if (rage){ let sd = ((h ^ (slot*2654435761)) >>> 0) % 2147483646 + 1; const rnd = () => (sd = (sd*16807) % 2147483647)/2147483647; for (let i = 0; i < 2; i++) darkSlams.push({x:x + (rnd()-.5)*260, y:y + (rnd()-.5)*160, r:DARK_BOSS.slamR, at:t + 200}); } }
-  darkSlams = darkSlams.filter(sl => { if (t - sl.at < DARK_BOSS.slamWarn*1000) return true; if (((pos.x-sl.x)/sl.r)**2 + ((pos.y-sl.y)/(sl.r*.6))**2 < 1) darkHurt(lo + (rage ? 100 : 60), t); fx.push({x:sl.x, y:sl.y-10, text:'쾅', t, color:'#ff2d55'}); bossFx('slam', 150); return false; });
+  darkSlams = darkSlams.filter(sl => { if (t - sl.at < DARK_BOSS.slamWarn*1000) return true; if (((pos.x-sl.x)/sl.r)**2 + ((pos.y-sl.y)/(sl.r*.6))**2 < 1) darkHurt(lo + (rage ? 200 : 120), t); fx.push({x:sl.x, y:sl.y-10, text:'쾅', t, color:'#ff2d55'}); bossFx('slam', 150); return false; });
 }
 // 보스를 쓰러뜨린 도전에서 한 번이라도 때렸으면 보상 (어디에 있든)
 function darkClaim(npc){
