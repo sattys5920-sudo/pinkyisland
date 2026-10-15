@@ -5520,7 +5520,7 @@ const RS_PLOTS = [[190,250],[360,250],[190,470],[360,470],[190,690],[360,690],[8
 const RS_SLOTS = [3, 4, 5, 6, 6];
 const RS_LV = [null, [50000, [['wood:w2', 30], ['ore:o01', 30]], '넓히기'], [150000, [['ore:o11', 10], ['ore:o21', 5], ['forage:g42', 10]], '2 층 올리기'], [400000, [['loot:m73', 10], ['loot:m72', 10]], '옆 땅까지 확장'], [1000000, [['loot:m78', 1]], '랜드마크']];
 const RS_FAC = [[20000, [['wood:w2', 10]]], [40000, [['wood:w2', 20], ['ore:o11', 5]]], [80000, [['wood:w2', 30], ['ore:o12', 5]]], [150000, [['wood:w3', 10], ['ore:o21', 5]]], [250000, [['wood:w3', 20], ['ore:o22', 3]]], [400000, [['wood:w3', 30], ['wood:w4', 2]]]];
-const RS_RATE = 200, RS_CAP = 12*3600000, RS_FEES = [0, 100, 200, 300, 500];
+const RS_HOUR = [2000, 3500, 5000, 6500, 8000], RS_CAP = 12*3600000, RS_FEES = [0, 100, 200, 300, 500];
 let resortData = {plots:{}, types:{}, owners:{}, v:{}, w:{}, show:{}, clap:{}}, rsBusy = false;
 const rsWeek = (ms = Date.now()) => Math.floor((ms + serverOffset + 9*3600000) / (7*86400000));
 function onResort(v){ setTimeout(()=>{ if (admin && admTab === 'island') renderAdmin(); }); v = v || {}; resortData = {plots:v.plots || {}, types:v.types || {}, owners:v.owners || {}, v:v.v || {}, w:v.w || {}, show:v.show || {}, clap:v.clap || {}};
@@ -5531,7 +5531,8 @@ const rsFacN = pl => { let n = 0; for (let k = 0; k < 6; k++) if ((pl.fac|0) & (
 const rsPopular = () => { const w = resortData.w[rsWeek() - 1] || {}; let best = null, bn = 0; for (const [i, u] of Object.entries(w)){ const n = Object.values(u||{}).reduce((a, x)=>a + (+x||0), 0); if (n > bn){ bn = n; best = +i; } } return best; };
 const rsMaintOk = () => (me.rsMaint|0) === today();
 function rsIncome(pl, i){ const hrs = Math.min(RS_CAP, Date.now() - (me.rsLast || Date.now())) / 3600000;
-  return Math.floor(RS_RATE * rsFacN(pl) * pl.lv * (rsMaintOk() ? 1 : .5) * (rsPopular() === i ? 2 : 1) * (pl.lv >= 5 ? 1.5 : 1) * hrs); }
+  const lv = Math.max(1, Math.min(5, pl.lv|0)); // 시설을 다 채우면 레벨별 시간당 RS_HOUR G · 덜 채우면 채운 만큼
+  return Math.floor(RS_HOUR[lv - 1] * Math.min(1, rsFacN(pl) / RS_SLOTS[lv - 1]) * (rsMaintOk() ? 1 : .5) * (rsPopular() === i ? 2 : 1) * hrs); }
 function rsFriendIncome(i){ const v = resortData.v[i] || {}, got = me.rsGot || {}; let s = 0; for (const [id, r] of Object.entries(v)) if (id !== uid) s += Math.max(0, (+r?.paid||0) - (+got[id]||0)); return s; }
 const costTxt = (g, mats) => [g ? `${g.toLocaleString()} G` : '', ...mats.map(([k, n])=>`${itemName(k)} ${n}`)].filter(Boolean).join(' · ');
 const costOk = (g, mats) => me.inv.gold >= g && mats.every(([k, n])=>invCount(k) >= n);
@@ -5652,7 +5653,7 @@ function rsPanel(i){
   h += `<p class="mnote" style="margin:8px 2px 2px"><b>시설 넣기</b> · 시설이 많을수록 손님이 늘어요</p>`;
   T.fac.forEach((f, k)=>{ const on = (pl.fac|0) & (1 << k), [g, mats] = RS_FAC[k], full = fn >= slots, ok = costOk(g, mats);
     h += `<div class="np" style="display:block"><span class="np-name">${on ? '✓ ' : ''}${f}</span> <small>${on ? '설치됨' : costTxt(g, mats)}</small>${on ? '' : ` <button class="mini" data-fac="${k}" ${full || !ok ? 'disabled' : ''}>${full ? '칸 없음' : ok ? '설치' : '재료 부족'}</button>`}</div>`; });
-  if (pl.lv < 5){ const [g, mats, nm] = RS_LV[pl.lv], ok = costOk(g, mats); h += `<div class="np" style="display:block;background:#fff7ec"><b>⬆️ Lv ${pl.lv + 1} · ${nm}</b> <small>${costTxt(g, mats)} → 시설 칸 ${RS_SLOTS[pl.lv]}${pl.lv + 1 === 5 ? ' · 황금 간판 · 관광객 ×1.5' : ''}</small><br><button class="mini" id="rsUp" ${ok ? '' : 'disabled'}>${ok ? '올리기' : '재료 부족'}</button></div>`; }
+  if (pl.lv < 5){ const [g, mats, nm] = RS_LV[pl.lv], ok = costOk(g, mats); h += `<div class="np" style="display:block;background:#fff7ec"><b>⬆️ Lv ${pl.lv + 1} · ${nm}</b> <small>${costTxt(g, mats)} → 시설 칸 ${RS_SLOTS[pl.lv]} · 관광객 시간당 최대 ${RS_HOUR[pl.lv].toLocaleString()} G${pl.lv + 1 === 5 ? ' · 황금 간판' : ''}</small><br><button class="mini" id="rsUp" ${ok ? '' : 'disabled'}>${ok ? '올리기' : '재료 부족'}</button></div>`; }
   h += `<div class="np" style="display:block"><small>친구 입장료</small> ${RS_FEES.map(f=>`<button class="mini ${pl.fee === f ? 'on' : ''}" data-fee="${f}">${f ? f + ' G' : '무료'}</button>`).join(' ')}</div>
     <div class="np" style="display:block"><small>가게 이름</small> <button class="mini" id="rsName">이름 바꾸기</button> <button class="mini" id="rsQuit" style="float:right">가게 내놓기</button></div>`;
   openPanel(`${T.ic} 내 가게 · ${esc(pl.name || T.name)}`, h); const P = $('npcPanel'); P.dataset.rs = i;
