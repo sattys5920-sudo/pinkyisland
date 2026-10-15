@@ -85,3 +85,4 @@ const FAC2 = [
 export function drawShop(d, type, cx, gy, name){ const c = d.ctx; c.save(); try { FAC2[type](d, cx, gy, name); } catch(e){ console.warn(e); } c.restore(); c.textBaseline = 'alphabetic'; }
 // 빈 터: 흙바닥 + 팻말
 export function drawLot(d, x, gy, n){ const c = d.ctx; d.rr(x-110, gy-120, 220, 120, 16, '#e7cfa8'); c.save(); c.setLineDash([10, 8]); c.strokeStyle = '#c9a47a'; c.lineWidth = 4; c.beginPath(); c.roundRect(x-110, gy-120, 220, 120, 16); c.stroke(); c.restore(); d.rr(x-4, gy-170, 8, 90, 4, '#9a6a45'); d.rr(x-66, gy-196, 132, 40, 10, '#fffaf2'); txt(c, `${n}번 빈 터`, x, gy-175, 20, '#9a6a45', 700, 'center'); for (const [a,b] of [[-70,-30],[60,-50],[-20,-70]]) d.ell(x+a, gy+b, 10, 5, '#d9b98a'); c.textBaseline = 'alphabetic'; }
+export { K2, txt };
