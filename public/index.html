@@ -6821,7 +6821,7 @@ function darkSwing(cx, cy, vx, vy, t){
 }
 // 방 차례마다 보스 피해가 10 씩 세져요: 토리 50 ~ 150, 보리 60 ~ 160 … 콩이 160 ~ 260
 const darkAtkLo = npc => 50 + 10*Math.max(0, DARK_ORDER.indexOf(npc));
-function darkHurt(n, t){ if (darkGuard > 0) return; n = ringDmg(n, false); if (!n) return; bossFx('hurt', 200); playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0) darkRespawn(); }
+function darkHurt(n, t){ if (darkGuard > 0) return; n = ringDmg(n, true); /* 다크 보스도 보스예요: 반지의 '보스 피해 감소'가 적용돼요 */ if (!n) return; bossFx('hurt', 200); playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0) darkRespawn(); }
 // ===== 다크 보스전 음악 · 효과음 (주민마다 다른 테마곡 · 배경 음악을 끄면 같이 꺼져요) =====
 let bossRageKey = '', bossClearKey = '', bossSfxT = {};
 const bossFx = (kind, gap = 120) => { if (!bgmOn() || !zoneId.startsWith('dark:')) return; const now = performance.now(); if (now - (bossSfxT[kind] || 0) < gap) return; bossSfxT[kind] = now; try { bossSnd.sfx(Z().dark, kind); } catch(e){} };
