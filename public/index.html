@@ -5649,7 +5649,7 @@ function rsPanel(i){
     if ($('rsPlay')) $('rsPlay').onclick = ()=>rsPlay(i); if ($('rsClap')) $('rsClap').onclick = ()=>rsClap(i); return; }
   // 주인
   const inc = rsIncome(pl, i), fri = rsFriendIncome(i);
-  h += `<div class="np" style="display:block"><b>💰 정산</b> <small>관광객 ${inc.toLocaleString()} G · 친구 입장료 ${fri.toLocaleString()} G${rsMaintOk() ? '' : ' · 오늘 정비를 안 해서 관광객 수입이 반이에요'}</small><br><button class="mini" id="rsSettle" ${inc + fri > 0 ? '' : 'disabled'}>정산 받기</button> <button class="mini" id="rsMaint" ${rsMaintOk() ? 'disabled' : ''}>${rsMaintOk() ? '오늘 정비 끝' : '🧹 오늘 정비하기'}</button> <button class="mini" id="rsSelf">🎟️ 내 가게에서 놀기</button></div>`;
+  h += `<div class="np" style="display:block"><b>💰 정산</b> <small id="rsInc">관광객 ${inc.toLocaleString()} G · 친구 입장료 ${fri.toLocaleString()} G${rsMaintOk() ? '' : ' · 오늘 정비를 안 해서 관광객 수입이 반이에요'}</small><br><button class="mini" id="rsSettle" ${inc + fri > 0 ? '' : 'disabled'}>정산 받기</button> <button class="mini" id="rsMaint" ${rsMaintOk() ? 'disabled' : ''}>${rsMaintOk() ? '오늘 정비 끝' : '🧹 오늘 정비하기'}</button> <button class="mini" id="rsSelf">🎟️ 내 가게에서 놀기</button></div>`;
   h += `<p class="mnote" style="margin:8px 2px 2px"><b>시설 넣기</b> · 시설이 많을수록 손님이 늘어요</p>`;
   T.fac.forEach((f, k)=>{ const on = (pl.fac|0) & (1 << k), [g, mats] = RS_FAC[k], full = fn >= slots, ok = costOk(g, mats);
     h += `<div class="np" style="display:block"><span class="np-name">${on ? '✓ ' : ''}${f}</span> <small>${on ? '설치됨' : costTxt(g, mats)}</small>${on ? '' : ` <button class="mini" data-fac="${k}" ${full || !ok ? 'disabled' : ''}>${full ? '칸 없음' : ok ? '설치' : '재료 부족'}</button>`}</div>`; });
@@ -5687,6 +5687,9 @@ async function rsInstall(i, k){ const pl = rsPlot(i); if (!pl || pl.uid !== uid 
   rsSettle(i, true); try { await rsWrite({[`plots/${i}/fac`]:(pl.fac|0) | (1 << k)}); } catch(e){ return; } costPay(g, mats); saveMe(); renderHud(); toast(`${RS_TYPES[pl.type].fac[k]}을(를) 설치했어요!`); }
 async function rsLevelUp(i){ const pl = rsPlot(i); if (!pl || pl.uid !== uid || pl.lv >= 5) return; const [g, mats] = RS_LV[pl.lv]; if (!costOk(g, mats)) return toast('재료가 모자라요');
   rsSettle(i, true); try { await rsWrite({[`plots/${i}/lv`]:pl.lv + 1}); } catch(e){ return; } costPay(g, mats); saveMe(); renderHud(); setExpr('sparkle', 2000); toast(`가게가 Lv ${pl.lv + 1} 이 됐어요!`); }
+// 정산 창을 열어 둔 동안 쌓이는 돈이 계속 늘어나 보이게
+setInterval(()=>{ const p = $('npcPanel'), el = $('rsInc'); if (!p || p.hidden || !el || p.dataset.rs == null || zoneId !== 'resort') return; const i = +p.dataset.rs, pl = rsPlot(i); if (!pl || pl.uid !== uid) return;
+  const inc = rsIncome(pl, i), fri = rsFriendIncome(i); el.textContent = `관광객 ${inc.toLocaleString()} G · 친구 입장료 ${fri.toLocaleString()} G${rsMaintOk() ? '' : ' · 오늘 정비를 안 해서 관광객 수입이 반이에요'}`; const b = $('rsSettle'); if (b) b.disabled = inc + fri <= 0; }, 2000);
 function rsSettle(i, quiet){ const pl = rsPlot(i); if (!pl || pl.uid !== uid) return; const inc = rsIncome(pl, i), fri = rsFriendIncome(i);
   me.rsLast = Date.now(); me.rsGot = me.rsGot || {}; for (const [id, r] of Object.entries(resortData.v[i] || {})) me.rsGot[id] = +r?.paid||0;
   rsWrite({[`plots/${i}/st`]:Date.now(), [`plots/${i}/earn`]:(+pl.earn||0) + inc + fri}).catch(()=>{});
