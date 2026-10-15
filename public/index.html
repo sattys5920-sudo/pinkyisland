@@ -2478,6 +2478,7 @@ function rollFish(){
 // 물을 누르면: 물가까지 걸어가서 던져요
 function fishTarget(w){
   if (!FISH_ZONES[zoneId] || !isWater(w.x, w.y)) return null;
+  if (zoneId === 'beach' && bridgeOpen() && Math.abs(w.x - bridgeX()) < 44 && w.y < 262) return null; // 다 이어진 다리 위를 누르면 낚시 대신 걸어가요
   if (!me.inv.rod) { toast('낚싯대가 없어요. 등대 해변의 펭펭에게 가 봐요'); return {x:pos.x, y:pos.y, act:null, mark:performance.now()}; }
   let sx = w.x, sy = w.y; const dx = pos.x - w.x, dy = pos.y - w.y, len = Math.hypot(dx,dy) || 1;
   for (let k=0; k<200 && (isWater(sx,sy) || blocked(sx,sy)); k++){ sx += dx/len*6; sy += dy/len*6; }
@@ -5474,7 +5475,7 @@ function drawBridge(c, t){
   c.restore();
 }
 function bridgeEntities(d, t){ if (zoneId !== 'beach') return []; return [{y:258, draw:()=>drawBridge(d.ctx, t), label:()=>{}}]; }
-function bridgeTap(w){ if (zoneId !== 'beach') return null; const x = bridgeX(); if ((Math.abs(w.x - x) < 44 && w.y < 262) || (Math.abs(w.x - (x + 96)) < 54 && w.y > 266 && w.y < 342)) return {x:x + 96, y:352, act:bridgePanel}; return null; }
+function bridgeTap(w){ if (zoneId !== 'beach') return null; const x = bridgeX(); if ((!bridgeOpen() && Math.abs(w.x - x) < 44 && w.y < 262) || (Math.abs(w.x - (x + 96)) < 54 && w.y > 266 && w.y < 342)) return {x:x + 96, y:352, act:bridgePanel}; return null; }
 // ===== 버프: 리조트 가게에서 놀면 2 시간 동안 붙어요 (같은 버프는 다시 하면 시간만 새로 채워져요) =====
 // me.buffs = {버프 id: 끝나는 시각}. 효과는 tfx() 에 더해져요 (칭호 · 펫 보너스와 같은 이름)
 const BUFF_MS = 2*3600000;
@@ -7433,7 +7434,8 @@ cv.addEventListener('pointerdown', e=>{
   if (fishTap()) return;
   if (darkDown) return toast(zoneId.startsWith('dark:') ? '쓰러져 있어요 · 다른 사람이 살려 줄 때까지 기다려요' : '기절해 있어요 · 친구가 깨워 줄 때까지 잠깐 쉬어요');
   const w = toWorld(e.clientX, e.clientY), t = hitTarget(w) || contentTarget(w) || fishTarget(w) || walkPetTap(w);
-  target = t ? t : {x:w.x, y:w.y, act:null, mark:performance.now()};
+  const onBridge_ = !t && zoneId === 'beach' && bridgeOpen() && Math.abs(w.x - bridgeX()) < 44 && w.y < 262; // 다리 위를 누르면 끝까지 건너가요 (맨 위는 화면 위 칸에 가려서)
+  target = t ? t : {x:onBridge_ ? bridgeX() : w.x, y:onBridge_ ? 10 : w.y, act:null, mark:performance.now()};
 });
 ['pointerdown','pointermove'].forEach(ev=>$('fgTrack').addEventListener(ev, e=>{ if (ev==='pointermove' && !e.buttons && e.pointerType!=='mouse') return; setZoneFromPointer(e); }));
 function interactNear(){
