@@ -7880,9 +7880,9 @@ let adminLetterData = {}, admPost = false, admDrafts = {}; // 주민·오투모�
 let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
 let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
 let reloadSeen; // 관리자 [전원 새로고침]: 처음 본 값에서 바뀌면 저장하고 새로고침해요
-// 밤 모드가 켜지면 탭 이름 · 아이콘도 글리치 버전으로 (관리자 화면은 그대로)
+// 밤 모드가 켜지면 탭 이름 · 아이콘도 글리치 버전으로 (관리자 화면도 똑같이)
 let brandNight = null;
-function nightBrand(){ const on = darkOn() && !admin; if (on === brandNight) return; brandNight = on;
+function nightBrand(){ const on = darkOn(); if (on === brandNight) return; brandNight = on;
   document.title = on ? 'ƃuɐlsıʎʞuıd¿' : 'pinkyisland';
   const set = (sel, href) => { const el = document.querySelector(sel); if (el) el.href = href; };
   set('link[rel="icon"][sizes="192x192"]', on ? 'icons/night-192.png' : 'icons/icon-192.png'); set('link[rel="icon"][sizes="48x48"]', on ? 'icons/night-48.png' : 'icons/favicon-48.png'); set('link[rel="apple-touch-icon"]', on ? 'icons/night-180.png' : 'icons/icon-180.png');
@@ -7890,7 +7890,7 @@ function nightBrand(){ const on = darkOn() && !admin; if (on === brandNight) ret
 function onWorld(w){ const was = darkOn(), nmSig = JSON.stringify([world.dark, world.darkNames]), wxSig = JSON.stringify(world.wx || null); world = w || {};
   if (me && wxSig !== JSON.stringify(world.wx || null)) setTimeout(()=>{ staticSig = ''; renderHud(); }, 0); // 관리자가 날씨를 바꾸면 바로
   if (me && !admin && nmSig !== JSON.stringify([world.dark, world.darkNames])){ setTimeout(()=>{ renderHud(); renderChatHist(); }, 0); } // 다크 모드 이름이 바뀌면 상단 · 채팅도 바로
-  nightBrand(); glitchCheck(); if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && me){ rebuildObstacles(); staticSig = ''; if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('눈앞이 하얘졌다가.... 정신을 차려 보니 밖이에요'); glitchBurst = performance.now(); if (darkOn()){ darkSwitchAt = performance.now(); if (!admin) glitchSound(1900, [{t:120, d:90}, {t:620, d:140}, {t:1150, d:70}, {t:1500, d:110}]); } if (darkOn() && !admin){ // 아무 말 없이 바로: 주민과 하던 이야기는 끊겨요
+  nightBrand(); glitchCheck(); if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && (me || admin)){ staticSig = ''; if (me){ rebuildObstacles(); if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('눈앞이 하얘졌다가.... 정신을 차려 보니 밖이에요'); } glitchBurst = performance.now(); if (darkOn()){ darkSwitchAt = performance.now(); glitchSound(1900, [{t:120, d:90}, {t:620, d:140}, {t:1150, d:70}, {t:1500, d:110}]); } if (darkOn() && !admin){ // 아무 말 없이 바로: 주민과 하던 이야기는 끊겨요
     if (dlg && dlg.n) dlgClose(); if (!$('talk').hidden && talkNpcOpen()) closeTalk(); const p = $('npcPanel'); if (p && !p.hidden && p.dataset.kind === 'npc') p.hidden = true; } } }
 const kstClock = () => new Date(Date.now() + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
 const zoneName = z => z && z.startsWith('house:') ? `${players[z.slice(6)]?.nick || '누군가'} 님 집` : z && z.startsWith('dark:') ? `${NPC[z.slice(5)]?.name || ''}의 방` : (ZONES[z]?.name || '집터');
