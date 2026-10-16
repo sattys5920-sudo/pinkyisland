@@ -7014,11 +7014,11 @@ function fwShapes(){ if (fwShape.otumo) return fwShape;
     x.fillStyle = '#3a3a5a'; x.beginPath(); x.roundRect(cx - 52, cy - 10, 104, 34, 17); x.fill();
     x.fillStyle = '#7fe8ff'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*17, cy + 7, 6, 8, 0, 0, 7); x.fill(); }
     x.fillStyle = '#ff9fc4'; for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s*34, cy + 36, 7, 4, 0, 0, 7); x.fill(); } }, 180, 150, 5);
-  fwShape.thanks = shapePts((x, w, h) => { const L1 = '다들', L2 = '즐거웠지?'; let fs = 62; do { x.font = `bold ${fs}px "Dongle", sans-serif`; } while (Math.max(x.measureText(L1).width, x.measureText(L2).width) > w - 30 && --fs > 20); x.textAlign = 'center'; x.textBaseline = 'middle';
+  fwShape.thanks = shapePts((x, w, h) => { const L1 = '다들', L2 = '즐거웠지?'; let fs = 62; do { x.font = `400 ${fs}px "Dongle", sans-serif`; } while (Math.max(x.measureText(L1).width, x.measureText(L2).width) > w - 30 && --fs > 20); x.textAlign = 'center'; x.textBaseline = 'middle';
     const gr = x.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ff7fb0'); gr.addColorStop(.5, '#ffe07a'); gr.addColorStop(1, '#9fd8ff'); x.fillStyle = gr; x.fillText(L1, w/2, h*.3); x.fillText(L2, w/2, h*.74); }, 400, 130, 3);
   return fwShape; }
-function shapeBurst(x, y, pts, scale){ skyP.flashes.push({x, y, t:0, col:'#ffffff', r:150}); skyP.glow.push({t:0, col:'#ffe07a'});
-  for (const [px, py, col] of pts) skyP.shapes.push({sx:x, sy:y, tx:x + px*scale, ty:y + py*scale, col, t:0, hold:2.4 + Math.random()*.4, vy:0});
+function shapeBurst(x, y, pts, scale, fine){ skyP.flashes.push({x, y, t:0, col:'#ffffff', r:150}); skyP.glow.push({t:0, col:'#ffe07a'});
+  for (const [px, py, col] of pts) skyP.shapes.push({sx:x, sy:y, tx:x + px*scale, ty:y + py*scale, col, t:0, hold:2.4 + Math.random()*.4, vy:0, r:fine ? 1.5 : 2.4, gr:fine ? 3 : 5.5});
   for (let i = 0; i < 60; i++){ const a = Math.random()*6.283, sp = rnd(80, 200); spark(x, y, Math.cos(a)*sp, Math.sin(a)*sp, {col:'#fff6c8', life:.8, drag:.96, grav:40, w:2}); } }
 function fwLaunch(kind, ty, x){ const keys = Object.keys(FW_PAL), k = kind || FW_KINDS[fwI % FW_KINDS.length], pal = FW_PAL[keys[fwI % keys.length]]; fwI++;
   skyP.rockets.push({x: x ?? rnd(skyW*.15, skyW*.85), y:skyH*.82, ty: ty ?? rnd(Math.max(skyH*.16, 170), skyH*.4), vx: x == null ? rnd(-20, 20) : 0, kind:k, pal, trail:[]}); }
@@ -7047,12 +7047,12 @@ function skyFrame(now){
   for (let i = P.rockets.length - 1; i >= 0; i--){ const r = P.rockets[i]; r.trail.push([r.x, r.y]); if (r.trail.length > 14) r.trail.shift(); r.y -= 560*dt; r.x += r.vx*dt + Math.sin(now/40 + i)*.6;
     for (let k = 0; k < r.trail.length; k++){ const [tx, ty] = r.trail[k]; g.globalAlpha = k / r.trail.length * .7; g.fillStyle = '#ffd9a0'; g.beginPath(); g.arc(tx + rnd(-1, 1), ty, 1.6, 0, 7); g.fill(); }
     g.globalAlpha = 1; g.fillStyle = '#fff'; g.beginPath(); g.arc(r.x, r.y, 2.6, 0, 7); g.fill();
-    if (r.y <= r.ty){ const S = fwShapes(); if (r.kind === 'otumo') shapeBurst(r.x, r.y, S.otumo, Math.min(1.4, skyW/390)); else if (r.kind === 'thanks') shapeBurst(r.x, r.y, S.thanks, Math.min(2.2, skyW*.95/400)); else fwBurst(r.x, r.y, r.kind, r.pal); P.rockets.splice(i, 1); } }
+    if (r.y <= r.ty){ const S = fwShapes(); if (r.kind === 'otumo') shapeBurst(r.x, r.y, S.otumo, Math.min(1.4, skyW/390)); else if (r.kind === 'thanks') shapeBurst(r.x, r.y, S.thanks, Math.min(2.2, skyW*.95/400), true); else fwBurst(r.x, r.y, r.kind, r.pal); P.rockets.splice(i, 1); } }
   for (let i = P.shapes.length - 1; i >= 0; i--){ const p = P.shapes[i]; p.t += dt; let x, y, al = 1;
     if (p.t < .55){ const k = 1 - (1 - p.t/.55)**3; x = p.sx + (p.tx - p.sx)*k; y = p.sy + (p.ty - p.sy)*k; }
     else if (p.t < p.hold){ x = p.tx + Math.sin(now/300 + p.tx)*.6; y = p.ty + (p.t - .55)*3; al = Math.random() < .08 ? .4 : 1; }
     else { p.vy += 70*dt; p.ty += p.vy*dt; x = p.tx; y = p.ty + (p.t - .55)*3; al = Math.max(0, 1 - (p.t - p.hold)/1.1); if (al <= 0){ P.shapes.splice(i, 1); continue; } }
-    g.globalAlpha = al; g.fillStyle = p.col; g.beginPath(); g.arc(x, y, 2.4, 0, 7); g.fill(); g.globalAlpha = al*.3; g.beginPath(); g.arc(x, y, 5.5, 0, 7); g.fill(); }
+    g.globalAlpha = al; g.fillStyle = p.col; g.beginPath(); g.arc(x, y, p.r, 0, 7); g.fill(); g.globalAlpha = al*.3; g.beginPath(); g.arc(x, y, p.gr, 0, 7); g.fill(); }
   g.globalAlpha = 1;
   for (let i = P.flashes.length - 1; i >= 0; i--){ const f = P.flashes[i]; f.t += dt; if (f.t > .45){ P.flashes.splice(i, 1); continue; } const gr = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r); gr.addColorStop(0, f.col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = .5*(1 - f.t/.45); g.fillStyle = gr; g.fillRect(f.x - f.r, f.y - f.r, f.r*2, f.r*2); }
   for (let i = P.glow.length - 1; i >= 0; i--){ const f = P.glow[i]; f.t += dt; if (f.t > 1.4){ P.glow.splice(i, 1); continue; } g.globalAlpha = .07*(1 - f.t/1.4); g.fillStyle = f.col; g.fillRect(0, 0, skyW, skyH*.7); }
