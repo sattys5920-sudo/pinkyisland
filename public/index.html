@@ -6064,7 +6064,7 @@ function standActs(n){ const a = [];
   if (n.id==='tori') a.push([`우체국 편지함${unreadLetters() ? ' ('+unreadLetters()+')' : ''}`, ()=>postPanel()]);
   if (n.id==='bori') a.push(['공방 (텃밭·가구)', workshopPanel], ...(RING_OPEN ? [['반지 공방', ringPanel]] : []), ['집 늘리기·인테리어', housePanel]);
   if (n.id==='mongsil') a.push(['옷가게 · 갈아입기', clothesPanel], ['우산 가게', umbPanel]);
-  if (n.id==='kongi' && me.inv.sword) a.push(['경비대 무기고', weaponPanel]);
+  if (n.id==='kongi' && me?.inv?.sword) a.push(['경비대 무기고', weaponPanel]); // 관리자 CCTV 는 me 가 없어요
   if (n.id==='olly') a.push(['박물관 기증', museumPanel]);
   if (n.id==='bami') a.push(['꽃 씨앗 사기', seedShop]);
   if (n.id==='toto') a.push(['오늘의 시세', pricePanel]);
