@@ -481,6 +481,7 @@ body.dlg-on #goal,body.admin #goal{visibility:hidden}
 .adm-msg{display:flex;gap:8px;align-items:baseline;line-height:1.15}.adm-msg small{opacity:.6;font-variant-numeric:tabular-nums;font-size:16px}.adm-msg b{color:#ff9fc4;font-weight:400;white-space:nowrap}.adm-msg i{font-style:normal;font-size:15px;opacity:.55;white-space:nowrap}.adm-msg span{word-break:break-all}
 .adm-wipe{width:min(560px,calc(100% - 20px));gap:8px}.adm-wipe p{margin:0;line-height:1.2}.adm-wipe p small{font-size:17px;opacity:.75}
 .adm-chk{display:flex;gap:8px;align-items:center}.adm-chk input{width:20px;height:20px}
+.adm-mph{width:36px;height:36px;flex:none;border-radius:8px;object-fit:cover;background:rgba(255,255,255,.08)}i.adm-mph{display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;color:#ff9ab4;border:1px dashed rgba(255,154,180,.6)}
 .adm-qchips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:6px 2px}.adm-qchips span{cursor:pointer;min-width:30px;text-align:center;padding:3px 8px;border-radius:10px;background:rgba(255,255,255,.08);color:#c9b8c9;font-size:13px}.adm-qchips span.on{background:rgba(120,220,160,.28);color:#d8ffe6;font-weight:700}.adm-qchips small{opacity:.7;margin-left:4px}
 .adm-qi{display:flex;flex-direction:column;gap:6px;background:rgba(255,255,255,.06);border-radius:12px;padding:10px 12px;margin:4px 0}.adm-qi.done{background:rgba(120,220,160,.08)}.adm-qi label{display:flex;flex-direction:column;gap:2px;font-size:15px;opacity:.95}.adm-qi label small{opacity:.7}.adm-qi input,.adm-qi textarea{font:inherit;font-size:17px;border:0;border-radius:10px;padding:6px 10px;background:#fff8fb;color:#2b2128;resize:vertical}.adm-qed select{font:inherit;font-size:16px;border-radius:8px;padding:2px 6px}
 .adm-wrow{display:flex;gap:8px}.adm-letter textarea{flex:1;min-width:0;min-height:150px;font:inherit;font-size:17px;line-height:1.5;border:0;border-radius:10px;padding:8px 10px;resize:vertical;background:#fff8fb;color:#2b2128}.adm-letter .adm-lhead[data-lt]{cursor:pointer}.adm-letter.fold{gap:0}.adm-lprev{margin:2px 0 0;opacity:.75;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}#admWipeTxt{flex:1;min-width:0;font:inherit;border:0;border-radius:10px;padding:2px 10px}.adm-btn:disabled{opacity:.4;cursor:default}
@@ -7984,7 +7985,7 @@ function renderAdmin(){
   for (const [k, y, x] of kept){ const [c, i] = k.split('#'), e = k ? box.getElementsByClassName(c)[+i] : box; if (e){ e.scrollTop = y; e.scrollLeft = x; } }
   if (window.scrollY !== pageY) window.scrollTo(0, pageY);
   const npl = box.querySelector('.adm-post-list'); if (npl) npl.scrollTop = postScroll;
-  if (admQ !== null) darkImgFill(box);
+  if (admQ !== null || admTab === 'dark') darkImgFill(box);
   if (typingRk){ const ta = box.querySelector(`[data-rk="${typingRk}"]`); if (ta){ ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch(e){} } } // 다시 그려도 쓰던 칸·커서 그대로
   const wt = box.querySelector('#admWipeTxt'); if (wt && wasTyping){ wt.focus(); wt.setSelectionRange(wt.value.length, wt.value.length); }
   const sc = box.querySelector('.adm-tbl-scroll'); if (sc){ sc.scrollTop = admScroll[0]; sc.scrollLeft = admScroll[1]; sc.onscroll = ()=>{ admScroll = [sc.scrollTop, sc.scrollLeft]; }; }
@@ -8003,8 +8004,8 @@ const darkNames = () => darkOn() ? (world.darkNames || {}) : {};
 const realNick = (id, nick) => (id && darkNames()[id]) || nick;
 let admDn = {};
 function adminDarkNameSec(regs){
-  const ppl = regs.filter(([,p])=>p && !p.adm), set = world.darkNames || {}, done = ppl.filter(([id])=>set[id]).length;
-  return `<div class="adm-sec"><b>다크 모드 이름 ${done}/${ppl.length}</b><small>다크 모드가 켜지면 닉네임 대신 이 이름이 머리 위 · 채팅 · 상단에 보여요. 비우면 닉네임 그대로</small>${ppl.map(([id,p])=>`<label class="adm-wrow"><small style="min-width:70px">${esc(String(p.nick||'').slice(0,8))}</small><input data-dn="${esc(id)}" maxlength="12" placeholder="사람 이름" value="${esc(admDn[id] ?? set[id] ?? '')}" autocomplete="off"><label class="adm-btn" style="cursor:pointer">${missPhotoAt(id) ? '사진 ✓' : '사진'}<input type="file" accept="image/*" data-mph="${esc(id)}" hidden></label></label>`).join('')}<small>사진은 실종 전단에 들어가요 (마을 광장 게시판)</small></div>`;
+  const ppl = regs.filter(([,p])=>p && !p.adm), set = world.darkNames || {}, done = ppl.filter(([id])=>set[id]).length, phN = ppl.filter(([id])=>missPhotoAt(id)).length;
+  return `<div class="adm-sec"><b>다크 모드 이름 ${done}/${ppl.length} · 사진 ${phN}/${ppl.length}</b><small>다크 모드가 켜지면 닉네임 대신 이 이름이 머리 위 · 채팅 · 상단에 보여요. 비우면 닉네임 그대로</small>${ppl.map(([id,p])=>`<label class="adm-wrow"><small style="min-width:70px">${esc(String(p.nick||'').slice(0,8))}</small><input data-dn="${esc(id)}" maxlength="12" placeholder="사람 이름" value="${esc(admDn[id] ?? set[id] ?? '')}" autocomplete="off">${missPhotoAt(id) ? `<img class="adm-mph" data-dkimg="missing|${esc(id)}|${missPhotoAt(id)}" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">` : '<i class="adm-mph none">없음</i>'}<label class="adm-btn" style="cursor:pointer">${missPhotoAt(id) ? '사진 바꾸기' : '사진 넣기'}<input type="file" accept="image/*" data-mph="${esc(id)}" hidden></label></label>`).join('')}<small>사진은 실종 전단에 들어가요 (마을 광장 게시판)</small></div>`;
 }
 const darkTgt = npc => { const u = world.darkTgt?.[npc]; return u && players[u] ? {uid:u, nick:String(players[u].nick||'').slice(0,8)} : null; };
 function adminDarkTgtSec(regs){
