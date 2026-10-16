@@ -7018,7 +7018,7 @@ function fwShapes(){ if (fwShape.otumo) return fwShape;
     const gr = x.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ff7fb0'); gr.addColorStop(.5, '#ffe07a'); gr.addColorStop(1, '#9fd8ff'); x.fillStyle = gr; x.fillText(L1, w/2, h*.3); x.fillText(L2, w/2, h*.74); }, 400, 130, 3);
   return fwShape; }
 function shapeBurst(x, y, pts, scale, fine){ skyP.flashes.push({x, y, t:0, col:'#ffffff', r:150}); skyP.glow.push({t:0, col:'#ffe07a'});
-  for (const [px, py, col] of pts) skyP.shapes.push({sx:x, sy:y, tx:x + px*scale, ty:y + py*scale, col, t:0, hold:2.4 + Math.random()*.4, vy:0, r:fine ? 1.5 : 2.4, gr:fine ? 3 : 5.5});
+  for (const [px, py, col] of pts) skyP.shapes.push({sx:x, sy:y, tx:x + px*scale, ty:y + py*scale, col, t:0, hold:2.4 + Math.random()*.4, vy:0, r:fine ? 2 : 2.4, gr:fine ? 4 : 5.5});
   for (let i = 0; i < 60; i++){ const a = Math.random()*6.283, sp = rnd(80, 200); spark(x, y, Math.cos(a)*sp, Math.sin(a)*sp, {col:'#fff6c8', life:.8, drag:.96, grav:40, w:2}); } }
 function fwLaunch(kind, ty, x){ const keys = Object.keys(FW_PAL), k = kind || FW_KINDS[fwI % FW_KINDS.length], pal = FW_PAL[keys[fwI % keys.length]]; fwI++;
   skyP.rockets.push({x: x ?? rnd(skyW*.15, skyW*.85), y:skyH*.82, ty: ty ?? rnd(Math.max(skyH*.16, 170), skyH*.4), vx: x == null ? rnd(-20, 20) : 0, kind:k, pal, trail:[]}); }
