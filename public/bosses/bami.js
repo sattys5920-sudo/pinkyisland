@@ -90,7 +90,7 @@ function backFloor(B, c, cur){ const [fx, fy] = posAt(B, B.now), f = faceOf(B, c
 // ===== ② 덩굴 번짐 =====
 const VSPD = 70;
 function vinesOf(B, cur){ return keep('v' + cur.seed, () => { const rn = B.rng(cur.seed + 'v'), n = Math.max(1, B.all.length);
-    const roots = [[60, 520], [1040, 520], [550, 890], [160, 880], [940, 880], [60, 330], [1040, 330]];
+    const W = B.W || 1100, Hh = B.H || 900, roots = [[60, B.hy - 40], [W - 60, B.hy - 40], [B.hx, Hh - 10], [160, Hh - 20], [W - 160, Hh - 20], [60, B.hy - 230], [W - 60, B.hy - 230]];
     for (let i = roots.length - 1; i > 1; i--){ const j = 2 + Math.floor(rn()*(i - 1)); [roots[i], roots[j]] = [roots[j], roots[i]]; }
     const n1 = 2 + (n >= 3 ? 1 : 0), n2 = Math.min(4, 1 + Math.ceil(n/2)), out = []; let ri = 0;
     const mk = (root, t0) => { const [x0, y0] = root, x1 = B.hx + (x0 - B.hx)*.1, y1 = B.hy + 8, pts = [[x0, y0]], m = 8, sg = rn() < .5 ? 1 : -1;
@@ -128,7 +128,7 @@ function vineDraw(B, c, cur, under){ const vs = vinesOf(B, cur), al = cl((cur.le
 // ===== ③ 어지럼 꽃가루 =====
 function dizzyOf(B, cur){ return keep('d' + cur.seed, () => { const rn = B.rng(cur.seed + 'd'), th = [];
     for (let i = 0; i < 7; i++){ for (let k = 0; k < 20; k++){ const a = rn()*TAU, r = 190 + rn()*230, x = B.hx + Math.cos(a)*r, y = B.hy + 40 + Math.sin(a)*r*.6;
-        if (x < 110 || x > 990 || y < 290 || y > 800) continue; if (th.some(q => Math.hypot(q[0] - x, q[1] - y) < 110)) continue; th.push([x, y, .5 + i*.25]); break; } }
+        if (x < 110 || x > (B.W || 1100) - 110 || y < B.hy - 270 || y > (B.H || 900) - 100) continue; if (th.some(q => Math.hypot(q[0] - x, q[1] - y) < 110)) continue; th.push([x, y, .5 + i*.25]); break; } }
     return {sg:rn() < .5 ? 1 : -1, th}; }); }
 const SPROUT = [1.8, 4.2, 6.6, 9.0];
 function sprouts(B, cur){ const out = []; SPROUT.forEach((t0, j) => { if (cur.t < t0 - .9) return; const al = B.alive.length ? B.alive : B.all; if (!al.length) return;
@@ -147,8 +147,8 @@ function dizzyDraw(B, c, cur, under){ const D = dizzyOf(B, cur), a = cl((cur.t -
   if (under){ D.th.forEach(([x, y, t0]) => thornPatch(c, x, y, ease((cur.t - t0)/.4), a));
     for (const s of sprouts(B, cur)){ if (cur.t < s.t0) warnCircle(c, s.x, s.y, 44, 22, cl((cur.t - s.t0 + .9)/.9), '255,120,180'); else thornPatch(c, s.x, s.y, ease((cur.t - s.t0)/.15), a); }
     return; }
-  c.save(); c.globalAlpha = a*.5; const im = pollen(); for (let i = 0; i < 12; i++){ const x = (i*211 + t*24) % 1300 - 100, y = 300 + (i*83) % 560; c.drawImage(im, x - 130, y - 110, 260, 220); }
-  c.globalAlpha = a; c.fillStyle = 'rgba(255,230,120,.75)'; for (let i = 0; i < 36; i++){ const x = (i*137 + t*40) % 1100, y = 290 + ((i*61 + t*20) % 560); c.fillRect(x, y, 3, 3); }
+  c.save(); c.globalAlpha = a*.5; const im = pollen(); for (let i = 0; i < 12; i++){ const x = (i*211 + t*24) % ((B.W || 1100) + 200) - 100, y = B.hy - 260 + (i*83) % 560; c.drawImage(im, x - 130, y - 110, 260, 220); }
+  c.globalAlpha = a; c.fillStyle = 'rgba(255,230,120,.75)'; for (let i = 0; i < 36; i++){ const x = (i*137 + t*40) % (B.W || 1100), y = B.hy - 270 + ((i*61 + t*20) % 560); c.fillRect(x, y, 3, 3); }
   // 머리 위 어지럼 소용돌이 (모두)
   c.strokeStyle = 'rgba(255,200,230,.85)'; c.lineWidth = 2; for (const p of B.alive){ c.beginPath(); for (let i = 0; i < 22; i++){ const an = i*.45 + t*6*D.sg, r2 = 2 + i*.5, px = p.x + Math.cos(an)*r2, py = p.y - 92 + Math.sin(an)*r2*.5; i ? c.lineTo(px, py) : c.moveTo(px, py); } c.stroke(); }
   c.restore(); }
@@ -275,7 +275,7 @@ function witherSwing(B, cur, cx, cy){ const sd = seedsOf(B, cur);
 function witherFloor(B, c, cur){ const sd = seedsOf(B, cur), t = B.now/1000, al = cl(cur.t*2)*cl((cur.len - cur.t)*2), ps = pulses(cur);
   // 독 예고: 바닥 전체가 보랏빛으로 차올라요 (꽃 둘레만 비어요)
   for (const pt of ps){ const k = cur.t - (pt - PWARN); if (k < 0 || k > PWARN + .7) continue; const warn = k < PWARN, a = warn ? .1 + .25*k/PWARN + .06*Math.sin(t*14) : .5*(1 - (k - PWARN)/.7);
-    c.save(); c.globalAlpha = a*al; c.beginPath(); c.rect(0, 250, 1100, 650); for (let i = 0; i < sd.length; i++){ if (!bloomOn(B, cur, i, B.now + (warn ? (PWARN - k)*1000 : 0))) continue; c.moveTo(sd[i][0] + BR, sd[i][1]); c.ellipse(sd[i][0], sd[i][1], BR, BR*.6, 0, 0, TAU); }
+    c.save(); c.globalAlpha = a*al; c.beginPath(); c.rect(0, B.hy - 310, B.W || 1100, (B.H || 900) - B.hy + 310); for (let i = 0; i < sd.length; i++){ if (!bloomOn(B, cur, i, B.now + (warn ? (PWARN - k)*1000 : 0))) continue; c.moveTo(sd[i][0] + BR, sd[i][1]); c.ellipse(sd[i][0], sd[i][1], BR, BR*.6, 0, 0, TAU); }
     c.fillStyle = warn ? '#6a2a9a' : '#9a3ad0'; c.fill('evenodd'); c.restore(); }
   sd.forEach(([x, y], i) => { const b = bloomAt(B, cur, i); c.save(); c.globalAlpha = al;
     if (!b || B.now > b + BLOOM_D + 400){ c.fillStyle = '#8a6a3a'; c.beginPath(); c.ellipse(x, y, 11, 6, 0, 0, 7); c.fill(); const gl = .5 + .5*Math.sin(t*6 + i); c.fillStyle = `rgba(255,240,140,${gl})`; c.beginPath(); c.arc(x, y - 5, 5, 0, 7); c.fill();
@@ -309,10 +309,10 @@ function footVines(B, c, front, fx, fy, vx, vy){ const mk = moveK(vx, vy); if (m
 
 // ===== 50% 변신: 꽃들이 한꺼번에 시들고 꽃잎이 눈처럼 흩날리다 재로 · 가족 액자에서 초록 독이 번져 흘러요 =====
 let FX = null;
-function fxData(){ if (FX) return FX; let s = 977; const R = () => (s = (s*16807) % 2147483647)/2147483647;
-  const ROOMF = []; for (let i = 0; i < 56; i++){ const x = 90 + R()*920, y = 280 + Math.pow(R(), .8)*560; ROOMF.push({x, y, r:9 + R()*9, side:R() < .5 ? -1 : 1, col:['#f08ab0', '#c8a0e8', '#f4d050', '#ff9ab8', '#e8a0c8'][i % 5], d:Math.hypot(x - 550, y - 560)/2200, pet:[0, 1, 2].map(j => ({td:.2 + j*.2 + R()*.25, ph:R()*6.28, wind:(R() - .3)*30, fall:110 + R()*80, rot:R()*6}))}); }
+function fxData(B){ if (FX) return FX; const W = B.W || 1100, Hh = B.H || 900, X0 = B.hx, Y0 = B.hy; let s = 977; const R = () => (s = (s*16807) % 2147483647)/2147483647;
+  const ROOMF = []; for (let i = 0; i < 56; i++){ const x = 90 + R()*(W - 180), y = Y0 - 280 + Math.pow(R(), .8)*(Hh - Y0 + 220); ROOMF.push({x, y, r:9 + R()*9, side:R() < .5 ? -1 : 1, col:['#f08ab0', '#c8a0e8', '#f4d050', '#ff9ab8', '#e8a0c8'][i % 5], d:Math.hypot(x - X0, y - Y0)/2200, pet:[0, 1, 2].map(j => ({td:.2 + j*.2 + R()*.25, ph:R()*6.28, wind:(R() - .3)*30, fall:110 + R()*80, rot:R()*6}))}); }
   const ASH = []; for (const f of ROOMF) for (const p of f.pet.slice(0, 2)) ASH.push({x:f.x + f.side*f.r*1.4 + p.wind*2.3 + Math.sin(2.3*2.8 + p.ph)*26*1.5, y:f.y - f.r*1.2 + p.fall*(2.3*.7 + 2.3*2.3*.12)/1.2 + 6, t0:1.4 + f.d + p.td + 2.0, r:3 + R()*5, rot:R()*3});
-  for (let i = 0; i < 30; i++) ASH.push({x:120 + R()*860, y:300 + R()*520, t0:3.2 + R()*.8, r:4 + R()*7, rot:R()*3});
+  for (let i = 0; i < 30; i++) ASH.push({x:120 + R()*(W - 240), y:Y0 - 260 + R()*520, t0:3.2 + R()*.8, r:4 + R()*7, rot:R()*3});
   const SNOW = []; for (let i = 0; i < 70; i++) SNOW.push({x:R(), t0:1.6 + R()*1.6, sp:.14 + R()*.14, ph:R()*6.28, r:1.5 + R()*2.5});
   const DRIPS = []; for (let i = 0; i < 7; i++) DRIPS.push({x:-60 + i*20 + R()*8, ds:.35 + R()*1.0, v:90 + R()*100, maxL:70 + R()*170, w:3 + R()*3, keep:i % 3 === 1, ph:R()*6});
   const VEINS = []; for (let i = 0; i < 12; i++){ const e = i % 4, sx = R(); let x = e === 0 ? 0 : e === 1 ? 1 : sx, y = e < 2 ? .25 + sx*.75 : e === 2 ? 1 : .05; const pts = [[x, y]], tx = .5 + (R() - .5)*.3, ty = .6 + (R() - .5)*.2;
@@ -320,33 +320,33 @@ function fxData(){ if (FX) return FX; let s = 977; const R = () => (s = (s*16807
   return FX = {ROOMF, ASH, SNOW, DRIPS, VEINS}; }
 const bell = (x, a, p, b) => x <= a || x >= b ? 0 : x < p ? ease((x - a)/(p - a)) : ease((b - x)/(b - p));
 const petalAt = (f, P, k) => [f.x + f.side*f.r*1.4 + Math.sin(k*2.8 + P.ph)*26*Math.sqrt(k) + P.wind*k, f.y - f.r*1.2 + P.fall*(k*.7 + k*k*.12)/1.2];
-const PX = 236, PY = 196, PS = .56;   // 가족 액자 (벽)
+const PS = .56; let PX = 236, PY = 196;   // 가족 액자 (벽)
 let ashCv = null;
-function ashLayer(){ if (ashCv) return ashCv; ashCv = document.createElement('canvas'); ashCv.width = 1100; ashCv.height = 900; const g = ashCv.getContext('2d');
-  for (const a of fxData().ASH){ g.globalAlpha = .3; g.fillStyle = '#6a6466'; g.beginPath(); g.ellipse(a.x, a.y, a.r*1.4, a.r*.5, a.rot*.2, 0, 7); g.fill(); g.fillStyle = '#8a8486'; g.beginPath(); g.ellipse(a.x + a.r*.6, a.y - 1, a.r*.6, a.r*.3, 0, 0, 7); g.fill(); } return ashCv; }
-function transFloor(B, c){ const hk = B.ph2; if (hk < 0) return; const D = fxData();
-  if (hk > 6.5) c.drawImage(ashLayer(), 0, 0); else for (const a of D.ASH){ const k = hk - a.t0; if (k < 0) continue; c.save(); c.globalAlpha = cl(k/.6)*.3; c.fillStyle = '#6a6466'; c.beginPath(); c.ellipse(a.x, a.y, a.r*1.4, a.r*.5, a.rot*.2, 0, 7); c.fill(); c.restore(); }
+function ashLayer(B){ if (ashCv) return ashCv; ashCv = document.createElement('canvas'); ashCv.width = B.W || 1100; ashCv.height = B.H || 900; const g = ashCv.getContext('2d');
+  for (const a of fxData(B).ASH){ g.globalAlpha = .3; g.fillStyle = '#6a6466'; g.beginPath(); g.ellipse(a.x, a.y, a.r*1.4, a.r*.5, a.rot*.2, 0, 7); g.fill(); g.fillStyle = '#8a8486'; g.beginPath(); g.ellipse(a.x + a.r*.6, a.y - 1, a.r*.6, a.r*.3, 0, 0, 7); g.fill(); } return ashCv; }
+function transFloor(B, c){ const hk = B.ph2; if (hk < 0) return; const D = fxData(B);
+  if (hk > 6.5) c.drawImage(ashLayer(B), 0, 0); else for (const a of D.ASH){ const k = hk - a.t0; if (k < 0) continue; c.save(); c.globalAlpha = cl(k/.6)*.3; c.fillStyle = '#6a6466'; c.beginPath(); c.ellipse(a.x, a.y, a.r*1.4, a.r*.5, a.rot*.2, 0, 7); c.fill(); c.restore(); }
   if (hk < 4) for (const f of D.ROOMF){ const k = hk - f.d, grow = ease(k/.4), wilt = ease((k - .85)/.9), al = cl((3.6 - k)/.8); let left = 5; for (const P of f.pet) if (k > 1.4 + P.td) left--; wiltFlower(c, f.x, f.y, f.r, f.col, grow, wilt, al, f.side, Math.max(1, left)); } }
 let portCv = null;
-function portraitDraw(B, c){ if (!portCv){ portCv = document.createElement('canvas'); portCv.width = 260; portCv.height = 160; const g = portCv.getContext('2d'); g.scale(1.5, 1.5); portrait(g, 87, 53); }
+function portraitDraw(B, c){ PX = B.hx - 314; PY = 196; if (!portCv){ portCv = document.createElement('canvas'); portCv.width = 260; portCv.height = 160; const g = portCv.getContext('2d'); g.scale(1.5, 1.5); portrait(g, 87, 53); }
   c.drawImage(portCv, PX - 87*PS, PY - 53*PS, 174*PS, 106.7*PS);
   const hk = B.ph2; if (hk < .3) return; const stage = hk < 4.6, fadeS = cl((5.6 - hk)/1.0), t = B.now/1000;
   c.save(); c.translate(PX, PY); c.scale(PS, PS); c.lineCap = 'round';
   const seep = stage ? cl((hk - .3)/1.2) : lerp(.35, 1, fadeS);
   if (seep > 0){ c.globalAlpha = seep*.85; const q = c.createLinearGradient(0, -10, 0, 38); q.addColorStop(0, 'rgba(60,140,30,0)'); q.addColorStop(1, 'rgba(110,220,60,.75)'); c.fillStyle = q; c.fillRect(-72, -10, 144, 48);
     c.strokeStyle = 'rgba(120,230,70,.9)'; c.lineWidth = 2.5; for (const ex of [-39, -29, 29, 39]){ const L = 6 + cl((hk - .4)/1.4)*30; c.beginPath(); c.moveTo(ex, -2); c.quadraticCurveTo(ex + 2, -2 + L*.5, ex - 1, -2 + L); c.stroke(); } }
-  for (const Dp of fxData().DRIPS){ const k = hk - Dp.ds; if (k < 0) continue; const L = Math.min(Dp.maxL, k*Dp.v*(1 - Math.min(.6, k*.08))), al = stage ? cl(k*3) : Dp.keep ? lerp(.45, 1, fadeS) : fadeS; if (al <= 0) continue;
+  for (const Dp of fxData(B).DRIPS){ const k = hk - Dp.ds; if (k < 0) continue; const L = Math.min(Dp.maxL, k*Dp.v*(1 - Math.min(.6, k*.08))), al = stage ? cl(k*3) : Dp.keep ? lerp(.45, 1, fadeS) : fadeS; if (al <= 0) continue;
     const pts = []; for (let s = 0; s <= 10; s++){ const u = s/10; pts.push([Dp.x + Math.sin(u*5 + Dp.ph)*3*u, 48 + u*L]); }
     c.globalAlpha = al; for (const [col, wk] of [['rgba(30,80,20,.9)', 1.6], ['rgba(120,220,70,.95)', 1]]){ c.strokeStyle = col; c.lineWidth = Dp.w*wk; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke(); }
     const tp = pts[pts.length - 1]; c.fillStyle = 'rgba(140,235,90,.95)'; c.beginPath(); c.ellipse(tp[0], tp[1] + 2, Dp.w*.9, Dp.w*1.3, 0, 0, 7); c.fill(); }
   if (stage){ const fl = bell(hk, .3, 1.9, 4.6); c.globalAlpha = fl*(.6 + .4*Math.sin(t*23)); c.strokeStyle = '#8af050'; c.lineWidth = 5; c.strokeRect(-86, -52, 172, 104); }
   c.restore(); }
-function transTop(B, c){ const hk = B.ph2; if (hk < 1 || hk > 6.2) return; const D = fxData(); c.save();
+function transTop(B, c){ const hk = B.ph2; if (hk < 1 || hk > 6.2) return; const D = fxData(B); c.save();
   for (const f of D.ROOMF) for (const P of f.pet){ const k = hk - f.d - 1.4 - P.td; if (k < 0 || k > 2.6) continue; const [x, y] = petalAt(f, P, k), al = cl((2.6 - k)/.7);
     if (k < 1.2){ c.globalAlpha = al; c.fillStyle = k < .6 ? cmix(f.col, '#7a4a2a', k/.6) : cmix('#7a4a2a', '#7c7678', (k - .6)/.6); c.beginPath(); c.ellipse(x, y, f.r*.5, f.r*.3*(.5 + .5*Math.abs(Math.sin(k*5 + P.ph))), P.rot + k*4, 0, 7); c.fill(); }
     else { const q = (k - 1.2)/1.4; c.globalAlpha = al*.9; for (let j = 0; j < 3; j++){ const a = P.ph + j*2.1; c.fillStyle = j % 2 ? '#8a8486' : '#5a5456'; c.beginPath(); c.ellipse(x + Math.cos(a)*q*12, y + Math.sin(a)*q*5 + q*q*10, f.r*.2*(1 - q*.5), f.r*.15*(1 - q*.5), 0, 0, 7); c.fill(); } } }
   c.restore(); }
-function transScreen(B, c, w, h){ const hk = B.ph2; if (hk < 0 || hk > 6.4) return; const D = fxData(), t = B.now/1000;
+function transScreen(B, c, w, h){ const hk = B.ph2; if (hk < 0 || hk > 6.4) return; const D = fxData(B), t = B.now/1000;
   // 꽃잎 눈 (화면 위에서)
   c.save(); for (const s of D.SNOW){ const k = hk - s.t0; if (k < 0 || k > 3) continue; c.globalAlpha = cl(k*2)*cl((3 - k)/.8)*.75; c.fillStyle = k < 1.2 ? '#e8a0c8' : '#9a9496'; c.beginPath(); c.ellipse(s.x*w + Math.sin(k*2 + s.ph)*30, k*s.sp*h*2.2, s.r*1.3, s.r, k*2, 0, 7); c.fill(); } c.restore();
   const a = bell(hk, .8, 1.95, 3.8); if (a > 0){ c.save(); c.globalCompositeOperation = 'multiply'; c.globalAlpha = a*.55; c.fillStyle = '#7adf5a'; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'source-over';
