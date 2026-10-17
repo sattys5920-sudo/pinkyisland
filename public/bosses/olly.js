@@ -120,7 +120,7 @@ export default {
   swing(B, cx, cy){
     const s = state(B), cur = s.cur;
     if (cur.id === 'clone' && s.fakes){ const dr = dist(cx, cy, s.p[0], s.p[1]);
-      for (const f of s.fakes){ const df = dist(cx, cy, f[0], f[1]); if (df <= REACH && df < dr){ B.hurt(lo(B) + 60, 'fk' + B.now); B.sfx('slam'); B.shake(); L.fx.push({k:'burst', x:f[0], y:f[1], at:performance.now()}); return true; } } }
+      for (const f of s.fakes){ const df = dist(cx, cy, f[0], f[1]); if (df <= REACH && df < dr){ B.hurt(600, 'fk' + B.now, {raw:1}); B.sfx('slam'); B.shake(); L.fx.push({k:'burst', x:f[0], y:f[1], at:performance.now()}); return true; } } }
     if (cur.id === 'bid' && dist(cx, cy, s.p[0], s.p[1]) <= REACH){ const w = bidCode(cur, winOf(cur.t)); if (L.hitW !== w){ L.hitW = w; L.hits = 0; } L.hits++; }
     return false;
   },
