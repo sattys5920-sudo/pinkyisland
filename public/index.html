@@ -2891,8 +2891,9 @@ function foodOf(k){
 }
 function eat(k){
   const f = foodOf(k); if (!f || invCount(k) < 1) return;
+  if (bossFight() && performance.now() - bossEatAt < BOSS_EAT_CD) return toast(`삼킬 틈이 없어요 · ${Math.ceil((BOSS_EAT_CD - (performance.now() - bossEatAt))/1000)} 초 뒤에`, k);
   invAdd(k, -1); stat('foodEaten'); const h0 = playerHp, s0 = playerSta;
-  const fk = 1 + tfx('food'); playerHp = Math.min(maxHp(), playerHp + f.hp*fk); playerSta = Math.min(maxSta(), playerSta + f.sta*fk);
+  const fk = (1 + tfx('food'))*(bossFight() ? BOSS_EAT_K : 1); if (bossFight()) bossEatAt = performance.now(); playerHp = Math.min(maxHp(), playerHp + f.hp*fk); playerSta = Math.min(maxSta(), playerSta + f.sta*fk);
   setExpr('happy', 1500); saveMe(); renderHud();
   toast(`${itemName(k)}을(를) 먹었어요 · 체력 +${Math.round(playerHp-h0)} · 기력 +${Math.round(playerSta-s0)}`, k);
 }
@@ -2928,6 +2929,7 @@ function quickUse(i){
   if (darkDown) return toast('기절해서 먹을 수 없어요');
   if (invCount(k) < 1) return toast(`${itemName(k)}이(가) 다 떨어졌어요 · 칸을 꾹 누르면 바꿀 수 있어요`, k);
   if (playerHp >= maxHp() && playerSta >= maxSta()) return toast('체력도 기력도 꽉 차 있어요 · 아껴 둘게요', k); // 잘못 눌러서 버리지 않게
+  if (bossFight() && performance.now() - bossEatAt < BOSS_EAT_CD) return toast('삼킬 틈이 없어요', k);
   eat(k);
 }
 function quickFoods(){ return ['dish','crop','fish','forage'].flatMap(itemsOf).filter(([k])=>foodOf(k)).sort((a,b)=>{ const fa = foodOf(a[0]), fb = foodOf(b[0]); return (fb.hp+fb.sta) - (fa.hp+fa.sta); }); }
@@ -6842,7 +6844,10 @@ function toriAttack(dt, t, r){
 function darkBossStart(npc){ const rm = darkRoomOf(npc), up = (rm?.stairs || []).filter(s=>s.up && s.to).pop(); return up ? up.to : rm?.door || DARK_ROOM.door; }
 // ===== 다크 보스 패턴 엔진 (보리 ~ 콩이): 주민마다 public/bosses/<주민>.js · 규칙은 docs/BOSS_ENGINE.md =====
 // 모든 장면은 서버 시각(B.now)과 방 기록(r)만으로 정해져서 같은 방 모두에게 똑같아요. 같이 바꿔야 하는 건 B.tx 로 r.bs 에 적어요
-const BOSS_DMG = 1.5; // 보스 패턴 피해 배수 (보리 ~ 콩이)
+const BOSS_DMG = 1.5, BOSS_BIG = 3.2; // 보스 패턴 피해 배수 (보리 ~ 콩이) · 기믹 실패처럼 센 공격(lo+80 이상)은 크게 (1000 안팎)
+const BOSS_EAT_CD = 8000, BOSS_EAT_K = .4; let bossEatAt = 0; // 보스전 중엔 음식이 덜 차고 8 초에 한 번만 먹어요
+let bossGod = false; // 시험용 (혼자 보기 도구에서만 켜요)
+const bossFight = () => { const n = Z().dark; return !!n && n !== 'tori' && darkBossUp(roomOf(n)); };
 const bossMods = {}; let bossCtl = {}, bossBp = null, bossSayNow = null, bossHurtKeys = {}, bossB = null, bossSlip = [0, 0];
 function bossMod(npc){
   if (!npc || npc === 'tori') return null; const m = bossMods[npc];
@@ -6860,7 +6865,7 @@ function bossCtx(npc, r, dt = 0){
     ph2:r.rageAt ? (now - r.rageAt)/1000 : -1, ph3:r.lowAt ? (now - r.lowAt)/1000 : -1,
     W:Z().W, H:fl ? FLOOR_H : Z().H, hx, hy, all, alive, me:all.find(p => p.me) || null, target:tgtP, targetNick:tg?.nick || tgtP?.nick || '???', host:!admin && !!all.length && all[0].uid === uid,
     lo:darkAtkLo(npc), name:NPC[npc]?.name || '', real:(CLUE_CASE[npc] || [])[0] || '', ctl:bossCtl, view, admin,
-    hurt:(n, key) => { if (admin || !me || darkDown || !up(pos.y)) return false; if (key){ if (bossHurtKeys[key]) return false; bossHurtKeys[key] = now; } darkHurt(Math.round(n*BOSS_DMG), performance.now()); return true; },
+    hurt:(n, key) => { if (admin || !me || darkDown || !up(pos.y)) return false; if (key){ if (bossHurtKeys[key]) return false; bossHurtKeys[key] = now; } if (bossGod) return true; const big = n >= B.lo + 80; darkHurt(Math.round(n*(big ? BOSS_BIG : BOSS_DMG)), performance.now()); if (big){ bossShakeAt = performance.now(); fx.push({x:pos.x, y:pos.y-90, text:'치명상!', t:performance.now(), color:'#ff2040'}); } return true; },
     push:(dx, dy, dist = 60) => { if (!admin && !darkDown && up(pos.y)) pushPlayer(dx, dy, dist); },
     tp:(x, y) => { if (!admin && !darkDown && up(pos.y)){ pos.x = Math.max(20, Math.min(B.W - 20, x)); pos.y = Math.max(20, Math.min(B.H - 20, y)); target = null; } },
     tx:fn => net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear || cur.bossAt !== r.bossAt) return undefined; const nb = fn({...(cur.bs || {})}, cur); return nb === undefined ? undefined : {...cur, bs:nb}; }),
@@ -6925,7 +6930,7 @@ const bossDev = {
   unbot(n){ others.delete('bot' + n); },
   warp(sec){ const npc = Z().dark, ms = sec*1000; return net.darkTx(npc, cur => cur ? {...cur, bossAt:cur.bossAt - ms, ...(cur.rageAt ? {rageAt:cur.rageAt - ms} : {}), ...(cur.lowAt ? {lowAt:cur.lowAt - ms} : {})} : undefined); },
   set(patch){ return net.darkTx(Z().dark, cur => cur ? {...cur, ...patch} : undefined); },
-  ctx: () => bossB, ctl: () => bossCtl, room: () => roomOf(Z().dark), me(x, y){ pos.x = x; pos.y = y; target = null; }, hp: () => playerHp,
+  god(on = true){ bossGod = !!on; }, ctx: () => bossB, ctl: () => bossCtl, room: () => roomOf(Z().dark), me(x, y){ pos.x = x; pos.y = y; target = null; }, hp: () => playerHp,
 };
 function darkBossPos(r){ { const M = bossMod(Z().dark); if (M?.pos) try { return M.pos(bossCtx(Z().dark, r)); } catch(e){ console.error(e); } } if (Z().dark === 'tori'){ const st = toriState(r); return [st.x, st.y + 40]; } const s = (darkNow() - (r.bossAt || 0)) / 1000, W = DARK_ROOM.W, [cx, cy] = darkRoomOf(Z().dark)?.boss || [W/2, 560]; return [cx + Math.cos(s*.31)*300 + Math.sin(s*.83)*60, cy + Math.sin(s*.47)*150]; } // 모두에게 같은 자리
 function drawDarkBoss(d, npc, r, x, y, t){
