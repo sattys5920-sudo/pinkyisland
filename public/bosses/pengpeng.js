@@ -112,7 +112,7 @@ export default {
     const sk = `${B.r.bossAt}`; if (L.startK !== sk && B.t < 4){ L.startK = sk; B.say('등대 불빛 세어 본 적 있어요?', 2600); }
     if (k.id && k.id !== 'trans' && L.said !== k.seed){ L.said = k.seed; if (k.t < 1.5) B.say(LINES[k.id], 2200); }
     if (k.id === 'trans'){ const tk2 = `${B.r.rageAt}`; if (k.t > 1.7 && L.trK !== tk2){ L.trK = tk2; B.sfx('slam'); B.shake(); B.say(`${B.targetNick !== '???' ? B.targetNick : '그'} 몸으로 남쪽 나라에 갈 거야.`, 3000); } }
-    if ((B.bs.stun || 0) > now && L.stunK !== String(B.bs.stun)){ L.stunK = String(B.bs.stun); B.say('불빛이… 꺼졌어?', 2200); B.sfx('slam'); B.shake(); }
+    if ((B.bs.stun || 0) > now && now > B.bs.stun - 8000 && L.stunK !== String(B.bs.stun)){ L.stunK = String(B.bs.stun); B.say('불빛이… 꺼졌어?', 2200); B.sfx('slam'); B.shake(); }
 
     // --- 기본 공격: 물기둥 ---
     for (const c of cols(B)){

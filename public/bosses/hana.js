@@ -114,7 +114,7 @@ function tick(B, dt){
   for (const r of rings(B)){ if (r.k < .1 && once('rw' + r.key)) B.sfx('warn', 300); if (r.k >= .9 && once('rs' + r.key)) B.sfx('slam', 250);
     if (me && !me.down && r.k >= .9 && r.k < 1.25 && inDonut(me.x, me.y, r)) B.hurt(lo + RDMG, 'rg' + r.key); }
   if (B.phase === 3 && B.pt > .3 && once('ph3' + B.r.lowAt)) B.say('마지막 하나 남았어.', 2600);
-  if (p.id === 'trans'){ if (p.t > 1.7 && once('tp' + B.r.rageAt)){ B.sfx('slam'); B.shake(); } if (p.t > 2.2 && once('ts' + B.r.rageAt)) B.say(`${B.targetNick} 집터, 다음 밭으로 딱이네.`, 3200); }
+  if (p.id === 'trans'){ if (p.t > 1.7 && once('tp' + B.r.rageAt)){ B.sfx('slam'); B.shake(); } if (p.t > 2.2 && once('ts' + B.r.rageAt)) B.say(`${B.targetNick !== '???' ? B.targetNick : B.target ? B.target.nick : '네'} 집터, 다음 밭으로 딱이네.`, 3200); }
   if (p.id === 'fuse'){ for (const [i, F] of fuses(B, p).entries()){ const k = p.t;
       if (k >= F.pour[0] && once(`fp${p.seed}${i}`)) B.sfx('warn', 200); if (k >= F.lit && once(`fl${p.seed}${i}`)) B.sfx('slam', 200);
       if (me && !me.down && k >= F.lit && k < F.lit + F.run + BURN){ const [d, s] = fuseNear(F, me.x, me.y), ig = F.lit + s*F.run; if (d < FUSE_W/2 + 10 && k >= ig && k < ig + BURN) B.hurt(lo + 80, `fu${p.seed}.${i}`); } } }

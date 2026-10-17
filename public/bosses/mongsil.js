@@ -71,7 +71,7 @@ function drawBaFloor(B, c){ for (const s of baList(B)){ if (s.t > BA_WARN) conti
 function drawBaTop(B, c){ for (const s of baList(B)){ const k = s.t - BA_WARN; if (k < 0 || k > BA_SWEEP + .05) continue; const u = cl(k/BA_SWEEP), a = s.a - CONE_A + u*CONE_A*2;
   c.save(); c.translate(s.x, s.y - 30); c.scale(1, .6); c.strokeStyle = '#f0d040'; c.lineWidth = 14; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a)*CONE_R, Math.sin(a)*CONE_R); c.stroke();
   c.strokeStyle = '#3a3010'; c.lineWidth = 2; for (let j = 1; j < 10; j++){ const d = j*CONE_R/10; c.beginPath(); c.moveTo(Math.cos(a)*d - Math.sin(a)*6, Math.sin(a)*d + Math.cos(a)*6); c.lineTo(Math.cos(a)*d + Math.sin(a)*6, Math.sin(a)*d - Math.cos(a)*6); c.stroke(); }
-  c.globalAlpha = .25; c.strokeStyle = '#fff0a0'; c.lineWidth = 30; c.beginPath(); c.arc(0, 0, CONE_R*.8, s.a - CONE_A, a); c.stroke(); c.restore(); } }
+  c.globalAlpha = .22*(1 - u*.5); c.fillStyle = '#fff0a0'; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, CONE_R, s.a - CONE_A, a); c.closePath(); c.fill(); c.restore(); } }
 function tickBa(B){ const m = meXY(B); for (const s of baList(B)){
   if (s.t < .2 && once(B, 'baw' + s.key)) B.sfx('warn', 400);
   const k = s.t - BA_WARN; if (k < 0 || k > BA_SWEEP + .05) continue; if (once(B, 'bas' + s.key)) B.sfx('slam', 250);

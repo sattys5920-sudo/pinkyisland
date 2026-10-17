@@ -117,7 +117,7 @@ function volleys(B, p){
   const bt = beat(B, 3.4), out = [], f = bossFoot(B, p);
   for (const n of [bt.n, bt.n - 1]){ const age = B.t - n*bt.len; if (age < 0 || age > LAUNCH + HOP*3 + .3) continue;
     const key = `${B.phase}.${n}`; let v = L.snaps['c' + key];
-    if (!v){ if (age > LAUNCH || !B.alive.length) continue; const r = B.rng(`${B.r.bossAt}.cube.${key}`), m = B.phase === 1 ? 1 : 2; v = [];
+    if (!v){ if (age > LAUNCH || !B.alive.length) continue; const r = B.rng(`${B.r.bossAt}.cube.${key}`), m = B.phase === 1 ? 1 : Math.min(2, B.alive.length); v = [];
       for (let j = 0; j < m; j++){ const who = B.alive[Math.floor(r()*B.alive.length)], o = [f[0] - 92, f[1] + 4]; let x = who.x, y = who.y;
         if (j && v.some(q => dist(q.x, q.y, x, y) < 40)){ const a = Math.atan2(y - o[1], x - o[0]) + Math.PI/2; x += Math.cos(a)*85; y += Math.sin(a)*85*.6; }
         v.push({o, x, y}); }
@@ -143,9 +143,9 @@ export default {
     if (p.id === 'sleep' && p.t < .5) sayOnce(B, pid, '우리 카페 의자 편하죠?');
     if (p.id === 'grab' && p.t < .5) sayOnce(B, pid, '분실물 상자가 또 꽉 찼네요.');
     if (p.id === 'tape'){ if (p.t < .5) sayOnce(B, pid, '계산은… 이쪽이에요.'); if (p.t < .8) B.sfx('warn', 600); }
-    if (p.id === 'trans'){ if (p.t > 2.2) sayOnce(B, 'trans' + B.r.rageAt, `창가 자리는 ${B.targetNick} 님 예약이에요`, 3200); if (p.t < 2) B.sfx('slam', 700); if (p.t > 1.6 && p.t < 2) B.shake(); }
+    if (p.id === 'trans'){ if (p.t > 2.2) sayOnce(B, 'trans' + B.r.rageAt, `창가 자리는 ${tgNick(B)} 님 예약이에요`, 3200); if (p.t < 2) B.sfx('slam', 700); if (p.t > 1.6 && p.t < 2) B.shake(); }
     if (p.id === 'cups' && p.t < .5) sayOnce(B, pid, '손님 잔이 비었네요.');
-    if (p.id === 'strong' && p.t < .5) sayOnce(B, pid, `${B.targetNick} 님, 특별히 진하게.`);
+    if (p.id === 'strong' && p.t < .5) sayOnce(B, pid, `${tgNick(B)} 님, 특별히 진하게.`);
     if (p.id === 'push' && p.t < .5) sayOnce(B, pid, '그 잔은… 치웠는데.');
     if (p.id === 'close' && p.t < .5) sayOnce(B, pid, '영업 마감이에요.');
     if (p.id === 'close' && p.t > CLOSE_T) sayOnce(B, pid + 'f', '다들 졸다 가요.');
@@ -199,7 +199,7 @@ export default {
     // 잠든 친구 툭툭
     for (const q of B.all){ if (q.me || q.down || !q.bp?.z) continue; if (dist(q.x, q.y - 20, cx, cy) < 75){ wake(B, q.uid); return true; } }
     // ④ 손님 잔 엎기
-    if (p.id === 'cups'){ const cups = cupsOf(B, p), m = cupMask(B, p); for (let i = 0; i < 3; i++){ if (m & (1 << i)) continue; const c = cups[i]; if (dist(c[0], c[1] - 14, cx, cy) < 58){ knockCup(B, p, i); return true; } } }
+    if (p.id === 'cups'){ const cups = cupsOf(B, p), m = cupMask(B, p); for (let i = 0; i < 3; i++){ if (m & (1 << i)) continue; const c = cups[i]; if (dist(c[0], c[1] - 14, cx, cy) < 58 || (B.me && dist(c[0], c[1], B.me.x, B.me.y) < 62)){ knockCup(B, p, i); return true; } } }
     return false;
   },
 
@@ -265,7 +265,7 @@ export default {
     if (p.id === 'strong') DROPS.forEach((imp, i) => { const k = p.t - (imp - 3); if (k < 0 || p.t > imp) return; const s = strongAt(B, p, i); if (!s) return; const u = cl(k/3);
       c.save(); c.globalAlpha = .35 + u*.65; c.translate(s.x, s.y - 380 + u*330); c.fillStyle = '#f4ece0'; c.fillRect(-50, -60, 100, 70); c.fillStyle = 'rgba(0,0,0,.1)'; c.fillRect(25, -60, 25, 70); c.fillStyle = '#3a2010'; c.beginPath(); c.ellipse(0, -60, 50, 14, 0, 0, 7); c.fill();
       c.strokeStyle = '#f4ece0'; c.lineWidth = 8; c.beginPath(); c.arc(56, -26, 16, -1.3, 1.3); c.stroke(); c.restore();
-      text(c, `손님 · ${B.targetNick}`, s.x, s.y - 380 + u*330 - 26, 22, '#5a2a10', 'center', null); text(c, '특별히 진하게', s.x, s.y - 380 + u*330 - 8, 20, '#8a1010', 'center', null); });
+      text(c, `손님 · ${tgNick(B)}`, s.x, s.y - 380 + u*330 - 26, 22, '#5a2a10', 'center', null); text(c, '특별히 진하게', s.x, s.y - 380 + u*330 - 8, 20, '#8a1010', 'center', null); });
     // 각설탕 (날아가는 중)
     const cb = cubeArt(); for (const vl of volleys(B, p)) vl.v.forEach(q => { const k = vl.age - LAUNCH; if (k < -LAUNCH || k > HOP*3) return;
       if (k < 0){ c.save(); c.globalAlpha = .6 + .4*Math.sin(now/40); c.drawImage(cb, q.o[0] - 12, q.o[1] - 150, 24, 24); c.restore(); return; }
@@ -291,6 +291,7 @@ export default {
 };
 
 // ===== 도움 함수 =====
+const tgNick = B => B.targetNick && B.targetNick !== '???' ? B.targetNick : B.target?.nick || '손님';
 function setBp(B){
   const me = B.me, o = me && !me.down ? {d:Math.round(L.d*9), z:L.sleepAt ? 1 : 0, w:L.stolen ? 1 : 0} : null, s = o && (o.d || o.z || o.w) ? JSON.stringify(o) : '';
   if (s !== L.bp){ L.bp = s; B.setBp(s ? o : null); }
