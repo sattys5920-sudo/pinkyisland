@@ -313,6 +313,11 @@
       "darkShift": {
         ".validate": "newData.isNumber()"
       },
+      "darkLock": {
+        "$npc": {
+          ".validate": "newData.isBoolean()"
+        }
+      },
       "darkNames": {
         "$uid": {
           ".validate": "newData.isString() && newData.val().length <= 12"
