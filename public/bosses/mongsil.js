@@ -7,7 +7,9 @@ import { pick, beat, warnCircle, warnLine, inSector, inEll, shadow, tint, text, 
 import { bossArt, tagArt, spoolArt, drawNeedle, drawSnip, NAMES, FOOT_U } from './mongsil_art.js';
 
 const S = .34;                                   // 그림 단위 → 월드 px
-const X0 = 110, X1 = 990, Y0 = 310, Y1 = 800;    // 경기장 (벽 · 가장자리 빼고)
+// 경기장 (벽 · 가장자리 빼고) · 방 크기 · 보스 집 자리 기준 (층이 바뀌어도 같은 지역 좌표)
+let X0 = 110, X1 = 990, Y0 = 310, Y1 = 800, WALL = 262;
+function arena(B){ X0 = 110; X1 = B.W - 110; WALL = Math.max(0, B.hy - 298); Y0 = WALL + 48; Y1 = Math.min(B.H - 100, B.hy + 240); }
 const P = {
   1: [{id:'freeze', len:13}, {id:'tether', len:12}, {id:'spool', len:11}],
   2: [{id:'mirror', len:13}, {id:'letters', len:15}, {id:'tug', len:13}],
@@ -131,7 +133,7 @@ function drawSpoolsTop(B, c, p){ if (p.t < SP_GO) return; const al = cl((p.len -
 // ===== ④ 거울 연습 =====
 const MIR_W = [1.6, 4.8, 8.0, 11.2];
 function mirrorOwner(B, p){ const mo = B.bs.mo; if (mo && mo.s === p.seed){ const q = byUid(B, mo.u); if (q && !q.down) return q; } return null; }
-function mirrorPt(B, x, y){ return [cl(B.W - x, X0, X1), cl(y, Y0, Y1)]; }
+function mirrorPt(B, x, y){ return [cl(2*B.hx - x, X0, X1), cl(y, Y0, Y1)]; }
 function tickMirror(B, p){
   const own = mirrorOwner(B, p);
   if (B.host && p.t > .1 && p.t < p.len - .7){
@@ -143,10 +145,10 @@ function tickMirror(B, p){
     if (once(B, 'mw' + key)) B.sfx('warn', 0);
     if (p.t > w + 1){ if (once(B, 'ms' + key)) B.sfx('slam', 0); if (m && p.t < w + 1.15 && pts.some(([x, y]) => inEll(m[0], m[1], x, y, 70, 42))) B.hurt(dmg(B, 60), `mi${key}`); } });
 }
-const mirrorSnips = (B, key) => geo(B, 'mp' + key, () => B.alive.map(q => [B.W - q.x, q.y]));
-function drawMirrorFloor(B, c, p){ const al = cl(p.t/.6)*cl((p.len - p.t)/.5), T = B.now/1000, mx = B.W/2;
-  c.save(); c.globalAlpha = al*.55; const q = c.createLinearGradient(mx - 40, 0, mx + 40, 0); q.addColorStop(0, 'rgba(200,230,255,0)'); q.addColorStop(.5, `rgba(200,230,255,${.25 + .1*Math.sin(T*3)})`); q.addColorStop(1, 'rgba(200,230,255,0)'); c.fillStyle = q; c.fillRect(mx - 40, 262, 80, 600);
-  c.strokeStyle = '#c8e8ff'; c.lineWidth = 3; c.setLineDash([14, 10]); c.lineDashOffset = -T*20; c.beginPath(); c.moveTo(mx, 262); c.lineTo(mx, 860); c.stroke(); c.restore();
+const mirrorSnips = (B, key) => geo(B, 'mp' + key, () => B.alive.map(q => [2*B.hx - q.x, q.y]));
+function drawMirrorFloor(B, c, p){ const al = cl(p.t/.6)*cl((p.len - p.t)/.5), T = B.now/1000, mx = B.hx;
+  c.save(); c.globalAlpha = al*.55; const q = c.createLinearGradient(mx - 40, 0, mx + 40, 0); q.addColorStop(0, 'rgba(200,230,255,0)'); q.addColorStop(.5, `rgba(200,230,255,${.25 + .1*Math.sin(T*3)})`); q.addColorStop(1, 'rgba(200,230,255,0)'); c.fillStyle = q; c.fillRect(mx - 40, WALL, 80, Y1 + 60 - WALL);
+  c.strokeStyle = '#c8e8ff'; c.lineWidth = 3; c.setLineDash([14, 10]); c.lineDashOffset = -T*20; c.beginPath(); c.moveTo(mx, WALL); c.lineTo(mx, Y1 + 60); c.stroke(); c.restore();
 }
 function drawMirrorTop(B, c, p){ const al = cl(p.t/.6)*cl((p.len - p.t)/.5), own = mirrorOwner(B, p), T = B.now/1000;
   if (own){ const [bx, by] = bossPos(B); c.save(); c.globalAlpha = al*.7; c.strokeStyle = 'rgba(200,230,255,.8)'; c.lineWidth = 1.5; c.setLineDash([4, 6]); c.beginPath(); c.moveTo(own.x, own.y - 40); c.quadraticCurveTo((own.x + bx)/2, Math.min(own.y, by) - 160, bx, by - 150); c.stroke(); c.setLineDash([]);
@@ -193,7 +195,7 @@ function drawLettersTop(B, c, p){ const lw = letterWave(p); if (!lw) return; con
 }
 
 // ===== ⑥ 창고 실 줄다리기 (→ 기절) =====
-function tugGeo(B, p){ return geo(B, 'tg' + p.seed, () => { const right = B.rng(p.seed + 'K')() < .5, sx = right ? 1 : -1; return {knot:[B.W/2 + sx*300, 670], door:[B.W/2 + sx*390, 250], sx}; }); }
+function tugGeo(B, p){ return geo(B, 'tg' + p.seed, () => { const right = B.rng(p.seed + 'K')() < .5, sx = right ? 1 : -1; return {knot:[B.hx + sx*300, B.hy + 110], door:[B.hx + sx*390, WALL - 12], sx}; }); }
 const TUG_A = .8, YANK = [2.0, 5.0, 8.0, 11.0];
 const tugNeed = n => 6 + 5*Math.max(1, n);
 const tugOk = (B, p) => B.bs.tg && B.bs.tg.s === p.seed && B.bs.tg.ok;
@@ -320,8 +322,9 @@ function arrow(c, x, y, a, col){ c.save(); c.translate(x, y); c.rotate(a); c.fil
 export default {
   reach: 125,
   height: 222,
-  pos(B){ return bossPos(B); },
+  pos(B){ arena(B); return bossPos(B); },
   tick(B, dt){
+    arena(B);
     const p = pk(B), l = local(B);
     // 대사 · 소리 (모두 같은 때에)
     const LINES = {freeze:'♪ 흥얼흥얼…', tether:'치수 좀 잴게요', spool:'실이 엉켰네요', mirror:'웃는 법… 이렇게요?', letters:'이름표 달아 드릴까요? 무슨 이름으로요?', tug:'창고는… 보여 드리기 좀 그래요', prison:'여기서는 아무도 못 나가요. 41 일 동안요.'};

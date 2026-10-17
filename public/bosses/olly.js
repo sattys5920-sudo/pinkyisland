@@ -93,7 +93,7 @@ function sketches(B, cur, fn){ const r = B.rng('sk' + cur.seed), a0 = r()*Math.P
 
 // ===== ② 보안 레이저 =====
 const LZ = [.4, 2.6, 4.8, 9.3];
-function lasers(B, cur, k){ const m = 'lz' + cur.seed + '.' + k, key = L.memo[m]; if (key) return key; const r = B.rng(m), xs = [250, 330, 410, 490, 610, 690, 770, 850], ys = [360, 440, 520, 640, 720, 800], v = [], h = [];
+function lasers(B, cur, k){ const m = 'lz' + cur.seed + '.' + k, key = L.memo[m]; if (key) return key; const r = B.rng(m), xs = [-300, -220, -140, -60, 60, 140, 220, 300].map(d => B.hx + d), ys = [-200, -120, -40, 80, 160, 240].map(d => B.hy + d), v = [], h = [];
   const nv = 1 + Math.floor(r()*2.4), nh = Math.floor(r()*2.2); for (let i = 0; i < nv; i++) v.push(xs.splice(Math.floor(r()*xs.length), 1)[0]); for (let i = 0; i < nh; i++) h.push(ys.splice(Math.floor(r()*ys.length), 1)[0]);
   return L.memo[m] = {v, h}; }
 const lzState = (cur, k) => { const tt = cur.t - LZ[k]; return tt < 0 ? -1 : tt < 1 ? 0 : tt < (k === 3 ? 1.8 : 1.9) ? 1 : -1; }; // 0 예고 · 1 켜짐
@@ -101,7 +101,8 @@ const lzState = (cur, k) => { const tt = cur.t - LZ[k]; return tt < 0 ? -1 : tt 
 // ===== ⑤ 전시 조명 =====
 const BEAM = [[1.0, 5.4], [6.2, 10.4]];
 // ===== ⑥ 새벽 파랑 =====
-const CAN = {w:[250, 640, '#f4f4f8', '흰색'], n:[850, 640, '#1e2e78', '남색']};
+const CAN = {w:[-300, 80, '#f4f4f8', '흰색'], n:[300, 80, '#1e2e78', '남색']};
+const canAt = (B, c) => [B.hx + CAN[c][0], B.hy + CAN[c][1]];
 const cansUp = (s, B) => s.cur.id === 'blue' && s.cur.t > .5 && s.cur.t < 9.5 && B.bs.mixK !== s.cur.seed;
 // ===== ⑦ 입찰 패들 =====
 const HAM = [2.4, 5.0, 7.6, 10.2], WORD = ['하나', '둘', '셋', '낙찰!'];
@@ -146,7 +147,7 @@ export default {
       // ② 보안 레이저
       if (cur.id === 'laser') LZ.forEach((_, k) => { if (ev(LZ[k])) B.sfx('warn'); if (ev(LZ[k] + 1)) B.sfx('slam');
         if (!alive || lzState(cur, k) !== 1) return; const z = lasers(B, cur, k);
-        if (z.v.some(x => Math.abs(me.x - x) < 13) || z.h.some(y => Math.abs(me.y - y) < 11)) B.hurt(LO + 100, 'lz' + BA + '.' + cur.n + '.' + k); });
+        if (z.v.some(x => Math.abs(me.x - x) < 13 && me.y > B.hy - 310 && me.y < B.hy + 335) || z.h.some(y => Math.abs(me.y - y) < 11)) B.hurt(LO + 100, 'lz' + BA + '.' + cur.n + '.' + k); });
       // ③ 진품과 위작: 섞일 때 소리
       if (cur.id === 'clone'){ if (ev(.6) || ev(4.2) || ev(7.6)) B.sfx('warn'); }
       // ④ 3:17 정전: 호스트가 돌진 끝 자리를 정해요
@@ -155,7 +156,7 @@ export default {
         const d = B.bs.d4 && B.bs.d4.s === cur.seed ? B.bs.d4.p || [] : [], k = d.length;
         if (B.host && k < 3 && t >= darkW(k) - .35 && t < darkW(k) + .9 && B.alive.length){
           const n = B.alive.length, who = B.alive[(Math.floor(B.rng('d4' + cur.seed)()*n) + k) % n], prev = k ? d[k - 1] : [B.hx, B.hy];
-          let x = cl(who.x, 150, 950), y = cl(who.y, 340, 840); if (dist(x, y, prev[0], prev[1]) < 80){ x = cl(x + (x > 550 ? -140 : 140), 150, 950); }
+          let x = cl(who.x, B.hx - 400, B.hx + 400), y = cl(who.y, B.hy - 220, B.hy + 280); if (dist(x, y, prev[0], prev[1]) < 80){ x = cl(x + (x > B.hx ? -140 : 140), B.hx - 400, B.hx + 400); }
           hostTx(B, bs => { const cd = bs.d4 && bs.d4.s === cur.seed ? bs.d4.p || [] : []; if (cd.length !== k) return undefined; return {...bs, d4:{s:cur.seed, p:[...cd, [Math.round(x), Math.round(y)]]}}; }); }
         if (alive) for (const m of s.dashes || []){ const tt = B.t; if (tt < m.t0 - .05 || tt > m.t1 + .05) continue;
           const [ax, ay] = m.from, [bx, by] = m.to, vx = bx - ax, vy = (by - ay)/.7, L2 = vx*vx + vy*vy || 1, u = cl(((me.x - ax)*vx + (me.y - ay)/.7*vy)/L2), px = ax + vx*u - me.x, py = (ay + (by - ay)*u - me.y)/.7;
@@ -173,7 +174,7 @@ export default {
       if (cur.id === 'blue'){
         const up = cansUp(s, B), solo = B.alive.length <= 1, near = q => dist(q.x, q.y, s.p[0], s.p[1]) < 150;
         if (!up) L.carry = '';
-        if (up && alive){ for (const c of ['w', 'n']){ const cn = CAN[c]; if (dist(me.x, me.y, cn[0], cn[1]) < 44 && !L.carry.includes(c)){ L.carry = solo ? [...new Set((L.carry + c).split(''))].sort().reverse().join('') : c; B.sfx('hit', 300); } }
+        if (up && alive){ for (const c of ['w', 'n']){ const cn = canAt(B, c); if (dist(me.x, me.y, cn[0], cn[1]) < 44 && !L.carry.includes(c)){ L.carry = solo ? [...new Set((L.carry + c).split(''))].sort().reverse().join('') : c; B.sfx('hit', 300); } }
           if (L.carry){ speed = Math.min(speed, .8);
             const cols = new Set(); for (const q of B.alive) if (near(q)) for (const ch of (q.me ? L.carry : (q.bp && q.bp.c) || '')) cols.add(ch);
             if (near(me) && !(cols.has('w') && cols.has('n'))){ L.spillT += dt; if (L.spillT > 1.4){ L.spillT = 0; L.carry = ''; B.hurt(LO + 80, 'sp' + BA + '.' + cur.n + '.' + (L.spills++)); B.fx('철퍽', me.x, me.y - 60, '#9ad0ff'); B.sfx('slam'); } } else L.spillT = 0; }
@@ -210,14 +211,14 @@ export default {
         c.globalAlpha *= .5; c.fillStyle = '#fff'; c.beginPath(); c.ellipse(q.x - 16, q.y - 9, 14, 5, -.2, 0, 7); c.fill(); c.restore(); } }
     if (s.stun) return;
     // ② 레이저 예고 (점선) · 보스 둘레 레이저 우리
-    if (cur.id === 'laser'){ LZ.forEach((_, k) => { if (lzState(cur, k) !== 0) return; const z = lasers(B, cur, k), u = cur.t - LZ[k]; for (const x of z.v) warnLine(c, x, 260, x, 890, u, 4); for (const y of z.h) warnLine(c, 30, y, 1070, y, u, 4); });
+    if (cur.id === 'laser'){ LZ.forEach((_, k) => { if (lzState(cur, k) !== 0) return; const z = lasers(B, cur, k), u = cur.t - LZ[k]; for (const x of z.v) warnLine(c, x, B.hy - 300, x, B.hy + 330, u, 4); for (const y of z.h) warnLine(c, 30, y, B.W - 30, y, u, 4); });
       const [x, y] = s.p, on = s.cage; c.save(); c.strokeStyle = on ? 'rgba(255,40,70,.7)' : 'rgba(120,255,190,.55)'; c.lineWidth = 3; c.setLineDash(on ? [] : [8, 8]); c.beginPath(); c.ellipse(x, y, 105, 50, 0, 0, 7); c.stroke(); c.restore(); }
     // ④ 발자국 (어둠 위에도 다시 그려요)
     if (cur.id === 'dark') footprints(B, s, c, p => p);
     // ⑤ 노리는 몸 표시
     if (cur.id === 'plate' && B.target){ const q = B.target; c.save(); c.strokeStyle = `rgba(255,60,80,${.5 + .4*Math.sin(now/160)})`; c.lineWidth = 2.5; c.setLineDash([6, 5]); c.beginPath(); c.ellipse(q.x, q.y + 2, 34, 13, 0, 0, 7); c.stroke(); c.restore(); }
     // ⑥ 물감 통 (구석 둘)
-    if (cansUp(s, B)){ const a = cl((cur.t - .5)*2)*cl((9.5 - cur.t)*2); for (const c2 of ['w', 'n']){ const [x, y, col, nm] = CAN[c2], img = A.paintCan(col, nm); c.save(); c.globalAlpha = a; const gl = .35 + .25*Math.sin(now/200 + (c2 === 'n' ? 2 : 0)); c.fillStyle = c2 === 'w' ? `rgba(255,255,255,${gl*.4})` : `rgba(80,120,255,${gl*.5})`; c.beginPath(); c.ellipse(x, y, 40, 18, 0, 0, 7); c.fill(); c.drawImage(img, x - 28, y - 54, 56, 64); c.restore(); } }
+    if (cansUp(s, B)){ const a = cl((cur.t - .5)*2)*cl((9.5 - cur.t)*2); for (const c2 of ['w', 'n']){ const [x, y] = canAt(B, c2), [, , col, nm] = CAN[c2], img = A.paintCan(col, nm); c.save(); c.globalAlpha = a; const gl = .35 + .25*Math.sin(now/200 + (c2 === 'n' ? 2 : 0)); c.fillStyle = c2 === 'w' ? `rgba(255,255,255,${gl*.4})` : `rgba(80,120,255,${gl*.5})`; c.beginPath(); c.ellipse(x, y, 40, 18, 0, 0, 7); c.fill(); c.drawImage(img, x - 28, y - 54, 56, 64); c.restore(); } }
     // ⑦ 가격표가 떨어질 자리
     if (cur.id === 'bid'){ const bid = B.bs.bid; if (bid && bid.s === cur.seed){ const q = bidSpot(B, cur, bid), h = HAM[bid.k], u = cur.t - (h - 1), R = bid.k === 3 ? 110 : 86;
       if (q && u >= 0 && u < 1) warnCircle(c, q[0], q[1], R, R*.6, u, '255,80,110'); else if (q && u >= 1 && u < 1.8){ c.save(); c.globalAlpha = cl((1.8 - u)/.5)*.6; c.fillStyle = '#8a1030'; c.beginPath(); c.ellipse(q[0], q[1], R, R*.6, 0, 0, 7); c.fill(); c.restore(); } } }
@@ -255,7 +256,7 @@ export default {
     if (cur.id === 'sketch') sketches(B, cur, (x, y, age, id, al) => { if (al <= 0) return; const img = A.sheet(1 + id % 47); c.save(); c.globalAlpha = al; c.translate(x, y - 22); c.rotate(age*3 + id); c.drawImage(img, -22, -26, 44, 52); c.restore(); });
     // ② 켜진 레이저
     if (cur.id === 'laser'){ LZ.forEach((_, k) => { if (lzState(cur, k) !== 1) return; const z = lasers(B, cur, k); c.save(); c.lineCap = 'round';
-        for (const [w, col] of [[14, 'rgba(255,40,60,.25)'], [5, 'rgba(255,60,80,.95)'], [1.6, '#fff']]){ c.strokeStyle = col; c.lineWidth = w; c.beginPath(); for (const x of z.v){ c.moveTo(x, 250); c.lineTo(x, 895); } for (const y of z.h){ c.moveTo(20, y); c.lineTo(1080, y); } c.stroke(); } c.restore(); });
+        for (const [w, col] of [[14, 'rgba(255,40,60,.25)'], [5, 'rgba(255,60,80,.95)'], [1.6, '#fff']]){ c.strokeStyle = col; c.lineWidth = w; c.beginPath(); for (const x of z.v){ c.moveTo(x, B.hy - 310); c.lineTo(x, B.hy + 335); } for (const y of z.h){ c.moveTo(20, y); c.lineTo(B.W - 20, y); } c.stroke(); } c.restore(); });
       const [x, y] = s.p; if (s.cage){ c.save(); c.strokeStyle = 'rgba(255,50,80,.75)'; c.lineWidth = 2; for (let i = 0; i < 7; i++){ const a = i/7*Math.PI*2 + B.now/1600, px = x + Math.cos(a)*105, py = y + Math.sin(a)*50; c.beginPath(); c.moveTo(px, py); c.lineTo(px, py - 250); c.stroke(); } c.restore(); }
       else if (cur.t > 6.75 && cur.t < 9.3){ c.save(); c.fillStyle = 'rgba(10,8,20,.85)'; c.beginPath(); c.roundRect(x - 62, y - HEIGHT + 18, 124, 30, 8); c.fill(); c.restore(); text(c, '3:10 ~ 3:30', x, y - HEIGHT + 33, 28, '#9affd0'); } }
     // ③ 시계 글자는 drawCurator 에서
@@ -292,7 +293,7 @@ export default {
       if (cur.t < 1.4) text(c, '3:17', w/2, h*.32, 64, '#ff6a7a'); } }
     // 50% 변신: 유화로 금 가고 · 색이 빠지고 · 물감이 흘러내려요
     if (B.phase >= 2 && B.ph2 >= 0 && B.ph2 < 6.2){ transScreen(B, c, w, h, B.ph2, s);
-      if (L.say && performance.now() < L.say.until){ const z = B.view.zoom || 1, [x, y] = B.toScreen(s.p[0], s.p[1] - HEIGHT); c.save(); c.font = 'bold 24px "Dongle",sans-serif'; c.textAlign = 'center'; const sw = c.measureText(L.say.text).width + 28; c.fillStyle = 'rgba(239,230,208,.96)'; c.beginPath(); c.roundRect(x - sw/2, y - 30*z - 16, sw, 34, 12); c.fill(); c.fillStyle = '#5a1030'; c.textBaseline = 'middle'; c.fillText(L.say.text, x, y - 30*z + 1); c.restore(); } }
+      if (L.say && performance.now() < L.say.until){ const z = B.view.zoom || 1, [x0, y0] = B.toScreen(s.p[0], s.p[1] - HEIGHT), y = cl(y0, 160, h - 200); c.save(); c.font = 'bold 24px "Dongle",sans-serif'; c.textAlign = 'center'; const sw = c.measureText(L.say.text).width + 28, x = cl(x0, sw/2 + 8, w - sw/2 - 8); c.fillStyle = 'rgba(239,230,208,.96)'; c.beginPath(); c.roundRect(x - sw/2, y - 30*z - 16, sw, 34, 12); c.fill(); c.fillStyle = '#5a1030'; c.textBaseline = 'middle'; c.fillText(L.say.text, x, y - 30*z + 1); c.restore(); } }
   },
 
   label(B, c, x, y, t){ const s = state(B); if (s.a < .25) return;
