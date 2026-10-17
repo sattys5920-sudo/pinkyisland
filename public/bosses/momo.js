@@ -28,7 +28,10 @@ function amp(p){ if (!p.id) return 1; const lv = LV[p.id] ?? 1, k = Math.min(cl(
 const wand = (B, a) => { const t = B.t; return [B.hx + (Math.cos(t*.42)*125 + Math.sin(t*1.07)*30)*a, B.hy + (Math.sin(t*.61)*44 + Math.sin(t*1.3)*10)*a]; };
 
 // ① 새벽 배달: 바깥 둘레를 달려요
-const RC = [550, 645], RRX = 360, RRY = 185, RW = 1.05, RPRE = 1.2, RRUN = 9;
+let RC = [550, 645], CK = [550, 795], GX0 = 180, GY0 = 420, OX = 0, OY = 0;
+// 방 자리: 보스 집(B.hx, B.hy)을 (550, 560) 으로 보고 옮겨요 (층이 바뀌어도 같은 모양)
+function setO(B){ OX = (B.hx ?? 550) - 550; OY = (B.hy ?? 560) - 560; RC = [550 + OX, 645 + OY]; CK = [550 + OX, Math.min(795 + OY, (B.H || 900) - 50)]; GX0 = 180 + OX; GY0 = Math.min(420 + OY, (B.H || 900) - 440); }
+const RRX = 360, RRY = 185, RW = 1.05, RPRE = 1.2, RRUN = 9;
 const racePt = a => [RC[0] + Math.cos(a)*RRX, RC[1] + Math.sin(a)*RRY];
 const raceDir = (B, p) => B.rng(p.seed + 'rd')() < .5 ? 1 : -1;
 function racePos(B, p, w){ const d = raceDir(B, p), a0 = Math.PI/2, t = p.t;
@@ -40,7 +43,7 @@ const raceRun = p => p.id === 'race' && p.t > RPRE && p.t < RPRE + RRUN;
 // ② 골목길로 유인: 쫓는 사람 (호스트가 0.6 초마다 길을 적어요) · 골목길에 들어가면 얼어붙어요
 const LU_SP = 135, LU_A = .8, LU_E = 8.8, LU_END = 12.2;
 const luSide = (B, p) => B.rng(p.seed + 'ls')() < .5 ? -1 : 1;
-const zone = side => side < 0 ? [170, 410, 330, 880] : [770, 410, 930, 880]; // x0 y0 x1 y1
+const zone = side => side < 0 ? [170 + OX, 410 + OY, 330 + OX, 880 + OY] : [770 + OX, 410 + OY, 930 + OX, 880 + OY]; // x0 y0 x1 y1
 const inZone = (x, y, side) => { const z = zone(side); return x > z[0] && x < z[2] && y > z[1] && y < z[3]; };
 const luOf = (B, p) => { const u = B.bs.lu; return u && u.s === p.seed ? u : null; };
 function lurePt(u, now){ if (u.fz && now >= u.fz) return [u.fx, u.fy]; const tt = Math.min(now, u.te), d = dist(u.x0, u.y0, u.gx, u.gy), s = Math.max(0, Math.min(d - 40, LU_SP*(tt - u.t0)/1000)); return d > 1 ? [u.x0 + (u.gx - u.x0)/d*s, u.y0 + (u.gy - u.y0)/d*s] : [u.x0, u.y0]; }
@@ -48,7 +51,7 @@ function lurePos(B, p, w){ const u = luOf(B, p); if (!u) return w; if (p.t < LU_
 const frozen = (B, p) => { if (p.id !== 'lure') return false; const u = luOf(B, p); return !!(u && u.fz && B.now >= u.fz && p.t < LU_END); };
 
 // ③ 하늘색 페인트: 칸칸이 번져요
-const GX0 = 180, GW = 106, GY0 = 420, GH = 105;
+const GW = 106, GH = 105;
 const PORD = [[0, 0], [6, 0], [0, 3], [6, 3], [1, 0], [5, 0], [0, 1], [6, 1], [0, 2], [6, 2], [1, 3], [5, 3], [2, 3], [4, 3], [1, 1], [5, 1], [3, 3], [1, 2], [5, 2]];
 const PT0 = 1.0, PDT = .34, PEND = .7;
 function paintTiles(B, p){ const r = B.rng(p.seed + 'pf'), fx = r() < .5, fy = r() < .5; return PORD.map(([x, y]) => [fx ? 6 - x : x, fy ? 3 - y : y]); }
@@ -60,7 +63,7 @@ const DL0 = 1.2, DL1 = 11;
 const dlOf = (B, p) => { const d = B.bs.dl; return d && d.s === p.seed ? d : null; };
 const bellAt = ([x, y]) => [x + 214*S, y - (FOOT_FULL - 110)*S];
 // ⑥ 생일 케이크
-const CK = [550, 795], CKA = 150;
+const CKA = 150;
 const ckOf = (B, p) => { const d = B.bs.ck; return d && d.s === p.seed ? d : null; };
 const ckOff = (B, d) => { const tau = (B.now - d.at)/1000 - .45; if (tau < 0) return CKA; return CKA*Math.cos((2 + .3*d.k)*tau); };
 const ckNeed = B => 5 + Math.min(2, nAlive(B) - 1);
@@ -69,7 +72,7 @@ const SP_A = 1, SP_E = 15.5, SP_J = 16.9;
 const s7Of = (B, p) => { const s = B.bs.s7; return s && s.s === p.seed ? s : null; };
 const s7Need = B => 3 + Math.min(5, nAlive(B));
 const s7Win = B => nAlive(B) >= 2 ? 4500 : 8000;
-function splitPos(B, p, w){ const m = B.rng(p.seed + 'sm')() < .5 ? 1 : -1, Tc = [550 - 230*m, 600], Cc = [550 + 230*m, 665];
+function splitPos(B, p, w){ const m = B.rng(p.seed + 'sm')() < .5 ? 1 : -1, Tc = [550 + OX - 230*m, 600 + OY], Cc = [550 + OX + 230*m, 665 + OY];
   const Tl = t => [Tc[0] + Math.cos(t*.7)*40, Tc[1] + Math.sin(t*.9)*22], Cl = t => { const a = Math.PI/2 + (t - SP_A)*.9*m; return [Cc[0] + Math.cos(a)*110, Cc[1] + Math.sin(a)*55]; };
   const s = s7Of(B, p), t = p.t;
   if (s && s.ok){ const k = (s.ok - t0Abs(B, p))/1000; return {T:w, C:w, joined:true, ok:s.ok, okC:k < SP_A ? l2(w, Cl(SP_A), ease(k)) : k < SP_E ? Cl(k) : Cl(SP_E)}; }
@@ -84,7 +87,7 @@ function basePos(B){ const p = P_(B), w = wand(B, amp(p));
   if (p.id === 'lure') return lurePos(B, p, w);
   if (p.id === 'split') return splitPos(B, p, w).T;
   return w; }
-function pos(B){ if (B._pos) return B._pos; let q = basePos(B); const bs = B.bs;
+function pos(B){ setO(B); if (B._pos) return B._pos; let q = basePos(B); const bs = B.bs;
   if (bs.sp && bs.stun && B.now < bs.stun + 1000) q = B.now < bs.stun ? bs.sp : l2(bs.sp, q, ease((B.now - bs.stun)/1000));
   return (B._pos = q); }
 const cartPos = B => { const p = P_(B); if (p.id === 'split' && !stunned(B)){ const sp = splitPos(B, p, wand(B, amp(p))); if (!sp.joined) return sp.C; } return pos(B); };
@@ -217,7 +220,7 @@ function hostTick(B, p){ const l = loc(B); if (!B.host || B.now - l.hostT < 600)
     const nu = {s:p.seed, uid:tg.uid, side:luSide(B, p), x0:Math.round(cur[0]), y0:Math.round(cur[1]), t0:now, gx:Math.round(tg.x), gy:Math.round(tg.y), te:Math.round(t0Abs(B, p) + LU_E*1000)};
     if (u && u.uid === nu.uid && dist(u.gx, u.gy, nu.gx, nu.gy) < 6) return;
     B.tx(b => { const v = b.lu; if (v && v.s === p.seed && v.fz) return undefined; return {...b, lu:nu}; }); return; }
-  if (p.id === 'dlv' && p.t >= .5 && p.t < DL1){ const d = dlOf(B, p); if (!d){ const tg = B.target; if (!tg) return; const cs = [[200, 845], [900, 845], [200, 450], [900, 450]].sort((a, b) => dist(b[0], b[1], tg.x, tg.y) - dist(a[0], a[1], tg.x, tg.y)), box = cs[0], need = 2 + Math.min(4, al.length);
+  if (p.id === 'dlv' && p.t >= .5 && p.t < DL1){ const d = dlOf(B, p); if (!d){ const tg = B.target; if (!tg) return; const cs = [[200 + OX, 845 + OY], [900 + OX, 845 + OY], [200 + OX, 450 + OY], [900 + OX, 450 + OY]].map(q => [q[0], Math.min(q[1], B.H - 40)]).sort((a, b) => dist(b[0], b[1], tg.x, tg.y) - dist(a[0], a[1], tg.x, tg.y)), box = cs[0], need = 2 + Math.min(4, al.length);
       B.tx(b => { const v = b.dl; if (v && v.s === p.seed) return undefined; return {...b, dl:{s:p.seed, uid:tg.uid, box, h:0, need}}; }); }
     else if (d.done && once(B, 'heal.' + p.seed)) B.heal(B.r.max*.03);
     return; }
@@ -264,7 +267,7 @@ function drawAlleyZone(c, side, a){ const z = zone(side), x0 = z[0], x1 = z[2], 
   const lx = side < 0 ? x0 + 30 : x1 - 30; c.fillStyle = '#1a1c24'; c.fillRect(lx - 3, y0 + 10, 6, 120); c.fillStyle = 'rgba(255,210,140,.8)'; c.beginPath(); c.arc(lx, y0 + 10, 7, 0, 7); c.fill();
   text(c, '골목길', (x0 + x1)/2, y0 + 26, 24, '#9ab0d8'); c.restore(); }
 function drawFloor(B, c){ const p = P_(B), now = B.now;
-  if (p.id === 'trans'){ const k = B.ph2, I = vhsI(k); if (I > 0 && hsh(Math.floor(now/71) + 77) < (k > 1.7 && k < 2.3 ? .8 : .18 + .5*I)) c.drawImage(alleyCv(), 0, 0, 1100, 900); }
+  if (p.id === 'trans'){ const k = B.ph2, I = vhsI(k); if (I > 0 && hsh(Math.floor(now/71) + 77) < (k > 1.7 && k < 2.3 ? .8 : .18 + .5*I)) c.drawImage(alleyCv(), 0, 0, B.W || 1100, B.H || 900); }
   if (p.id === 'race'){ const al = cl(p.t*2)*cl((p.len - .4 - p.t)*2); if (al > 0){ c.save(); c.globalAlpha = al*.55; c.strokeStyle = 'rgba(255,160,190,.6)'; c.lineWidth = 36; c.beginPath(); c.ellipse(RC[0], RC[1], RRX, RRY, 0, 0, 7); c.stroke(); c.setLineDash([16, 12]); c.lineWidth = 3; c.strokeStyle = '#ffd0e0'; c.stroke(); c.restore(); } }
   if (p.id === 'lure') drawAlleyZone(c, luSide(B, p), cl(p.t*2)*cl((p.len - p.t)*2));
   if (p.id === 'paint'){ const tl = paintTiles(B, p), fade = cl((p.len - p.t)/PEND); tl.forEach(([cx, cy], i) => { const pt = PT0 + i*PDT, x = GX0 + cx*GW, y = GY0 + cy*GH; if (p.t < pt - .7) return;
@@ -317,10 +320,10 @@ export default {
   reach: 125,
   height: 268,
   pos,
-  tick(B, dt){ const p = P_(B); hist(B); recBoss(B); if (B.t < 2.5) sayOnce(B, 'hi', '어서 오세요~ 모모 케이크예요!');
+  tick(B, dt){ setO(B); const p = P_(B); hist(B); recBoss(B); if (B.t < 2.5) sayOnce(B, 'hi', '어서 오세요~ 모모 케이크예요!');
     cbTick(B); patTick(B, p); hostTick(B, p); txQ(B); },
   hitMul(B){ if (B.phase === 2 && B.ph2 < TRANS) return 0; if (stunned(B)) return B.bs.sk || 2; const p = P_(B); if (frozen(B, p)) return 2; const d = p.id === 'dlv' && dlOf(B, p); if (d && d.cut && B.now - d.cut < 3500) return 1.5; return 1; },
-  swing(B, cx, cy){ const p = P_(B), l = loc(B), now = B.now;
+  swing(B, cx, cy){ setO(B); const p = P_(B), l = loc(B), now = B.now;
     if (p.id === 'split' && !stunned(B)){ const sp = splitPos(B, p, wand(B, amp(p))), s = s7Of(B, p); if (sp.joined || sp.ok) return false; const R = this.reach;
       const nT = dist(cx, cy, sp.T[0], sp.T[1]) < R, nC = dist(cx, cy, sp.C[0], sp.C[1]) < R; if (!nT && !nC) return false; if (!sp.live) return true;
       const toT = nT && (!nC || dist(cx, cy, sp.T[0], sp.T[1]) <= dist(cx, cy, sp.C[0], sp.C[1])), q = toT ? sp.T : sp.C, down = s && (toT ? s.td : s.cd);
@@ -332,9 +335,9 @@ export default {
         else { if (now - (d.miss || 0) > 400) B.tx(bs => { const v = bs.ck; if (!v || v.s !== seed || v.ev) return undefined; return {...bs, ck:{...v, at:now, miss:now}}; }); }
         return true; } }
     return false; },
-  drawFloor(B, c){ drawFloor(B, c); },
-  drawBody(B, c){ drawBoss(B, c); },
-  drawTop(B, c){ drawTopAll(B, c); },
+  drawFloor(B, c){ setO(B); drawFloor(B, c); },
+  drawBody(B, c){ setO(B); drawBoss(B, c); },
+  drawTop(B, c){ setO(B); drawTopAll(B, c); },
   drawScreen(B, c, w, h){ const p = P_(B);
     if (p.id === 'trans') vhs(B, c, w, h, vhsI(B.ph2), B.ph2);
     if (B.phase === 2 && B.ph2 > 1.7 && B.ph2 < 2.5) tint(c, w, h, '#ffe0ec', (1 - (B.ph2 - 1.7)/.8)*.55);
