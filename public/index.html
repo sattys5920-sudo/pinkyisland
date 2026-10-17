@@ -6845,7 +6845,7 @@ function darkBossStart(npc){ const rm = darkRoomOf(npc), up = (rm?.stairs || [])
 // ===== 다크 보스 패턴 엔진 (보리 ~ 콩이): 주민마다 public/bosses/<주민>.js · 규칙은 docs/BOSS_ENGINE.md =====
 // 모든 장면은 서버 시각(B.now)과 방 기록(r)만으로 정해져서 같은 방 모두에게 똑같아요. 같이 바꿔야 하는 건 B.tx 로 r.bs 에 적어요
 const BOSS_DMG = 1.5, BOSS_BIG = 3.2; // 보스 패턴 피해 배수 (보리 ~ 콩이) · 기믹 실패처럼 센 공격(lo+80 이상)은 크게 (1000 안팎)
-const BOSS_EAT_CD = 8000, BOSS_EAT_K = .4; let bossEatAt = 0; // 보스전 중엔 음식이 덜 차고 8 초에 한 번만 먹어요
+const BOSS_EAT_CD = 5000, BOSS_EAT_K = 1; let bossEatAt = 0; // 보스전 중엔 음식을 5 초에 한 번만 먹어요
 let bossGod = false; // 시험용 (혼자 보기 도구에서만 켜요)
 const bossFight = () => { const n = Z().dark; return !!n && n !== 'tori' && darkBossUp(roomOf(n)); };
 const bossMods = {}; let bossCtl = {}, bossBp = null, bossSayNow = null, bossHurtKeys = {}, bossB = null, bossSlip = [0, 0];
