@@ -27,6 +27,8 @@ const sayOnce = (B, k, s, ms = 2400) => { if (!L.said[k]){ L.said[k] = 1; B.say(
 
 // ===== 보스 자리 (발) =====
 const home = B => [B.hx, B.hy + 30];
+// 층 방이면 보스 층의 위 끝 (층마다 같은 지역 좌표 · 1100 × 900)
+const fy = B => B.hy - (B.hy % 1200);
 const wander = t => [Math.cos(t*.42)*125 + Math.sin(t*1.07)*30, Math.sin(t*.61)*40 + Math.sin(t*1.3)*10];
 const SEG = 9; // 9 초마다 김으로 흩어져 다른 자리로
 function anchor(B, n){ if (n < 1) return [0, 0]; const r = B.rng(`${B.r.bossAt}.a.${n}`); return [(r() - .5)*320, (r() - .5)*140]; }
@@ -49,7 +51,7 @@ const CUP_SPOTS = [[300, 450], [800, 450], [290, 700], [810, 700], [550, 770], [
 const ARRIVE = [3.2, 7.4, 11.6], POUR = .9;
 function cupsOf(B, p){
   if (L && L.cupsK === p.seed) return L.cups;
-  const r = B.rng(p.seed + 'c'), s = CUP_SPOTS.map(v => [v, r()]).sort((a, b) => a[1] - b[1]).slice(0, 3).map(v => v[0]);
+  const r = B.rng(p.seed + 'c'), oy = fy(B), s = CUP_SPOTS.map(v => [[v[0], v[1] + oy], r()]).sort((a, b) => a[1] - b[1]).slice(0, 3).map(v => v[0]);
   const [hx, hy] = home(B), out = []; let cx = hx, cy = hy; // 가까운 잔부터
   while (s.length){ let bi = 0; s.forEach((v, i) => { if (dist(v[0], v[1], cx, cy) < dist(s[bi][0], s[bi][1], cx, cy)) bi = i; }); const v = s.splice(bi, 1)[0]; out.push(v); [cx, cy] = v; }
   if (L){ L.cupsK = p.seed; L.cups = out; } return out;
@@ -70,14 +72,14 @@ function knockCup(B, p, i){ const k = p.seed, bit = 1 << i; if (cupMask(B, p) & 
 const CLOUDS = [[330, 520, 120, 70, .5], [780, 520, 120, 70, .62], [550, 720, 220, 40, .44], [550, 430, 200, 30, .55]];
 function clouds(B, p){
   if (p.id !== 'sleep') return []; const n = B.alive.length >= 4 ? 4 : 3, a = cl(p.t/1.2)*cl((p.len - p.t)/1), out = [];
-  for (let i = 0; i < n; i++){ const [x, y, ax, ay, w] = CLOUDS[i]; out.push({x:x + Math.sin(B.t*w + i*2)*ax, y:y + Math.cos(B.t*w*.8 + i)*ay, a}); }
+  for (let i = 0; i < n; i++){ const [x, y, ax, ay, w] = CLOUDS[i]; out.push({x:x + Math.sin(B.t*w + i*2)*ax, y:fy(B) + y + Math.cos(B.t*w*.8 + i)*ay, a}); }
   const f = bossFoot(B, p), fa = Math.min(cl((p.t - 5)/1), cl((9.6 - p.t)/1)); if (fa > 0) out.push({x:f[0], y:f[1] + 10, a:fa*a}); // 보스 발밑으로 한 번
   return out;
 }
 const CR = [100, 56];
 
 // ===== ② 분실물 상자: 긴 손이 칼을 훔쳐 상자에 =====
-const boxPos = B => B.hash(B.r.bossAt + 'box') % 2 ? [262, 420] : [838, 420];
+const boxPos = B => [B.hash(B.r.bossAt + 'box') % 2 ? 262 : 838, fy(B) + 420];
 function grabs(B, p){
   if (p.id !== 'grab' || !B.alive.length) return []; const out = [];
   for (let i = 0; ; i++){ const ts = 1.2 + i*2.3; if (ts + 1.6 > p.len) break; const r = B.rng(`${p.seed}.g${i}`), m = B.alive.length >= 4 ? 2 : 1;
@@ -91,8 +93,8 @@ function grabAim(B, gr){ // 손을 뻗기 시작한 순간 그 사람이 있던 
 
 // ===== ③ 계산기 테이프: 뱀처럼 기어 다니는 영수증 =====
 const TP_N = 18, TP_GAP = .09;
-function tapeHead(p, u){ const ph = hsh(p.n*3.7)*6.28; u = Math.max(0, Math.min(u, p.len - 1.6)); return [550 + Math.sin(u*.85 + ph)*330, 600 + Math.sin(u*1.7 + ph*1.3)*165]; }
-function tapeBody(p){ const u = p.t - .8, pts = []; for (let k = 0; k < TP_N; k++) pts.push(tapeHead(p, u - k*TP_GAP)); return pts; }
+function tapeHead(B, p, u){ const ph = hsh(p.n*3.7)*6.28; u = Math.max(0, Math.min(u, p.len - 1.6)); return [B.hx + Math.sin(u*.85 + ph)*330, fy(B) + 600 + Math.sin(u*1.7 + ph*1.3)*165]; }
+function tapeBody(B, p){ const u = p.t - .8, pts = []; for (let k = 0; k < TP_N; k++) pts.push(tapeHead(B, p, u - k*TP_GAP)); return pts; }
 
 // ===== ⑤ 특별히 진하게: 노리는 몸 위로 큰 잔 =====
 const DROPS = [3.6, 9.2], SR = [110, 62];
@@ -102,7 +104,7 @@ function strongDmg(B, c){ const need = Math.min(3, Math.max(1, B.alive.length));
 
 // ===== ⑥ 식은 커피잔 밀기 =====
 const PUSH_SPOTS = [[240, 450], [860, 450], [260, 730], [840, 730]];
-const pushSpawn = (B, p) => PUSH_SPOTS[B.hash(p.seed + 'p') % 4];
+const pushSpawn = (B, p) => { const v = PUSH_SPOTS[B.hash(p.seed + 'p') % 4]; return [v[0], v[1] + fy(B)]; };
 function pushCup(B, p){
   const k = p.seed, s = B.bs.push && B.bs.push.k === k ? B.bs.push : null;
   if (B.host && L.push && L.push.k === k) return L.push;
@@ -151,6 +153,7 @@ export default {
     if (p.id === 'close' && p.t > CLOSE_T) sayOnce(B, pid + 'f', '다들 졸다 가요.');
     if (B.bs.stun > now && B.bs.push?.hit) sayOnce(B, 'stun' + B.bs.stun, '…하얀 가루?', 2000);
 
+    if (bn % 200 === 0){ const ks = Object.keys(L.snaps); if (ks.length > 300) for (const k of ks.slice(0, ks.length - 60)) delete L.snaps[k]; }
     hostTick(B, p, f, dt);
 
     const alive = me && !me.down;
@@ -174,7 +177,7 @@ export default {
       if (inEll(me.x, me.y, bx[0], bx[1] + 30, 80, 55)) L.boxT += dt; else L.boxT = Math.max(0, L.boxT - dt);
       if (L.boxT > .6 || now - L.stolen.at > 30000){ L.stolen = null; L.boxT = 0; B.sfx('hit'); B.fx('칼 되찾음', me.x, me.y - 70, '#c8ffd0'); } }
     // ③ 테이프 몸통
-    if (p.id === 'tape' && p.t > .8 && p.t < p.len - .8){ const body = tapeBody(p);
+    if (p.id === 'tape' && p.t > .8 && p.t < p.len - .8){ const body = tapeBody(B, p);
       for (const [sx, sy] of body){ const d = Math.hypot(me.x - sx, (me.y - sy)*1.3); if (d < 32){ if (B.hurt(B.lo + 40, `tp.${p.seed}.${Math.floor(p.t/1.1)}`)){ B.push(me.x - sx || 1, me.y - sy, 70); B.sfx('hit'); } break; } } }
     // ④ 붓는 순간 둘레 · 남은 수면 커피 웅덩이
     if (p.id === 'cups' || (B.phase === 2 && p.id === null)){ const pc = p.id === 'cups' ? p : null;
@@ -314,7 +317,7 @@ function hostTick(B, p, f, dt){
       const ps = B.alive.filter(q => inEll(q.x, q.y, Hs.x, Hs.y, 92, 62));
       if (ps.length){ let cx = 0, cy = 0; for (const q of ps){ cx += q.x; cy += q.y; } cx /= ps.length; cy /= ps.length; let dx = Hs.x - cx, dy = Hs.y - cy, d = Math.hypot(dx, dy);
         if (d < 6){ dx = f[0] - Hs.x; dy = f[1] - Hs.y; d = Math.hypot(dx, dy) || 1; } const sp = Math.min(170, 72 + 30*(ps.length - 1));
-        Hs.x = cl(Hs.x + dx/d*sp*dt, 120, 980); Hs.y = cl(Hs.y + dy/d*sp*dt, 300, 800); }
+        Hs.x = cl(Hs.x + dx/d*sp*dt, 120, B.W - 120); Hs.y = cl(Hs.y + dy/d*sp*dt, fy(B) + 300, fy(B) + 800); }
       if (inEll(Hs.x, Hs.y, f[0], f[1], 135, 80)){ Hs.hit = 1; const x = Math.round(Hs.x), y = Math.round(Hs.y); B.tx(bs => bs.push?.k === k && bs.push.hit ? undefined : {...bs, push:{k, x, y, hit:1}, stun:now + 8000, sp:[Math.round(f[0]), Math.round(f[1])]}); }
       else if (now - Hs.sent > 350 && (Math.abs(Hs.x - Hs.sx) > 2 || Math.abs(Hs.y - Hs.sy) > 2)){ Hs.sent = now; Hs.sx = Hs.x; Hs.sy = Hs.y; const x = Math.round(Hs.x), y = Math.round(Hs.y); B.tx(bs => bs.push?.k === k && bs.push.hit ? undefined : {...bs, push:{k, x, y}}); } } }
   // ⑦ 마감 시작 체력 기록 · 시간이 다 되면 그동안 깎은 만큼의 절반 회복 (최대 5%)
@@ -334,8 +337,8 @@ function drawBox(B, c, p, full){ const [x, y] = boxPos(B), a = p.id === 'grab' ?
   c.restore(); }
 
 function drawTape(B, c, p){
-  if (p.t < .8){ const [x, y] = tapeHead(p, 0); c.save(); c.globalAlpha = cl(p.t*2); c.fillStyle = '#e8dcc8'; c.beginPath(); c.ellipse(x, y - 8, 18, 18, 0, 0, 7); c.fill(); c.restore(); text(c, '찌르르륵…', x, y - 44, 26, '#fff0d0'); return; }
-  const pts = tapeBody(p), al = cl((p.len - p.t)/.8); c.save(); c.globalAlpha = al; c.lineCap = 'round'; c.lineJoin = 'round';
+  if (p.t < .8){ const [x, y] = tapeHead(B, p, 0); c.save(); c.globalAlpha = cl(p.t*2); c.fillStyle = '#e8dcc8'; c.beginPath(); c.ellipse(x, y - 8, 18, 18, 0, 0, 7); c.fill(); c.restore(); text(c, '찌르르륵…', x, y - 44, 26, '#fff0d0'); return; }
+  const pts = tapeBody(B, p), al = cl((p.len - p.t)/.8); c.save(); c.globalAlpha = al; c.lineCap = 'round'; c.lineJoin = 'round';
   c.strokeStyle = 'rgba(0,0,0,.3)'; c.lineWidth = 28; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y + 4) : c.moveTo(x, y + 4)); c.stroke();
   c.strokeStyle = '#f6f0e4'; c.lineWidth = 26; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y - 8) : c.moveTo(x, y - 8)); c.stroke();
   c.strokeStyle = 'rgba(80,60,40,.5)'; c.lineWidth = 2; c.setLineDash([3, 9]); c.stroke(); c.setLineDash([]);
