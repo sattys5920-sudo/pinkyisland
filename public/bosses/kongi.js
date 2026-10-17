@@ -114,7 +114,7 @@ function shadowDraw(B, c2){ const c = cur(B); if (c.id !== 'shadow') return; con
 
 // ===== ④ 수정액: 덫 자리를 잠깐 보여 준 뒤 하얗게 덮어 지워요 =====
 const WH_W = [.6, 4.4, 8.2], WH_SHOW = 1.1, WH_BOOM = 2.8;
-function whSpots(B, c, i){ return memo(`ws${c.seed}.${i}`, () => { const r = B.rng(c.seed + 's' + i), n = 6 + Math.min(4, B.alive.length), out = []; for (let k = 0; k < n; k++) out.push([B.hx - 320 + r()*640, B.hy - 10 + r()*300]); return out; }); }
+function whSpots(B, c, i){ return memo(`ws${c.seed}.${i}`, () => { const r = B.rng(c.seed + 's' + i), n = 6 + Math.min(4, B.alive.length), out = []; for (let k = 0; k < n; k++) out.push([B.hx - 320 + r()*640, B.hy - 10 + r()*Math.min(300, B.H - 50 - B.hy)]); return out; }); }
 function whiteTick(B){ const c = cur(B); if (c.id !== 'white') return;
   WH_W.forEach((t0, i) => { const k = c.t - t0; if (k < 0 || k > WH_BOOM + .8) return; const sp = whSpots(B, c, i); if (once(`wa${c.seed}.${i}`)) B.sfx('warn');
     if (k >= WH_BOOM && k < WH_BOOM + .35 && once(`wb${c.seed}.${i}`)){ B.sfx('slam'); if (meOk(B) && sp.some(([x, y]) => inEll(B.me.x, B.me.y, x, y, 66, 40))) B.hurt(B.lo + 90, `wh${c.seed}.${i}`); } }); }
@@ -151,13 +151,17 @@ function haramTick(B){ const c = cur(B), on = c.id === 'haram';
   let typing = false; try { typing = on && document.activeElement && document.activeElement.id === 'chatin'; } catch(e){}
   if (L.callUntil > B.now && meOk(B)){ B.ctl.lock = true; B.ctl.noAtk = true; typing = true; }
   else if (L.callUntil && L.callSeed){ const s = L.callSeed, u = B.me?.uid; L.callUntil = 0; L.callSeed = ''; if (u && meOk(B)){ L.called[s] = 1; B.sfx('hit', 0); B.tx(bs => { const c6 = bs.c6 && bs.c6.s === s ? bs.c6 : {s, u:{}}; if (c6.u[u]) return undefined; return {...bs, c6:{s, u:{...c6.u, [u]:1}}}; }); } }
-  B.setBp(typing ? {c:1} : null);
-  if (on && B.host && !stunned(B) && B.bs.st6 !== c.seed){ const c6 = B.bs.c6; if (c6 && c6.s === c.seed && B.alive.length && B.alive.every(p => c6.u[p.uid]) && txOk('st6', 800)){ const s = c.seed, until = B.now + 8000; B.tx(bs => bs.st6 === s ? undefined : {...bs, stun:until, st6:s}); } }
+  if (B.me){ const lp = L.mp; if (!lp || Math.hypot(B.me.x - lp[0], B.me.y - lp[1]) > 4){ L.mp = [B.me.x, B.me.y]; L.movedAt = B.now; } }
+  const act = B.now - (L.movedAt || 0) < 20000 || L.callUntil > B.now; B.setBp(typing || act ? {a:act ? 1 : 0, c:typing ? 1 : 0} : null);
+  if (on && B.host && !stunned(B) && B.bs.st6 !== c.seed){ const c6 = B.bs.c6; if (c6 && c6.s === c.seed && haramGot(B, c6) >= haramNeed(B, c6) && txOk('st6', 800)){ const s = c.seed, until = B.now + 8000; B.tx(bs => bs.st6 === s ? undefined : {...bs, stun:until, st6:s}); } }
   const st = B.bs.stun || 0; if (st > B.now && L.stunSeen !== st){ L.stunSeen = st; B.sfx('slam', 0); B.shake(); B.say('…고마워. 나 여기 있어', 3200); } }
+// 필요한 사람 수: 움직이고 있는 (최근 20 초) 살아 있는 사람 + 이미 부른 사람 · 가만히 있거나 자리를 비운 사람은 세지 않아요 (최소 1)
+const haramGot = (B, c6) => c6 ? B.alive.filter(p => c6.u[p.uid]).length : 0;
+const haramNeed = (B, c6) => Math.max(1, B.alive.filter(p => (p.bp && p.bp.a) || (c6 && c6.u[p.uid])).length);
 function haramChat(B, text){ const c = cur(B); if (c.id !== 'haram' || !meOk(B) || stunned(B) || L.called[c.seed] || L.callUntil > B.now) return; if (norm(text) !== PHRASE) return; L.callUntil = B.now + 2000; L.callSeed = c.seed; }
 function haramTop(B, c2){ const c = cur(B), [fx, fy] = foot(B), top = fy - FOOTD - 150*S;
   for (const p of B.all){ if (!(p.bp && p.bp.c)) continue; c2.save(); c2.fillStyle = 'rgba(240,244,255,.95)'; c2.beginPath(); c2.roundRect(p.x + 8, p.y - 70, 52, 22, 10); c2.fill(); c2.fillStyle = '#5a6a9a'; for (let i = 0; i < 3; i++){ c2.beginPath(); c2.arc(p.x + 24 + i*10, p.y - 59 - (Math.floor(B.now/160 + i)%3 === 0 ? 3 : 0), 3, 0, 7); c2.fill(); } c2.restore(); }
-  if (c.id === 'haram' && !stunned(B)){ const c6 = B.bs.c6, n = B.alive.length, got = c6 && c6.s === c.seed ? B.alive.filter(p => c6.u[p.uid]).length : 0;
+  if (c.id === 'haram' && !stunned(B)){ const c6 = B.bs.c6 && B.bs.c6.s === c.seed ? B.bs.c6 : null, n = haramNeed(B, c6), got = Math.min(n, haramGot(B, c6));
     for (let i = 0; i < n; i++){ c2.save(); c2.globalAlpha = i < got ? 1 : .35; badge(c2, fx - (n - 1)*13 + i*26, fy + 22, .55, true, i < got); c2.restore(); }
     const k = Math.sin(B.now/330); bubble(c2, fx + 90, top + 10 + k*6, '…문… 열지…', .75, -.1, -1, true, .45 + .4*Math.abs(k)); }
   const st = B.bs.stun || 0; if (st > B.now){ const u = cl((B.now - st + 8000)/500), out = cl((st - B.now)/600); badgeBack(c2, fx + 130, fy - FOOTD - 10 - u*16, .7 + u*.35, out); } }
@@ -171,9 +175,9 @@ function doorTick(B){ const c = cur(B); if (c.id !== 'door') return; if (once(`d
     if (c.t >= s && c.t < s + .5 && m && m.k === key){
       if (once(`ds${key}`)){ B.sfx('slam', 0); const i = B.me ? m.p.findIndex(q => q[0] === B.me.uid) : -1; if (i >= 0 && meOk(B) && m.p.length > 1){ const nu = m.p[(i + 1) % m.p.length][0], to = B.all.find(q => q.uid === nu && !q.down); if (to) try { B.tp(to.x, to.y); } catch(e){} } }
       else if (c.t >= s + .12 && once(`dh${key}`) && meOk(B) && m.p.some(([, x, y]) => inEll(B.me.x, B.me.y, x, y, 46, 28))) B.hurt(B.lo + 100, `d7${key}`); } }); }
-function doorFloor(B, c2){ if (B.phase !== 3) return; const open = cl(B.ph3/45), gap = 8 + open*120, x = B.W/2;
-  c2.save(); c2.globalCompositeOperation = 'lighter'; const q = c2.createLinearGradient(0, 0, 0, 640); q.addColorStop(0, `rgba(220,230,255,${.2 + open*.35})`); q.addColorStop(1, 'rgba(220,230,255,0)'); c2.fillStyle = q; c2.beginPath(); c2.moveTo(x - gap/2, 0); c2.lineTo(x + gap/2, 0); c2.lineTo(x + gap*2.2, 640); c2.lineTo(x - gap*2.2, 640); c2.closePath(); c2.fill(); c2.restore();
-  c2.save(); c2.globalAlpha = .85; c2.fillStyle = '#e8eeff'; c2.fillRect(x - gap/2, 0, gap, 150); c2.restore();
+function doorFloor(B, c2){ if (B.phase !== 3) return; const open = cl(B.ph3/45), gap = 8 + open*120, x = B.hx, y0 = Math.max(0, B.hy - 600);
+  c2.save(); c2.globalCompositeOperation = 'lighter'; const q = c2.createLinearGradient(0, y0, 0, y0 + 640); q.addColorStop(0, `rgba(220,230,255,${.2 + open*.35})`); q.addColorStop(1, 'rgba(220,230,255,0)'); c2.fillStyle = q; c2.beginPath(); c2.moveTo(x - gap/2, y0); c2.lineTo(x + gap/2, y0); c2.lineTo(x + gap*2.2, y0 + 640); c2.lineTo(x - gap*2.2, y0 + 640); c2.closePath(); c2.fill(); c2.restore();
+  c2.save(); c2.globalAlpha = .85; c2.fillStyle = '#e8eeff'; c2.fillRect(x - gap/2, y0, gap, 150); c2.restore();
   const c = cur(B), m = B.bs.m7; if (c.id !== 'door' || !m) return;
   DOOR_S.forEach((s, k) => { if (m.k !== `${c.seed}.${k}`) return; const kk = c.t - s;
     if (kk > -DOOR_LEAD && kk < 0) for (const [, mx, my] of m.p){ c2.save(); c2.globalAlpha = .55 + .35*Math.sin(B.now/60); c2.strokeStyle = '#ff6a7a'; c2.lineWidth = 3; c2.setLineDash([5, 4]); c2.beginPath(); c2.ellipse(mx, my, 46, 28, 0, 0, 7); c2.stroke(); c2.globalAlpha = .18; c2.fillStyle = '#ff6a7a'; c2.fill(); c2.restore(); }
