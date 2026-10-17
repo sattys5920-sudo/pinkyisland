@@ -11,7 +11,8 @@ const P = {
 const OPT = {gap:2.5, trans:5};
 // 패턴마다 보스가 돌아다니는 세기 (바닥을 피해야 하는 패턴일수록 덜 움직여요)
 const LV = {fuse:.3, bolt:.35, smoke:.6, trans:0, plow:.12, spread:.8, relay:.45, match:.5};
-const X0 = 90, X1 = 1010, Y0 = 255, Y1 = 810; // 걸을 수 있는 바닥
+let X0 = 90, X1 = 1010, Y0 = 255, Y1 = 810, TROUGH = [[330, 715], [770, 715]]; // 걸을 수 있는 바닥 (보스 집 자리 기준 · arena(B) 가 맞춰요)
+function arena(B){ const hx = B.hx, hy = B.hy; X0 = Math.max(20, hx - 460); X1 = Math.min((B.W || 1100) - 20, hx + 460); Y0 = Math.max(20, hy - 305); Y1 = Math.min((B.H || 900) - 20, hy + 250); TROUGH = [[hx - 220, Y1 - 95], [hx + 220, Y1 - 95]]; }
 const PI = Math.PI;
 
 // ===== 내 화면에만 있는 값 (모두에게 같은 장면은 B 로만 정해요) =====
@@ -82,13 +83,17 @@ function ridges(B, p){ if (RIk === p.seed) return RI; RIk = p.seed; const R = B.
 const wallD = (w, x, y) => w.o === 'h' ? [y - w.c, Math.abs(x - w.g) < GAP/2 - 8] : [x - w.c, Math.abs(y - w.g) < GAP/2 - 8];
 
 // ===== ⑤ 옮는 불씨 =====
-const TROUGH = [[330, 715], [770, 715]], SPREAD = 80, IGN = [.8, 6.8];
+const SPREAD = 80, IGN = [.8, 6.8];
 const emOn = (B, p) => B.bs.em && B.bs.em.k === p.seed ? B.bs.em.on || {} : {};
 
 // ===== ⑥ 양동이 릴레이 =====
 const NEED = 4;
 function relayGeo(B, p){ const rl = B.bs.rl && B.bs.rl.k === p.seed ? B.bs.rl : null, n = Math.max(1, Math.min(8, rl ? rl.n : B.alive.length)), D = Math.min(760, 230*(n + 1)), R = Math.max(230, D/(n + 1) + 40), f = B.rng(p.seed + 'w')() < .5 ? 1 : -1;
-  return {rl, n, R, well:[550 + f*D/2, 745], barn:[550 - f*D/2, 735]}; }
+  const well = [B.hx + f*D/2, Y1 - 65], barn = [B.hx - f*D/2, Y1 - 75];
+  // 실제로 줄에 선 사람만 세요 (가만히 있는 사람 때문에 못 깨는 일이 없게): 선 사람이 적으면 팔이 더 멀리 닿아요
+  const on = B.alive.filter(q => segD(q.x, q.y, well, barn) < 150).length;
+  return {rl, n, R:Math.max(R, D/(Math.max(1, on) + 1) + 40), well, barn}; }
+function segD(x, y, a, b){ const vx = b[0] - a[0], vy = b[1] - a[1], u = cl(((x - a[0])*vx + (y - a[1])*vy)/(vx*vx + vy*vy || 1)); return Math.hypot(x - a[0] - vx*u, y - a[1] - vy*u); }
 function chain(B, G){ const nodes = [G.well, ...B.alive.map(q => [q.x, q.y]), G.barn], N = nodes.length, prev = new Array(N).fill(-1), seen = [true]; const Q = [0];
   while (Q.length){ const a = Q.shift(); if (a === N - 1) break; for (let b = 1; b < N; b++) if (!seen[b] && dist(...nodes[a], ...nodes[b]) <= G.R){ seen[b] = true; prev[b] = a; Q.push(b); } }
   if (!seen[N - 1]){ // 끊긴 곳: 우물에서 닿는 데까지 + 가장 가까운 사람
@@ -108,7 +113,7 @@ function mGround(th, u){ const m = th.m; u = cl(u); return [lerp(m.from[0], m.la
 const mHeight = u => lerp(-HAND[1], 0, cl(u)) + Math.sin(cl(u)*PI)*120;
 
 // ===== 매 프레임 =====
-function tick(B, dt){
+function tick(B, dt){ arena(B);
   const p = cur(B), me = B.me, lo = B.lo; tidy();
   // 기본 공격
   for (const r of rings(B)){ if (r.k < .1 && once('rw' + r.key)) B.sfx('warn', 300); if (r.k >= .9 && once('rs' + r.key)) B.sfx('slam', 250);
@@ -170,7 +175,7 @@ function tickRelay(B, p, dt){ const G = relayGeo(B, p);
 
 // ===== 그리기 =====
 const T = B => B.now/1000;
-function drawFloor(B, c){ const p = cur(B), t = T(B);
+function drawFloor(B, c){ arena(B); const p = cur(B), t = T(B);
   drawPrints(B, c, t);
   if (p.id === 'fuse') for (const F of fuses(B, p)){ const k = p.t; if (k < F.pour[0] || k > F.lit + F.run + BURN + .3) continue; const pu = cl((k - F.pour[0])/(F.pour[1] - F.pour[0])), N = 48;
     const segs = [[], [], []]; for (let i = 0; i < N; i++){ const s0 = i/N; if (s0 > pu) break; const ig = F.lit + s0*F.run, st = k > ig + BURN ? 2 : k >= ig ? 1 : 0; segs[st].push([fuseAt(F, s0), fuseAt(F, Math.min(pu, (i + 1)/N))]); }
@@ -207,7 +212,7 @@ function drawPrints(B, c, t){ // 이동 연출: 발자국마다 불이 붙어 �
   const p0 = posAt(B, now), p1 = posAt(B, now - 80), sp = cl(dist(...p0, ...p1)/.08/70);
   if (sp > .1){ c.save(); c.globalCompositeOperation = 'lighter'; for (let i = 0; i < 10; i++){ const ph = (t*1.6 + i/10) % 1, sx = (i % 2 ? 1 : -1)*17; c.globalAlpha = sp*(1 - ph); c.fillStyle = i % 3 ? '#ffb050' : '#fff0a0'; c.beginPath(); c.arc(p0[0] + sx + Math.sin(i*3.7 + t*4)*12*ph, p0[1] - ph*60*sp, 2.4, 0, 7); c.fill(); } c.restore(); } }
 function drawRidges(B, c, p, t){ for (const S of ridges(B, p)){ if (p.t < S.warn || p.t > S.down + .5) continue; const up = p.t >= S.up, al = p.t > S.down ? cl(1 - (p.t - S.down)/.5) : 1, h = up ? 18*cl((p.t - S.up)/.25) : 0;
-    for (const w of S.w){ const segs = w.o === 'h' ? [[20, w.g - GAP/2], [w.g + GAP/2, 1080]] : [[Y0 - 10, w.g - GAP/2], [w.g + GAP/2, Y1 + 10]];
+    for (const w of S.w){ const segs = w.o === 'h' ? [[0, w.g - GAP/2], [w.g + GAP/2, B.W || 1100]] : [[Y0 - 10, w.g - GAP/2], [w.g + GAP/2, Y1 + 10]];
       for (const [a0, a1] of segs){ c.save(); c.globalAlpha = al;
         if (!up){ c.globalAlpha = .5 + .4*Math.sin(t*12); c.strokeStyle = '#e8b070'; c.lineWidth = 3; c.setLineDash([8, 6]); if (w.o === 'h') c.strokeRect(a0, w.c - 12, a1 - a0, 24); else c.strokeRect(w.c - 12, a0, 24, a1 - a0); c.restore(); continue; }
         if (w.o === 'h'){ c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(a0, w.c + 4, a1 - a0, 12); const q = c.createLinearGradient(0, w.c - 12 - h, 0, w.c + 12); q.addColorStop(0, '#a0703c'); q.addColorStop(1, '#5a3818'); c.fillStyle = q; c.beginPath(); c.roundRect(a0, w.c - 12 - h, a1 - a0, 24 + h, 10); c.fill();
@@ -229,7 +234,7 @@ function drawBody(B, c){ const p = cur(B), t = T(B), [x, y] = posAt(B, B.now);
   const half = B.phase >= 2 && !(p.id === 'trans' && p.t < 1.7);
   drawFox(c, x + sx, y, {half, t, rot});
   if (hot(B)){ c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = .55 + .2*Math.sin(t*9); c.drawImage(glow(), x - 110, y - 200, 220, 200); c.restore(); for (let i = 0; i < 4; i++) flame(c, x - 45 + i*30, y - 40 - (i % 2)*30, .45, t, i*2); } }
-function drawTop(B, c){ const p = cur(B), t = T(B), bp = posAt(B, B.now);
+function drawTop(B, c){ arena(B); const p = cur(B), t = T(B), bp = posAt(B, B.now);
   if (p.id === 'fuse') for (const F of fuses(B, p)){ const k = p.t; if (k < F.pour[0] || k > F.lit + F.run + BURN + .3) continue;
     if (k < F.pour[1]){ const pu = cl((k - F.pour[0])/(F.pour[1] - F.pour[0])), [hx, hy] = fuseAt(F, pu), sx = bp[0] + SPOUT[0], sy = bp[1] + SPOUT[1]; c.save(); c.strokeStyle = 'rgba(40,30,50,.85)'; c.lineWidth = 4; c.setLineDash([6, 6]); c.lineDashOffset = -t*60; c.beginPath(); c.moveTo(sx, sy); c.quadraticCurveTo((sx + hx)/2, Math.min(sy, hy) - 80, hx, hy); c.stroke(); c.restore(); }
     const fr = (k - F.lit)/F.run; if (fr >= 0 && fr <= 1){ const [x, y] = fuseAt(F, fr); c.save(); c.globalCompositeOperation = 'lighter'; c.drawImage(glow(), x - 40, y - 28, 80, 56); c.restore(); c.fillStyle = 'rgba(255,250,200,.95)'; c.beginPath(); c.ellipse(x, y, 16, 12, 0, 0, 7); c.fill(); }
@@ -246,9 +251,9 @@ function drawTop(B, c){ const p = cur(B), t = T(B), bp = posAt(B, B.now);
 function matchStick(c, x, y, rot, t){ c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = '#e8d0a0'; c.fillRect(-2, -12, 4, 24); c.fillStyle = '#c82a2a'; c.beginPath(); c.ellipse(0, -13, 4, 5, 0, 0, 7); c.fill(); c.restore(); flame(c, x, y - 12, .18, t, 2); }
 function hatIcon(c, x, y, a){ c.save(); c.globalAlpha = a; c.translate(x, y); c.fillStyle = '#5a4024'; c.beginPath(); c.ellipse(0, 8, 46, 12, 0, 0, 7); c.fill(); c.fillStyle = '#6a4a28'; c.beginPath(); c.ellipse(0, -4, 26, 16, 0, 0, 7); c.fill(); c.fillStyle = '#8a2a2a'; c.fillRect(-26, 0, 52, 5); c.fillStyle = '#140c08'; for (let k = 0; k < 6; k++){ c.beginPath(); c.ellipse(-36 + k*14, 10, 6, 4, 0, 0, 7); c.fill(); } c.restore(); }
 function drawSmoke(B, c, p, t){ const a = smokeA(p); if (a <= 0) return; const bb = bubbles(B, p), P_ = puff();
-  c.save(); c.beginPath(); c.rect(0, 150, 1100, 750); for (const [x, y] of bb){ c.moveTo(x + BUB + 10, y - 20); c.ellipse(x, y - 20, BUB + 10, BUB*.6 + 40, 0, 0, 7, true); } c.clip('evenodd');
-  c.globalAlpha = a*.42; c.fillStyle = '#4a4440'; c.fillRect(0, 150, 1100, 750); c.globalAlpha = a*.85;
-  for (let i = 0; i < 16; i++){ const x = ((i*173 + t*30*(i % 2 ? 1 : -1)) % 1400 + 1400) % 1400 - 150, y = 220 + (i*97) % 600; c.drawImage(P_, x - 160, y - 100, 320, 200); } c.restore(); }
+  c.save(); c.beginPath(); c.rect(0, Y0 - 100, B.W || 1100, Y1 - Y0 + 140); for (const [x, y] of bb){ c.moveTo(x + BUB + 10, y - 20); c.ellipse(x, y - 20, BUB + 10, BUB*.6 + 40, 0, 0, 7, true); } c.clip('evenodd');
+  c.globalAlpha = a*.42; c.fillStyle = '#4a4440'; c.fillRect(0, Y0 - 100, B.W || 1100, Y1 - Y0 + 140); c.globalAlpha = a*.85;
+  for (let i = 0; i < 16; i++){ const x = ((i*173 + t*30*(i % 2 ? 1 : -1)) % 1400 + 1400) % 1400 - 150, y = Y0 - 30 + (i*97) % (Y1 - Y0 + 40); c.drawImage(P_, x - 160, y - 100, 320, 200); } c.restore(); }
 function drawRelayTop(B, c, p, t){ const G = relayGeo(B, p), [bx, by] = G.barn, d = G.rl ? G.rl.d | 0 : 0, fire = G.rl && G.rl.ok ? 0 : 1 - d/NEED;
   if (fire > 0) for (let i = 0; i < 6; i++) flame(c, bx - 58 + i*23, by - 10 - (i % 2)*30, (.55 + .3*Math.sin(i*2))*fire + .1, t, i);
   if (G.rl && G.rl.ok) return; const ch = chain(B, G); if (!ch.ok) return; const path = [G.well, ...ch.path.slice(1, -1), G.barn], n = path.length - 1, u = (B.now/1600) % 1, seg = Math.min(n - 1, Math.floor(u*n)), v = ease(u*n - seg);
@@ -293,7 +298,7 @@ function shimmer(c, w, h, k, t){ const amp = 10*Math.pow(cl(k/1.7), 1.3)*(k < 1.
   c.save(); c.setTransform(1, 0, 0, 1, 0, 0); try { for (let y = 0; y < H; y += band){ const off = (Math.sin(y/s*.045 + t*13)*amp + Math.sin(y/s*.013 - t*7)*amp*.6)*s; c.drawImage(cv, 0, y, cv.width, band, off, y, cv.width, band); } } catch(e){} c.restore(); }
 
 // ===== 칼 · 배수 =====
-function swing(B, cx, cy){ const p = cur(B); if (p.id !== 'match') return false;
+function swing(B, cx, cy){ arena(B); const p = cur(B); if (p.id !== 'match') return false;
   for (const th of throws(B, p)){ if (!th.m || rfAt(B, p, th) || th.k < FLY - .8 || th.k > FLY + .15) continue; const [gx, gy] = mGround(th, th.k/FLY);
     if (dist(cx, cy, gx, gy) > 95) continue; const at = B.now, seed = p.seed, i = th.i; L.rf[th.id] = at; B.sfx('hit'); B.fx('탁!', gx, gy - 60, '#fff0a0');
     B.tx(bs => { const rf = bs.rf && bs.rf.k === seed ? {...bs.rf, m:{...(bs.rf.m || {})}} : {k:seed, m:{}}; if (rf.m[i]) return undefined; rf.m[i] = at; return {...bs, rf, hot:Math.max(bs.hot || 0, at + (BACK + 3)*1000)}; });
