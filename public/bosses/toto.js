@@ -66,7 +66,7 @@ const nowAt = (B, p, pt) => B.now - (p.t - pt)*1000;   // 패턴 안 시각 pt �
 // ===== 기본 공격: 고래 꼬리 (보스 발밑에서 V 자로 내려쳐요) =====
 const FL = {warn:.9, slam:1.15, end:1.6};
 function flukes(B){
-  const s = st(B); if (s.p.id === 'trans' || B.bs.stun > B.now || (s.phase === 3 && s.ph3 < 2.5)) return [];
+  const s = st(B); if (s.p.id === 'trans' || B.bs.stun > B.now || (s.phase === 3 && s.ph3 < 4.5)) return [];
   const bt = beat(B, 3.6); if (bt.t > FL.end || bt.n < 1) return [];
   const t0 = B.now - bt.t*1000, s0 = stAt(B, t0); if (s0.p.id === 'trans' || s0.phase !== s.phase) return [];
   const [fx, fy] = bodyAt(B, t0), rnd = B.rng(`${B.r.bossAt}.fl.${bt.n}`), a = rnd()*T2, out = [];
@@ -228,7 +228,7 @@ export default {
       if (diveWarn(t3) && once('dv.' + Math.floor((t3 - 3)/10), now)) B.sfx('warn');
       let vx = (C2[0] - C[0])/.1 + Math.cos(now/700)*14, vy = (C2[1] - C[1])/.1 + Math.sin(now/530)*10;
       if (!inEll(mx, my, C[0], C[1], rx, ry)){
-        if (t3 < 3.2){ const d = Math.max(1, dist(mx, my, C[0], C[1])); vx += (C[0] - mx)/d*230; vy += (C[1] - my)/d*230; }
+        if (t3 < 4.5){ const d = Math.max(1, dist(mx, my, C[0], C[1])); vx += (C[0] - mx)/d*330; vy += (C[1] - my)/d*330; }   // 물이 차오르는 동안은 파도가 등으로 실어다 줘요
         else { if (B.hurt(B.lo + 100, 'sea.' + Math.floor(now/1600))){ B.fx('풍덩', mx, my - 60, '#cfeaff'); B.sfx('slam'); }
           const a = Math.atan2((my - C[1])/ry, (mx - C[0])/rx), tx = C[0] + Math.cos(a)*rx*.62, ty = C[1] + Math.sin(a)*ry*.62; B.push(tx - mx, ty - my, Math.hypot(tx - mx, ty - my)); } }
       B.ctl.drift = [vx, vy];
