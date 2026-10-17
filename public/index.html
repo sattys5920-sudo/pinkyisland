@@ -5915,7 +5915,10 @@ let darkWakeT = 0, darkRooms = {}, darkPending = 0, darkFlushT = 0, darkTouchCd 
 const darkOn = () => !!(world && world.dark);
 const kstDayOf = ms => Math.floor((ms + 9*3600000) / 86400000);
 const darkNow = () => Date.now() + serverOffset;
-function darkIdx(){ return darkOn() ? today() - kstDayOf(world.darkAt || Date.now()) + (world.darkShift|0) : -1; }
+// 날짜와 상관없이 차례대로: 가장 마지막으로 들어간 방이 꿰매졌거나 도전이 끝나면 다음 방 차례 (열쇠를 다 모으면 바로 열려요)
+function darkIdx(){ if (!darkOn()) return -1; let L = -1; DARK_ORDER.forEach((n, i) => { if (darkFirst(roomOf(n)) || roomOf(n).clear) L = i; });
+  let i = 0; if (L >= 0){ const r = roomOf(DARK_ORDER[L]); i = r.clear || !(r.start && darkNow() <= darkEnd(r)) ? L + 1 : L; }
+  return i + (world.darkShift|0); }
 function darkToday(){ const i = darkIdx(); return i >= 0 && i < DARK_ORDER.length ? DARK_ORDER[i] : null; }
 // 관리자가 [문제 편집]에서 바꾼 문제: darkQ/<주민>/<문제 id> = {t 제목, q 문제, h 힌트, ah 정답 해시들}. 정답은 가려서 저장해요 (평문은 관리자만 보는 darkQA)
 let darkQ = {}, darkQv = 0; const darkPzCache = {};
