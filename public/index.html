@@ -6847,19 +6847,19 @@ function bossMod(npc){
   return m;
 }
 function bossCtx(npc, r, dt = 0){
-  const now = darkNow(), rm = darkRoomOf(npc), [hx, hy] = rm?.boss || [DARK_ROOM.W/2, 560], all = [];
-  if (!admin && me) all.push({uid, me:true, x:pos.x, y:pos.y, down:!!darkDown, nick:me.nick, bp:bossBp});
-  for (const o of others.values()) if (o.z === zoneId && !o.adm && o.uid && o.uid !== uid) all.push({uid:o.uid, x:o.x, y:o.y, down:!!o.down, nick:o.nick, bp:o.bp || null});
+  const now = darkNow(), rm = darkRoomOf(npc), [hx, hy] = rm?.boss || [DARK_ROOM.W/2, 560], all = [], fl = rm?.floors || 0, up = y => !fl || y < FLOOR_H; // 층 방: 보스는 꼭대기 층 (y 0 ~ 900) · 그 층 사람만
+  if (!admin && me && up(pos.y)) all.push({uid, me:true, x:pos.x, y:pos.y, down:!!darkDown, nick:me.nick, bp:bossBp});
+  for (const o of others.values()) if (o.z === zoneId && !o.adm && o.uid && o.uid !== uid && up(o.y)) all.push({uid:o.uid, x:o.x, y:o.y, down:!!o.down, nick:o.nick, bp:o.bp || null});
   all.sort((a, b) => a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
   const alive = all.filter(p => !p.down), tg = darkTgt(npc), phase = r.lowAt ? 3 : r.rageAt ? 2 : 1, ps = phase === 3 ? r.lowAt : phase === 2 ? r.rageAt : r.bossAt;
   const target = all.find(p => p.uid === tg?.uid && !p.down) || (alive.length ? alive[hashU(String(r.bossAt) + npc) % alive.length] : null);
   const B = bossB = {npc, r, bs:r.bs || {}, now, dt, t:(now - (r.bossAt || now))/1000, pt:(now - (ps || now))/1000, phase, hpF:r.max ? r.hp/r.max : 1,
     ph2:r.rageAt ? (now - r.rageAt)/1000 : -1, ph3:r.lowAt ? (now - r.lowAt)/1000 : -1,
-    W:Z().W, H:Z().H, hx, hy, all, alive, me:all.find(p => p.me) || null, target, targetNick:tg?.nick || '???', host:!admin && !!all.length && all[0].uid === uid,
+    W:Z().W, H:fl ? FLOOR_H : Z().H, hx, hy, all, alive, me:all.find(p => p.me) || null, target, targetNick:tg?.nick || '???', host:!admin && !!all.length && all[0].uid === uid,
     lo:darkAtkLo(npc), name:NPC[npc]?.name || '', real:(CLUE_CASE[npc] || [])[0] || '', ctl:bossCtl, view, admin,
-    hurt:(n, key) => { if (admin || !me || darkDown) return false; if (key){ if (bossHurtKeys[key]) return false; bossHurtKeys[key] = now; } darkHurt(Math.round(n), performance.now()); return true; },
-    push:(dx, dy, dist = 60) => { if (!admin && !darkDown) pushPlayer(dx, dy, dist); },
-    tp:(x, y) => { if (!admin && !darkDown){ pos.x = Math.max(20, Math.min(B.W - 20, x)); pos.y = Math.max(20, Math.min(B.H - 20, y)); target = null; } },
+    hurt:(n, key) => { if (admin || !me || darkDown || !up(pos.y)) return false; if (key){ if (bossHurtKeys[key]) return false; bossHurtKeys[key] = now; } darkHurt(Math.round(n), performance.now()); return true; },
+    push:(dx, dy, dist = 60) => { if (!admin && !darkDown && up(pos.y)) pushPlayer(dx, dy, dist); },
+    tp:(x, y) => { if (!admin && !darkDown && up(pos.y)){ pos.x = Math.max(20, Math.min(B.W - 20, x)); pos.y = Math.max(20, Math.min(B.H - 20, y)); target = null; } },
     tx:fn => net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear || cur.bossAt !== r.bossAt) return undefined; const nb = fn({...(cur.bs || {})}, cur); return nb === undefined ? undefined : {...cur, bs:nb}; }),
     heal:n => { n = Math.min(Math.round(n), Math.floor(r.max*.05)); if (!(n > 0)) return; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && cur.hp < cur.max && cur.bossAt === r.bossAt ? {...cur, hp:Math.min(cur.max, cur.hp + n), hl:(cur.hl|0) + 1} : undefined); },
     sfx:(k, gap) => bossFx(k, gap), shake:() => { bossShakeAt = performance.now(); },
@@ -6873,6 +6873,7 @@ function bossCtx(npc, r, dt = 0){
 function bossTick(npc, r, dt){
   const M = bossMod(npc); bossCtl = {}; if (!M || !darkBossUp(r)){ bossBp = null; return !!M; }
   const B = bossCtx(npc, r, dt); const now = B.now; for (const k in bossHurtKeys) if (now - bossHurtKeys[k] > 60000) delete bossHurtKeys[k];
+  if (!B.me && !admin){ return true; } // 아래층에 있으면 보스 패턴과 상관없어요
   try { M.tick?.(B, dt); } catch(e){ console.error(e); }
   if (!admin && !darkDown){ pos.x = Math.max(20, Math.min(B.W - 20, pos.x)); pos.y = Math.max(20, Math.min(B.H - 20, pos.y)); }
   return true;
