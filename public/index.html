@@ -1304,7 +1304,8 @@ async function flushSave(){
   if (!zoneId.startsWith('house:') && !zoneId.startsWith('dark:') && ZONES[zoneId] && !darkDown){ me.zone = zoneId; me.zx = Math.round(pos.x); me.zy = Math.round(pos.y); } // 마지막으로 서 있던 자리
   if (saving){ saveAgain=true; return; }
   saving=true; lastSaved = saveSig();
-  me.downAt = darkDown && !zoneId.startsWith('dark:') ? darkDown : 0; // 기절한 채로 나가면 다시 들어와도 기절해 있어요
+  me.downAt = darkDown && !zoneId.startsWith('dark:') && !dkBack ? darkDown : 0; // 기절한 채로 나가면 다시 들어와도 기절해 있어요
+  { const dn = zoneId.startsWith('dark:') ? zoneId.slice(5) : '', dr = dn ? roomOf(dn) : {}; me.dkDown = dkBack || (darkDown && dn && darkBossUp(dr) ? {n:dn, at:darkDown, s:dr.start, w:dr.wipe|0, x:Math.round(pos.x), y:Math.round(pos.y)} : 0); } // 보스전에서 쓰러진 채로 나가도(새로고침) 그대로
   if (statsReady){ me.hp = Math.max(1, Math.round(playerHp)); me.sta = Math.round(playerSta); me.staAt = Date.now() + serverOffset; } // 불러오기 전 기본값(100)으로 덮어쓰지 않게
   try { await net.savePlayer(toDB(me)); }
   catch(e){ lastSaved = null; toast('저장하지 못했어요. 인터넷 연결을 확인해 주세요. 잠시 뒤 다시 저장할게요.'); if (!saveTimer) saveTimer = setTimeout(flushSave, 5000); }
@@ -1904,10 +1905,11 @@ function enterGame(doc){
   $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); swing(); });
   loadStats(); // 체력·기력은 자리 옮기며 저장하기 전에 먼저 불러와요
   if (me.downAt){ darkDown = me.downAt; downOffer = false; } // 기절한 채로 나갔다면 그대로 (자리 옮기며 저장하기 전에 먼저)
+  if (me.dkDown && me.dkDown.n && !admin){ dkBack = me.dkDown; darkDown = dkBack.at; downOffer = false; } // 보스전에서 쓰러진 채로 나갔다면 방 정보가 오면 그 방으로 (그 사이엔 먹지 못하게 쓰러진 채로)
   const L = LOTS[me.lot]; pos.dir = 'down';
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
   else enterZone('home', null, L.x, L.y + 18);
-  loadStats(); if (darkDown) playerHp = 0; tutorialFix(); refundStocks(); renderHud(); setTimeout(applyGrants, 1500);
+  loadStats(); if (darkDown) playerHp = 0; darkDownBack(); tutorialFix(); refundStocks(); renderHud(); setTimeout(applyGrants, 1500);
   if (!solo){ net.cleanupClaims(me.roof, me.lot); net.sessionClaim(Math.random().toString(36).slice(2) + Date.now().toString(36)); }
   addLog(`${me.nick} 님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
   if (solo) addLog('혼자 보기 모드예요.', true);
@@ -5979,7 +5981,7 @@ function darkZone(npc){
   return darkZoneCache[npc] || (darkZoneCache[npc] = {theme:'room', W:DARK_ROOM.W, H: fl ? (fl-1)*FLOOR_STEP + FLOOR_H : DARK_ROOM.H, floors: fl, grid:[2,1], exits:{s:'out'}, places:[], trees:[], dark:npc, name:`${NPC[npc]?.name || ''}의 방`});
 }
 function onDarkRooms(v){
-  darkRooms = v || {};
+  darkRooms = v || {}; darkRoomsIn = true; darkDownBack();
   if (me && !admin) for (const npc of Object.keys(darkRooms)) darkClaim(npc);
   if (admin) renderAdmin();
   for (const npc of Object.keys(darkRooms)){ darkOpenSound(npc, roomOf(npc)); clueSync(npc, roomOf(npc)); }
@@ -6582,6 +6584,16 @@ function darkLeave(msg){ const z = Z(); if (!z.dark) return; if (darkDown){ dark
 // 쓰러지면 그 자리에 누워 있어요. 다른 사람이 다가와 눌러 주거나(2 초) 관리자가 살려 주면 일어나요
 const DARK_REVIVES = 5; // 보스전 한 판에 서로 살릴 수 있는 횟수 (방 전체 합)
 let darkWipeSeen = {}, darkWipeT = 0; // 다 같이 쓰러지면: 문제는 그대로, 보스전만 처음부터
+let dkBack = null, darkRoomsIn = false; // 보스전에서 쓰러진 채로 새로고침한 사람: 같은 보스전이 아직이면 그 방에 쓰러진 채로 돌아가요 (살아서 나가 밥 먹고 다시 들어오기 막기)
+function darkDownBack(){
+  const d = dkBack; if (!d || !darkRoomsIn || !me) return; dkBack = null;
+  const r = roomOf(d.n);
+  if (r.start === d.s && (r.wipe|0) === d.w && darkBossUp(r) && !r.clear && darkNow() <= darkEnd(r)){
+    darkDown = d.at; playerHp = 0; downOffer = false; darkGuard = 3; const [bx, by] = darkBossStart(d.n);
+    enterZone('dark:' + d.n, null, typeof d.x === 'number' ? d.x : bx, typeof d.y === 'number' ? d.y : by); }
+  else if (darkDown === d.at){ darkDown = null; playerHp = maxHp(); } // 그 보스전은 끝났어요 (전멸·꿰맴·시간 끝)
+  renderHud(); flushSave();
+}
 let darkDown = null, darkRevive = null; // darkDown: 쓰러진 시각 · darkRevive: 내가 살리는 중인 사람 {id, at}
 // 일반 모드는 순하게: '기절'·'깨우기', 다크 모드는 '쓰러짐'·'살리기'
 const downWords = () => zoneId.startsWith('dark:') ? {down:'쓰러짐', did:'쓰러졌어요', help:'살리기', helped:'살려 줬어요', helping:'살리는 중'} : {down:'기절', did:'기절했어요', help:'깨우기', helped:'깨워 줬어요', helping:'깨우는 중'};
