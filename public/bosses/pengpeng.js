@@ -38,8 +38,8 @@ function cols(B){
   for (let q = 0; q < 3; q++){ const n = bt.n - q; if (n < 0) continue; const key = `${B.r.bossAt}.${B.phase}.${n}`; let cs = WC.get(key);
     if (!cs){ const start = n*bt.len, Bs = shift(B, B.t - start); cs = [];
       const trans = B.phase === 2 && Bs.ph2 < 5.4, st = B.bs.stun || 0, stun = st && Bs.now > st - 8400 && Bs.now < st;
-      if (!trans && !stun){ const rnd = B.rng('w' + key), [cx, cy] = posOf(Bs), m = B.phase === 1 ? 2 : 3;
-        for (let j = 0; j < m; j++){ const a = rnd()*TAU, r = 90 + rnd()*290; cs.push({key:key + '.' + j, t:start + j*.12, x:cl(cx + Math.cos(a)*r, 170, 930), y:cl(cy + 30 + Math.sin(a)*r*.55, 380, 870)}); } }
+      if (!trans && !stun){ const rnd = B.rng('w' + key), [cx, cy] = posOf(Bs), m = B.phase === 1 ? 3 : 4;
+        for (let j = 0; j < m; j++){ const a = rnd()*TAU, r = 90 + rnd()*250; cs.push({key:key + '.' + j, t:start + j*.12, x:cl(cx + Math.cos(a)*r, 170, 930), y:cl(cy + 30 + Math.sin(a)*r*.55, 380, 870)}); } }
       WC.set(key, cs); if (WC.size > 30) WC.delete(WC.keys().next().value); }
     for (const c of cs){ const k = B.t - c.t; if (k >= 0 && k < 1.7) out.push({...c, k}); } }
   return out; }
@@ -117,7 +117,7 @@ export default {
     // --- 기본 공격: 물기둥 ---
     for (const c of cols(B)){
       if (c.k > .9 && !L.cols[c.key]){ L.cols[c.key] = 1; if (!me || dist(me.x, me.y, c.x, c.y) < 360) B.sfx('slam', 260); }
-      if (me && c.k > .9 && c.k < 1.25 && inEll(me.x, me.y, c.x, c.y, 44, 26)) B.hurt(lo(B) + 20, 'wc' + c.key); }
+      if (me && c.k > .9 && c.k < 1.25 && inEll(me.x, me.y, c.x, c.y, 48, 28)) B.hurt(lo(B) + 20, 'wc' + c.key); }
     if (Object.keys(L.cols).length > 80) L.cols = {};
 
     // --- 패턴 ---
@@ -203,7 +203,7 @@ export default {
     // 물기둥 예고: 바닥 물결
     for (const w of cols(B)){ if (w.k >= .9) continue; c.save(); c.globalAlpha = .5 + .35*Math.abs(Math.sin(w.k*10)); c.strokeStyle = '#9ad8ff'; c.lineWidth = 3;
       for (let i = 0; i < 3; i++){ const r = 12 + ((w.k*40 + i*14)%42); c.beginPath(); c.ellipse(w.x, w.y, r, r*.5, 0, 0, TAU); c.stroke(); }
-      c.globalAlpha = .18 + .25*w.k/.9; c.fillStyle = '#5ab0ff'; c.beginPath(); c.ellipse(w.x, w.y, 44*w.k/.9, 26*w.k/.9, 0, 0, TAU); c.fill(); c.restore(); }
+      c.globalAlpha = .18 + .25*w.k/.9; c.fillStyle = '#5ab0ff'; c.beginPath(); c.ellipse(w.x, w.y, 48*w.k/.9, 28*w.k/.9, 0, 0, TAU); c.fill(); c.restore(); }
     drawStreak(B, c, t); },
 
   drawBody(B, c){ const k = pick(B, P, OPT), [fx, fy] = posOf(B, k), hf = half(B), t = B.t, now = B.now;

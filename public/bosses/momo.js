@@ -236,7 +236,7 @@ function patTick(B, p){ const me = B.me, now = B.now, live = me && !me.down, see
     RK.forEach((rk, i) => { const key = seed + '.' + i;
       if (p.t >= rk - 1 && p.t < rk && once(B, 'rwb' + key)){ B.sfx('warn'); const [x, y] = pos(B); B.fx('땡… 땡…', x + 90, y - 150, '#ffe9a0'); }
       if (p.t >= rk && p.t < rk + .5 && once(B, 'rwt' + key) && !stunned(B)){ const t3 = now - 3000, e = {pts:[]}; for (const q of B.alive){ const gpos = q.me ? histAt(l.hist, t3) : histAt(l.oh.get(q.uid), t3); if (gpos) e.pts.push([gpos[0], gpos[1], !!q.me]); }
-        l.rw[key] = e; B.sfx('slam'); if (live){ const d = histAt(l.hist, t3); if (d) B.tp(d[0], d[1]); } }
+        l.rw[key] = e; B.sfx('slam'); if (live){ const d = histAt(l.hist, t3); if (d) try { B.tp(d[0], d[1]); } catch(e){} } }
       if (p.t >= rk + RBOOM && p.t < rk + RBOOM + .4 && once(B, 'rwx' + key)){ const e = l.rw[key]; if (e && live && e.pts.some(q => q[2] && inCross(me.x, me.y, q[0], q[1]))){ B.hurt(B.lo + 80, 'rwx.' + key); B.shake(); } } }); }
   else if (p.id === 'dlv'){ const d = dlOf(B, p); if (p.t < .6 && once(B, 'dw' + seed)) B.sfx('warn');
     if (d && once(B, 'ds' + seed)) B.say(`${B.all.find(q => q.uid === d.uid)?.nick || B.targetNick} 님, 마지막 배달이요`, 2800);

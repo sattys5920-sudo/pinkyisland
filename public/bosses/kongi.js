@@ -78,7 +78,10 @@ function ffScreen(B, c, w, h){ const cc = cur(B); if (cc.id !== 'ff') return; co
   let vt = cc.t; for (let i = 0; i < FF_W.length; i++){ const F = ffWave(cc, i); if (cc.t > F.t0){ const e = Math.min(cc.t, F.boom); vt += ffProg(F, e) - (e - F.t0); } } const base = 23*3600 + 41*60, ts = Math.floor(base + vt), hh = String(Math.floor(ts/3600)%24).padStart(2, '0'), mm = String(Math.floor(ts/60)%60).padStart(2, '0'), ss = String(ts%60).padStart(2, '0');
   c.save(); c.globalAlpha = al; const bw = 210, bx = w/2 - bw/2, by = Math.min(146, h*.17); c.fillStyle = 'rgba(10,14,24,.82)'; c.beginPath(); c.roundRect(bx, by, bw, 34, 8); c.fill();
   c.fillStyle = Math.floor(B.now/500)%2 ? '#ff3a3a' : '#5a1a1a'; c.beginPath(); c.arc(bx + 16, by + 17, 6, 0, 7); c.fill(); text(c, `REC  CAM 03  ${hh}:${mm}:${ss}`, bx + 116, by + 18, 20, '#e0e8ff', 'center', null);
-  if (sp !== 1){ const p = .9 + .1*Math.abs(Math.sin(B.now/120)); text(c, sp === 2 ? '▶▶ ×2' : '❚❚', w/2, by + 74, 46*p, sp === 2 ? '#ff8a8a' : '#9affd0'); }
+  if (sp !== 1){ const p = .9 + .1*Math.abs(Math.sin(B.now/120)), cx = w/2, cy = by + 62, z = 16*p; c.fillStyle = sp === 2 ? '#ff8a8a' : '#9affd0'; c.strokeStyle = 'rgba(20,6,12,.85)'; c.lineWidth = 3; c.beginPath();
+    if (sp === 2){ for (const o of [-z*1.6, -z*.2]){ c.moveTo(cx + o, cy - z); c.lineTo(cx + o + z*1.4, cy); c.lineTo(cx + o, cy + z); c.closePath(); } }
+    else for (const o of [-z*.9, z*.3]) c.rect(cx + o, cy - z, z*.6, z*2);
+    c.stroke(); c.fill(); if (sp === 2) text(c, '×2', cx + z*2.4, cy + 1, 30*p, '#ff8a8a'); }
   c.restore(); }
 
 // ===== ② 손전등 수색: 쓸고 지나가는 빛에 들키면 '발견!' · 빛 밖에서만 때려요 =====

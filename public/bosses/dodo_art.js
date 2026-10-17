@@ -73,7 +73,7 @@ export function rockSprites(){
   return ROCKS;
 }
 // 바위 하나 그리기 (r = 반지름 월드 픽셀)
-export function rock(c, x, y, r, v, rot = 0){ const cv = rockSprites()[(v|0) % 6], d = r*2*(1 + 4/(48*RES)); if (rot){ c.save(); c.translate(x, y); c.rotate(rot); c.drawImage(cv, -d/2, -d/2, d, d); c.restore(); } else c.drawImage(cv, x - d/2, y - d/2, d, d); }
+export function rock(c, x, y, r, v, rot = 0){ const cv = rockSprites()[Math.abs(Math.floor(v)) % 6], d = r*2*(1 + 4/(48*RES)); if (rot){ c.save(); c.translate(x, y); c.rotate(rot); c.drawImage(cv, -d/2, -d/2, d, d); c.restore(); } else c.drawImage(cv, x - d/2, y - d/2, d, d); }
 
 // 작은 광차 (선로 위) · 곡괭이 (부메랑) · 큰 바위 (엄폐) · 무너진 돌벽
 const SPR = {};

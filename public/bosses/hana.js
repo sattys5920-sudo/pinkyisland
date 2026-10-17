@@ -41,7 +41,7 @@ function rings(B){ const p = cur(B); if (p.id === 'trans' || !B.alive.length) re
   for (const m of [bt.n - 1, bt.n]){ const k = B.t - m*bt.len; if (k < 0 || k > 1.7) continue;
     const cnt = B.phase === 2 ? Math.min(2, B.alive.length) : 1;
     for (let i = 0; i < cnt; i++){ const key = `${B.r.bossAt}.${B.phase}.${m}.${i}`;
-      if (!L.ring[key]){ if (k > 1.2) continue; if (stunned(B)) { L.ring[key] = 'x'; continue; }
+      if (!L.ring[key]){ if (k > .5 || stunned(B)){ L.ring[key] = 'x'; continue; }
         const pl = B.alive[(m + i) % B.alive.length], a = B.rng(key)()*PI*2; L.ring[key] = [pl.x + Math.cos(a)*55, pl.y + Math.sin(a)*55*RSQ, m]; }
       const c = L.ring[key]; if (c === 'x') continue; out.push({key, x:c[0], y:c[1], k}); } }
   return out; }
@@ -180,6 +180,10 @@ function drawFloor(B, c){ const p = cur(B), t = T(B);
     if (k < BOLT_D){ const z = Z.safe; c.save(); c.globalAlpha = .16 + .08*Math.sin(t*10); c.fillStyle = '#fff07a'; c.fillRect(z[0], z[1], z[2] - z[0], z[3] - z[1]); c.restore();
       for (let i = 0; i < 6; i++){ const x = lerp(z[0], z[2], (i % 3 + .5)/3), y = lerp(z[1], z[3], (Math.floor(i/3) + .5)/2); c.save(); c.globalAlpha = .85; c.strokeStyle = '#fff07a'; c.lineWidth = 3; c.setLineDash([7, 5]); c.beginPath(); c.ellipse(x, y, 44, 24, 0, 0, 7); c.stroke(); c.setLineDash([]); boltIcon(c, x, y - 4, 1); c.restore(); } }
     else { const z = Z.bad, al = cl((BOLT_D + 1.1 - k)*1.6); c.save(); c.globalAlpha = .38*al; c.fillStyle = '#ff5a1a'; c.fillRect(z[0], z[1], z[2] - z[0], z[3] - z[1]); c.restore(); } });
+  if (p.id === 'fuse') for (const F of fuses(B, p)){ const k = p.t; if (k < F.lit || k > F.lit + F.run + BURN) continue;
+    for (let i = 0; i < 18; i++){ const s = i/18, ig = F.lit + s*F.run; if (k < ig || k > ig + BURN) continue; const [x, y] = fuseAt(F, s); flame(c, x, y + 8, .5*cl((ig + BURN - k)*2), t, i); } }
+  if (p.id === 'bolt') BOLT_T.forEach((t0, j) => { const k = p.t - t0; if (k < BOLT_D || k > BOLT_D + 1.1) return; const z = boltZones(B, p, j).bad, al = cl((BOLT_D + 1.1 - k)*1.6), h = cl((k - BOLT_D)/.2);
+    c.save(); c.globalAlpha = al; for (let i = 0; i < 12; i++){ const x = lerp(z[0], z[2], ((i % 4) + .5)/4), y = lerp(z[1], z[3], (Math.floor(i/4) + .5)/3) + (i % 2)*16; flame(c, x, y, (.55 + .15*Math.sin(i))*h, t, i); } c.restore(); });
   if (p.id === 'smoke'){ const a = smokeA(p); if (a > 0) for (const [x, y] of bubbles(B, p)){ c.save(); c.globalAlpha = a; c.strokeStyle = 'rgba(200,240,255,.9)'; c.lineWidth = 3; c.beginPath(); c.ellipse(x, y, BUB, BUB*.6, 0, 0, 7); c.stroke(); c.fillStyle = 'rgba(180,230,255,.16)'; c.fill();
       for (let i = 0; i < 5; i++){ const u = (t*.5 + i/5) % 1; c.globalAlpha = a*(1 - u)*.8; c.beginPath(); c.arc(x + Math.sin(i*2.3 + t)*40, y - u*60, 3 + i % 3, 0, 7); c.stroke(); } c.restore(); } }
   if (p.id === 'plow') drawRidges(B, c, p, t);
@@ -228,11 +232,8 @@ function drawBody(B, c){ const p = cur(B), t = T(B), [x, y] = posAt(B, B.now);
 function drawTop(B, c){ const p = cur(B), t = T(B), bp = posAt(B, B.now);
   if (p.id === 'fuse') for (const F of fuses(B, p)){ const k = p.t; if (k < F.pour[0] || k > F.lit + F.run + BURN + .3) continue;
     if (k < F.pour[1]){ const pu = cl((k - F.pour[0])/(F.pour[1] - F.pour[0])), [hx, hy] = fuseAt(F, pu), sx = bp[0] + SPOUT[0], sy = bp[1] + SPOUT[1]; c.save(); c.strokeStyle = 'rgba(40,30,50,.85)'; c.lineWidth = 4; c.setLineDash([6, 6]); c.lineDashOffset = -t*60; c.beginPath(); c.moveTo(sx, sy); c.quadraticCurveTo((sx + hx)/2, Math.min(sy, hy) - 80, hx, hy); c.stroke(); c.restore(); }
-    for (let i = 0; i < 18; i++){ const s = i/18, ig = F.lit + s*F.run; if (k < ig || k > ig + BURN) continue; const [x, y] = fuseAt(F, s); flame(c, x, y + 8, .55*cl((ig + BURN - k)*2), t, i); }
     const fr = (k - F.lit)/F.run; if (fr >= 0 && fr <= 1){ const [x, y] = fuseAt(F, fr); c.save(); c.globalCompositeOperation = 'lighter'; c.drawImage(glow(), x - 40, y - 28, 80, 56); c.restore(); c.fillStyle = 'rgba(255,250,200,.95)'; c.beginPath(); c.ellipse(x, y, 16, 12, 0, 0, 7); c.fill(); }
     if (k > F.lit - .5 && k < F.lit){ const [x, y] = fuseAt(F, 0); matchStick(c, x, y - 30 + (k - F.lit)*60, (k - F.lit)*10, t); } }
-  if (p.id === 'bolt') BOLT_T.forEach((t0, j) => { const k = p.t - t0; if (k < BOLT_D || k > BOLT_D + 1.1) return; const z = boltZones(B, p, j).bad, al = cl((BOLT_D + 1.1 - k)*1.6), h = cl((k - BOLT_D)/.2);
-    c.save(); c.globalAlpha = al; for (let i = 0; i < 12; i++){ const x = lerp(z[0], z[2], ((i % 4) + .5)/4), y = lerp(z[1], z[3], (Math.floor(i/4) + .5)/3) + (i % 2)*16; flame(c, x, y, (.8 + .2*Math.sin(i))*h, t, i); } c.restore(); });
   if (p.id === 'smoke') drawSmoke(B, c, p, t);
   for (const r of rings(B)){ if (r.k > .45 && r.k < .9){ const u = (r.k - .45)/.45, x = lerp(bp[0] + HAND[0], r.x, u), y = lerp(bp[1] + HAND[1], r.y, u) - Math.sin(u*PI)*110; matchStick(c, x, y, u*12, t); }
     else if (r.k >= .9 && r.k < 1.6){ const al = cl((1.6 - r.k)*2.5); c.save(); c.globalAlpha = al; for (let i = 0; i < 10; i++){ const a = i/10*PI*2 + r.x, rr = (RIN + ROUT)/2; flame(c, r.x + Math.cos(a)*rr, r.y + Math.sin(a)*rr*RSQ, .32, t, i); } c.restore(); } }

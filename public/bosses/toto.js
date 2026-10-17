@@ -121,7 +121,7 @@ const PINS = [[.08, .1], [.92, .1], [.2, .05], [.8, .05], [.04, .3], [.96, .3], 
 
 export default {
   reach: 125,
-  get height(){ return phaseNow === 3 ? 225 : 262; },
+  get height(){ return phaseNow === 3 ? 198 : 236; },
 
   pos(B){ return body(B); },
 
@@ -325,12 +325,12 @@ export default {
     if (p.id === 'fence'){ const F = fence(B, p); if (F.on) for (const o of B.alive){ if (inEll(o.x, o.y, F.x, F.y, F.rx, F.ry) || Math.floor(now/120)%3) continue; const a = Math.atan2((o.y - F.y)/F.ry, (o.x - F.x)/F.rx), ex = F.x + Math.cos(a)*F.rx, ey = F.y + Math.sin(a)*F.ry;
         c.save(); c.strokeStyle = '#d0a060'; c.lineWidth = 4; c.lineCap = 'round'; c.beginPath(); c.moveTo(ex, ey - 20); c.quadraticCurveTo((ex + o.x)/2 + 30, Math.min(ey, o.y) - 90, o.x, o.y - 30); c.stroke(); c.restore(); } }
     // ② 규칙 판 (보스 머리 위)
-    if (p.id === 'rule'){ const R = rules(B, p).find(R => p.t >= R.t0 - .1 && p.t < R.chk + .8); if (R){ const a = cl((p.t - R.t0 + .1)*4)*cl((R.chk + .8 - p.t)*3), k = cl((R.chk - p.t)/(R.chk - R.t0)), x = bx, y = by - 300;
+    if (p.id === 'rule'){ const R = rules(B, p).find(R => p.t >= R.t0 - .1 && p.t < R.chk + .8); if (R){ const a = cl((p.t - R.t0 + .1)*4)*cl((R.chk + .8 - p.t)*3), k = cl((R.chk - p.t)/(R.chk - R.t0)), x = bx, y = by - 330;
         c.save(); c.globalAlpha = a; c.translate(x, y); c.rotate(Math.sin(p.t*20)*.03*cl(1 - (p.t - R.t0)*2)); c.fillStyle = '#3a2a1a'; c.fillRect(-120, -36, 240, 72); c.fillStyle = '#f0e4c8'; c.fillRect(-113, -29, 226, 58);
         c.fillStyle = R.gather ? '#2060a0' : '#c03030'; c.fillRect(-113, 22, 226*k, 7); c.restore();
         txt(c, R.gather ? '생활 규칙 제 1 조' : '생활 규칙 제 3 조', x, y - 14, 17, '#4a2a10', a, null); txt(c, R.gather ? '다 함께 기도한다' : '가족은 따로 지낸다', x, y + 8, 22, R.gather ? '#2060a0' : '#c03030', a, null); } }
     // ③ 남은 시간 (의자 위 숫자 대신 보스 손짓) · 겹친 의자 표시
-    if (p.id === 'chair'){ for (const C of chairs(B, p)){ if (p.t < C.t0 || p.t > C.blast) continue; const k = (C.blast - p.t)/(C.blast - C.t0); c.save(); c.globalAlpha = .9; c.strokeStyle = '#e0c8ff'; c.lineWidth = 5; c.beginPath(); c.arc(bx, by - 300, 18, -Math.PI/2, -Math.PI/2 + T2*k); c.stroke(); c.restore(); } }
+    if (p.id === 'chair'){ for (const C of chairs(B, p)){ if (p.t < C.t0 || p.t > C.blast) continue; const k = (C.blast - p.t)/(C.blast - C.t0); c.save(); c.globalAlpha = .9; c.strokeStyle = '#e0c8ff'; c.lineWidth = 5; c.beginPath(); c.arc(bx, by - 330, 16, -Math.PI/2, -Math.PI/2 + T2*k); c.stroke(); c.restore(); } }
     // ④ 고해 장부 쪽
     if (p.id === 'pages'){ for (const pg of pages(B, p)){ if (p.t < pg.t0 || p.t >= pg.gone) continue;
         for (const o of pg.own){ if (torn(B, pg, o.uid)) continue; let x, y, rot = Math.sin(now/250 + o.j)*.2, sc = 1;
@@ -349,12 +349,12 @@ export default {
       if (W.woke && now - (B.bs.wake.at || 0) < 900 && T){ const k = (now - B.bs.wake.at)/900; ring(c, T.x, T.y - 30, 30 + k*60, (30 + k*60)*.7, '#c8ffd0', 4, 1 - k); } }
     // ⑥ 설교 막대 (끊을 칸이 보라색)
     if (p.id === 'sermon' && !(B.bs.stun > now)){ const m = cutMask(B, p); for (const S of casts(B, p)){ if (bits(m) >= 2) break; const cut = m & 1 << S.i; if (p.t < S.t0 || p.t > S.end + (cut ? .8 : .2)) continue;
-        const x0 = bx - 110, y0 = by - 300, W = 220, u = cl((p.t - S.t0)/(S.end - S.t0)), w0 = (S.w0 - S.t0)/(S.end - S.t0)*W, w1 = (S.w1 - S.t0)/(S.end - S.t0)*W;
+        const x0 = bx - 110, y0 = by - 318, W = 220, u = cl((p.t - S.t0)/(S.end - S.t0)), w0 = (S.w0 - S.t0)/(S.end - S.t0)*W, w1 = (S.w1 - S.t0)/(S.end - S.t0)*W;
         c.save(); c.fillStyle = 'rgba(10,8,14,.88)'; c.fillRect(x0 - 4, y0 - 4, W + 8, 20); c.fillStyle = cut ? '#7a6a8a' : '#e0c8ff'; c.fillRect(x0, y0, W*u, 12);
         const inW = p.t >= S.w0 && p.t <= S.w1; c.fillStyle = inW ? 'rgba(200,80,255,.75)' : 'rgba(170,70,240,.35)'; c.fillRect(x0 + w0, y0, w1 - w0, 12); c.strokeStyle = '#c060ff'; c.lineWidth = inW ? 4 : 2; c.strokeRect(x0 + w0, y0 - 2, w1 - w0, 16);
         if (cut){ c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath(); c.moveTo(x0 + W*u - 6, y0 - 8); c.lineTo(x0 + W*u + 6, y0 + 20); c.stroke(); } c.restore();
         txt(c, '약속을 지킨 자만…', bx, y0 - 16, 18, '#f0e0ff', cut ? .4 : 1); }
-      for (let i = 0; i < 2; i++){ fillEll(c, bx - 12 + i*24, by - 330, 7, 7, i < bits(m) ? '#c080ff' : 'rgba(60,40,80,.8)'); } }
+      for (let i = 0; i < 2; i++){ fillEll(c, bx + 124 + i*18, by - 312, 6, 6, i < bits(m) ? '#c080ff' : 'rgba(60,40,80,.8)'); } }
   },
 
   drawScreen(B, c, w, h){
@@ -383,3 +383,5 @@ export default {
     if (Math.abs(k - 1.9) < .12){ c.save(); c.globalAlpha = .7; c.fillStyle = '#fff0d0'; c.fillRect(0, 0, w, h); c.restore(); }
   },
 };
+// 시험용 (혼자 보기 모드에서 위치 확인)
+export const _t = {st, body, flukes, fence, rules, chairs, pages, brain, casts, whaleC, backR, diveK};

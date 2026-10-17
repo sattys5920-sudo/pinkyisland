@@ -72,7 +72,7 @@ function curator(half){ sd = 31;
 export const BX0 = -265, BX1 = 265, BY0 = -445, BY1 = 465, FOOTL = 380, WATCH = [56, 40, 34];
 const bossCache = {};
 export function bossSprite(half, k){ const key = (half ? 'h' : 'n') + k; if (bossCache[key]) return bossCache[key];
-  const c = cv((BX1 - BX0)*k, (BY1 - BY0)*k); g = c.getContext('2d'); g.setTransform(k, 0, 0, k, -BX0*k, -BY0*k); curator(half); g = null; return bossCache[key] = c; }
+  const c = cv((BX1 - BX0)*k, (BY1 - BY0)*k), pg = g, ps = sd; g = c.getContext('2d'); g.setTransform(k, 0, 0, k, -BX0*k, -BY0*k); curator(half); g = pg; sd = ps; return bossCache[key] = c; }
 
 // 회중시계 판 (매 프레임 · 가벼워요). mode: 'stop' (3:17 에 멈춤) · 'tick' (째깍째깍 가짜) · 'spin' (미친 듯 돎)
 export function watchFace(c, x, y, r, mode, T, label){ g = c; g.save(); g.translate(x, y); const s = r/34; g.scale(s, s);

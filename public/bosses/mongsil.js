@@ -122,11 +122,11 @@ const bounce = (v, lo, hi) => { const L = hi - lo, m = ((v - lo) % (2*L) + 2*L) 
 function spools(B, p){ const o = geo(B, 'spo' + p.seed, () => { const q = posAgo(B, p.t), r = B.rng(p.seed + 'S'), a0 = r()*6.283; return {x:q[0], y:q[1], v:[0, 1, 2].map(i => { const a = a0 + i*2.094 + (r() - .5)*.5, sp = 240 + r()*60; return [Math.cos(a)*sp, Math.sin(a)*sp*.8]; })}; });
   const k = Math.max(0, Math.min(p.t, p.len - .5) - SP_GO); return o.v.slice(0, SP_N).map(([vx, vy]) => ({x:bounce(o.x + vx*k, X0, X1), y:bounce(o.y + vy*k, Y0, Y1), vx, vy, ox:o.x, oy:o.y})); }
 function tickSpool(B, p){ if (p.t > SP_GO && once(B, 'sp' + p.seed)) B.sfx('slam', 0); if (p.t < SP_GO || p.t > p.len - .5) return; const m = meXY(B); if (!m) return;
-  spools(B, p).forEach((s, i) => { const d = Math.hypot(m[0] - s.x, (m[1] - s.y)/.8); if (d < 52 && B.hurt(dmg(B, 40), `sp${p.seed}.${i}.${Math.floor(p.t/1.5)}`)) B.push(m[0] - s.x, m[1] - s.y, 80); }); }
+  spools(B, p).forEach((s, i) => { const d = Math.hypot(m[0] - s.x, (m[1] - s.y)/.8); if (d < 44 && B.hurt(dmg(B, 40), `sp${p.seed}.${i}.${Math.floor(p.t/1.5)}`)) B.push(m[0] - s.x, m[1] - s.y, 80); }); }
 function drawSpoolsFloor(B, c, p){ const ss = spools(B, p); if (p.t < SP_GO){ const k = p.t/SP_GO; ss.forEach(s => { const a = Math.atan2(s.vy, s.vx); warnLine(c, s.ox, s.oy, s.ox + Math.cos(a)*260, s.oy + Math.sin(a)*260, k, 5, '255,140,190'); }); return; }
   const al = cl((p.len - p.t)/.5); ss.forEach(s => shadow(c, s.x, s.y + 6, 44*al, 14*al, .4)); }
 function drawSpoolsTop(B, c, p){ if (p.t < SP_GO) return; const al = cl((p.len - p.t)/.5)*cl((p.t - SP_GO)/.2), A = spoolArt(), T = B.now/1000;
-  spools(B, p).forEach((s, i) => { c.save(); c.globalAlpha = al; c.translate(s.x, s.y - 22); c.rotate(T*6*(i % 2 ? -1 : 1)); c.drawImage(A.img, -A.r, -A.r, A.r*2, A.r*2); c.restore(); }); }
+  spools(B, p).forEach((s, i) => { c.save(); c.globalAlpha = al; c.translate(s.x, s.y - 22); c.rotate(T*6*(i % 2 ? -1 : 1)); c.drawImage(A.img, -42, -42, 84, 84); c.restore(); }); }
 
 // ===== ④ 거울 연습 =====
 const MIR_W = [1.6, 4.8, 8.0, 11.2];

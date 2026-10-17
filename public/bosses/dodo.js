@@ -14,7 +14,7 @@ const LAMP_Y = (FOOT + LAMP)*S; // 발에서 헬멧 불빛까지
 const HOLES = [[330, 545], [770, 545], [400, 745], [700, 745]], POP_RX = 75, POP_RY = 45;
 const MOLE_I = .6, MOLE_C = 3.7, MOLE_BUMP = 2.0, MOLE_UP = 3.4;
 // ② 광차 선로
-const RY = 700, LEV = { L:[300, 636], R:[800, 636] }, FORKX = { L:380, R:720 }, CV = 320;
+const RY = 700, LEV = { L:[392, 628], R:[708, 628] }, FORKX = { L:380, R:720 }, CV = 320;
 // ③ 발파
 const ROCKS3 = [[310, 640], [560, 770], [800, 640]];
 // ④ 갱도 지도

@@ -65,7 +65,7 @@ function whale(half, pod){ sd = 71;
 
 // ===== 캐시: 고래 그림 (평소 · 변신 · 변신+발판 없음) =====
 // 그림 범위: x -470 ~ 470, y -580 ~ 380 (단위) · 게임에선 SC 배로 그려요
-export const SC = .4, BX0 = -470, BY0 = -580, BW = 940, BH = 960;
+export const SC = .36, BX0 = -470, BY0 = -580, BW = 940, BH = 960;
 const cache = {};
 const fontOk = () => { try { return document.fonts.check('bold 20px "Dongle"'); } catch(e){ return true; } };
 function mk(w, h){ const cv = document.createElement('canvas'); cv.width = Math.ceil(w); cv.height = Math.ceil(h); return cv; }

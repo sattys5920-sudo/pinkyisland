@@ -52,7 +52,7 @@ let txT = 0; const txOk = (B, gap = 350) => { if (performance.now() - txT < gap)
 // ===== 기본 공격: 덩굴 채찍 =====
 const VL = 250, VWID = 30, WARN = .85, RISE = .45;
 function waves(B){ if (B.phase === 2 && B.ph2 < TRANS + .5) return null; if (stunned(B)) return null;
-  const bt = beat(B, 2.8); if (bt.t > WARN + RISE + .4) return null;
+  const bt = beat(B, 3.2); if (bt.t > WARN + RISE + .4) return null;
   const list = keep(`w${B.r.bossAt}.${B.phase}.${bt.n}`, () => { const al = B.alive.length ? B.alive : B.all; if (!al.length) return [];
     const n = Math.min(al.length, 1 + (al.length >= 3) + (al.length >= 6)), rn = B.rng(`w${B.r.bossAt}.${bt.n}`), out = [];
     for (let j = 0; j < n; j++){ const p = al[(B.hash(`${bt.n}.${j}`) + j) % al.length], a = rn()*Math.PI, o = (rn() - .5)*40;
@@ -367,6 +367,9 @@ function drawBoss(B, c, fx, fy, vx, vy, cur){ const mk = moveK(vx, vy), t = B.no
   if (B.phase === 2 && hk >= 0 && hk < 1.9 && Math.floor(t*14) % 3 === 0){ c.globalAlpha = .35; c.globalCompositeOperation = 'lighter'; c.drawImage(sprite(1, RES), x0, y0, W, H); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; }
   c.restore(); }
 
+// 혼자 보기 시험용 (엔진은 default 만 써요)
+export const __test = { cur:B => pick(B, P, OPT), posAt, faceOf, vinesOf, vAt, vLen:(B, cur, i) => vLen(B, cur, vinesOf(B, cur)[i], i), waterSlot, cupHome, roundOf, seedsOf, slumpsOf, holderOf };
+
 // ===== 모듈 =====
 let lastSeed = '', curK = null;
 function cur0(B){ return pick(B, P, OPT); }
@@ -374,7 +377,7 @@ const LINES = { back:'등은 만지지 마요. 따가워요.', vine:'꽃은 꾸�
 
 export default {
   reach: 125,
-  get height(){ return curK ? 300 : 260; },
+  get height(){ return curK ? 330 : 285; },
   pos(B){ return posAt(B, B.now); },
   tick(B, dt){ const cur = cur0(B); curK = halfLook(B);
     if (cur.id && cur.seed !== lastSeed){ lastSeed = cur.seed; const ln = cur.id === 'bees' ? `${B.targetNick} 님, 향기 좋죠?` : LINES[cur.id]; if (ln && cur.t < 1.5) B.say(ln, 2600); }

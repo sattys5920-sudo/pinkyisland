@@ -169,7 +169,7 @@ export default {
     // ② 긴 손 · 칼 빼앗김 → 분실물 상자에서 되찾기
     for (const gr of grabs(B, p)){ if (p.t < gr.ts) continue; const aim = grabAim(B, gr); if (!aim) continue;
       if (p.t > gr.ts + .3 && p.t < gr.ts + .35) B.sfx('warn', 300);
-      if (p.t >= gr.ts + 1.0 && p.t < gr.ts + 1.25 && once('gh' + gr.key)){ if (inEll(me.x, me.y, aim[0], aim[1], 62, 40)){ B.hurt(B.lo, 'g' + gr.key); B.shake(); if (!L.stolen){ L.stolen = {at:now}; B.sfx('slam'); } } } }
+      if (p.t >= gr.ts + 1.0 && p.t < gr.ts + 1.25 && once('gh' + gr.key)){ if (inEll(me.x, me.y, aim[0], aim[1], 62, 40) && !L.stolen){ L.stolen = {at:now}; B.shake(); B.sfx('slam'); } } }
     if (L.stolen){ ctl.noAtk = true; const bx = boxPos(B);
       if (inEll(me.x, me.y, bx[0], bx[1] + 30, 80, 55)) L.boxT += dt; else L.boxT = Math.max(0, L.boxT - dt);
       if (L.boxT > .6 || now - L.stolen.at > 30000){ L.stolen = null; L.boxT = 0; B.sfx('hit'); B.fx('칼 되찾음', me.x, me.y - 70, '#c8ffd0'); } }
