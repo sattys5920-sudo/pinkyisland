@@ -171,7 +171,7 @@ export default {
     if (k.id === 'tilt'){ const s = tiltState(B, k);
       if (s.next && s.w > 0 && once('tw' + k.seed + s.j)) B.sfx('warn');
       if (me && s.f > 0){ ctl.drift = [s.d*120*s.f, 0]; ctl.slip = 2.2;
-        if (s.f > .3 && ((s.d < 0 && me.x < 215) || (s.d > 0 && me.x > 885))){ if (B.hurt(lo(B) + 100, `sea.${k.seed}.${s.j}`)){ B.sfx('slam'); B.shake(); B.fx('풍덩', me.x, me.y - 60, '#9ad8ff'); } B.tp(B.hx - s.d*170, cl(me.y, 420, 820)); } } }
+        if (s.f > .3 && ((s.d < 0 && me.x < 215) || (s.d > 0 && me.x > 885))){ if (B.hurt(lo(B) + 100, `sea.${k.seed}.${s.j}`)){ B.sfx('slam'); B.shake(); B.fx('풍덩', me.x, me.y - 60, '#9ad8ff'); } B.push(-s.d, 0, Math.abs(me.x - (B.hx - s.d*170))); } } }
   },
 
   hitMul(B){ const k = pick(B, P, OPT); if (crewGuard(B, k)) return 0; return (B.bs.stun || 0) > B.now ? 2 : 1; },

@@ -143,7 +143,10 @@ function drawSparks(B, c){ const l = loc(B), h = l.bh, now = B.now; if (h.length
 
 // ---------- 50% 변신: 낡은 비디오테이프 되감기 ----------
 const vhsI = k => k < .4 || k > 3.5 ? 0 : k < .9 ? (k - .4)/.5 : k < 2.4 ? 1 : 1 - (k - 2.4)/1.1;
-let NZ = null, SL = null, ALLEY = null;
+let NZ = null, SL = null, ALLEY = null, SNAP = null;
+// 화면을 반 크기로 한 번 찍어 두고 (매 프레임 한 번) 띠를 옮겨 그려요 · 같은 캔버스에 여러 번 그리면 느려요
+function snap(c){ const cv = c.canvas, w = Math.max(1, cv.width >> 1), h = Math.max(1, cv.height >> 1); if (!SNAP) SNAP = document.createElement('canvas'); if (SNAP.width !== w || SNAP.height !== h){ SNAP.width = w; SNAP.height = h; } const g = SNAP.getContext('2d'); g.globalCompositeOperation = 'copy'; try { g.drawImage(cv, 0, 0, w, h); } catch(e){} return SNAP; }
+function tears(c, n, f, amp, y0, hMax){ const cv = c.canvas, sn = snap(c), k = cv.width/sn.width; c.save(); c.setTransform(1, 0, 0, 1, 0, 0); for (let i = 0; i < n; i++){ const sy = Math.floor((y0 ?? hsh(f*5 + i)*sn.height)), sh = Math.max(1, Math.min(sn.height - sy, Math.floor(hMax ?? (3 + hsh(f*7 + i)*25*k/2)))); if (sh <= 0) continue; const dx = Math.round((hsh(f*11 + i) - .5)*amp); c.drawImage(sn, 0, sy, sn.width, sh, dx, sy*k, cv.width, sh*k); } c.restore(); }
 function noiseCv(){ if (NZ) return NZ; NZ = document.createElement('canvas'); NZ.width = 160; NZ.height = 40; const g = NZ.getContext('2d'); for (let y = 0; y < 40; y++) for (let x = 0; x < 160; x += 2){ const r = hsh(x*7.3 + y*91.1); if (r < .35) continue; const v = 120 + (r*135 | 0); g.fillStyle = `rgba(${v},${v},${v},${r})`; g.fillRect(x, y, 2, 1); } return NZ; }
 function scanPat(c){ if (!SL){ SL = document.createElement('canvas'); SL.width = 2; SL.height = 3; const g = SL.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 2, 1); } return c.createPattern(SL, 'repeat'); }
 function alleyCv(){ if (ALLEY) return ALLEY; const W = 1100, H = 900; ALLEY = document.createElement('canvas'); ALLEY.width = 550; ALLEY.height = 450; const g = ALLEY.getContext('2d'); g.scale(.5, .5);
@@ -159,7 +162,7 @@ function alleyCv(){ if (ALLEY) return ALLEY; const W = 1100, H = 900; ALLEY = do
   return ALLEY; }
 function vhs(B, c, w, h, I, k, words = true){ const cv = c.canvas, f = Math.floor(B.now/42), dpr = cv.width/Math.max(1, w);
   if (I > 0){
-    c.save(); c.setTransform(1, 0, 0, 1, 0, 0); const n = Math.round(3 + 9*I); for (let i = 0; i < n; i++){ const y = Math.floor(hsh(f*5 + i)*cv.height), hh = Math.max(2, Math.floor((6 + hsh(f*7 + i)*50)*dpr)), dx = Math.round((hsh(f*11 + i) - .5)*90*I*dpr); try { c.drawImage(cv, 0, y, cv.width, Math.min(hh, cv.height - y), dx, y, cv.width, Math.min(hh, cv.height - y)); } catch(e){} } c.restore();
+    tears(c, Math.round(3 + 9*I), f, 90*I*dpr);
     tint(c, w, h, 'rgb(40,0,60)', .2*I);
     const nz = noiseCv(); for (let b = 0; b < 2; b++){ const bh = 30 + 70*I, y = ((B.now/1000*(320 + b*170) + b*400) % (h + bh*2)) - bh; c.save(); c.globalAlpha = .55*I; c.drawImage(nz, (hsh(f + b) - .5)*60, (hsh(f*3 + b))*30*0, 160, 40, -40, y, w + 80, bh); c.restore(); c.fillStyle = `rgba(255,255,255,${.12*I})`; c.fillRect(0, y + bh*.4, w, 4); }
     c.fillStyle = `rgba(255,255,255,${.5*I})`; for (let i = 0; i < 3 + Math.round(4*I); i++){ const y = hsh(f*17 + i)*h; for (let x = 0; x < w;){ const ww = 20 + hsh(f + x + i)*140; if (hsh(f*3 + x + i) > .3) c.fillRect(x, y, ww, 2); x += ww; } }
@@ -171,7 +174,7 @@ function vhs(B, c, w, h, I, k, words = true){ const cv = c.canvas, f = Math.floo
     else { c.globalAlpha = cl(1 - (k - 2.6)/.9); c.font = `bold ${Math.round(fs*.45)}px monospace`; c.fillStyle = '#f4f4f0'; c.fillText('▶ PLAY   AM 05:40', w*.06, h*.36); }
     c.restore(); } }
 function trackLine(B, c, w, h, a){ const cv = c.canvas, dpr = cv.width/Math.max(1, w), P = 4.7, ph = (B.now/1000) % P, cyc = Math.floor(B.now/1000/P); if (ph > .35) return; const y = lerp(h*hsh(cyc), h*hsh(cyc) + 120, ph/.35), f = Math.floor(B.now/42);
-  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); const Y = Math.floor(y*dpr), HH = Math.floor(14*dpr); if (Y > 0 && Y + HH < cv.height) try { c.drawImage(cv, 0, Y, cv.width, HH, Math.round((hsh(f) - .5)*24*dpr), Y, cv.width, HH); } catch(e){} c.restore();
+  if (y > 0 && y + 14 < h) tears(c, 1, f, 24*dpr, Math.floor(y*dpr/2), Math.ceil(7*dpr));
   c.save(); c.globalAlpha = .35*a; c.drawImage(noiseCv(), 0, 0, 160, 12, 0, y, w, 12); c.restore(); }
 
 // ---------- 보스 그리기 ----------

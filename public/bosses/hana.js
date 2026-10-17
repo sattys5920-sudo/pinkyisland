@@ -143,7 +143,7 @@ function tickPlow(B, p, me, lo){ if (!me || me.down){ L.prev = null; return; }
         if (B.hurt(lo + 60, `pb${p.seed}.${wi}.${k}`)){ B.push(w.o === 'h' ? 0 : s, w.o === 'h' ? s : 0, 90); B.shake(); } continue; }
       const [pd] = wallD(w, prev[0], prev[1]);
       if (Math.abs(pd) >= 13 && (Math.abs(d) < 13 || Math.sign(d) !== Math.sign(pd))){ const v = w.c + Math.sign(pd)*14; if (w.o === 'h') y = v; else x = v; moved = true; } } }
-  if (moved) B.tp(x, y); L.prev = [x, y]; }
+  if (moved){ const dx = x - me.x, dy = y - me.y, d = Math.hypot(dx, dy); if (d > .5) B.push(dx, dy, d); } L.prev = [x, y]; } // B.tp 는 엔진에서 오류가 나서 밀기로 되돌려요
 function tickSpread(B, p, me, lo){ const on = emOn(B, p);
   if (me && !me.down && on[me.uid]){ const since = on[me.uid], m = Math.floor((B.now - since - 1500)/2000); if (m >= 0) B.hurt(lo, `em${p.seed}.${since}.${m}`);
     if (p.t >= p.len - .5 && B.hurt(lo + 150, `eb${p.seed}`)){ B.shake(); B.sfx('slam'); } }

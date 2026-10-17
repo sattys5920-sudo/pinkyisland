@@ -117,7 +117,7 @@ function volleys(B, p){
   const bt = beat(B, 3.4), out = [], f = bossFoot(B, p);
   for (const n of [bt.n, bt.n - 1]){ const age = B.t - n*bt.len; if (age < 0 || age > LAUNCH + HOP*3 + .3) continue;
     const key = `${B.phase}.${n}`; let v = L.snaps['c' + key];
-    if (!v){ if (age > LAUNCH || !B.alive.length) continue; const r = B.rng(`${B.r.bossAt}.cube.${key}`), m = B.phase === 1 ? 1 : Math.min(2, B.alive.length); v = [];
+    if (!v){ if (age > LAUNCH || !B.alive.length) continue; const r = B.rng(`${B.r.bossAt}.cube.${key}`), m = B.phase === 1 || p.id === 'strong' ? 1 : Math.min(2, B.alive.length); v = [];
       for (let j = 0; j < m; j++){ const who = B.alive[Math.floor(r()*B.alive.length)], o = [f[0] - 92, f[1] + 4]; let x = who.x, y = who.y;
         if (j && v.some(q => dist(q.x, q.y, x, y) < 40)){ const a = Math.atan2(y - o[1], x - o[0]) + Math.PI/2; x += Math.cos(a)*85; y += Math.sin(a)*85*.6; }
         v.push({o, x, y}); }

@@ -160,7 +160,7 @@ const slumpNow = (B, cur) => slumpsOf(B, cur).find(s => cur.t >= s.t0 && cur.t <
 function fakeTick(B, cur){ const s = slumpNow(B, cur); if (!s) return;
   if (s.fake && cur.t < s.t1 && first(`fs${cur.seed}.${s.i}`)) B.say(s.i%2 ? '다리가… 아파요' : '아파요… 좀 도와줘요', 2200);
   if (s.fake && cur.t >= s.t1 && !stunned(B)){ if (first(`fb${cur.seed}.${s.i}`)){ B.sfx('slam', 100); B.shake(); }
-    const me = B.me, [fx, fy] = posAt(B, B.now); if (me && cur.t < s.t1 + .25 && inEll(me.x, me.y, fx, fy - 10, TRAP, TRAP*.6) && B.hurt(B.lo + 150, `fb${cur.seed}.${s.i}`)) B.push(me.x - fx, me.y - fy, 90); }
+    const me = B.me, [fx, fy] = posAt(B, B.now); if (me && cur.t < s.t1 + .5 && inEll(me.x, me.y, fx, fy - 10, TRAP, TRAP*.6) && B.hurt(B.lo + 150, `fb${cur.seed}.${s.i}`)) B.push(me.x - fx, me.y - fy, 90); }
   if (!s.fake && cur.t < s.t1 && first(`fr${cur.seed}.${s.i}`)) B.sfx('warn', 100); }
 function fakeFloor(B, c, cur){ const s = slumpNow(B, cur); if (!s) return; const [fx, fy] = posAt(B, B.now);
   if (s.fake && cur.t < s.t1){ c.save(); c.globalAlpha = .12 + .1*Math.sin(B.now/90); c.strokeStyle = '#ff6a9a'; c.lineWidth = 2; c.setLineDash([4, 10]); c.beginPath(); c.ellipse(fx, fy - 10, TRAP, TRAP*.6, 0, 0, 7); c.stroke(); c.restore(); }
@@ -182,7 +182,7 @@ function beesTick(B, cur, dt){ const on = cur.t > .8 && cur.t < cur.len - .6, h 
   if (!swarm || swarm.s !== cur.seed){ swarm = {s:cur.seed, x:fx - 60, y:fy - 80}; if (first('bz' + cur.seed)) B.sfx('warn', 100); }
   if (on && h){ const tx = h.x, ty = h.y - 34, dx = tx - swarm.x, dy = ty - swarm.y, d = Math.hypot(dx, dy); if (d > 3){ const st = Math.min(d, BEE_V*Math.min(.1, dt)); swarm.x += dx/d*st; swarm.y += dy/d*st; } }
   else if (!on && cur.t >= cur.len - .6){ swarm.y -= 220*Math.min(.1, dt); }
-  const me = B.me; if (on && me && h && h.uid === me.uid && Math.hypot(swarm.x - me.x, (swarm.y - me.y + 34)/.8) < 44) B.hurt(B.lo + 30, `bee${cur.seed}.${Math.floor(B.now/900)}`);
+  const me = B.me; if (on && me && h && h.uid === me.uid && Math.hypot(swarm.x - me.x, (swarm.y - me.y + 34)/.8) < 44) B.hurt(B.lo + 30, `bee${cur.seed}.${Math.floor(B.now/1100)}`);
   // 호스트: 쫓기는 사람이 친구와 닿으면 향기를 넘겨요
   if (B.host && on && h){ const sc = B.bs.sc && B.bs.sc.s === cur.seed ? B.bs.sc : null, at = sc ? sc.at : 0;
     if (B.now - at > 1300){ const o = B.alive.find(p => p.uid !== h.uid && Math.hypot(p.x - h.x, p.y - h.y) < 52 && !(sc && p.uid === sc.p && B.now - at < 3500));

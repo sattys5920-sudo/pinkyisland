@@ -121,7 +121,8 @@ function cageTick(B, p){ const me = B.me, cg = B.bs.cg; if (!me || !cg || cg.s !
   if (B.now >= cg.at && B.now < cg.at + 200 && once('cgw' + cg.s + cg.w)) B.sfx('warn', 200);
   if (B.now >= cg.at + LAND*1000 && once('cgl' + cg.s + cg.w)) B.sfx('slam', 200);
   if (me.down) return; const i = cageOf(B, p, me.uid);
-  if (i >= 0){ const s = cg.sp[i]; B.ctl.lock = true; if (dist(me.x, me.y, s.x, s.y) > 6) B.tp(s.x, s.y); }
+  if (i >= 0){ const s = cg.sp[i]; B.ctl.speed = 0; // 우리 안: 못 걸어도 몸은 돌릴 수 있어요 (열쇠 고르기)
+    if (dist(me.x, me.y, s.x, s.y) > 6) try { B.tp(s.x, s.y); } catch(e){} } // B.tp 는 자리를 옮긴 뒤 엔진 안에서 오류가 나요 (target 상수)
   // 시간 안에 못 나오면 우리가 조여요
   const end = cg.at + (LAND + HOLD)*1000; if (cg.c && B.now >= end && B.now < end + 900){ for (const [u, j] of cg.c) if (u === me.uid && !(cg.f && cg.f[j])){ if (B.hurt(B.lo + 100, 'cr' + cg.s + cg.w)){ B.sfx('slam', 100); B.shake(); } } } }
 function cageFloor(B, p, c){ const cg = B.bs.cg; if (!cg || cg.s !== p.seed) return; const k = (B.now - cg.at)/1000; if (k < 0 || k > LAND) return;
