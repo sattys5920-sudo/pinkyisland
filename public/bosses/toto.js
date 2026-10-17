@@ -148,7 +148,7 @@ export default {
 
     // ① 약속의 원: 밖에 오래 있으면 채찍
     if (p.id === 'fence'){ const F = fence(B, p);
-      if (F.on && !inEll(mx, my, F.x, F.y, F.rx, F.ry)){ outT += dt; if (outT > .45 && B.hurt(B.lo + 50, `fn.${p.seed}.${Math.floor(p.t/1.5)}`)){ B.sfx('slam'); B.push(F.x - mx, F.y - my, 70); } } else outT = 0;
+      if (F.on && !inEll(mx, my, F.x, F.y, F.rx, F.ry)){ outT += dt; if (outT > .45){ outT = -.6; if (B.hurt(B.lo + 50, `fn.${p.seed}.${Math.floor(p.t/1.5)}`)){ B.sfx('slam'); B.push(F.x - mx, F.y - my, 70); } } } else outT = 0;
     } else outT = 0;
 
     // ② 생활 규칙: 판이 바뀌는 때에 맞춰 봐요
