@@ -4684,7 +4684,7 @@ function pricePanel(){
 const MARKET_FEE = .05, MARKET_MAX = 5;
 let market = {};
 // 거래할 수 있는 아이템 키인지 (옷·우산·벽지·바닥도 거래돼요)
-function itemKeyOk(k){ const m = /^(dish|crop|forage|fish|ore|loot|seed|furn|wear|umb|wall|floor|tmap|wood):([A-Za-z0-9_~]{2,12})$/.exec(k || ''); if (!m) return false; const [, cat, id] = m;
+function itemKeyOk(k){ const m = /^(dish|crop|forage|fish|ore|loot|seed|furn|wear|umb|wall|floor|tmap|wood|star):([A-Za-z0-9_~]{2,12})$/.exec(k || ''); if (!m) return false; const [, cat, id] = m;
   if (cat==='tmap') return !!tmapParse(id);
   if (cat==='wood') return !!WOOD[id];
   if (cat==='wear'){ const [w, c] = id.split(/[~#]/); return !!slotOfWear(w) && !CH.ITEM(w)?.otumo && (c===undefined || /^[1-4]$/.test(c)); }
@@ -8869,6 +8869,7 @@ function aucItems(){
   // 원가: 반지는 공방에서 만드는 값, 가구는 상점 값, 광석·요리는 기본 판매가 (시세·보너스 빼고)
   const paid = (list, pre) => Object.entries(list).filter(([id, it]) => id !== 'none' && it && !it.otumo && (it.price || 0) > 0).map(([id, it]) => [pre + id, it.name + (pre === 'umb:' ? ' 우산' : ''), it.price]);
   const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1], r[3]])], ...CH.CATS.map(([, l, list]) => [l, paid(list, 'wear:')]).filter(([, l]) => l.length), ['우산', paid(UMB, 'umb:')], ['벽지', paid(WALLS, 'wall:')], ['바닥', paid(FLOORS, 'floor:')], ['가구', Object.entries(FURN).filter(([, f]) => !f.prize).map(([id, f]) => ['furn:' + id, f.name, f.gold])],
+    ['별 조각', [['star:shard', '별 조각', STAR_PRICE]]],
     ['광석', Object.keys(ORES).map(id => ['ore:' + id, ORES[id].name, itemPrice('ore:' + id)])], ['요리', Object.keys(DISHES).map(id => ['dish:' + id, DISHES[id].name, itemPrice('dish:' + id)])]];
   // 상품 고를 때: 이미 가진 주민 수를 보여 줘요 (🆕 = 아직 아무도 없음 · 👥N = N 명이 가짐 · ★ = 상품 전용 옷)
   const own = prizeOwners();
