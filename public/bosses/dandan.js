@@ -40,7 +40,7 @@ function footAt(B, p, t){
   return baseFoot(B, t, aw, ah);
 }
 function bossFoot(B, p = pk(B)){
-  const st = B.bs.stun; if (st > B.now && st - 8000 < B.now) return footAt(B, p, B.t - (B.now - (st - 8000))/1000); // 기절: 그 자리에 멈춰요
+  const st = B.bs.stun; if (st > B.now && st - 8000 < B.now && B.bs.sp) return B.bs.sp; if (st > B.now && st - 8000 < B.now) return footAt(B, p, B.t - (B.now - (st - 8000))/1000); // 기절: 그 자리에 멈춰요
   return footAt(B, p, B.t);
 }
 
@@ -313,9 +313,9 @@ function hostTick(B, p, f, dt){
     if (!Hs.hit && p.t > .8 && p.t < p.len - .5){
       const ps = B.alive.filter(q => inEll(q.x, q.y, Hs.x, Hs.y, 92, 62));
       if (ps.length){ let cx = 0, cy = 0; for (const q of ps){ cx += q.x; cy += q.y; } cx /= ps.length; cy /= ps.length; let dx = Hs.x - cx, dy = Hs.y - cy, d = Math.hypot(dx, dy);
-        if (d < 6){ dx = f[0] - Hs.x; dy = f[1] - Hs.y; d = Math.hypot(dx, dy) || 1; } const sp = Math.min(170, 62 + 30*(ps.length - 1));
+        if (d < 6){ dx = f[0] - Hs.x; dy = f[1] - Hs.y; d = Math.hypot(dx, dy) || 1; } const sp = Math.min(170, 72 + 30*(ps.length - 1));
         Hs.x = cl(Hs.x + dx/d*sp*dt, 120, 980); Hs.y = cl(Hs.y + dy/d*sp*dt, 300, 800); }
-      if (inEll(Hs.x, Hs.y, f[0], f[1], 135, 80)){ Hs.hit = 1; const x = Math.round(Hs.x), y = Math.round(Hs.y); B.tx(bs => bs.push?.k === k && bs.push.hit ? undefined : {...bs, push:{k, x, y, hit:1}, stun:now + 8000}); }
+      if (inEll(Hs.x, Hs.y, f[0], f[1], 135, 80)){ Hs.hit = 1; const x = Math.round(Hs.x), y = Math.round(Hs.y); B.tx(bs => bs.push?.k === k && bs.push.hit ? undefined : {...bs, push:{k, x, y, hit:1}, stun:now + 8000, sp:[Math.round(f[0]), Math.round(f[1])]}); }
       else if (now - Hs.sent > 350 && (Math.abs(Hs.x - Hs.sx) > 2 || Math.abs(Hs.y - Hs.sy) > 2)){ Hs.sent = now; Hs.sx = Hs.x; Hs.sy = Hs.y; const x = Math.round(Hs.x), y = Math.round(Hs.y); B.tx(bs => bs.push?.k === k && bs.push.hit ? undefined : {...bs, push:{k, x, y}}); } } }
   // ⑦ 마감 시작 체력 기록 · 시간이 다 되면 그동안 깎은 만큼의 절반 회복 (최대 5%)
   if (p.id === 'close'){ const k = p.seed;
@@ -413,7 +413,7 @@ function drawAvalanche(c, w, h, k){ if (k < .5 || k > 5.2) return; const fadeAll
 // ===== ⑦ 영업 마감: 셔터가 내려와요 =====
 function drawShutter(B, c, w, h, p){ let u;
   if (p.id === 'close') u = p.t < CLOSE_T ? p.t/CLOSE_T : 1; else if (p.id === null) u = 1 - cl(p.t/1.5); else return; if (u <= 0) return;
-  const top = 0, sh = u*h*.36; c.save(); const q = c.createLinearGradient(0, 0, 0, sh); q.addColorStop(0, '#5a5a62'); q.addColorStop(1, '#3a3a42'); c.fillStyle = q; c.fillRect(0, top, w, sh);
+  const top = 0, sh = u*h*.27; c.save(); const q = c.createLinearGradient(0, 0, 0, sh); q.addColorStop(0, '#5a5a62'); q.addColorStop(1, '#3a3a42'); c.fillStyle = q; c.fillRect(0, top, w, sh);
   c.strokeStyle = 'rgba(20,20,26,.6)'; c.lineWidth = 3; for (let y = top + sh % 16; y < top + sh; y += 16){ c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); } c.fillStyle = '#2a2a30'; c.fillRect(0, sh - 8, w, 8); c.restore();
   if (p.id === 'close' && p.t < CLOSE_T){ const left = Math.ceil(CLOSE_T - p.t), s = `영업 마감 0:${String(left).padStart(2, '0')}`; c.save(); c.fillStyle = 'rgba(30,14,6,.92)'; c.beginPath(); c.roundRect(w/2 - 80, sh + 4, 160, 40, 8); c.fill(); c.strokeStyle = left <= 5 ? '#ff6a6a' : '#d8b890'; c.lineWidth = 2; c.stroke(); c.restore();
     text(c, s, w/2, sh + 25, 30, left <= 5 ? '#ff9a9a' : '#fff0d0'); if (left <= 5) B.sfx('warn', 1000); }

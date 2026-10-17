@@ -244,12 +244,12 @@ export const dev = {pick:B => pick(B, P, OPT), posOf, crewList, tkCrew, coins, h
 // ===== 움직일 때: 배로 미끄러지며 젖은 자국 · 옆으로 튀는 물보라 =====
 function vel(B){ const a = posOf(B), b = posAt(B, .05); return [(a[0] - b[0])/.05, (a[1] - b[1])/.05]; }
 function drawStreak(B, c, t){ const q = Math.floor(t/.1), pts = [[...posOf(B), t]];
-  for (let i = 0; i <= 13; i++){ const ts = (q - i)*.1; if (ts < 0) break; pts.push([...posAt(B, t - ts), ts]); }
+  for (let i = 0; i <= 26; i++){ const ts = (q - i)*.1; if (ts < 0) break; pts.push([...posAt(B, t - ts), ts]); }
   if (pts.length < 3) return;
   c.save(); c.lineCap = 'round';
-  for (let i = 1; i < pts.length - 1; i++){ const [x, y, ts] = pts[i], [px, py] = pts[i - 1], [nx, ny] = pts[i + 1], sp = Math.hypot(x - nx, y - ny)/.1, m = cl((sp - 10)/55), a = m*cl(1 - (t - ts)/1.3); if (a < .02) continue;
-    c.strokeStyle = `rgba(90,150,200,${.42*a})`; c.lineWidth = 40 + 10*m; c.beginPath(); c.moveTo(px, py - 4); c.lineTo(x, y - 4); c.stroke();
-    c.strokeStyle = `rgba(220,245,255,${.45*a*(.6 + .4*Math.sin(ts*23))})`; c.lineWidth = 4; c.beginPath(); c.moveTo(px, py - 14); c.lineTo(x, y - 14); c.stroke(); }
+  for (let i = 1; i < pts.length - 1; i++){ const [x, y, ts] = pts[i], [px, py] = pts[i - 1], [nx, ny] = pts[i + 1], sp = Math.hypot(x - nx, y - ny)/.1, m = cl((sp - 6)/40), a = m*cl(1 - (t - ts)/2.6); if (a < .02) continue;
+    c.strokeStyle = `rgba(110,175,230,${.5*a})`; c.lineWidth = 36 + 12*m; c.beginPath(); c.moveTo(px, py - 4); c.lineTo(x, y - 4); c.stroke();
+    c.strokeStyle = `rgba(225,248,255,${.6*a*(.6 + .4*Math.sin(ts*23))})`; c.lineWidth = 4; c.beginPath(); c.moveTo(px, py - 14); c.lineTo(x, y - 14); c.stroke(); }
   c.restore(); }
 function drawSpray(B, c){ const t = B.t, k1 = Math.floor(t/.05); c.save(); c.fillStyle = 'rgba(190,230,255,.95)';
   for (let k = k1 - 14; k <= k1; k++){ const ts = k*.05, age = t - ts; if (ts < .1 || age < 0) continue; const p0 = posAt(B, age), p1 = posAt(B, age + .05), vx = (p0[0] - p1[0])/.05, vy = (p0[1] - p1[1])/.05, L2 = Math.hypot(vx, vy), m = cl((L2 - 10)/55); if (m < .06) continue;

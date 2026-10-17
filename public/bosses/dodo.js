@@ -27,7 +27,8 @@ const EXITS = [[165, 530], [935, 530]], EV = 92;
 let lastB = null; // 레버를 누르러 걸어간 뒤에 쓸 가장 새 B
 const sm = {}; // 이 화면만의 기억 (말한 줄 · 부메랑 겨눔 · 호스트 기록 …)
 const later = (k, ms, now) => { if (sm['tx' + k] && now - sm['tx' + k] < ms) return false; sm['tx' + k] = now; return true; };
-const once = k => { if (sm['o' + k]) return false; sm['o' + k] = 1; const ks = Object.keys(sm); if (ks.length > 400) for (const x of ks.slice(0, 150)) if (x[0] === 'o') delete sm[x]; return true; };
+const once = k => { if (sm['o' + k]) return false; sm['o' + k] = 1; return true; };
+function prune(){ const ks = Object.keys(sm); if (ks.length < 500) return; for (const x of ks.slice(0, 250)) if (!/^(still|dyn|heal|esc|tx)/.test(x)) delete sm[x]; } // 오래된 기억 정리
 
 // 시간을 dt 초 뒤로 (음수면 앞으로) 돌린 B
 function shiftB(B, dt){ const o = Object.create(B); o.now = B.now - dt*1000; o.t = B.t - dt; o.pt = B.pt - dt; o.ph2 = B.ph2 >= 0 ? B.ph2 - dt : -1; o.ph3 = B.ph3 >= 0 ? B.ph3 - dt : -1; o._p = o._i = undefined; return o; }
@@ -218,7 +219,7 @@ export default {
     return null; },
 
   tick(B, dt){
-    const p = pk(B), now = B.now, me = B.me, lo = B.lo, i = info(B); lastB = B;
+    const p = pk(B), now = B.now, me = B.me, lo = B.lo, i = info(B); lastB = B; prune();
     for (const pl of B.all){ const k = 'still' + pl.uid, st = sm[k]; if (!st || dist(st.x, st.y, pl.x, pl.y) > 14) sm[k] = { x:pl.x, y:pl.y, at:now }; }
     // 대사: 패턴이 바뀔 때 (모두 같은 때에)
     if (p.id && p.t < 1 && once('say' + p.seed + p.id)){ const s = p.id === 'crack' ? `${B.targetNick}, 헬멧 하나 줄까?` : LINES[p.id]; if (s) B.say(s, 2600); }
@@ -226,7 +227,8 @@ export default {
       if (p.t > 2.4 && once('ts' + B.r.rageAt)) B.say('자기 몫은 자기가 챙기는 거야.', 2800); return; }
     // 기본 공격 (내 몸만)
     for (const b of boomers(B)){ if (b.k < .1 && once('bw' + b.key)) B.sfx('warn', 300);
-      if (me && !me.down && b.k > .6 && b.k < 2.0){ const u = (b.k - .6)/1.4, [x, y] = boomAt(b, u); if (dist(x, y, me.x, me.y - 20) < 32 && B.hurt(lo + 40, b.key + (u < .5 ? 'a' : 'b'))) B.push(b.nm[0], b.nm[1], 40); } }
+      const k0 = Math.max(.6, Math.min(b.k, sm['bk' + b.key] ?? b.k)); sm['bk' + b.key] = b.k; // 프레임이 느려도 지나간 길을 다 봐요
+      if (me && !me.down && b.k > .6) for (let k = k0; k <= Math.min(2.0, b.k) + 1e-6; k += .025){ const u = cl((k - .6)/1.4), [x, y] = boomAt(b, u); if (dist(x, y, me.x, me.y - 20) < 32){ if (B.hurt(lo + 40, b.key + (u < .5 ? 'a' : 'b'))) B.push(b.nm[0], b.nm[1], 40); break; } } }
     // 패턴
     if (p.id === 'mole') tickMole(B, p, me, lo);
     else if (p.id === 'rail') tickRail(B, p, me, lo);
@@ -330,12 +332,13 @@ export default {
 function tickMole(B, p, me, lo){ const H = moleOrder(B, p);
   for (let n = 0; n < 3; n++){ const s = MOLE_I + n*MOLE_C, k = p.t - s, [x, y] = HOLES[H[n]];
     if (k > .2 && k < .4 && once('mw' + p.seed + n)) B.sfx('warn', 200);
-    if (k >= MOLE_BUMP && k < MOLE_BUMP + .25){ if (once('ms' + p.seed + n)){ B.sfx('slam', 150); B.shake(); }
+    if (k >= MOLE_BUMP && k < MOLE_BUMP + .4){ if (once('ms' + p.seed + n)){ B.sfx('slam', 150); B.shake(); }
       if (me && !me.down && inEll(me.x, me.y, x, y, POP_RX, POP_RY) && B.hurt(lo + 80, `mp${p.seed}.${n}`)) B.push(me.x - x || 1, me.y - y, 80); } } }
 function tickRail(B, p, me, lo){
   for (const ct of carts(B, p)){ const k = p.t - ct.t0;
     if (k > -1 && k < -.8 && once('cw' + p.seed + ct.i)) B.sfx('warn', 200);
-    const q = cartAt(B, p, ct); if (q && !q.br && me && !me.down && Math.abs(me.y - RY) < 26 && Math.abs(me.x - q.x) < 44 && B.hurt(lo + 120, `ct${p.seed}.${ct.i}`)) B.push(0, me.y < RY ? -1 : 1, 80);
+    const kk = 'cl' + p.seed + ct.i, t0 = Math.max(p.t - .5, Math.min(p.t, sm[kk] ?? p.t)); sm[kk] = p.t;
+    if (me && !me.down && Math.abs(me.y - RY) < 26) for (let tt = t0; tt <= p.t + 1e-6; tt += .03){ const q = cartAt(B, {...p, t:tt}, ct); if (q && !q.br && Math.abs(me.x - q.x) < 44){ if (B.hurt(lo + 120, `ct${p.seed}.${ct.i}`)) B.push(0, me.y < RY ? -1 : 1, 80); break; } }
     const tc = ct.t0 + ct.tf + .8; if (switched(B, p, ct) && p.t >= tc && p.t < tc + .5){ if (once('cs' + p.seed + ct.i)){ B.sfx('slam', 100); B.shake(); }
       if (B.host && once('ch' + p.seed + ct.i)){ const at = Math.round(B.now - (p.t - tc)*1000); B.tx(bs => (bs.stun || 0) >= at + 3000 ? undefined : {...bs, stun:at + 3000, st0:at}); } } } }
 function tickBlast(B, p, me, lo){

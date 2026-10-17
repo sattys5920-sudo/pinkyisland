@@ -306,7 +306,7 @@ function drawTrans(B, c, w, h){
   // 이름표 수십 장이 떨어져 날려요
   if (t > 1.45){ for (let i = 0; i < 30; i++){ const t0 = 1.5 + hsh(i + 200)*.5, k = t - t0; if (k < 0) continue; const sky = i % 3 === 0;
       const x0 = sky ? w*(.05 + hsh(i + 300)*.9) : w/2 + (hsh(i + 400) - .5)*w*.3, y0 = sky ? h*.2 - hsh(i + 500)*h*.15 : h*.46 + (hsh(i + 600) - .5)*h*.1, vx = sky ? (hsh(i + 700) - .5)*60 : (hsh(i + 700) - .5)*w*1.3, vy = sky ? 0 : -h*.3 - hsh(i + 800)*h*.3, fall = h*(.07 + hsh(i + 900)*.06);
-      const dr = 1 - Math.exp(-k*1.6), x = x0 + vx*dr/1.6 + Math.sin(k*3 + i)*30, y = Math.min(h*.95, y0 + vy*dr/1.6 + fall*k*k*.5 + 40*k), al = cl((5.4 - t)/1)*cl(k*6), A = tagArt(NAMES[i % NAMES.length]), s = 1.1 + hsh(i + 77)*.5;
+      const dr = 1 - Math.exp(-k*1.6), x = x0 + vx*dr/1.6 + Math.sin(k*3 + i)*30, y = Math.min(h*.95, y0 + vy*dr/1.6 + fall*k*k*.5 + 40*k), al = cl((5.4 - t)/1)*cl(k*6), A = tagArt(NAMES[i % NAMES.length]), s = .6 + hsh(i + 77)*.35;
       c.save(); c.globalAlpha = al; c.translate(x, y); c.rotate(Math.sin(k*4 + i)*.7 + i); c.scale(Math.cos(k*5 + i)*s, s); c.drawImage(A.img, -A.w/2, -A.h/2, A.w, A.h); c.restore(); } }
   c.globalAlpha = fadeAll;
   if (t > 1.4 && t < 4.4){ const k = t - 1.4, a = Math.sin(Math.min(1, k/3)*Math.PI)*(.55 + .2*Math.sin(T*14)); const vg = c.createRadialGradient(w/2, h*.5, Math.min(w, h)*.25, w/2, h*.5, Math.hypot(w, h)*.6); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(140,0,40,${a})`); c.fillStyle = vg; c.fillRect(0, 0, w, h); }

@@ -61,18 +61,18 @@ function basicTick(B, p){ const s = basicShot(B, p), me = B.me; if (!s || !me ||
   if (dist(me.x, me.y, ax + dx*q, ay + dy*q) < 30) B.hurt(B.lo, 'bk' + s.key); }
 
 // ===== ① 몇 시에 자? (바닥 시계 · 바늘이 넘어간 시간대가 쾅) =====
-const CX = 550, CY = 610, RX = 275, RY = 125, CT0 = 1.6, CTG = 1.3, CTN = 8, CWARN = 1.1;
+let CX = 550, CY = 610; const RX = 275, RY = 125, CT0 = 1.6, CTG = 1.3, CTN = 8, CWARN = 1.1;
 const hAng = h => -Math.PI/2 + h*Math.PI/6;
 function clockPlan(B, p){ if (L.ckK === p.seed) return L.ck; const rng = B.rng(p.seed + 'ck'), out = []; let prev = -9;
   for (let i = 0; i < CTN; i++){ let h; do { h = Math.floor(rng()*12); } while (Math.min(Math.abs(h - prev)%12, 12 - Math.abs(h - prev)%12) < 2); prev = h;
     const hs = [h]; if (i >= 3) hs.push((h + 4 + Math.floor(rng()*5))%12); if (B.phase > 1 || i >= 6) hs.push((h + 6)%12); out.push({t:CT0 + i*CTG, hs:[...new Set(hs)]}); }
   L.ckK = p.seed; return (L.ck = out); }
 const inWedge = (x, y, h) => inSector(x, y, CX, CY, RX, hAng(h) - Math.PI/6, hAng(h) + Math.PI/6, RY/RX);
-function clockTick(B, p){ const me = B.me; for (const [i, tk] of clockPlan(B, p).entries()){ const k = p.t - tk.t;
+function clockTick(B, p){ CX = B.hx; CY = B.hy + 50; const me = B.me; for (const [i, tk] of clockPlan(B, p).entries()){ const k = p.t - tk.t;
     if (k > -CWARN && k < -CWARN + .2 && once('cw' + p.seed + i)) B.sfx('warn', 200);
     if (k >= 0 && k < .3){ if (once('cs' + p.seed + i)) B.sfx('slam', 200);
       if (me && !me.down && tk.hs.some(h => inWedge(me.x, me.y, h))) B.hurt(B.lo + 80, 'ck' + p.seed + i); } } }
-function clockFloor(B, p, c){ const al = cl(p.t*2)*cl((p.len - p.t)*2), face = A.floorClock(RX, RY); c.save(); c.globalAlpha = al*.95; c.drawImage(face, CX - RX - 20, CY - RY - 20); c.restore();
+function clockFloor(B, p, c){ CX = B.hx; CY = B.hy + 50; const al = cl(p.t*2)*cl((p.len - p.t)*2), face = A.floorClock(RX, RY); c.save(); c.globalAlpha = al*.95; c.drawImage(face, CX - RX - 20, CY - RY - 20); c.restore();
   const plan = clockPlan(B, p); let hh = 0, h2 = null;
   for (const tk of plan){ const k = p.t - tk.t; if (p.t > tk.t - .15){ hh = tk.hs[0]; h2 = tk.hs[1] ?? null; }
     if (k < -CWARN || k > .55) continue;
@@ -102,7 +102,7 @@ function cageHost(B, p){ const cg = B.bs.cg;
   for (let w = 0; w < WAVES.length; w++){ if (p.t < WAVES[w] || p.t > WAVES[w] + 1.2 || (cg && cg.s === p.seed && cg.w >= w) || !B.alive.length) continue;
     if (cg && cg.s === p.seed && B.now < cg.at + (LAND + HOLD)*1000 + 300) return; // 앞 우리가 끝난 뒤에
     const rng = B.rng(p.seed + 'cg' + w), pool = B.alive.slice(), n = Math.max(1, Math.ceil(pool.length/2)), sp = [];
-    for (let i = 0; i < n && pool.length; i++){ const o = pool.splice(Math.floor(rng()*pool.length), 1)[0]; sp.push({x:Math.round(cl(o.x, 160, 940)), y:Math.round(cl(o.y, 330, 790)), ok:Math.floor(rng()*3)}); }
+    for (let i = 0; i < n && pool.length; i++){ const o = pool.splice(Math.floor(rng()*pool.length), 1)[0]; sp.push({x:Math.round(cl(o.x, 160, B.W - 160)), y:Math.round(cl(o.y, B.hy - 230, B.hy + 240)), ok:Math.floor(rng()*3)}); }
     const seed = p.seed, now = B.now; tx(B, 'cg', bs => (bs.cg && bs.cg.s === seed && bs.cg.w >= w) ? undefined : {...bs, cg:{s:seed, w, at:now, sp}}); return; }
   if (cg && cg.s === p.seed && !cg.c && B.now >= cg.at + LAND*1000){ const list = [];
     for (const o of B.alive) for (let i = 0; i < cg.sp.length; i++){ const s = cg.sp[i]; if (Math.abs(o.x - s.x) < 60 && Math.abs(o.y - s.y) < 36){ list.push([o.uid, i]); break; } }
@@ -140,12 +140,12 @@ function cageTop(B, p, c){ const cg = B.bs.cg; if (!cg || cg.s !== p.seed) retur
   for (const q of cageKeys(B, p)){ const s = cg.sp[q.i], glow = q.k === s.ok && k > LAND + HOLD - 1.2; A.keyTeeth(c, q.x, q.y - 10 + Math.sin(B.now/300 + q.k)*3, A.TEETH[q.k], .9, glow); } }
 
 // ===== ④ 금고 다이얼 (바닥 숫자판을 차례로 밟으면 금고가 열려요 · 닫혀 있으면 무적) =====
-const PLATES = (() => { const o = {}; '1234567890'.split('').forEach((d, i) => { o[d] = [280 + (i%5)*135, i < 5 ? 652 : 738]; }); return o; })();
+let PLATES = {}, plK = ''; const plates = B => { const k = B.hx + ',' + B.hy; if (plK !== k){ plK = k; PLATES = {}; '1234567890'.split('').forEach((d, i) => { PLATES[d] = [B.hx - 270 + (i%5)*135, B.hy + (i < 5 ? 92 : 178)]; }); } return PLATES; };
 const PRX = 52, PRY = 24, OPEN = 5.0;
 const CODES2 = ['23', '24', '19', '17', '21', '45', '74', '31'], CODES3 = ['104', '745', '231', '248', '917'];
 const codeFor = (B, seed, k) => k === 0 ? (B.alive.length > 2 ? '231' : '23') : k === 1 ? (B.alive.length > 2 ? '248' : '24') : (B.alive.length > 2 ? CODES3 : CODES2)[B.hash(seed + 'dl' + k) % (B.alive.length > 2 ? CODES3 : CODES2).length];
 const plateAt = (x, y) => { for (const d in PLATES){ const [px, py] = PLATES[d]; if (inEll(x, y, px, py, PRX + 4, PRY + 8)) return d; } return null; };
-function dialState(B, p){ const dl = B.bs.dl; return dl && dl.s === p.seed ? dl : null; }
+function dialState(B, p){ plates(B); const dl = B.bs.dl; return dl && dl.s === p.seed ? dl : null; }
 const vaultOpenDial = (B, dl) => !!(dl && dl.op && B.now < dl.op + OPEN*1000);
 function dialHost(B, p){ const dl = dialState(B, p), seed = p.seed, now = B.now;
   if (!dl){ const code = codeFor(B, seed, 0); tx(B, 'dl', bs => bs.dl && bs.dl.s === seed ? undefined : {...bs, dl:{s:seed, k:0, p:0, op:0, code}}); return; }
@@ -202,9 +202,9 @@ function chainTop(B, p, c, bx, by){ const cn = chainNow(B, p), T = B.target; if 
 const NT0 = 1.8, NTG = 1.25, NTN = 7, CRX = 96, CRY = 42, RING_T = 10.0;
 const mbox = B => [B.hx + 205, B.hy + 12], ringAt = B => [B.hx + 150, B.hy + 92];
 function musicPlan(B, p){ const n2 = B.alive.length > 4 ? 2 : 1, key = p.seed + ':' + n2; if (L.muK === key) return L.mu; const rng = B.rng(p.seed + 'mu'), out = []; let prev = [B.hx - 60, B.hy + 120];
-  for (let i = 0; i < NTN; i++){ let best = null; for (let tries = 0; tries < 24; tries++){ const a = rng()*Math.PI*2, d = 110 + rng()*95, x = cl(B.hx + Math.cos(a)*d, 190, 910), y = cl(B.hy + 30 + Math.sin(a)*d*.6, 420, 780), dd = dist(x, y, prev[0], prev[1]);
+  for (let i = 0; i < NTN; i++){ let best = null; for (let tries = 0; tries < 24; tries++){ const a = rng()*Math.PI*2, d = 110 + rng()*95, x = cl(B.hx + Math.cos(a)*d, B.hx - 360, B.hx + 360), y = cl(B.hy + 30 + Math.sin(a)*d*.6, B.hy - 140, B.hy + 220), dd = dist(x, y, prev[0], prev[1]);
       if (dd > 90 && dd < 230){ best = [x, y]; break; } if (!best || Math.abs(dd - 160) < Math.abs(dist(best[0], best[1], prev[0], prev[1]) - 160)) best = [x, y]; }
-    const cs = [best]; if (n2 > 1) cs.push([cl(2*B.hx - best[0], 190, 910), cl(2*(B.hy + 30) - best[1], 420, 780)]); out.push({t:NT0 + i*NTG, cs}); prev = best; }
+    const cs = [best]; if (n2 > 1) cs.push([cl(2*B.hx - best[0], B.hx - 360, B.hx + 360), cl(2*(B.hy + 30) - best[1], B.hy - 140, B.hy + 220)]); out.push({t:NT0 + i*NTG, cs}); prev = best; }
   L.muK = key; return (L.mu = out); }
 function musicTick(B, p){ const me = B.me, plan = musicPlan(B, p);
   plan.forEach((nt, i) => { const k = p.t - nt.t; if (k >= 0 && k < .3){ if (once('mn' + p.seed + i)) B.sfx('slam', 150);
@@ -217,7 +217,7 @@ function musicFloor(B, p, c){ const plan = musicPlan(B, p);
   plan.forEach((nt, i) => { const k = p.t - nt.t; if (k < -NTG || k > .5) return; c.save(); c.globalAlpha = cl((k + NTG)*3)*cl((.5 - k)*3);
     for (const [x, y] of nt.cs){ c.fillStyle = 'rgba(255,240,180,.2)'; c.beginPath(); c.ellipse(x, y, CRX, CRY, 0, 0, 7); c.fill(); c.strokeStyle = '#ffe9a0'; c.lineWidth = 4; c.setLineDash(k < 0 ? [8, 6] : []); c.stroke(); c.setLineDash([]);
       if (k < 0){ c.lineWidth = 2; c.beginPath(); c.ellipse(x, y, CRX*cl(-k/NTG), CRY*cl(-k/NTG), 0, 0, 7); c.stroke(); } } c.restore(); });
-  plan.forEach(nt => { const k = p.t - nt.t; if (k < 0 || k > .45) return; c.save(); c.globalAlpha = (1 - k/.45)*.5; c.fillStyle = '#d02838'; c.beginPath(); c.rect(0, 240, B.W, B.H - 240); for (const [x, y] of nt.cs) c.ellipse(x, y, CRX, CRY, 0, 0, 7); c.fill('evenodd'); c.restore(); });
+  plan.forEach(nt => { const k = p.t - nt.t; if (k < 0 || k > .45) return; c.save(); c.globalAlpha = (1 - k/.45)*.5; c.fillStyle = '#d02838'; c.beginPath(); c.rect(0, B.hy - 320, B.W, 660); for (const [x, y] of nt.cs) c.ellipse(x, y, CRX, CRY, 0, 0, 7); c.fill('evenodd'); c.restore(); });
   const [mx, my] = mbox(B); A.musicBox(c, mx, my, ease((p.t - RING_T + .5)/.6), B.now/1000); }
 const SYM = ['♪', '♫', '♩', '♬'];
 function musicTop(B, p, c){ const [mx, my] = mbox(B), plan = musicPlan(B, p);
@@ -228,7 +228,7 @@ function musicTop(B, p, c){ const [mx, my] = mbox(B), plan = musicPlan(B, p);
 // ===== ⑦ 빈집 (어둠 · 보이지 않는 보스를 짤랑 소리로 찾아 둘러싸기) =====
 const LEG = 2.6, MOVE = .9, REVEAL = 4000, SNEAK = 3.4;
 function darkPath(B, p){ if (L.dpK === p.seed) return L.dp; const rng = B.rng(p.seed + 'path'), pts = [[B.hx, B.hy]];
-  for (let i = 0; i < 9; i++){ const [px, py] = pts[pts.length - 1]; let x = 0, y = 0; for (let t = 0; t < 14; t++){ x = 230 + rng()*640; y = 400 + rng()*350; if (dist(x, y, px, py) > 230) break; } pts.push([x, y]); }
+  for (let i = 0; i < 9; i++){ const [px, py] = pts[pts.length - 1]; let x = 0, y = 0; for (let t = 0; t < 14; t++){ x = B.hx - 320 + rng()*640; y = B.hy - 160 + rng()*350; if (dist(x, y, px, py) > 230) break; } pts.push([x, y]); }
   L.dpK = p.seed; return (L.dp = pts); }
 function darkPosT(B, p, tp){ const pts = darkPath(B, p), tq = Math.floor(Math.max(0, tp)/STEP)*STEP, i = Math.min(pts.length - 2, Math.floor(tq/LEG)), u = ease(cl((tq - i*LEG)/MOVE)), a = pts[i], b = pts[i + 1]; return [lerp(a[0], b[0], u), lerp(a[1], b[1], u)]; }
 const revealed = (B, p) => { const dk = B.bs.dk; return !!(dk && dk.s === p.seed && B.now - dk.at < REVEAL); };
@@ -336,7 +336,7 @@ export default {
     if (p.id === 'music' && p.t > RING_T - .4){ const [rx, ry] = ringAt(B); if (dist(wx, wy, rx, ry - 10) < 40) return {x:rx, y:ry, act:null}; }
     return null; },
   drawFloor(B, c){ const p = active(B), [bx, by] = bossPos(B);
-    if (B.phase >= 2 && B.ph2 > 3){ const t = B.now/1000; A.bigClock(c, 550, 470, 380, .07*cl((B.ph2 - 3)/1.5), -Math.PI/2 + t*.02, -Math.PI/2 + t*.24, -Math.PI/2 + t*1.05); } // 변신 뒤 배경에 남는 큰 시계
+    if (B.phase >= 2 && B.ph2 > 3){ const t = B.now/1000; A.bigClock(c, B.hx, B.hy - 90, 380, .07*cl((B.ph2 - 3)/1.5), -Math.PI/2 + t*.02, -Math.PI/2 + t*.24, -Math.PI/2 + t*1.05); } // 변신 뒤 배경에 남는 큰 시계
     if (p.id === 'clock') clockFloor(B, p, c);
     else if (p.id === 'cage') cageFloor(B, p, c);
     else if (p.id === 'dial') dialFloor(B, p, c);
