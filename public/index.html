@@ -3295,7 +3295,7 @@ function swing(){
   if (bossAlive()){
     const dx = BOSS.x-pos.x, dy = BOSS.y-pos.y;
     if (Math.hypot(BOSS.x-cx, BOSS.y-cy) < 100 && dx*vx + dy*vy > -20){
-      const dmg = swordAtk(); bossPending += dmg; bossHurt = .2; fx.push({x:BOSS.x+(Math.random()-.5)*40, y:BOSS.y-90, text:String(dmg), t, color:'#ffffff'});
+      const dmg = swordAtk(); addDmg(dmg); bossPending += dmg; bossHurt = .2; fx.push({x:BOSS.x+(Math.random()-.5)*40, y:BOSS.y-90, text:String(dmg), t, color:'#ffffff'});
       if (me.bossHit !== today()){ me.bossHit = today(); saveMe(); }
     }
   }
@@ -3327,7 +3327,7 @@ function drawSwing(c, t){
   c.restore();
 }
 function hitMob(mob, t, vx, vy){
-  const dmg = swordAtk(); mob.hp = Math.max(0, mob.hp - dmg); mob.hurt = .3;
+  const dmg = swordAtk(); addDmg(dmg); mob.hp = Math.max(0, mob.hp - dmg); mob.hurt = .3;
   const dx = mob.x-pos.x, dy = mob.y-pos.y, l = Math.hypot(dx,dy)||1;
   const kx = dx/l + (vx||0), ky = dy/l + (vy||0), kl = Math.hypot(kx,ky)||1, power = 300 / (1 + MONSTERS[mob.id].hp/400);
   mob.kvx = kx/kl*power; mob.kvy = ky/kl*power; mob.kb = .18;
@@ -5033,6 +5033,9 @@ function refundStocks(){
 
 // ===== 기록(stats) · 업적 · 칭호 =====
 function stats(){ me.stats = me.stats || {}; return me.stats; }
+// 기록 순위용: 넣은 피해 합계 · 접속한 시간(분) (10/17 부터 세요)
+const addDmg = n => { if (me && !admin) stats().dmgDealt = (stats().dmgDealt||0) + (n|0); };
+setInterval(() => { if (me && !admin && document.visibilityState === 'visible') stats().playMin = (stats().playMin||0) + 1; }, 60000);
 function stat(key, n=1){ const st = stats(); st[key] = (st[key]||0) + n; checkAchievements(); goalCount(key, n); return st[key]; }
 function statSet(key, v){ const st = stats(); if (st[key] !== v){ st[key] = v; checkAchievements(); } }
 function syncStats(){ // 다른 데이터에서 바로 계산되는 기록
@@ -6829,7 +6832,7 @@ function drawDarkBoss(d, npc, r, x, y, t){
 function darkSwing(cx, cy, vx, vy, t){
   const z = Z(); if (!z.dark) return; const r = roomOf(z.dark); if (!darkBossUp(r)) return;
   const [bx, by] = darkBossPos(r); if (Math.hypot(bx-cx, by-cy) > (z.dark === 'tori' ? 160 : 110)) return;
-  const dmg = swordAtk(); darkPending += dmg; darkHurtT = .2; bossFx('hit', 60); fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
+  const dmg = swordAtk(); addDmg(dmg); darkPending += dmg; darkHurtT = .2; bossFx('hit', 60); fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
   me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.start||0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
 }
 // 방 차례마다 보스 피해가 20 씩 세져요: 토리 100 ~ 300, 보리 120 ~ 320 … 콩이 320 ~ 520
@@ -7920,7 +7923,7 @@ function enterAdmin(){
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
 }
 // 관리자 메뉴 탭: 고른 탭은 이 기기에 기억해요
-const ADM_TABS = [['people','주민'],['event','이벤트'],['mob','몬스터'],['tmap','보물 지도'],['island','섬 복구 · 리조트'],['dark','다크 모드'],['data','가게 · 데이터']];
+const ADM_TABS = [['people','주민'],['rank','기록 순위'],['event','이벤트'],['mob','몬스터'],['tmap','보물 지도'],['island','섬 복구 · 리조트'],['dark','다크 모드'],['data','가게 · 데이터']];
 let admTab = (() => { try { const v = localStorage.getItem('admTab'); return ADM_TABS.some(([k])=>k===v) ? v : 'people'; } catch(e){ return 'people'; } })();
 // 보물 지도 현황: 사람마다 가진 조각 · 맞춘 지도(파러 가는 중) · 찾은 보물
 function adminTmapSec(regs){
@@ -7974,6 +7977,7 @@ function renderAdmin(){
       <div class="adm-mtabs">${ADM_TABS.map(([k,l])=>`<button data-at="${k}" class="adm-tab ${admTab===k ? 'on' : ''}">${l}</button>`).join('')}</div>
       ${admTab==='people' ? `${online.some(o=>o.down) ? `<div class="adm-sec"><b>기절한 사람 ${online.filter(o=>o.down).length} 명</b>${online.filter(o=>o.down).map(o=>`<button data-rv="${esc(o.uid)}" class="adm-btn warn">${esc(o.nick)} 님 깨우기 · ${esc(zoneName(o.z))}</button>${admWalk ? `<button data-f="${esc(o.uid)}" class="adm-btn">오투모로 옆에 가기</button>` : ''}`).join('')}</div>` : ''}<div class="adm-sec"><b>지금 접속 ${online.length} 명</b>${online.length ? online.map(o=>`<button data-f="${o.uid}" class="adm-p ${cam.follow===o.uid ? 'on' : ''}"><span>${esc(o.nick)}</span><small>${esc(zoneName(o.z))}</small></button>`).join('') : '<small>지금은 아무도 없어요</small>'}</div><div class="adm-sec"><b>주민 ${regs.length} 명</b><button data-a="looks" class="adm-btn">캐릭터 · 옷 · 집</button><button data-a="table" class="adm-btn">자금 · 별사탕 · 호감도 표</button><button data-a="chat" class="adm-btn">채팅 기록</button><button data-a="dm" class="adm-btn">메신저 기록</button><button data-a="post" class="adm-btn">편지함 · 주민·오투모${adminInbox().filter(x=>!x.l.replied).length ? ` (답장 대기 ${adminInbox().filter(x=>!x.l.replied).length})` : ''}</button>${regs.map(([id,p])=>`<button data-p="${id}" class="adm-r"><i class="${onIds.has(id) ? 'on' : ''}"></i><span>${esc(p.nick)}</span><small>${Number(p.inv?.gold||0).toLocaleString()} G · ${esc(zoneName(p.zone || 'home'))}</small></button>`).join('')}</div>` : ''}
       ${admTab==='event' ? `${adminGoalSec()}${adminNightSec()}${adminAucSec()}${adminFestSec()}` : ''}
+      ${admTab==='rank' ? adminRankSec(regs) : ''}
       ${admTab==='mob' ? `${adminMobSec()}` : ''}
       ${admTab==='tmap' ? adminTmapSec(regs) : ''}
       ${admTab==='island' ? adminIslandSec() : ''}
@@ -8003,6 +8007,22 @@ function adminShopSec(regs){
 const darkNames = () => darkOn() ? (world.darkNames || {}) : {};
 const realNick = (id, nick) => (id && darkNames()[id]) || nick;
 let admDn = {};
+// 기록 순위: 플레이어 문서에 쌓인 기록으로 항목마다 상위 5 명
+function adminRankSec(regs){
+  const ppl = regs.filter(([,p])=>p && !p.adm), S = p => p.stats || {};
+  const relSum = p => Object.values(p.rel || {}).reduce((a, r)=>a + (+r?.pts || 0), 0), relTop = p => { let b = null; for (const n of NPCS){ const v = +p.rel?.[n.id]?.pts || 0; if (!b || v > b[1]) b = [n.name, v]; } return b && b[1] ? ` · 최고 ${b[0]} ♥${heartsOf(b[1])}` : ''; };
+  const C = [
+    ['💀 가장 많이 쓰러진 사람', p=>+S(p).faints||0, v=>`${v.toLocaleString()} 번`, '필드 · 다크 방 기절 모두'],
+    ['⚔️ 가장 많은 딜을 넣은 사람', p=>+S(p).dmgDealt||0, v=>`${v.toLocaleString()}`, '10/17 부터 집계 · 몬스터 · 보스 · 다크 보스'],
+    ['⏱ 가장 오래 접속한 사람', p=>+S(p).playMin||0, v=>`${Math.floor(v/60)} 시간 ${v%60} 분`, '10/17 부터 집계 · 화면을 켜 둔 시간'],
+    ['📅 출석 선물을 가장 많이 받은 사람', p=>+S(p).daysAttended||0, v=>`${v} 일`, '접속 일수 참고용 (토토 출석 선물)'],
+    ['✉️ 편지를 가장 많이 쓴 사람', p=>+S(p).lettersSent||0, v=>`${v.toLocaleString()} 통`, '주민 · 친구 · 오투모에게 보낸 편지'],
+    ['💗 호감도가 가장 높은 사람', p=>relSum(p), v=>`${v.toLocaleString()} 점`, '주민 12 명 호감도 점수 합 (한 명 최대 500)', relTop],
+    ['💰 돈을 가장 많이 번 사람', p=>+p.earned||0, v=>`${v.toLocaleString()} G`, '판매 · 장사 · 리조트 수입 등 번 돈 누적'],
+    ['📖 도감을 가장 많이 채운 사람', p=>+S(p).dexTotal||0, v=>`${v} 종`, '물고기 + 광석 + 몬스터 도감 (마지막 접속 기준)']];
+  return C.map(([t, f, fmt, note, extra])=>{ const rows = ppl.map(([id, p])=>[p, f(p)]).filter(([, v])=>v > 0).sort((a, b)=>b[1] - a[1]).slice(0, 5);
+    return `<div class="adm-sec"><b>${t}</b><small>${note}</small>${rows.length ? rows.map(([p, v], i)=>`<div class="adm-wrow"><small style="min-width:22px">${i + 1}</small><b style="flex:1">${esc(String(p.nick || '?').slice(0, 10))}</b><small>${fmt(v)}${extra ? extra(p) : ''}</small></div>`).join('') : '<small>아직 기록이 없어요</small>'}</div>`; }).join('');
+}
 function adminDarkNameSec(regs){
   const ppl = regs.filter(([,p])=>p && !p.adm), set = world.darkNames || {}, done = ppl.filter(([id])=>set[id]).length, phN = ppl.filter(([id])=>missPhotoAt(id)).length;
   return `<div class="adm-sec"><b>다크 모드 이름 ${done}/${ppl.length} · 사진 ${phN}/${ppl.length}</b><small>다크 모드가 켜지면 닉네임 대신 이 이름이 머리 위 · 채팅 · 상단에 보여요. 비우면 닉네임 그대로</small>${ppl.map(([id,p])=>`<label class="adm-wrow"><small style="min-width:70px">${esc(String(p.nick||'').slice(0,8))}</small><input data-dn="${esc(id)}" maxlength="12" placeholder="사람 이름" value="${esc(admDn[id] ?? set[id] ?? '')}" autocomplete="off">${missPhotoAt(id) ? `<img class="adm-mph" data-dkimg="missing|${esc(id)}|${missPhotoAt(id)}" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">` : '<i class="adm-mph none">없음</i>'}<button class="adm-btn" data-a="mphpick" data-id="${esc(id)}">${missPhotoAt(id) ? '사진 바꾸기' : '사진 넣기'}</button></label>`).join('')}<small>사진은 실종 전단에 들어가요 (마을 광장 게시판)</small></div>`;
