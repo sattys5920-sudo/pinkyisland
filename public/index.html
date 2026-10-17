@@ -7907,7 +7907,9 @@ function nightBrand(){ const on = darkOn(); if (on === brandNight) return; brand
   document.title = on ? 'ƃuɐlsıʎʞuıd¿' : 'pinkyisland';
   const set = (sel, href) => { const el = document.querySelector(sel); if (el) el.href = href; };
   set('link[rel="icon"][sizes="192x192"]', on ? 'icons/night-192.png' : 'icons/icon-192.png'); set('link[rel="icon"][sizes="48x48"]', on ? 'icons/night-48.png' : 'icons/favicon-48.png'); set('link[rel="apple-touch-icon"]', on ? 'icons/night-180.png' : 'icons/icon-180.png');
-  const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = on ? '#120a1a' : '#fffafb'; }
+  const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = on ? '#120a1a' : '#fffafb';
+  const at = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (at) at.content = on ? 'ƃuɐlsıʎʞuıd¿' : 'pinkyisland'; // 아이폰 '홈 화면에 추가' 이름
+  set('link[rel="manifest"]', on ? 'manifest-night.webmanifest' : 'manifest.webmanifest'); } // 안드로이드 앱 설치 이름 · 아이콘
 function onWorld(w){ const was = darkOn(), nmSig = JSON.stringify([world.dark, world.darkNames]), wxSig = JSON.stringify(world.wx || null); world = w || {};
   if (me && wxSig !== JSON.stringify(world.wx || null)) setTimeout(()=>{ staticSig = ''; renderHud(); }, 0); // 관리자가 날씨를 바꾸면 바로
   if (me && !admin && nmSig !== JSON.stringify([world.dark, world.darkNames])){ setTimeout(()=>{ renderHud(); renderChatHist(); }, 0); } // 다크 모드 이름이 바뀌면 상단 · 채팅도 바로
