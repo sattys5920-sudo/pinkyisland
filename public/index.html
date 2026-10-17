@@ -6846,7 +6846,7 @@ function darkBossStart(npc){ const rm = darkRoomOf(npc), up = (rm?.stairs || [])
 // 모든 장면은 서버 시각(B.now)과 방 기록(r)만으로 정해져서 같은 방 모두에게 똑같아요. 같이 바꿔야 하는 건 B.tx 로 r.bs 에 적어요
 const BOSS_DMG = 1.5, BOSS_BIG = 3.2; // 보스 패턴 피해 배수 (보리 ~ 콩이) · 기믹 실패처럼 센 공격(lo+80 이상)은 크게 (1000 안팎)
 const BOSS_EAT_CD = 5000, BOSS_EAT_K = 1; let bossEatAt = 0; // 보스전 중엔 음식을 5 초에 한 번만 먹어요
-let bossGod = false, bossTouchT = 0; // 시험용 (혼자 보기 도구에서만 켜요)
+let bossGod = false, bossTouchT = 0; const BOSS_PH = [1, 1.25, 1.5]; // 50% · 20% 아래로 갈수록 모든 공격이 세져요 // 시험용 (혼자 보기 도구에서만 켜요)
 const bossFight = () => { const n = Z().dark; return !!n && n !== 'tori' && darkBossUp(roomOf(n)); };
 const bossMods = {}; let bossCtl = {}, bossBp = null, bossSayNow = null, bossHurtKeys = {}, bossB = null, bossSlip = [0, 0];
 function bossMod(npc){
@@ -6865,7 +6865,7 @@ function bossCtx(npc, r, dt = 0){
     ph2:r.rageAt ? (now - r.rageAt)/1000 : -1, ph3:r.lowAt ? (now - r.lowAt)/1000 : -1,
     W:Z().W, H:fl ? FLOOR_H : Z().H, hx, hy, all, alive, me:all.find(p => p.me) || null, target:tgtP, targetNick:tg?.nick || tgtP?.nick || '???', host:!admin && !!all.length && all[0].uid === uid,
     lo:darkAtkLo(npc), name:NPC[npc]?.name || '', real:(CLUE_CASE[npc] || [])[0] || '', ctl:bossCtl, view, admin,
-    hurt:(n, key) => { if (admin || !me || darkDown || !up(pos.y)) return false; if (key){ if (bossHurtKeys[key]) return false; bossHurtKeys[key] = now; } if (bossGod) return true; const big = n >= B.lo + 80; darkHurt(Math.round(n*(big ? BOSS_BIG : BOSS_DMG)), performance.now()); if (big){ bossShakeAt = performance.now(); fx.push({x:pos.x, y:pos.y-90, text:'치명상!', t:performance.now(), color:'#ff2040'}); } return true; },
+    hurt:(n, key) => { if (admin || !me || darkDown || !up(pos.y)) return false; if (key){ if (bossHurtKeys[key]) return false; bossHurtKeys[key] = now; } if (bossGod) return true; const big = n >= B.lo + 80; darkHurt(Math.round(n*(big ? BOSS_BIG : BOSS_DMG)*BOSS_PH[B.phase - 1]), performance.now()); if (big){ bossShakeAt = performance.now(); fx.push({x:pos.x, y:pos.y-90, text:'치명상!', t:performance.now(), color:'#ff2040'}); } return true; },
     push:(dx, dy, dist = 60) => { if (!admin && !darkDown && up(pos.y)) pushPlayer(dx, dy, dist); },
     tp:(x, y) => { if (!admin && !darkDown && up(pos.y)){ pos.x = Math.max(20, Math.min(B.W - 20, x)); pos.y = Math.max(20, Math.min(B.H - 20, y)); target = null; } },
     tx:fn => net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear || cur.bossAt !== r.bossAt) return undefined; const nb = fn({...(cur.bs || {})}, cur); return nb === undefined ? undefined : {...cur, bs:nb}; }),
@@ -6885,7 +6885,7 @@ function bossTick(npc, r, dt){
   try { M.tick?.(B, dt); } catch(e){ console.error(e); }
   // 몸에 바짝 붙으면 밀쳐 내요 (칼은 조금 떨어져서 닿아요 · 기절 · 변신 중엔 안 해요)
   if (B.me && !B.me.down && !(B.bs.stun > B.now) && !(B.phase === 2 && B.ph2 < 5)){ let bp = null; try { bp = M.pos(B); } catch(e){}
-    if (bp && Math.hypot(pos.x - bp[0], pos.y - bp[1]) < 72 && performance.now() > bossTouchT){ bossTouchT = performance.now() + 1300; pushPlayer(pos.x - bp[0], pos.y - bp[1], 80); B.hurt(Math.round(B.lo*.6)); } }
+    if (bp && Math.hypot(pos.x - bp[0], pos.y - bp[1]) < 72 && performance.now() > bossTouchT){ bossTouchT = performance.now() + [1300, 1100, 900][B.phase - 1]; pushPlayer(pos.x - bp[0], pos.y - bp[1], [80, 110, 140][B.phase - 1]); B.hurt(Math.round(B.lo*.6)); } }
   if (!admin && !darkDown){ pos.x = Math.max(20, Math.min(B.W - 20, pos.x)); pos.y = Math.max(20, Math.min(B.H - 20, pos.y)); }
   return true;
 }
