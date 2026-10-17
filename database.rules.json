@@ -150,7 +150,7 @@
         ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'pinky-admin@pinkyisland.app')",
         "$gid": {
           ".write": "auth != null && (auth.token.email === 'pinky-admin@pinkyisland.app' || (auth.uid === $uid && !newData.exists()))",
-          ".validate": "!newData.exists() || (newData.child('k').val() === 'candy' && newData.child('n').isNumber() && newData.child('n').val() > 0 && newData.child('n').val() <= 500 && newData.child('until').isNumber())"
+          ".validate": "!newData.exists() || (newData.child('k').val() === 'candy' && newData.child('n').isNumber() && newData.child('n').val() > 0 && newData.child('n').val() <= 500 && newData.child('until').isNumber()) || (newData.child('k').val() === 'gold' && newData.child('n').isNumber() && newData.child('n').val() > 0 && newData.child('n').val() <= 10000000)"
         }
       }
     },

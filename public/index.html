@@ -1909,7 +1909,7 @@ function enterGame(doc){
   const L = LOTS[me.lot]; pos.dir = 'down';
   if (me.zone && ZONES[me.zone] && me.zone!=='home' && typeof me.zx==='number') enterZone(me.zone, null, me.zx, me.zy);
   else enterZone('home', null, L.x, L.y + 18);
-  loadStats(); if (darkDown) playerHp = 0; darkDownBack(); tutorialFix(); refundStocks(); renderHud(); setTimeout(applyGrants, 1500);
+  loadStats(); if (darkDown) playerHp = 0; darkDownBack(); tutorialFix(); refundStocks(); renderHud(); setTimeout(applyGrants, 1500); setTimeout(() => onMarket(marketRaw), 1600);
   if (!solo){ net.cleanupClaims(me.roof, me.lot); net.sessionClaim(Math.random().toString(36).slice(2) + Date.now().toString(36)); }
   addLog(`${me.nick} 님, 핑키 디저트 아일랜드에 온 걸 환영해요!`, true);
   if (solo) addLog('혼자 보기 모드예요.', true);
@@ -4690,11 +4690,12 @@ function itemKeyOk(k){ const m = /^(dish|crop|forage|fish|ore|loot|seed|furn|wea
   if (cat==='wear'){ const [w, c] = id.split(/[~#]/); return !!slotOfWear(w) && !CH.ITEM(w)?.otumo && (c===undefined || /^[1-4]$/.test(c)); }
   if (cat==='umb') return !!UMB[id]; if (cat==='wall') return !!WALLS[id]; if (cat==='floor') return !!FLOORS[id]; return /^[a-z0-9_]{2,8}$/.test(id); }
 const validListing = l => l && typeof l.item==='string' && itemKeyOk(l.item) && l.n>=1 && l.n<=99 && l.price>=1 && typeof l.uid==='string' && (!l.item.startsWith('tmap:') || l.price === TMAP_PRICE * l.n);
+let marketRaw = null;
 function onMarket(v){
-  market = {};
+  marketRaw = v; market = {};
   for (const [id,l] of Object.entries(v||{})) if (validListing(l)) market[id] = l;
   // 내 물건이 팔렸으면 골드를 받아요
-  for (const [id,l] of Object.entries(market)) if (l.uid===uid && l.buyer){
+  if (me && !admin) for (const [id,l] of Object.entries(market)) if (l.uid===uid && l.buyer){ // 캐릭터를 불러온 뒤에만 받아요 (전엔 접속 직후에 받다가 골드가 사라졌어요)
     net.marketCollect(id).then(ok=>{ if (!ok) return; const g = Math.floor(l.price*(1-MARKET_FEE)); me.inv.gold += g; me.earned = (me.earned||0) + g; saveMe(true); renderHud();
       stat('marketSold'); addLog(`거래소: ${String(l.bnick||'누군가').slice(0,8)} 님이 ${itemName(l.item)} ${l.n} 개를 샀어요! +${g} G`, true); }).catch(()=>{});
   }
@@ -4792,6 +4793,7 @@ async function applyGrants(){
         if (same) same.n += g.n; else c.lots.push({n:g.n, cost:0, until:g.until}); me.candy = c; candyLog('grant', g.n, 0, g.until);
         setTimeout(()=>say('핑키 홈쇼핑', `관리자에게서 별사탕 ${g.n} 개를 받았어요!`, [], `${candyMeltName(g.until)} 방송까지 팔 수 있어요`), 800); }
     }
+    if (g.k === 'gold' && g.n > 0){ me.inv.gold += Math.floor(g.n); renderHud(); setTimeout(()=>say('관리자', `관리자에게서 ${Math.floor(g.n).toLocaleString()} G 를 받았어요!`, [], g.why ? String(g.why).slice(0, 40) : ''), 800); }
     got[id] = Date.now(); done.push(id);
   }
   grantsPending = null; if (!done.length) return;
@@ -8259,14 +8261,14 @@ async function adminKick(id){
   renderAdmin();
 }
 // 관리자 별사탕 지급: 받을 사람 · 개수 · 언제 방송까지 팔 수 있는지 (그 방송이 끝나면 녹아요)
-const admGr = {grWho:'*', grN:'10', grDay:'', grSl:'1'};
+const admGr = {grWho:'*', grN:'10', grDay:'', grSl:'1', ggN:'10000'};
 function grantForm(regs){
   if (!admGr.grDay){ const d = new Date((kstParts().day + 3) * 86400000); admGr.grDay = d.toISOString().slice(0, 10); }
   const opt = (v, t) => `<option value="${esc(v)}"${admGr.grWho === v ? ' selected' : ''}>${esc(t)}</option>`;
   return `<div class="adm-grant"><b>별사탕 지급</b> <select id="grWho">${opt('*', '모두에게')}${regs.map(([id,p])=>opt(id, p.nick)).join('')}</select>
     <input id="grN" type="number" min="1" max="500" value="${esc(admGr.grN)}"> 개 · <input id="grDay" type="date" value="${esc(admGr.grDay)}">
     <select id="grSl"><option value="0"${admGr.grSl==='0' ? ' selected' : ''}>오후 1 시</option><option value="1"${admGr.grSl==='1' ? ' selected' : ''}>밤 10 시</option></select> 방송까지
-    <button data-a="grant" class="adm-btn">지급</button></div>`;
+    <button data-a="grant" class="adm-btn">지급</button><br><b>골드 지급</b> 위에서 고른 사람에게 <input id="ggN" type="number" min="1" max="10000000" value="${esc(admGr.ggN)}"> G <button data-a="ggrant" class="adm-btn">골드 보내기</button></div>`;
 }
 async function adminGrantGo(regs){
   const n = Math.floor(Number(admGr.grN)), day = Math.floor(Date.parse(admGr.grDay + 'T00:00:00Z') / 86400000), until = day*2 + (admGr.grSl === '0' ? 0 : 1);
@@ -8383,6 +8385,10 @@ function adminClick(e){
   if (b.dataset.a==='odoff'){ setOtumoDress(null); admDressOpen = false; toast('오투모가 원래 로봇 몸으로 돌아왔어요'); return renderAdmin(); }
   if (b.dataset.hz){ const id = b.dataset.hz, HL = HOUSE_LV[houseOf(players[id]).lv-1]; admLook = null; admSide = false; cam.follow = null; cam.zone = 'house:'+id; enterZone('house:'+id, null, HL.W/2, HL.H/2); toast(`${players[id]?.nick || ''} 님 집 안을 보고 있어요`); return renderAdmin(); }
   if (/^(table|chat|dm|post|side|wipe)$/.test(b.dataset.a || '')) admLook = null;
+  if (b.dataset.a==='ggrant'){ const n = Math.floor(Number(admGr.ggN)), regs = Object.entries(players).filter(([,p])=>p && p.nick), who = admGr.grWho === '*' ? regs.map(([id])=>id) : [admGr.grWho];
+    if (!(n > 0 && n <= 10000000)) return toast('골드는 1 ~ 1,000 만 G 로 넣어 주세요');
+    if (!confirm(`${admGr.grWho === '*' ? '모두' : (players[admGr.grWho]?.nick || '') + ' 님'}에게 ${n.toLocaleString()} G 를 보낼까요?`)) return;
+    return Promise.all(who.map(id => net.adminGrant(id, {k:'gold', n}))).then(()=>toast(`${n.toLocaleString()} G 를 보냈어요`)).catch(()=>toast('보내지 못했어요. 관리자 권한을 확인해 주세요')); }
   if (b.dataset.a==='grant') return adminGrantGo(Object.entries(players).filter(([,p])=>p && p.nick));
   if (b.dataset.a==='table'){ admDm = null; admPost = false; admTbl = admTbl===null ? '' : null; admChat = null; admWipe = false; admScroll = [0, 0]; return renderAdmin(); }
   if (b.dataset.a==='chat'){ admDm = null; admPost = false; admChat = admChat===null ? '' : null; admTbl = null; admWipe = false; admChatScroll = null; return renderAdmin(); }
