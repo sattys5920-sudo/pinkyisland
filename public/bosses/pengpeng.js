@@ -228,7 +228,6 @@ export default {
     if (k.id === 'crew'){ const list = crewList(B, k); drawMinions(B, c, list, now, false); if (list.some(m => m.alive)){ const [bx, by] = posOf(B, k); c.save(); c.globalAlpha = .45 + .15*Math.sin(now/160); c.strokeStyle = '#9ad8ff'; c.lineWidth = 4; c.beginPath(); c.ellipse(bx, by - 110, 115, 165, 0, 0, TAU); c.stroke(); c.restore(); } }
     if (k.id === 'tk'){ drawMinions(B, c, tkCrew(B, k), B.now, false); drawTicket(B, c, k); }
     if (k.id === 'flag') drawFlagsTop(B, c, k);
-    if (k.id === 'fog'){ for (const hn of horns(B, k)) if (k.t > hn.h && k.t < hn.h + .9){ const u = (k.t - hn.h)/.9; for (const gA of hn.gaps) warnLine(c, hn.x, hn.y, hn.x + Math.cos(gA)*520, hn.y + Math.sin(gA)*520*.55, u, 4, '200,230,255'); } }
     drawSpray(B, c); },
 
   drawScreen(B, c, w, h){ const k = pick(B, P, OPT);
@@ -341,6 +340,7 @@ function drawFog(B, c, w, h, k){ const al = cl(k.t/.8)*cl((k.len - k.t)/.8); if 
   for (const hn of horns(B, k)){ const R = ringR(hn, k.t); if (R < 40 || R > 620) continue; const [cx, cy] = B.toScreen(hn.x, hn.y);
     c.save(); c.translate(cx, cy); c.scale(1, .55); c.strokeStyle = 'rgba(210,235,255,.9)'; c.lineWidth = 34*z; c.shadowColor = 'rgba(160,220,255,.9)'; c.shadowBlur = 0;
     for (let i = 0; i < 3; i++){ const a0 = hn.gaps[i] + .3, a1 = hn.gaps[(i + 1)%3] - .3 + (i === 2 ? TAU : 0); c.beginPath(); c.arc(0, 0, R*z, a0, a1); c.stroke(); } c.restore(); }
+  for (const hn of horns(B, k)) if (k.t > hn.h && k.t < hn.h + .9){ const u = (k.t - hn.h)/.9, [cx, cy] = B.toScreen(hn.x, hn.y); for (const gA of hn.gaps) warnLine(c, cx, cy, cx + Math.cos(gA)*520*z, cy + Math.sin(gA)*520*.55*z, u, 4, '220,240,255'); }
   for (const hn of horns(B, k)) if (k.t > hn.h && k.t < hn.h + .7){ const [x, y] = B.toScreen(posOf(B, k)[0], posOf(B, k)[1] - 290); text(c, '뿌우우~', x, Math.max(40, y), 34, '#e0f0ff'); } }
 
 // ===== ⑤ 승선권 =====

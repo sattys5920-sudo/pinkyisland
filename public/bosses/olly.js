@@ -291,7 +291,8 @@ export default {
       if (s.a > .1){ const [x, y] = B.toScreen(s.p[0] - 26*S*s.sc, s.p[1] - (FOOT + 170)*S*s.sc); c.save(); c.globalAlpha = s.a*(.7 + .3*Math.sin(B.now/150)); const q = c.createRadialGradient(x, y, 1, x, y, 16*z); q.addColorStop(0, 'rgba(255,90,110,1)'); q.addColorStop(1, 'rgba(255,0,40,0)'); c.fillStyle = q; c.fillRect(x - 16*z, y - 16*z, 32*z, 32*z); c.restore(); }
       if (cur.t < 1.4) text(c, '3:17', w/2, h*.32, 64, '#ff6a7a'); } }
     // 50% 변신: 유화로 금 가고 · 색이 빠지고 · 물감이 흘러내려요
-    if (B.phase >= 2 && B.ph2 >= 0 && B.ph2 < 6.2) transScreen(B, c, w, h, B.ph2, s);
+    if (B.phase >= 2 && B.ph2 >= 0 && B.ph2 < 6.2){ transScreen(B, c, w, h, B.ph2, s);
+      if (L.say && performance.now() < L.say.until){ const z = B.view.zoom || 1, [x, y] = B.toScreen(s.p[0], s.p[1] - HEIGHT); c.save(); c.font = 'bold 24px "Dongle",sans-serif'; c.textAlign = 'center'; const sw = c.measureText(L.say.text).width + 28; c.fillStyle = 'rgba(239,230,208,.96)'; c.beginPath(); c.roundRect(x - sw/2, y - 30*z - 16, sw, 34, 12); c.fill(); c.fillStyle = '#5a1030'; c.textBaseline = 'middle'; c.fillText(L.say.text, x, y - 30*z + 1); c.restore(); } }
   },
 
   label(B, c, x, y, t){ const s = state(B); if (s.a < .25) return;
@@ -312,7 +313,7 @@ function nameTag(B, c, x, y, t, real, bubble){ const top = y - HEIGHT, nm = B.ph
   c.fillStyle = 'rgba(60,10,20,.9)'; c.fillRect(x - w/2, top - 12, w, 8); c.fillStyle = rage ? '#ff3b6b' : '#b58cff'; c.fillRect(x - w/2, top - 12, w*Math.max(0, B.r.hp)/B.r.max, 8);
   c.font = 'bold 13px "Dongle",sans-serif'; c.fillStyle = '#ffd0dc'; c.fillText(`${Math.max(0, Math.ceil(B.r.hp)).toLocaleString()} / ${B.r.max.toLocaleString()}`, x, top + 9);
   if (real && B.bs.stun > B.now){ for (let i = 0; i < 3; i++){ const a = t/300 + i*2.1; c.fillStyle = '#ffe14a'; c.font = 'bold 20px sans-serif'; c.fillText('★', x + Math.cos(a)*40, top + 30 + Math.sin(a)*10); } }
-  if (bubble && L.say && performance.now() < L.say.until){ c.font = 'bold 20px "Dongle",sans-serif'; const s = L.say.text, sw = c.measureText(s).width + 26; c.fillStyle = 'rgba(239,230,208,.96)'; c.beginPath(); c.roundRect(x - sw/2, top - 84, sw, 30, 12); c.fill(); c.fillStyle = '#5a1030'; c.fillText(s, x, top - 63); }
+  if (bubble && L.say && performance.now() < L.say.until && !(B.phase >= 2 && B.ph2 < 6.2)){ c.font = 'bold 20px "Dongle",sans-serif'; const s = L.say.text, sw = c.measureText(s).width + 26; c.fillStyle = 'rgba(239,230,208,.96)'; c.beginPath(); c.roundRect(x - sw/2, top - 84, sw, 30, 12); c.fill(); c.fillStyle = '#5a1030'; c.fillText(s, x, top - 63); }
   c.restore(); }
 // ④ 빨간 발자국: 보스 자리 → 돌진 끝
 function footprints(B, s, c, toS, z = 1){ for (const m of s.dashes || []){ const k = B.t - (m.t0 - 1); if (k < 0 || k > 1.5) continue; const n = 8, ang = Math.atan2(m.to[1] - m.from[1], m.to[0] - m.from[0]) + Math.PI/2;

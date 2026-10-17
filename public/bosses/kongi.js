@@ -169,7 +169,7 @@ function doorTick(B){ const c = cur(B); if (c.id !== 'door') return; if (once(`d
     if (B.host && c.t >= s - DOOR_LEAD && c.t < s - .4 && !(m && m.k === key) && txOk('m7' + key, 700)){ const p = B.alive.map(q => [q.uid, Math.round(q.x), Math.round(q.y)]); B.tx(bs => bs.m7 && bs.m7.k === key ? undefined : {...bs, m7:{k:key, p}}); }
     if (m && m.k === key && c.t >= s - DOOR_LEAD && c.t < s && once(`dw${key}`)) B.sfx('warn', 0);
     if (c.t >= s && c.t < s + .5 && m && m.k === key){
-      if (once(`ds${key}`)){ B.sfx('slam', 0); const i = B.me ? m.p.findIndex(q => q[0] === B.me.uid) : -1; if (i >= 0 && meOk(B) && m.p.length > 1){ const nu = m.p[(i + 1) % m.p.length][0], to = B.all.find(q => q.uid === nu && !q.down); if (to) B.tp(to.x, to.y); } }
+      if (once(`ds${key}`)){ B.sfx('slam', 0); const i = B.me ? m.p.findIndex(q => q[0] === B.me.uid) : -1; if (i >= 0 && meOk(B) && m.p.length > 1){ const nu = m.p[(i + 1) % m.p.length][0], to = B.all.find(q => q.uid === nu && !q.down); if (to) try { B.tp(to.x, to.y); } catch(e){} } }
       else if (c.t >= s + .12 && once(`dh${key}`) && meOk(B) && m.p.some(([, x, y]) => inEll(B.me.x, B.me.y, x, y, 46, 28))) B.hurt(B.lo + 100, `d7${key}`); } }); }
 function doorFloor(B, c2){ if (B.phase !== 3) return; const open = cl(B.ph3/45), gap = 8 + open*120, x = B.W/2;
   c2.save(); c2.globalCompositeOperation = 'lighter'; const q = c2.createLinearGradient(0, 0, 0, 640); q.addColorStop(0, `rgba(220,230,255,${.2 + open*.35})`); q.addColorStop(1, 'rgba(220,230,255,0)'); c2.fillStyle = q; c2.beginPath(); c2.moveTo(x - gap/2, 0); c2.lineTo(x + gap/2, 0); c2.lineTo(x + gap*2.2, 640); c2.lineTo(x - gap*2.2, 640); c2.closePath(); c2.fill(); c2.restore();

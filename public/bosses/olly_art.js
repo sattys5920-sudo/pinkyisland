@@ -148,5 +148,5 @@ export function crackCanvas(w, h){ if (crkC && crkC.w0 === w && crkC.h0 === h) r
   g = null; c.w0 = w; c.h0 = h; return crkC = c; }
 // 화면 테두리 금박 액자 + 명판
 export function screenFrame(c, w, h, th, al, plate){ if (al <= .01) return; g = c; g.save(); g.globalAlpha = al; gild(w/2, h/2, w - th*2 - 6, h - th*2 - 6, th);
-  if (plate > .01){ g.globalAlpha = al*plate; const pw = Math.min(w - 40, 260); g.fillStyle = goldGrad(w/2 - pw/2, h - 60, w/2 + pw/2, h - 20); g.beginPath(); g.roundRect(w/2 - pw/2, h - th - 40, pw, 32, 6); g.fill(); g.strokeStyle = 'rgba(70,40,8,.8)'; g.lineWidth = 2; g.stroke(); txt('No.317 · 오유리 · 미완성 · 유채', w/2, h - th - 23, 24, '#3a1408'); }
+  if (plate > .01){ g.globalAlpha = al*plate; const pw = Math.min(w - 40, 260); g.fillStyle = goldGrad(w/2 - pw/2, h - 60, w/2 + pw/2, h - 20); const py = h - Math.min(170, h*.2); g.beginPath(); g.roundRect(w/2 - pw/2, py, pw, 32, 6); g.fill(); g.strokeStyle = 'rgba(70,40,8,.8)'; g.lineWidth = 2; g.stroke(); txt('No.317 · 오유리 · 미완성 · 유채', w/2, py + 17, 24, '#3a1408'); }
   g.restore(); g = null; }

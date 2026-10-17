@@ -200,7 +200,7 @@ function beesDraw(B, c, cur){ if (!swarm || swarm.s !== cur.seed) return; const 
 // ===== ⑥ 두 찻잔 (야바위 → 기절) =====
 const RL = 5.8, R0 = .4, SHOW = .9, MV0 = 1.2, PICK0 = 3.5, REV = 5.2, NR = 3;
 const roundOf = cur => { const k = cur.t - R0; if (k < 0) return null; const i = Math.floor(k/RL); return i < NR ? {i, t:k - i*RL} : null; };
-const cupHome = B => [[B.hx - 130, B.hy + 195], [B.hx + 130, B.hy + 195]];
+const cupHome = B => [[B.hx - 125, B.hy + 150], [B.hx + 125, B.hy + 150]];
 function movesOf(B, cur, ri){ return keep(`cm${cur.seed}.${ri}`, () => { const rn = B.rng(`${cur.seed}c${ri}`), n = 4 + ri, d = (PICK0 - MV0 - .1)/n, mv = [];
     for (let k = 0; k < n; k++) mv.push({t:MV0 + k*d, d:d*.9, fake:k > 0 && rn() < .3, up:rn() < .5}); return {water:rn() < .5 ? 1 : 0, mv}; }); }
 // which: 'w' 맹물 · 't' 찻물 → [x, y, 들림]
@@ -238,7 +238,7 @@ function drawCup(c, x, y, kind, covered, t, glow){ c.save(); c.translate(x, y); 
 function cupsDraw(B, c, cur){ const R = roundOf(cur), t = B.now/1000, H = cupHome(B), cu = B.bs.cu && B.bs.cu.s === cur.seed ? B.bs.cu : null;
   // 증거 자리 둘 (맞힌 만큼 맑은 잔이 놓여요)
   const wins = cu ? Object.values(cu.r || {}).filter(v => v).length : 0, al = cl(cur.t*2)*cl((cur.len - cur.t)*2);
-  c.save(); c.globalAlpha = al; for (let k = 0; k < 2; k++){ const x = B.hx - 22 + k*44, y = B.hy + 250; c.strokeStyle = 'rgba(216,240,255,.6)'; c.lineWidth = 2; c.setLineDash([4, 4]); c.beginPath(); c.ellipse(x, y, 16, 6, 0, 0, 7); c.stroke(); c.setLineDash([]);
+  c.save(); c.globalAlpha = al; for (let k = 0; k < 2; k++){ const x = B.hx - 22 + k*44, y = B.hy + 205; c.strokeStyle = 'rgba(216,240,255,.6)'; c.lineWidth = 2; c.setLineDash([4, 4]); c.beginPath(); c.ellipse(x, y, 16, 6, 0, 0, 7); c.stroke(); c.setLineDash([]);
     if (k < wins){ c.fillStyle = 'rgba(216,240,255,.9)'; c.beginPath(); c.moveTo(x - 10, y - 18); c.lineTo(x + 10, y - 18); c.lineTo(x + 7, y); c.lineTo(x - 7, y); c.closePath(); c.fill(); } } c.restore();
   if (!R){ if (cur.t > R0 + NR*RL || cur.t < R0) return; }
   const {i, t: rt} = R, covered = rt >= SHOW && rt < REV, ws = waterSlot(B, cur, i), fade = cl((RL - rt)*3);
@@ -288,9 +288,9 @@ function witherFloor(B, c, cur){ const sd = seedsOf(B, cur), t = B.now/1000, al 
 
 // ===== 움직일 때: 발밑 덩굴이 몸을 실어 나르고 · 지나간 자리에 꽃이 피었다 시들어요 =====
 function trailDraw(B, c){ const i0 = Math.floor(B.now/100), h = half(B);
-  for (let i = i0 - 22; i <= i0; i++){ if (B.hash('tr' + i) % 3 === 0) continue; const [x, y, vx, vy] = posIdx(B, i), mk = moveK(vx, vy); if (mk < .08) continue;
+  for (let i = i0 - 22; i <= i0; i++){ const [x, y, vx, vy] = posIdx(B, i), mk = moveK(vx, vy); if (mk < .08) continue;
     const k = (B.now - i*100)/1000, j = (B.hash('tj' + i) % 1000)/1000, life = 1.6 + j*.5; if (k < 0 || k > life) continue;
-    const L = Math.hypot(vx, vy) || 1, dx = vx/L, dy = vy/L, side = i%2 ? 1 : -1, lat = side*(16 + j*80), fx = x - dy*lat, fy = y + dx*lat*.45 + 6, r = (8 + j*5)*(.7 + .5*mk);
+    const L = Math.hypot(vx, vy) || 1, dx = vx/L, dy = vy/L, side = i%2 ? 1 : -1, lat = side*(16 + j*80), fx = x - dy*lat, fy = y + dx*lat*.45 + 6, r = (10 + j*6)*(.75 + .5*mk);
     const grow = ease(k/.22), wilt = ease((k - .38)/(life*.45)), al = cl((life - k)/(life*.35)), col = (h ? ['#b050c0', '#8a3aa0', '#c070d0'] : ['#f08ab0', '#c8a0e8', '#f4d050', '#ff9ab8'])[i % (h ? 3 : 4)];
     if (k < .3){ c.save(); c.globalAlpha = (1 - k/.3)*.5; c.fillStyle = h ? 'rgba(200,120,255,.5)' : 'rgba(255,220,240,.5)'; c.beginPath(); c.ellipse(fx, fy - r, r*2.2, r*1.4, 0, 0, 7); c.fill(); c.restore(); }
     wiltFlower(c, fx, fy, r, col, grow, wilt, al, side);
@@ -327,7 +327,9 @@ function ashLayer(){ if (ashCv) return ashCv; ashCv = document.createElement('ca
 function transFloor(B, c){ const hk = B.ph2; if (hk < 0) return; const D = fxData();
   if (hk > 6.5) c.drawImage(ashLayer(), 0, 0); else for (const a of D.ASH){ const k = hk - a.t0; if (k < 0) continue; c.save(); c.globalAlpha = cl(k/.6)*.3; c.fillStyle = '#6a6466'; c.beginPath(); c.ellipse(a.x, a.y, a.r*1.4, a.r*.5, a.rot*.2, 0, 7); c.fill(); c.restore(); }
   if (hk < 4) for (const f of D.ROOMF){ const k = hk - f.d, grow = ease(k/.4), wilt = ease((k - .85)/.9), al = cl((3.6 - k)/.8); let left = 5; for (const P of f.pet) if (k > 1.4 + P.td) left--; wiltFlower(c, f.x, f.y, f.r, f.col, grow, wilt, al, f.side, Math.max(1, left)); } }
-function portraitDraw(B, c){ c.save(); c.translate(PX, PY); c.scale(.72, .72); portrait(c, 0, 0); c.restore();
+let portCv = null;
+function portraitDraw(B, c){ if (!portCv){ portCv = document.createElement('canvas'); portCv.width = 260; portCv.height = 160; const g = portCv.getContext('2d'); g.scale(1.5, 1.5); portrait(g, 87, 53); }
+  c.drawImage(portCv, PX - 87*.72, PY - 53*.72, 174*.72, 106.7*.72);
   const hk = B.ph2; if (hk < .3) return; const stage = hk < 4.6, fadeS = cl((5.6 - hk)/1.0), t = B.now/1000;
   c.save(); c.translate(PX, PY); c.scale(.72, .72); c.lineCap = 'round';
   const seep = stage ? cl((hk - .3)/1.2) : lerp(.35, 1, fadeS);

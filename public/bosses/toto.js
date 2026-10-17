@@ -15,6 +15,7 @@ const clampX = x => cl(x, AX0, AX1), clampY = y => cl(y, AY0, AY1);
 // 방 가구 자리 (dark.js SPOTS · 반지름 26 의 막힌 곳) · 의자 · 장부 쪽이 가구에 겹치지 않게 밀어내요
 const SPOTS = [[150, 300], [320, 300], [490, 300], [660, 300], [830, 300], [980, 300], [120, 450], [120, 600], [120, 740], [980, 450], [980, 600], [980, 740], [260, 790], [400, 790], [840, 790]];
 function free(x, y){ for (const [sx, sy] of SPOTS){ const d = dist(x, y, sx, sy); if (d < 64){ const k = 64/Math.max(1, d); x = sx + (x - sx)*k + (d < 1 ? 64 : 0); y = sy + (y - sy)*k; } } return [cl(x, 140, 960), cl(y, 330, 770)]; }
+// 내 캐릭터 옮기기는 B.push 로만 해요 (B.tp 는 엔진 안에서 const target 에 값을 넣다 멈춰요)
 const FONT = s => `bold ${s}px "Dongle",sans-serif`;
 const T2 = Math.PI*2;
 
@@ -192,7 +193,7 @@ export default {
         const want = Math.atan2(ty - my, tx - mx); if (bwH === null) bwH = want;
         let da = ((want - bwH + Math.PI*3)%T2) - Math.PI; bwH += cl(da, -1.7*dt, 1.7*dt);
         const sp = fr.length ? 118 : 70, far = dist(tx, ty, mx, my) > 30;
-        if (far) B.tp(clampX(mx + Math.cos(bwH)*sp*dt), clampY(my + Math.sin(bwH)*sp*dt));
+        if (far){ const nx = clampX(mx + Math.cos(bwH)*sp*dt), ny = clampY(my + Math.sin(bwH)*sp*dt); B.push(nx - mx, ny - my, Math.hypot(nx - mx, ny - my)); }
         B.setBp({h:Math.round(bwH*100)/100}); bwBp = true;
       }
       if (W.on && W.T.uid !== me.uid){ const T = W.T, d = dist(T.x, T.y, mx, my), h = headOf(B, T);
@@ -220,7 +221,7 @@ export default {
       if (!inEll(mx, my, C[0], C[1], rx, ry)){
         if (t3 < 3.2){ const d = Math.max(1, dist(mx, my, C[0], C[1])); vx += (C[0] - mx)/d*230; vy += (C[1] - my)/d*230; }
         else { if (B.hurt(B.lo + 100, 'sea.' + Math.floor(now/1600))){ B.fx('풍덩', mx, my - 60, '#cfeaff'); B.sfx('slam'); }
-          const a = Math.atan2((my - C[1])/ry, (mx - C[0])/rx); B.tp(C[0] + Math.cos(a)*rx*.62, C[1] + Math.sin(a)*ry*.62); } }
+          const a = Math.atan2((my - C[1])/ry, (mx - C[0])/rx), tx = C[0] + Math.cos(a)*rx*.62, ty = C[1] + Math.sin(a)*ry*.62; B.push(tx - mx, ty - my, Math.hypot(tx - mx, ty - my)); } }
       B.ctl.drift = [vx, vy];
     }
   },

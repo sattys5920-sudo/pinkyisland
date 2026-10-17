@@ -147,14 +147,13 @@ const mirrorSnips = (B, key) => geo(B, 'mp' + key, () => B.alive.map(q => [B.W -
 function drawMirrorFloor(B, c, p){ const al = cl(p.t/.6)*cl((p.len - p.t)/.5), T = B.now/1000, mx = B.W/2;
   c.save(); c.globalAlpha = al*.55; const q = c.createLinearGradient(mx - 40, 0, mx + 40, 0); q.addColorStop(0, 'rgba(200,230,255,0)'); q.addColorStop(.5, `rgba(200,230,255,${.25 + .1*Math.sin(T*3)})`); q.addColorStop(1, 'rgba(200,230,255,0)'); c.fillStyle = q; c.fillRect(mx - 40, 262, 80, 600);
   c.strokeStyle = '#c8e8ff'; c.lineWidth = 3; c.setLineDash([14, 10]); c.lineDashOffset = -T*20; c.beginPath(); c.moveTo(mx, 262); c.lineTo(mx, 860); c.stroke(); c.restore();
-  if (stunned(B)) return;
-  MIR_W.forEach((w, j) => { if (p.t < w || p.t > w + 1) return; for (const [x, y] of mirrorSnips(B, p.seed + '.' + j)) warnCircle(c, x, y, 70, 42, (p.t - w), '200,230,255'); });
 }
 function drawMirrorTop(B, c, p){ const al = cl(p.t/.6)*cl((p.len - p.t)/.5), own = mirrorOwner(B, p), T = B.now/1000;
   if (own){ const [bx, by] = bossPos(B); c.save(); c.globalAlpha = al*.7; c.strokeStyle = 'rgba(200,230,255,.8)'; c.lineWidth = 1.5; c.setLineDash([4, 6]); c.beginPath(); c.moveTo(own.x, own.y - 40); c.quadraticCurveTo((own.x + bx)/2, Math.min(own.y, by) - 160, bx, by - 150); c.stroke(); c.setLineDash([]);
     // 손거울
     const hx = own.x, hy = own.y - 92 + Math.sin(T*3)*3; c.translate(hx, hy); c.rotate(Math.sin(T*2)*.15); c.fillStyle = '#c8a0b0'; c.fillRect(-3, 8, 6, 16); c.fillStyle = '#e8c0d0'; c.beginPath(); c.ellipse(0, 0, 13, 15, 0, 0, 7); c.fill(); const gq = c.createLinearGradient(-10, -12, 10, 12); gq.addColorStop(0, '#f8fcff'); gq.addColorStop(1, '#8ab8e0'); c.fillStyle = gq; c.beginPath(); c.ellipse(0, 0, 10, 12, 0, 0, 7); c.fill(); c.restore(); }
   if (stunned(B)) return;
+  MIR_W.forEach((w, j) => { if (p.t < w || p.t > w + 1) return; c.save(); c.globalAlpha = .8; for (const [x, y] of mirrorSnips(B, p.seed + '.' + j)) warnCircle(c, x, y, 70, 42, (p.t - w), '200,230,255'); c.restore(); });
   MIR_W.forEach((w, j) => { const k = p.t - w - 1; if (k < 0 || k > .4) return; for (const [x, y] of mirrorSnips(B, p.seed + '.' + j)){ c.save(); c.globalAlpha = 1 - k/.4; drawSnip(c, x, y - 30, k < .12 ? .5 - k*4 : .02, 1.1, -.6 + (j % 2 ? .4 : 0)); c.strokeStyle = '#e0f0ff'; c.lineWidth = 3; c.beginPath(); c.moveTo(x - 50, y - 6); c.lineTo(x + 50, y + 6); c.stroke(); c.restore(); } });
 }
 
