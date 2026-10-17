@@ -6846,7 +6846,7 @@ function darkBossStart(npc){ const rm = darkRoomOf(npc), up = (rm?.stairs || [])
 // 모든 장면은 서버 시각(B.now)과 방 기록(r)만으로 정해져서 같은 방 모두에게 똑같아요. 같이 바꿔야 하는 건 B.tx 로 r.bs 에 적어요
 const BOSS_DMG = 1.5, BOSS_BIG = 3.2; // 보스 패턴 피해 배수 (보리 ~ 콩이) · 기믹 실패처럼 센 공격(lo+80 이상)은 크게 (1000 안팎)
 const BOSS_EAT_CD = 5000, BOSS_EAT_K = 1; let bossEatAt = 0; // 보스전 중엔 음식을 5 초에 한 번만 먹어요
-let bossGod = false; // 시험용 (혼자 보기 도구에서만 켜요)
+let bossGod = false, bossTouchT = 0; // 시험용 (혼자 보기 도구에서만 켜요)
 const bossFight = () => { const n = Z().dark; return !!n && n !== 'tori' && darkBossUp(roomOf(n)); };
 const bossMods = {}; let bossCtl = {}, bossBp = null, bossSayNow = null, bossHurtKeys = {}, bossB = null, bossSlip = [0, 0];
 function bossMod(npc){
@@ -6883,6 +6883,9 @@ function bossTick(npc, r, dt){
   const B = bossCtx(npc, r, dt); const now = B.now; for (const k in bossHurtKeys) if (now - bossHurtKeys[k] > 60000) delete bossHurtKeys[k];
   if (!B.me && !admin){ return true; } // 아래층에 있으면 보스 패턴과 상관없어요
   try { M.tick?.(B, dt); } catch(e){ console.error(e); }
+  // 몸에 바짝 붙으면 밀쳐 내요 (칼은 조금 떨어져서 닿아요 · 기절 · 변신 중엔 안 해요)
+  if (B.me && !B.me.down && !(B.bs.stun > B.now) && !(B.phase === 2 && B.ph2 < 5)){ let bp = null; try { bp = M.pos(B); } catch(e){}
+    if (bp && Math.hypot(pos.x - bp[0], pos.y - bp[1]) < 72 && performance.now() > bossTouchT){ bossTouchT = performance.now() + 1300; pushPlayer(pos.x - bp[0], pos.y - bp[1], 80); B.hurt(Math.round(B.lo*.6)); } }
   if (!admin && !darkDown){ pos.x = Math.max(20, Math.min(B.W - 20, pos.x)); pos.y = Math.max(20, Math.min(B.H - 20, pos.y)); }
   return true;
 }
