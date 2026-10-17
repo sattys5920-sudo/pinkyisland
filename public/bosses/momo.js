@@ -22,7 +22,8 @@ const sayOnce = (B, k, s, ms = 2600) => { if (once(B, 'say.' + k)) B.say(s, ms);
 // ---------- 차례 ----------
 const P_ = B => B._mp || (B._mp = pick(B, PAT, {gap:GAP, trans:TRANS}));
 const t0Abs = (B, p) => B.now - p.t*1000;
-const nAlive = B => Math.max(1, B.alive.length);
+// 함께 하는 사람 수: 20 초 안에 움직였거나 때린 사람만 세요 (B.setBp({a:1})) · 가만히 있는 사람은 어렵게 만들지 않아요 · 최소 1
+const nAlive = B => Math.max(1, B.alive.filter(p => p.bp && p.bp.a).length);
 const stunned = B => B.bs.stun > B.now;
 function amp(p){ if (!p.id) return 1; const lv = LV[p.id] ?? 1, k = Math.min(cl(p.t/.6), cl((p.len - p.t)/.6)); return 1 - k*(1 - lv); }
 const wand = (B, a) => { const t = B.t; return [B.hx + (Math.cos(t*.42)*125 + Math.sin(t*1.07)*30)*a, B.hy + (Math.sin(t*.61)*44 + Math.sin(t*1.3)*10)*a]; };
@@ -200,7 +201,7 @@ function drawBoss(B, c){ const p = P_(B), half = halfNow(B), [x, y] = pos(B), sx
   if (B.phase === 2 && B.ph2 > 1.7 && B.ph2 < 2.5){ c.save(); c.globalAlpha = (1 - (B.ph2 - 1.7)/.8)*.8; c.fillStyle = '#ffe0ec'; c.beginPath(); c.ellipse(x, y - 130, 200, 200, 0, 0, 7); c.fill(); c.restore(); } }
 
 // ---------- 패턴 tick ----------
-function hist(B){ const l = loc(B), me = B.me, now = B.now; if (me){ const h = l.hist; if (!h.length || now - h[h.length - 1][0] > 40) h.push([now, me.x, me.y]); while (h.length && now - h[0][0] > 4200) h.shift(); }
+function hist(B){ const l = loc(B), me = B.me, now = B.now; if (me){ const h = l.hist; const lp = h[h.length - 1]; if (lp && dist(lp[1], lp[2], me.x, me.y) > 2) l.movedAt = now; const act = !me.down && (now - (l.movedAt || 0) < 20000 || now - (l.hitAt || 0) < 20000); B.setBp(act ? {a:1} : null); if (!h.length || now - h[h.length - 1][0] > 40) h.push([now, me.x, me.y]); while (h.length && now - h[0][0] > 4200) h.shift(); }
   if (B.phase >= 2) for (const q of B.all){ if (q.me) continue; let h = l.oh.get(q.uid); if (!h) l.oh.set(q.uid, h = []); if (!h.length || now - h[h.length - 1][0] > 60) h.push([now, q.x, q.y]); while (h.length && now - h[0][0] > 4200) h.shift(); } }
 function histAt(h, t){ if (!h || !h.length || h[0][0] > t + 200) return null; let best = h[0]; for (const s of h){ if (s[0] <= t) best = s; else break; } return [best[1], best[2]]; }
 const ghostOf = (B, q, t) => histAt(q.me ? loc(B).hist : loc(B).oh.get(q.uid), t);
@@ -220,7 +221,7 @@ function hostTick(B, p){ const l = loc(B); if (!B.host || B.now - l.hostT < 600)
     const nu = {s:p.seed, uid:tg.uid, side:luSide(B, p), x0:Math.round(cur[0]), y0:Math.round(cur[1]), t0:now, gx:Math.round(tg.x), gy:Math.round(tg.y), te:Math.round(t0Abs(B, p) + LU_E*1000)};
     if (u && u.uid === nu.uid && dist(u.gx, u.gy, nu.gx, nu.gy) < 6) return;
     B.tx(b => { const v = b.lu; if (v && v.s === p.seed && v.fz) return undefined; return {...b, lu:nu}; }); return; }
-  if (p.id === 'dlv' && p.t >= .5 && p.t < DL1){ const d = dlOf(B, p); if (!d){ const tg = B.target; if (!tg) return; const cs = [[200 + OX, 845 + OY], [900 + OX, 845 + OY], [200 + OX, 450 + OY], [900 + OX, 450 + OY]].map(q => [q[0], Math.min(q[1], B.H - 40)]).sort((a, b) => dist(b[0], b[1], tg.x, tg.y) - dist(a[0], a[1], tg.x, tg.y)), box = cs[0], need = 2 + Math.min(4, al.length);
+  if (p.id === 'dlv' && p.t >= .5 && p.t < DL1){ const d = dlOf(B, p); if (!d){ const tg = B.target; if (!tg) return; const cs = [[200 + OX, 845 + OY], [900 + OX, 845 + OY], [200 + OX, 450 + OY], [900 + OX, 450 + OY]].map(q => [q[0], Math.min(q[1], B.H - 40)]).sort((a, b) => dist(b[0], b[1], tg.x, tg.y) - dist(a[0], a[1], tg.x, tg.y)), box = cs[0], need = 2 + Math.min(4, nAlive(B));
       B.tx(b => { const v = b.dl; if (v && v.s === p.seed) return undefined; return {...b, dl:{s:p.seed, uid:tg.uid, box, h:0, need}}; }); }
     else if (d.done && once(B, 'heal.' + p.seed)) B.heal(B.r.max*.03);
     return; }
@@ -323,7 +324,7 @@ export default {
   tick(B, dt){ setO(B); const p = P_(B); hist(B); recBoss(B); if (B.t < 2.5) sayOnce(B, 'hi', '어서 오세요~ 모모 케이크예요!');
     cbTick(B); patTick(B, p); hostTick(B, p); txQ(B); },
   hitMul(B){ if (B.phase === 2 && B.ph2 < TRANS) return 0; if (stunned(B)) return B.bs.sk || 2; const p = P_(B); if (frozen(B, p)) return 2; const d = p.id === 'dlv' && dlOf(B, p); if (d && d.cut && B.now - d.cut < 3500) return 1.5; return 1; },
-  swing(B, cx, cy){ setO(B); const p = P_(B), l = loc(B), now = B.now;
+  swing(B, cx, cy){ setO(B); const p = P_(B), l = loc(B), now = B.now; l.hitAt = now;
     if (p.id === 'split' && !stunned(B)){ const sp = splitPos(B, p, wand(B, amp(p))), s = s7Of(B, p); if (sp.joined || sp.ok) return false; const R = this.reach;
       const nT = dist(cx, cy, sp.T[0], sp.T[1]) < R, nC = dist(cx, cy, sp.C[0], sp.C[1]) < R; if (!nT && !nC) return false; if (!sp.live) return true;
       const toT = nT && (!nC || dist(cx, cy, sp.T[0], sp.T[1]) <= dist(cx, cy, sp.C[0], sp.C[1])), q = toT ? sp.T : sp.C, down = s && (toT ? s.td : s.cd);
