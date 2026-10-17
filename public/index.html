@@ -7572,12 +7572,28 @@ function drawZonePlace(d, z, p){
   else if (p.kind==='crater'){ d.ell(p.x, p.y+10, 190, 92, '#5a3a34'); d.ell(p.x, p.y, 150, 70, '#3a2420'); const g = c.createRadialGradient(p.x, p.y, 10, p.x, p.y, 140); g.addColorStop(0, 'rgba(255,120,50,.9)'); g.addColorStop(1, 'rgba(255,60,30,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(p.x, p.y, 140, 62, 0, 0, 7); c.fill();
     for (let i=0;i<5;i++){ c.fillStyle = `rgba(120,110,120,${.35 - i*.06})`; c.beginPath(); c.arc(p.x - 20 + i*12, p.y - 60 - i*34, 22 + i*8, 0, 7); c.fill(); } }
 }
+// 다크 모드 바깥: 집 · 건물 · 나무 · 가로등이 저마다 조금씩 기울어져요 (자리마다 같은 각도) · 몇 초마다 물건이 지지직 어긋나요
+const darkOut = () => darkOn() && !Z().dark && !Z().house;
+function lean(c, x, y, k, m = 1){ if (!darkOut()) return false; const h = Math.sin(x*12.9898 + y*78.233 + k*37.719)*43758.5453, r = h - Math.floor(h), a = (r - .5)*.13*m; if (Math.abs(a) < .012) return false; c.save(); c.translate(x, y); c.rotate(a); c.translate(-x, -y); return true; }
+let objGl = {next:0, until:0, rects:[]};
+function drawObjGlitch(c, t, W, H){
+  if (!darkOut() || !staticLayer) return; const k = staticLayer.width / W, z = Z();
+  if (t > objGl.next){ objGl.next = t + 2200 + Math.random()*3800; objGl.until = t + 160 + Math.random()*200;
+    const objs = [...z.places.filter(p => p.x != null).map(p => [p.x, p.y, 1]), ...(z.lamps||[]).map(l => [l.x, l.y, .6]), ...z.trees.map(([x, y]) => [x, y, .8]), ...(zoneId === 'home' ? LOTS.map(L => [L.x, L.y, 1]) : [])]
+      .filter(([x, y]) => Math.abs(x - (view.cx + innerWidth/view.zoom/2)) < innerWidth/view.zoom*.6 && Math.abs(y - (view.cy + innerHeight/view.zoom/2)) < innerHeight/view.zoom*.6);
+    objGl.rects = []; for (let n = 0; n < Math.min(2, objs.length); n++){ const [ox, oy, sc] = objs[Math.floor(Math.random()*objs.length)];
+      for (let j = 0; j < 3 + Math.floor(Math.random()*3); j++){ const w = (90 + Math.random()*120)*sc, h = 6 + Math.random()*22; objGl.rects.push({x:ox - w/2, y:oy - 150*sc + Math.random()*150*sc, w, h, dx:(Math.random() < .5 ? -1 : 1)*(6 + Math.random()*22)}); } } }
+  if (t > objGl.until) return;
+  c.save(); for (const r of objGl.rects){ const sx = Math.max(0, r.x), sy = Math.max(0, r.y), sw = Math.min(W - sx, r.w), sh = Math.min(H - sy, r.h); if (sw <= 0 || sh <= 0) continue;
+    c.globalAlpha = 1; c.drawImage(staticLayer, sx*k, sy*k, sw*k, sh*k, sx + r.dx, sy, sw, sh);
+    c.globalAlpha = .28; c.fillStyle = '#ff2a6a'; c.fillRect(sx + r.dx - 3, sy, sw, sh*.5); c.fillStyle = '#2affe0'; c.fillRect(sx + r.dx + 3, sy + sh*.5, sw, sh*.5); }
+  c.restore(); }
 function buildStatic(){
   const z = Z(), T = THEME[z.theme];
   const s = Math.min(1.6, view.dpr*view.zoom);
   const sig = zoneId+'|'+s+'|'+(zoneId==='bazaar' ? JSON.stringify(bazaar.plots||{})+'|'+JSON.stringify(bazaar.reqs||{}).length+'|'+Object.values({...players, [uid]:me}).map(p=>p&&p.shop ? p.shop.name+shopLv(p.shop)+(p.shop.open?1:0)+(p.shop.wkRev||0)+'/'+stockN(p.shop) : '').join(',')+'|'+Math.floor(Date.now()/60000) : zoneId==='home' ? Object.entries(players).map(([k,p])=>k+p.lot+p.roof+p.nick+houseOf(k===uid ? me : p).lv).join(',') : z.house ? JSON.stringify(houseOf(z.house===uid ? me : players[z.house])) : '');
-  if (sig===staticSig && staticLayer) return;
-  staticSig = sig;
+  if (sig + (darkOut() ? '|dk' : '')===staticSig && staticLayer) return;
+  staticSig = sig + (darkOut() ? '|dk' : '');
   staticLayer = staticLayer || document.createElement('canvas');
   staticLayer.width = z.W*s; staticLayer.height = z.H*s;
   const c = staticLayer.getContext('2d'); c.setTransform(s,0,0,s,0,0);
@@ -7597,20 +7613,20 @@ function buildStatic(){
   // 구역 길: 출구에서 가운데로
   const cx = z.W/2, cy = z.H/2, ex = z.exits;
   d.shape(()=>{ c.beginPath(); if (ex.n) c.roundRect(cx-17,-10,34,cy+27,17); if (ex.s) c.roundRect(cx-17,cy-17,34,z.H/2+27,17); if (ex.w) c.roundRect(-10,cy-17,cx+27,34,17); if (ex.e) c.roundRect(cx-17,cy-17,z.W/2+27,34,17); }, T.path, [cx,cy,Math.max(z.W,z.H)/2]);
-  for (const p of z.places) drawZonePlace(d, z, p);
+  for (const p of z.places){ const L = p.x != null && lean(c, p.x, p.y, 1); drawZonePlace(d, z, p); if (L) c.restore(); }
   // 가장자리: 나무 / 바위 (출구 자리는 비워요)
   const edgeCol = z.theme==='cave' ? '#5b5266' : z.theme==='sand' ? '#ffd29a' : T.edge;
   const open = (x,y) => (ex.n && y<M && Math.abs(x-cx)<GAP+20) || (ex.s && y>z.H-M && Math.abs(x-cx)<GAP+20) || (ex.w && x<M && Math.abs(y-cy)<GAP+20) || (ex.e && x>z.W-M && Math.abs(y-cy)<GAP+20);
   for (let x=20; x<z.W; x+=64) for (const y of [26, z.H-26]) if (!open(x,y)) d.circle(x+(y%7), y, 44, edgeCol);
   for (let y=20; y<z.H; y+=64) for (const x of [26, z.W-26]) if (!open(x,y)) d.circle(x, y+(x%5), 44, edgeCol);
-  for (const [x,y] of z.trees) drawTree(d,x,y,x+y);
-  for (const l of (z.lamps||[])) drawLamp(d, l.x, l.y);
+  for (const [x,y] of z.trees){ const L = lean(c, x, y, 2, .6); drawTree(d,x,y,x+y); if (L) c.restore(); }
+  for (const l of (z.lamps||[])){ const L = lean(c, l.x, l.y, 3, 1.4); drawLamp(d, l.x, l.y); if (L) c.restore(); }
   if (zoneId==='bazaar') drawBazaarTop(c, d);
   if (zoneId==='fest') drawFestTop(c, d);
   if (zoneId==='home') LOTS.forEach((L,i)=>{ if (i >= MAX && !Object.values(players).some(p=>p.lot===i)) return;
     const owner = Object.values(players).find(p=>p.lot===i);
     drawFence(d, L);
-    if (owner) drawHouse(d, L.x, L.y, ROOFS[owner.roof][1], owner.nick, houseOf(owner===players[uid] ? me : owner).lv);
+    if (owner){ const LN = lean(c, L.x, L.y, 4); drawHouse(d, L.x, L.y, ROOFS[owner.roof][1], owner.nick, houseOf(owner===players[uid] ? me : owner).lv); if (LN) c.restore(); }
     else {
       c.save(); c.setLineDash([6,5]); c.lineWidth=2; c.strokeStyle='#ffffffcc'; c.beginPath(); c.roundRect(L.x-48,L.y-78,96,78,12); c.stroke(); c.restore();
       d.rr(L.x-2,L.y-40,4,24,2,'#c79a74'); d.rr(L.x-20,L.y-56,40,18,5,'#e8c39e');
@@ -7838,7 +7854,7 @@ function frameBody(t){
     if (vw > W) view.cx = (W-vw)/2; if (band > HH) view.cy = Y0 + HH/2 - it - band/2;
     ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = Z().theme==='room' ? '#4a3a44' : shade((THEME[Z().theme]||THEME.grass).edge, -.12); ctx.fillRect(0,0,cv.width,cv.height);
     const s = view.dpr*z, [shx, shy] = (typeof SWFX !== 'undefined' && me && me.inv) ? SWFX.shake(me.inv.weapon || 'w1', t - swingAt) : [0, 0], bq = t - bossShakeAt < 500 ? (1 - (t - bossShakeAt)/500)*9 : 0; ctx.setTransform(s,0,0,s,(shx + Math.sin(t*.9)*bq - view.cx)*s,(shy + Math.cos(t*1.3)*bq*.6 - view.cy)*s); // 궁이 터질 때 화면도 흔들려요
-    ctx.drawImage(staticLayer, 0, 0, W, H);
+    ctx.drawImage(staticLayer, 0, 0, W, H); drawObjGlitch(ctx, t, W, H);
     const d = painter(ctx), now = Date.now();
     if (zoneId==='home') for (const [id,p] of Object.entries(players)){ if (p.lot==null) continue; const g = id===uid ? me.gardens : (p.gardens||[]); slotsOf(p.lot, id===uid ? me.plots : p.plots).forEach((sl,i)=>drawSlot(d, sl, g[i], now, id===uid)); }
     drawRocks(d, t); drawAucRing(ctx, t); drawOxField(ctx, t); drawFestDyn(ctx, t);
