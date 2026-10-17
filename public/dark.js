@@ -35,21 +35,43 @@ export function placeholderPuzzles(){
 export const FLOOR_H = 900, FLOOR_STEP = 1200;
 export const floorTop = (f, n = 3) => (n - f) * FLOOR_STEP;
 export const floorOf = (y, n = 3) => Math.max(1, Math.min(n, n - Math.floor(y / FLOOR_STEP)));
+import L_bori from './rooms/bori.js';
+import L_olly from './rooms/olly.js';
+import L_mongsil from './rooms/mongsil.js';
+import L_pengpeng from './rooms/pengpeng.js';
+import L_dandan from './rooms/dandan.js';
+import L_momo from './rooms/momo.js';
+import L_hana from './rooms/hana.js';
+import L_dodo from './rooms/dodo.js';
+import L_bami from './rooms/bami.js';
+import L_toto from './rooms/toto.js';
+import L_kongi from './rooms/kongi.js';
+const LAYOUT = { bori: L_bori, olly: L_olly, mongsil: L_mongsil, pengpeng: L_pengpeng, dandan: L_dandan, momo: L_momo, hana: L_hana, dodo: L_dodo, bami: L_bami, toto: L_toto, kongi: L_kongi };
+// 3 층 배치(public/rooms/<주민>.js)가 있으면 한 층 방을 3 층 방으로 바꿔요. 배치의 좌표는 모두 그 층 안 좌표 (층마다 1100 × 900)
+// { door:[x,y] (1 층), boss:[x,y] (3 층), stairs:[{f, rect, at:[x,y], to:[f,x,y], gate?, up?, label}], walls:[[f,x,y,w,h]], pos:{p01:[f,x,y] …}, props:{id:[f,x,y]}, extra:[{id, f, x, y, title, img}] }
+function withLayout(npc, room){
+  const L = LAYOUT[npc]; if (!L) return room; const T = (f, x, y) => [x, floorTop(f) + y];
+  const puzzles = room.puzzles.map(p => { const at = L.pos[p.id]; if (!at) return p; const { furn, ...q } = p, [f, x, y] = at; return { ...q, floor: f, x, y: floorTop(f) + y }; });
+  const props = [...(room.props || []).map(p => { const at = (L.props || {})[p.id]; if (!at) return p; const { furn, ...q } = p, [f, x, y] = at; return { ...q, floor: f, x, y: floorTop(f) + y }; }),
+    ...(L.extra || []).map(({ f, x, y, ...q }) => ({ ...q, floor: f, x, y: floorTop(f) + y }))];
+  return { ...room, floors: 3, img: `art/${npc}/f`, door: T(1, ...L.door), boss: T(3, ...L.boss), puzzles, props,
+    stairs: L.stairs.map(st => ({ ...st, at: T(st.f, ...st.at), to: T(st.to[0], st.to[1], st.to[2]) })), walls: L.walls || [] };
+}
 // 주민별 진짜 문제 (스토리가 정해지면 채워요)
 export const DARK_ROOMS = {
   // momo: { puzzles: [ { id:'p01', furn:'u04', x:150, y:300, title:'책장', q:'...', a:['...'], hint:'...', need:[] }, ... ] },
   tori: toriRoom(),
-  bori: boriRoom(),
-  olly: ollyRoom(),
-  mongsil: mongsilRoom(),
-  pengpeng: pengpengRoom(),
-  dandan: dandanRoom(),
-  momo: momoRoom(),
-  hana: hanaRoom(),
-  dodo: dodoRoom(),
-  bami: bamiRoom(),
-  toto: totoRoom(),
-  kongi: kongiRoom(),
+  bori: withLayout('bori', boriRoom()),
+  olly: withLayout('olly', ollyRoom()),
+  mongsil: withLayout('mongsil', mongsilRoom()),
+  pengpeng: withLayout('pengpeng', pengpengRoom()),
+  dandan: withLayout('dandan', dandanRoom()),
+  momo: withLayout('momo', momoRoom()),
+  hana: withLayout('hana', hanaRoom()),
+  dodo: withLayout('dodo', dodoRoom()),
+  bami: withLayout('bami', bamiRoom()),
+  toto: withLayout('toto', totoRoom()),
+  kongi: withLayout('kongi', kongiRoom()),
 };
 // 방마다 하나씩: 섬 밖으로 보낸 택배의 흔적 (앞 방일수록 흐릿하고, 뒤로 갈수록 또렷해요)
 const TRACE = {
@@ -84,7 +106,7 @@ const TRACE_NM = {
     { t: '{r10}', x: .1146, y: 0.8000, s: .028, c: '#2a2a3a', al: 'left' },
     { t: '{r11}', x: .1146, y: 0.8556, s: .028, c: '#2a2a3a', al: 'left' }],
 };
-for (const [npc, title] of Object.entries(TRACE)){ const R = DARK_ROOMS[npc], [x, y] = R.floors ? [150, floorTop(1) + 300] : [340, 620];
+for (const [npc, title] of Object.entries(TRACE)){ const R = DARK_ROOMS[npc], lt = LAYOUT[npc]?.trace, [x, y] = lt ? [lt[1], floorTop(lt[0]) + lt[2]] : R.floors ? [150, floorTop(1) + 300] : [340, 620];
   (R.props || (R.props = [])).push({ id: 'trace', box: true, ...(R.floors ? { floor: 1 } : {}), x, y, title, img: ['art/pz/' + npc + '/trace.jpg'], imgKey: ['trace'], ...(TRACE_NM[npc] ? { nm: { trace: TRACE_NM[npc] } } : {}) }); }
 
 // ===== 여러 층짜리 방: 층마다 1100 × 900, 층 사이 300 은 비어 있는 어둠. 1 층이 맨 아래(입구), 3 층이 맨 위 =====

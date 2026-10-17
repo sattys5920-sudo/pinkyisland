@@ -1344,7 +1344,7 @@ function onOnline(raw){
     if (s.emoAt && s.emoAt!==o.emoAt){ o.emoAt = s.emoAt; if (s.emo && Date.now()-s.emoAt < 5000) bubbles.set(id+'-emo', {text:String(s.emo).slice(0,4), at:performance.now()}); }
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
-    o.z = oz;
+    o.z = oz; o.bp = s.bp && typeof s.bp === 'object' ? s.bp : null;
     Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, pet2: s.pet2 && PET_DRAW[s.pet2.sp] ? {sp:s.pet2.sp, col:Math.max(0, Math.min(2, s.pet2.col|0)), name:String(s.pet2.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', wp:WEAPONS[s.wp] ? s.wp : '', wu:Math.max(0, Math.min(5, s.wu|0)), nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
     if (typeof s.sw==='number' && s.sw !== o.swT){ const fresh = o.swT !== undefined && Date.now() - s.sw < 1500; o.swT = s.sw; if (fresh){ o.swAt = performance.now(); o.swDir = ['up','down','left','right'].includes(s.sd) ? s.sd : o.dir; } }
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
@@ -5915,7 +5915,10 @@ let darkWakeT = 0, darkRooms = {}, darkPending = 0, darkFlushT = 0, darkTouchCd 
 const darkOn = () => !!(world && world.dark);
 const kstDayOf = ms => Math.floor((ms + 9*3600000) / 86400000);
 const darkNow = () => Date.now() + serverOffset;
-function darkIdx(){ return darkOn() ? today() - kstDayOf(world.darkAt || Date.now()) + (world.darkShift|0) : -1; }
+// 날짜와 상관없이 차례대로: 가장 마지막으로 들어간 방이 꿰매졌거나 도전이 끝나면 다음 방 차례 (열쇠를 다 모으면 바로 열려요)
+function darkIdx(){ if (!darkOn()) return -1; let L = -1; DARK_ORDER.forEach((n, i) => { if (darkFirst(roomOf(n)) || roomOf(n).clear) L = i; });
+  let i = 0; if (L >= 0){ const r = roomOf(DARK_ORDER[L]); i = r.clear || !(r.start && darkNow() <= darkEnd(r)) ? L + 1 : L; }
+  return i + (world.darkShift|0); }
 function darkToday(){ const i = darkIdx(); return i >= 0 && i < DARK_ORDER.length ? DARK_ORDER[i] : null; }
 // 관리자가 [문제 편집]에서 바꾼 문제: darkQ/<주민>/<문제 id> = {t 제목, q 문제, h 힌트, ah 정답 해시들}. 정답은 가려서 저장해요 (평문은 관리자만 보는 darkQA)
 let darkQ = {}, darkQv = 0; const darkPzCache = {};
@@ -6432,6 +6435,8 @@ function darkEntities(d, t){
   else { for (const pz of darkPuzzles(z.dark)) out.push({y:pz.y, draw:()=>drawFurn(d, {id:pz.furn}, pz.x, pz.y), label:()=>darkObjLabel(d, pz, r, t)});
     for (const p of darkProps(z.dark)) out.push({y:p.y, draw:()=>p.furn ? drawFurn(d, {id:p.furn}, p.x, p.y) : drawDarkProp(d.ctx, p), label:()=>darkPropLabel(d, p, t)}); }
   if (darkBossUp(r) && z.dark === 'tori') out.push({y:0, draw:()=>drawToriFloor(d.ctx, r, t), label:()=>{}}, {y:toriState(r).y + TB_FEET, draw:()=>drawToriBoss(d.ctx, r, t), label:()=>toriLabel(d.ctx, r, t)}, {y:1e9, draw:()=>drawToriShots(d.ctx, r), label:()=>{}});
+  else if (darkBossUp(r) && bossMod(z.dark)){ const M = bossMod(z.dark), B = bossCtx(z.dark, r), [bx, by] = darkBossPos(r), safe = f => () => { try { f(); } catch(e){ console.error(e); } };
+    out.push({y:-1e9, draw:safe(() => M.drawFloor?.(B, d.ctx)), label:()=>{}}, {y:by, draw:safe(() => M.drawBody?.(B, d.ctx)), label:safe(() => bossLabel(d.ctx, B, bx, by, t))}, {y:1e9, draw:safe(() => M.drawTop?.(B, d.ctx)), label:()=>{}}); }
   else if (darkBossUp(r)){ const [bx, by] = darkBossPos(r); out.push({y:by, draw:()=>drawDarkBoss(d, z.dark, r, bx, by, t), label:()=>{}}); }
   return out;
 }
@@ -6638,7 +6643,7 @@ const DARK_TOK = 1000000;
 const darkFirst = r => (r && (r.first || r.start)) || 0;
 const darkEnd = r => r.start + darkLimit(r);
 // 문제를 다 푼 뒤(보스전)에 시간이 다 되면 보스 체력만 처음부터, 문제를 풀던 중이면 문제도 모두 처음부터 (열쇠는 그대로)
-const darkRetry = (npc, {start, hp, max, bossAt, rageAt, rv, wipe, pen, bt, tok, ...r}) => darkSolvedN(r) >= darkPuzzles(npc).length ? {...r, att:(r.att|0)+1, first:darkFirst({...r, start})} : {att:(r.att|0)+1, first:darkFirst({...r, start}), ...(r.keys ? {keys:r.keys} : {})};
+const darkRetry = (npc, {start, hp, max, bossAt, rageAt, lowAt, bs, rv, wipe, pen, bt, tok, ...r}) => darkSolvedN(r) >= darkPuzzles(npc).length ? {...r, att:(r.att|0)+1, first:darkFirst({...r, start})} : {att:(r.att|0)+1, first:darkFirst({...r, start}), ...(r.keys ? {keys:r.keys} : {})};
 // 열쇠로 처음 들어간 뒤 48 시간 안에 못 꿰매면 기회가 사라져요 (날이 바뀌어도 48 시간 안이면 토큰으로 다시 열 수 있어요)
 const DARK_GRACE = 48*3600000;
 function darkLive(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(), r = roomOf(npc); if (i < 0 || i > di || r.clear) return false; if (i === di) return !darkFirst(r) || darkNow() <= darkFirst(r) + DARK_GRACE; return !!darkFirst(r) && darkNow() <= darkFirst(r) + DARK_GRACE; }
@@ -6833,7 +6838,93 @@ function toriAttack(dt, t, r){
 }
 // 보스전 다시 시작 자리: 마지막 층 계단 도착점 (없으면 방 문)
 function darkBossStart(npc){ const rm = darkRoomOf(npc), up = (rm?.stairs || []).filter(s=>s.up && s.to).pop(); return up ? up.to : rm?.door || DARK_ROOM.door; }
-function darkBossPos(r){ if (Z().dark === 'tori'){ const st = toriState(r); return [st.x, st.y + 40]; } const s = (darkNow() - (r.bossAt || 0)) / 1000, W = DARK_ROOM.W, [cx, cy] = darkRoomOf(Z().dark)?.boss || [W/2, 560]; return [cx + Math.cos(s*.31)*300 + Math.sin(s*.83)*60, cy + Math.sin(s*.47)*150]; } // 모두에게 같은 자리
+// ===== 다크 보스 패턴 엔진 (보리 ~ 콩이): 주민마다 public/bosses/<주민>.js · 규칙은 docs/BOSS_ENGINE.md =====
+// 모든 장면은 서버 시각(B.now)과 방 기록(r)만으로 정해져서 같은 방 모두에게 똑같아요. 같이 바꿔야 하는 건 B.tx 로 r.bs 에 적어요
+const bossMods = {}; let bossCtl = {}, bossBp = null, bossSayNow = null, bossHurtKeys = {}, bossB = null, bossSlip = [0, 0];
+function bossMod(npc){
+  if (!npc || npc === 'tori') return null; const m = bossMods[npc];
+  if (m === undefined){ bossMods[npc] = null; import(`./bosses/${npc}.js`).then(x => { bossMods[npc] = x.default || null; }).catch(e => { console.error(e); setTimeout(() => { delete bossMods[npc]; }, 5000); }); return null; }
+  return m;
+}
+function bossCtx(npc, r, dt = 0){
+  const now = darkNow(), rm = darkRoomOf(npc), [hx, hy] = rm?.boss || [DARK_ROOM.W/2, 560], all = [], fl = rm?.floors || 0, up = y => !fl || y < FLOOR_H; // 층 방: 보스는 꼭대기 층 (y 0 ~ 900) · 그 층 사람만
+  if (!admin && me && up(pos.y)) all.push({uid, me:true, x:pos.x, y:pos.y, down:!!darkDown, nick:me.nick, bp:bossBp});
+  for (const o of others.values()) if (o.z === zoneId && !o.adm && o.uid && o.uid !== uid && up(o.y)) all.push({uid:o.uid, x:o.x, y:o.y, down:!!o.down, nick:o.nick, bp:o.bp || null});
+  all.sort((a, b) => a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
+  const alive = all.filter(p => !p.down), tg = darkTgt(npc), phase = r.lowAt ? 3 : r.rageAt ? 2 : 1, ps = phase === 3 ? r.lowAt : phase === 2 ? r.rageAt : r.bossAt;
+  const tgtP = all.find(p => p.uid === tg?.uid && !p.down) || (alive.length ? alive[hashU(String(r.bossAt) + npc) % alive.length] : null);
+  const B = bossB = {npc, r, bs:r.bs || {}, now, dt, t:(now - (r.bossAt || now))/1000, pt:(now - (ps || now))/1000, phase, hpF:r.max ? r.hp/r.max : 1,
+    ph2:r.rageAt ? (now - r.rageAt)/1000 : -1, ph3:r.lowAt ? (now - r.lowAt)/1000 : -1,
+    W:Z().W, H:fl ? FLOOR_H : Z().H, hx, hy, all, alive, me:all.find(p => p.me) || null, target:tgtP, targetNick:tg?.nick || tgtP?.nick || '???', host:!admin && !!all.length && all[0].uid === uid,
+    lo:darkAtkLo(npc), name:NPC[npc]?.name || '', real:(CLUE_CASE[npc] || [])[0] || '', ctl:bossCtl, view, admin,
+    hurt:(n, key) => { if (admin || !me || darkDown || !up(pos.y)) return false; if (key){ if (bossHurtKeys[key]) return false; bossHurtKeys[key] = now; } darkHurt(Math.round(n), performance.now()); return true; },
+    push:(dx, dy, dist = 60) => { if (!admin && !darkDown && up(pos.y)) pushPlayer(dx, dy, dist); },
+    tp:(x, y) => { if (!admin && !darkDown && up(pos.y)){ pos.x = Math.max(20, Math.min(B.W - 20, x)); pos.y = Math.max(20, Math.min(B.H - 20, y)); target = null; } },
+    tx:fn => net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear || cur.bossAt !== r.bossAt) return undefined; const nb = fn({...(cur.bs || {})}, cur); return nb === undefined ? undefined : {...cur, bs:nb}; }),
+    heal:n => { n = Math.min(Math.round(n), Math.floor(r.max*.05)); if (!(n > 0)) return; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && cur.hp < cur.max && cur.bossAt === r.bossAt ? {...cur, hp:Math.min(cur.max, cur.hp + n), hl:(cur.hl|0) + 1} : undefined); },
+    sfx:(k, gap) => bossFx(k, gap), shake:() => { bossShakeAt = performance.now(); },
+    say:(text, ms = 2500) => { bossSayNow = {text:String(text), until:performance.now() + ms}; },
+    fx:(text, x, y, color) => { fx.push({x, y, text:String(text), t:performance.now(), color:color || '#ffffff'}); },
+    setBp:o => { bossBp = o || null; },
+    hash:v => hashU(String(v)), rng:seed => { let s = hashU(String(seed)) % 2147483646 + 1; return () => (s = s*16807 % 2147483647)/2147483647; },
+    toScreen:(x, y) => [(x - view.cx)*view.zoom, (y - view.cy)*view.zoom]};
+  return B;
+}
+function bossTick(npc, r, dt){
+  const M = bossMod(npc); bossCtl = {}; if (!M || !darkBossUp(r)){ bossBp = null; return !!M; }
+  const B = bossCtx(npc, r, dt); const now = B.now; for (const k in bossHurtKeys) if (now - bossHurtKeys[k] > 60000) delete bossHurtKeys[k];
+  if (!B.me && !admin){ return true; } // 아래층에 있으면 보스 패턴과 상관없어요
+  try { M.tick?.(B, dt); } catch(e){ console.error(e); }
+  if (!admin && !darkDown){ pos.x = Math.max(20, Math.min(B.W - 20, pos.x)); pos.y = Math.max(20, Math.min(B.H - 20, pos.y)); }
+  return true;
+}
+function bossStep(dt, ix, iy){
+  const bc = bossCtl, sp = SPEED*(bc.speed ?? 1)*(1 + tfx('speed'));
+  if (bc.steer && (ix || iy)){ const a = Math.atan2(iy, ix) + bc.steer; ix = Math.cos(a); iy = Math.sin(a); }
+  let vx = ix*sp, vy = iy*sp;
+  if (bc.slip){ const k = Math.min(1, dt*(typeof bc.slip === 'number' ? bc.slip : 1.2)); bossSlip[0] += (vx - bossSlip[0])*k; bossSlip[1] += (vy - bossSlip[1])*k; vx = bossSlip[0]; vy = bossSlip[1]; } else bossSlip = [vx, vy];
+  if (bc.drift){ vx += bc.drift[0]; vy += bc.drift[1]; }
+  const nx = pos.x + vx*dt, ny = pos.y + vy*dt, stuck = blocked(pos.x, pos.y);
+  if (stuck || !blocked(nx, pos.y)) pos.x = nx; else bossSlip[0] *= -.4;
+  if (stuck || !blocked(pos.x, ny)) pos.y = ny; else bossSlip[1] *= -.4;
+  const W = Z().W, H = Z().H; pos.x = Math.max(20, Math.min(W - 20, pos.x)); pos.y = Math.max(20, Math.min(H - 20, pos.y));
+  pos.moving = Math.hypot(vx, vy) > 15; if (ix || iy) pos.dir = Math.abs(ix) > Math.abs(iy) ? (ix > 0 ? 'right' : 'left') : (iy > 0 ? 'down' : 'up');
+}
+function bossTap(w){ const npc = Z().dark; if (!npc) return null; const r = roomOf(npc), M = bossMod(npc); if (!M || !M.tap || !darkBossUp(r)) return null; try { return M.tap(bossCtx(npc, r), w.x, w.y) || null; } catch(e){ console.error(e); return null; } }
+function bossChat(text){ const npc = Z().dark; if (!npc) return; const r = roomOf(npc), M = bossMod(npc); if (M?.chat && darkBossUp(r)) try { M.chat(bossCtx(npc, r), text); } catch(e){ console.error(e); } }
+// 이름표: 50% 전엔 '보리???', 변신 뒤엔 진짜 이름 · 체력 줄 · 말풍선 · 기절 별
+function bossLabel(c, B, x, y, t){
+  const M = bossMod(B.npc); if (M?.label) return M.label(B, c, x, y, t);
+  const top = y - (M?.height || 170), nm = B.phase >= 2 ? B.real : B.name + '???', w = 190, rage = B.phase >= 2, glit = rage && Math.floor(t/90)%13 === 0;
+  c.save(); c.font = 'bold 22px "Dongle",sans-serif'; c.textAlign = 'center'; const tw = c.measureText(nm).width + 34;
+  c.fillStyle = 'rgba(16,4,10,.85)'; c.beginPath(); c.roundRect(x - tw/2, top - 44, tw, 28, 10); c.fill(); c.strokeStyle = rage ? '#ff2040' : '#b58cff'; c.lineWidth = 2; c.stroke();
+  if (glit){ c.fillStyle = 'rgba(255,30,90,.8)'; c.fillText(nm, x - 3, top - 23); c.fillStyle = 'rgba(30,240,230,.7)'; c.fillText(nm, x + 3, top - 23); }
+  c.fillStyle = rage ? '#ffdede' : '#f4ecff'; c.fillText(nm, x, top - 23);
+  c.fillStyle = 'rgba(60,10,20,.9)'; c.fillRect(x - w/2, top - 12, w, 8); c.fillStyle = rage ? '#ff3b6b' : '#b58cff'; c.fillRect(x - w/2, top - 12, w*Math.max(0, B.r.hp)/B.r.max, 8);
+  c.font = 'bold 13px "Dongle",sans-serif'; c.fillStyle = '#ffd0dc'; c.fillText(`${Math.max(0, Math.ceil(B.r.hp)).toLocaleString()} / ${B.r.max.toLocaleString()}`, x, top + 9);
+  if (B.bs.stun > B.now){ for (let i = 0; i < 3; i++){ const a = t/300 + i*2.1; c.fillStyle = '#ffe14a'; c.font = 'bold 20px sans-serif'; c.fillText('★', x + Math.cos(a)*40, top + 30 + Math.sin(a)*10); } }
+  if (bossSayNow && performance.now() < bossSayNow.until){ c.font = 'bold 20px "Dongle",sans-serif'; const s = bossSayNow.text, sw = c.measureText(s).width + 26; c.fillStyle = 'rgba(255,248,250,.95)'; c.beginPath(); c.roundRect(x - sw/2, top - 84, sw, 30, 12); c.fill(); c.fillStyle = '#3a1020'; c.fillText(s, x, top - 63); }
+  c.restore();
+}
+function drawBossScreen(c){
+  const npc = Z().dark; if (!npc) return; const r = roomOf(npc), M = bossMod(npc); if (!M?.drawScreen || !darkBossUp(r)) return;
+  const B = bossCtx(npc, r); c.save(); c.setTransform(view.dpr, 0, 0, view.dpr, 0, 0); try { M.drawScreen(B, c, view.w, view.h); } catch(e){ console.error(e); } c.restore();
+}
+// 혼자 보기(solo)에서 보스 패턴 시험: __pinky.boss.start('bori', .45) · bot(1, {x, y}) · warp(초) · set({bs:{}})
+const bossDev = {
+  async start(npc, frac = 1, opt = {}){ const i = DARK_ORDER.indexOf(npc), now = darkNow(); await net.setWorld({dark:true, darkAt:now, darkShift:i});
+    const max = DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, hp = Math.max(1, Math.round(max*frac)), solved = {}; for (const pz of darkPuzzles(npc)) solved[pz.id] = {uid, nick:me.nick, at:now, ans:'x'};
+    await net.darkTx(npc, () => ({start:now, first:now, att:0, solved, hp, max, bossAt:now - (opt.t || 0)*1000, ...(frac <= .5 ? {rageAt:now - (opt.t2 || 0)*1000} : {}), ...(frac <= .2 ? {lowAt:now - (opt.t3 || 0)*1000} : {}), bt:DARK_BOSS_BONUS}));
+    if (!me.inv.sword){ me.inv.sword = true; me.inv.weapon = 'w1'; me.inv.weapons = ['w1']; }
+    const [x, y] = darkBossStart(npc); darkGuard = 3; playerHp = maxHp(); darkDown = null; enterZone('dark:' + npc, null, x, y - 200); },
+  bot(n, o = {}){ const id = 'bot' + n, cur = others.get(id) || {x:500, y:600, dir:'down', look:CH.defaultLook(), nick:'친구' + n, uid:'zbot' + n, emoAt:0};
+    const v = {...cur, ...o, z:zoneId}; v.sx = v.x; v.sy = v.y; v.goal = null; others.set(id, v); return v; },
+  unbot(n){ others.delete('bot' + n); },
+  warp(sec){ const npc = Z().dark, ms = sec*1000; return net.darkTx(npc, cur => cur ? {...cur, bossAt:cur.bossAt - ms, ...(cur.rageAt ? {rageAt:cur.rageAt - ms} : {}), ...(cur.lowAt ? {lowAt:cur.lowAt - ms} : {})} : undefined); },
+  set(patch){ return net.darkTx(Z().dark, cur => cur ? {...cur, ...patch} : undefined); },
+  ctx: () => bossB, ctl: () => bossCtl, room: () => roomOf(Z().dark), me(x, y){ pos.x = x; pos.y = y; target = null; }, hp: () => playerHp,
+};
+function darkBossPos(r){ { const M = bossMod(Z().dark); if (M?.pos) try { return M.pos(bossCtx(Z().dark, r)); } catch(e){ console.error(e); } } if (Z().dark === 'tori'){ const st = toriState(r); return [st.x, st.y + 40]; } const s = (darkNow() - (r.bossAt || 0)) / 1000, W = DARK_ROOM.W, [cx, cy] = darkRoomOf(Z().dark)?.boss || [W/2, 560]; return [cx + Math.cos(s*.31)*300 + Math.sin(s*.83)*60, cy + Math.sin(s*.47)*150]; } // 모두에게 같은 자리
 function drawDarkBoss(d, npc, r, x, y, t){
   const c = d.ctx, n = NPC[npc], rage = r.hp < r.max/2, pulse = .5 + Math.sin(t/200)*.5;
   c.save(); const g = c.createRadialGradient(x, y-50, 10, x, y-50, 120); g.addColorStop(0, `rgba(${rage ? '255,40,80' : '160,40,200'},${.35 + pulse*.2})`); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x-130, y-180, 260, 220); c.restore();
@@ -6844,8 +6935,13 @@ function drawDarkBoss(d, npc, r, x, y, t){
 }
 function darkSwing(cx, cy, vx, vy, t){
   const z = Z(); if (!z.dark) return; const r = roomOf(z.dark); if (!darkBossUp(r)) return;
-  const [bx, by] = darkBossPos(r); if (Math.hypot(bx-cx, by-cy) > (z.dark === 'tori' ? 160 : 110)) return;
-  const dmg = swordAtk(); addDmg(dmg); darkPending += dmg; darkHurtT = .2; bossFx('hit', 60); fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
+  const M = bossMod(z.dark), B = M ? bossCtx(z.dark, r) : null; if (M && (bossCtl.noAtk || darkDown)) return;
+  if (M?.swing) try { if (M.swing(B, cx, cy)) return; } catch(e){ console.error(e); }
+  const [bx, by] = darkBossPos(r); if (Math.hypot(bx-cx, by-cy) > (z.dark === 'tori' ? 160 : M?.reach || 110)) return;
+  let mul = 1; if (M) try { mul = M.hitMul ? M.hitMul(B, pos.x, pos.y) : (B.bs.stun > B.now ? 2 : 1); } catch(e){ console.error(e); }
+  if (M && B.phase === 2 && B.ph2 < 5) mul = 0; // 변신하는 5 초는 무적
+  if (!(mul > 0)){ fx.push({x:bx + (Math.random()-.5)*40, y:by-120, text:'팅', t, color:'#9ab0c0'}); bossFx('hit', 60); return; }
+  const dmg = Math.round(swordAtk()*mul); addDmg(dmg); darkPending += dmg; darkHurtT = .2; bossFx('hit', 60); fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
   me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.start||0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
 }
 // 방 차례마다 보스 피해가 20 씩 세져요: 토리 100 ~ 300, 보리 120 ~ 320 … 콩이 320 ~ 520
@@ -6900,12 +6996,16 @@ function updateDark(dt, t){
   if ((r.wipe|0) !== darkWipeSeen[npc]){ darkWipeSeen[npc] = r.wipe|0; darkSlams = []; if (darkDown){ darkDown = null; darkGuard = 3; wakeGuardUntil = performance.now() + 5000; flushSave(); } playerHp = maxHp(); const [sx, sy] = darkBossStart(npc); pos.x = sx; pos.y = sy; target = null; renderHud(); say('....', `모두 쓰러졌어요.... ${npc === 'tori' ? '토리???가' : NPC[npc].name + '이(가)'} 다시 처음 모습으로 돌아왔어요. 푼 문제는 그대로, 보스전만 처음부터 다시 해요.`); }
   // 방 안 사람이 모두 쓰러지면 (3 초 확인) 보스 체력과 살리기 횟수를 처음으로
   if (darkBossUp(r) && darkDown && t > darkWipeT){ darkWipeT = t + 3000; const mates = [...others.values()].filter(o=>o.z===zoneId && !o.adm);
-    if (mates.every(o=>o.down) && darkNow() - darkDown > 2500){ const w = r.wipe|0; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && (cur.wipe|0) === w ? (({rageAt, ...c}) => ({...c, hp:cur.max, rv:0, wipe:w + 1, bossAt:darkNow()}))(cur) : undefined); } }
+    if (mates.every(o=>o.down) && darkNow() - darkDown > 2500){ const w = r.wipe|0; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && (cur.wipe|0) === w ? (({rageAt, lowAt, bs, ...c}) => ({...c, hp:cur.max, rv:0, wipe:w + 1, bossAt:darkNow()}))(cur) : undefined); } }
   if (!r.hp && !r.clear && r.start && darkNow() <= darkEnd(r) && darkSolvedN(r) >= darkPuzzles(npc).length && t > darkWakeT){ darkWakeT = t + 3000; darkWake(npc); } // 문제를 다 푼 방에 다시 들어오면 (토큰 재도전 등) 보스를 깨워요
   if (darkBossUp(r) && !r.bt && t > darkWakeT){ darkWakeT = t + 3000; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && !cur.bt && darkNow() <= darkEnd(cur) ? {...cur, bt:DARK_BOSS_BONUS} : undefined); } // 보스 +30 분 (이 기능 전에 깨어난 보스도)
   if (r.start && !r.clear && darkNow() > darkEnd(r)){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? darkRetry(npc, cur) : undefined); return darkLeave(); }
   if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
-    net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; const hp = Math.max(0, cur.hp - dmg); return {...cur, hp, ...(npc === 'tori' && !cur.rageAt && hp > 0 && hp <= cur.max/2 ? {rageAt:darkNow()} : {}), ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
+    net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; let hp = Math.max(0, cur.hp - dmg), ph = {};
+      if (!cur.rageAt && hp <= cur.max/2){ hp = Math.max(hp, Math.floor(cur.max/2)); ph = {rageAt:darkNow()}; } // 50%: 변신 (넘친 피해는 버려요)
+      else if (npc !== 'tori' && cur.rageAt && !cur.lowAt && hp <= cur.max*.2){ hp = Math.max(hp, Math.floor(cur.max*.2)); ph = {lowAt:darkNow()}; } // 20%: 마지막 패턴
+      return {...cur, hp, ...ph, ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
+  if (bossTick(npc, r, dt)){ darkSlams = []; return; } // 보리 ~ 콩이: 주민마다 패턴 (public/bosses)
   if (!darkBossUp(r)){ darkSlams = []; return; }
   if (darkDown){ darkSlams = []; return; }
   // 보스 공격: 가까이 있으면 할퀴기, 주기적으로 내 발밑에 내려찍기 (빨간 원이 커지면 피해요)
@@ -7423,6 +7523,7 @@ function sendChat(){
   if (kicked) return;
   const inp = $('chatin'), t = inp.value.trim(); inp.value = ''; inp.blur();
   if (!t) return;
+  if (zoneId.startsWith('dark:')) bossChat(t);
   const z = zoneId; net.sendChat(t).then(()=>net.chatTrim(z)).catch(()=>toast('채팅을 보내지 못했어요.')); stat('chatSent');
 }
 document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow').hidden = true; emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); setExpr({'👋':'happy','❤️':'wink','✨':'sparkle','😢':'sad'}[b.dataset.e] || 'cat', 3000); stat('emotesSent'); if (b.dataset.e === '❤️') stat('heartEmotes'); });
@@ -7435,6 +7536,7 @@ function hitTarget(w){
   { const mb = mailboxTap(w); if (mb) return mb; }
   for (const [id, o] of others) if (o.down && o.z === zoneId && Math.abs(w.x-o.x) < 40 && Math.abs(w.y-(o.y-10)) < 34) return {x:o.x + 30, y:o.y + 10, act:()=>{ darkRevive = {id, uid:o.uid, at:performance.now()}; toast(`${o.nick} 님을 ${downWords().helping}.... 곁에 있어 줘요`); }};
   const pt = petTap(w); if (pt) return pt;
+  { const bt2 = bossTap(w); if (bt2) return bt2; }
   { const dt_ = darkTap(w); if (dt_) return dt_; } // 다크 모드 집 문 · 게시판 · 판매대는 건물(우체국 · 공방 …)보다 먼저 (같은 자리에 있어요)
   for (const pl of (Z().places||[])) if (pl.post){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:()=>postPanel()}; }
   for (const pl of (Z().places||[])) if (pl.shelter){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:shelterPanel}; }
@@ -7476,6 +7578,7 @@ function interactNear(){
 let stuckT = 0, walked = 0;
 function step(dt){
   if (darkDown){ pos.moving = false; target = null; return; } // 쓰러지면 못 움직여요
+  if (bossCtl.lock){ pos.moving = false; target = null; return; } // 보스 패턴이 묶었어요 (우리 · 잠듦 …)
   let vx = (keys.d||keys.arrowright?1:0) - (keys.a||keys.arrowleft?1:0);
   let vy = (keys.s||keys.arrowdown?1:0) - (keys.w||keys.arrowup?1:0);
   keyMoving = !!(vx||vy);
@@ -7489,10 +7592,11 @@ function step(dt){
   }
   const len = Math.hypot(vx,vy);
   pos.moving = len>0;
+  if ((bossCtl.slip || bossCtl.drift || bossCtl.steer) && zoneId.startsWith('dark:')) return bossStep(dt, len ? vx/len : 0, len ? vy/len : 0); // 물살 · 미끄럼 · 휘는 걸음
   if (!len) return;
   vx/=len; vy/=len;
   pos.dir = Math.abs(vx) > Math.abs(vy) ? (vx>0?'right':'left') : (vy>0?'down':'up');
-  const ox = pos.x, oy = pos.y, spd = SPEED * (performance.now() < playerSlowUntil ? .5 : 1) * (1 + tfx('speed')) * (bbIHold() ? BB_FAST : 1), nx = pos.x + vx*spd*dt, ny = pos.y + vy*spd*dt;
+  const ox = pos.x, oy = pos.y, spd = SPEED * (performance.now() < playerSlowUntil ? .5 : 1) * (1 + tfx('speed')) * (bbIHold() ? BB_FAST : 1) * (bossCtl.speed ?? 1), nx = pos.x + vx*spd*dt, ny = pos.y + vy*spd*dt;
   const stuck = blocked(pos.x, pos.y); // 이미 막힌 곳에 서 있으면(새 울타리가 생긴 자리 등) 빠져나갈 수 있게
   if (stuck || !blocked(nx, pos.y)) pos.x = nx;
   if (stuck || !blocked(pos.x, ny)) pos.y = ny;
@@ -7505,7 +7609,7 @@ let lastPres = 0, presSig = '', lastTarget = null;
 function sendPresence(t){
   if (!net || !me || admin || kicked) return; // 다른 곳에서 접속해 밀려난 창은 위치를 안 보내요
   const tgt = target && !keyMoving ? target : null;
-  const p = {z:zoneId, ...(darkDown ? {down:1} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : '', ...(me.inv?.ring ? {rg:me.inv.ring} : {}), ...(me.inv?.sword ? {wp:me.inv.weapon || 'w1', ...(myWpUp() ? {wu:myWpUp()} : {})} : {}), ...(mySwingT && [...others.values()].some(o => o.z === zoneId) ? {sw:mySwingT, sd:swingDir} : {})}; // 같은 곳에 다른 사람이 있을 때만 휘두르기를 알려요 (데이터 아끼기)
+  const p = {z:zoneId, ...(darkDown ? {down:1} : {}), ...(bossBp && zoneId.startsWith('dark:') ? {bp:bossBp} : {}), nick:me.nick, look:me.look, roof:me.roof, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, emo:emo.e||'', emoAt:emo.at||0, ex:myExpr(), ti:me.title ? titleOf(me.title) : '', ...(me.inv?.ring ? {rg:me.inv.ring} : {}), ...(me.inv?.sword ? {wp:me.inv.weapon || 'w1', ...(myWpUp() ? {wu:myWpUp()} : {})} : {}), ...(mySwingT && [...others.values()].some(o => o.z === zoneId) ? {sw:mySwingT, sd:swingDir} : {})}; // 같은 곳에 다른 사람이 있을 때만 휘두르기를 알려요 (데이터 아끼기)
   if (isRain() && umbKey() && snowOutside()) p.um = umbKey();
   const wps = walkingPets(), pp = wp => ({sp:wp.sp, col:wp.col|0, name:String(wp.name||'').slice(0,8)}); if (wps[0]) p.pet = pp(wps[0]); if (wps[1]) p.pet2 = pp(wps[1]);
   if (tgt){ p.tx = Math.round(tgt.x); p.ty = Math.round(tgt.y); }
@@ -7856,7 +7960,7 @@ function frameBody(t){
     else { step(dt); moveOthers(dt); aucSheet(); oxTick(); festTick(); walkFade(t); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
-    if (!admin){ const zf = Z().dark === 'tori' && darkBossUp(roomOf('tori')) && floorOf(pos.y, 3) === 3, wz = view.base * (zf ? .7 : 1); if (Math.abs(view.zoom - wz) > .01) view.zoom = wz; } // 토리??? 와 싸울 땐 한 발 물러서서 봐요
+    if (!admin){ const zf = (Z().dark === 'tori' && darkBossUp(roomOf('tori')) && floorOf(pos.y, 3) === 3) || (!!Z().dark && Z().dark !== 'tori' && darkBossUp(roomOf(Z().dark))), wz = view.base * (zf ? .7 : 1); if (Math.abs(view.zoom - wz) > .01) view.zoom = wz; } // 토리??? 와 싸울 땐 한 발 물러서서 봐요
     const z = view.zoom, vw = view.w/z, vh = view.h/z;
     const W = Z().W, H = Z().H;
     // 위 정보바와 아래 버튼에 가려지지 않게: 캐릭터는 그 사이 보이는 칸의 가운데에, 구역 끝에서는 바깥까지 조금 더 보여 줘요
@@ -7893,7 +7997,7 @@ function frameBody(t){
     for (const e of ents) e.draw();
     drawFishing(ctx, t); drawStars(ctx, t); drawSwing(ctx, t); drawFx(ctx, t);
     for (const e of ents) e.label();
-    drawBossFx(ctx, t); drawNight(ctx, t); drawDepth(ctx); drawBossPools(ctx, t); drawDarkFx(ctx, t); drawWeather(ctx, t); drawBite(ctx, t); drawGlitch(ctx, t);
+    drawBossFx(ctx, t); drawNight(ctx, t); drawDepth(ctx); drawBossPools(ctx, t); drawDarkFx(ctx, t); drawBossScreen(ctx); drawWeather(ctx, t); drawBite(ctx, t); drawGlitch(ctx, t);
     const fo = Math.max(0, 1 - (t - fadeT)/450); if (fo !== lastFade){ lastFade = fo; $('fade').style.opacity = fo; }
   }
   requestAnimationFrame(frame);
@@ -9800,7 +9904,7 @@ function talkBubble(key, x, y, t){
   else if (e && t-e.at < 3000) bubble(ctx, e.text, x, y-80);
 }
 requestAnimationFrame(frame);
-if (solo) window.__pinky = { postPanel, relOf, get dlg(){ return dlg; }, giftMenu, gainExp, eat, foodOf, travelTo, get sta(){ return playerSta; }, ZONES, tvPanel, candyPrice, candyTrade, showLive, lastSlot, adminTest: ()=>{ admin = true; others.set('t1', {x:820, y:640, sx:820, sy:640, z:'village', dir:'down', look:CH.defaultLook(), nick:'테스트', uid:'t1'}); enterAdmin(); }, showAdminLogin, housePanel, myHouse, HOUSE_LV, WALLS, FLOORS, iconURL, uiURL, menuPanel, situationsNow, situationLine, showLogin, logout, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
+if (solo) window.__pinky = { dboss:bossDev, get net(){ return net; }, hitTarget, swing, postPanel, relOf, get dlg(){ return dlg; }, giftMenu, gainExp, eat, foodOf, travelTo, get sta(){ return playerSta; }, ZONES, tvPanel, candyPrice, candyTrade, showLive, lastSlot, adminTest: ()=>{ admin = true; others.set('t1', {x:820, y:640, sx:820, sy:640, z:'village', dir:'down', look:CH.defaultLook(), nick:'테스트', uid:'t1'}); enterAdmin(); }, showAdminLogin, housePanel, myHouse, HOUSE_LV, WALLS, FLOORS, iconURL, uiURL, menuPanel, situationsNow, situationLine, showLogin, logout, questLog, achPanel, questEvent, stat, syncStats, NPC_QUESTS, ACHIEVEMENTS, LORE, dexInfo, CH, clothesPanel, setExpr, wear, sellPanel, pricePanel, marketPanel, marketAdd, unitPrice, marketMul, hotToday, sellItem, get market(){ return market; }, swing, weaponPanel, ART, showBag, useSlot, talkTo, giveGift, NPCS, pos, view, painter, enterZone, addPts, playEvents, castAt, fishTap, mineRock, rocksHere, hitMob, seedShop, showBag, invAdd, invCount, cook, errandsToday, errandPanel, workshopPanel, decorMenu, houseTap, clothesPanel, museumPanel, makeWish, promiseTree, contestPanel, eatDish, forecast, get boss(){ return boss; }, get decorating(){ return decorating; }, set decorating(v){ decorating = v; }, get fishing(){ return fishing; }, get mobs(){ return mobs; }, get hp(){ return playerHp; }, get zone(){ return zoneId; }, get me(){ return me; } }; // 혼자 보기 모드 테스트용
 </script>
 </body>
 </html>
