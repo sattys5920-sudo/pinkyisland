@@ -91,7 +91,7 @@ function tickFreeze(B, p){
     const st = geo(B, 'fz' + key, () => m.slice());
     if (Math.hypot(m[0] - st[0], m[1] - st[1]) > 14) stitchMe(B, key); }
 }
-function stitchMe(B, key){ if (B.hurt(dmg(B, 60), `fz${B.r.bossAt}.${key}`)){ B.fx('몽실?', B.me.x, B.me.y - 70, '#ff8ab0'); local(B).stitch = B.now; } }
+function stitchMe(B, key){ if (B.hurt(600, `fz${B.r.bossAt}.${key}`, {raw:1})){ B.fx('몽실?', B.me.x, B.me.y - 70, '#ff8ab0'); local(B).stitch = B.now; } }
 
 // ===== ② 줄자 묶기 =====
 const TW = [[.8, 5.6], [6.4, 11.2]];
@@ -105,7 +105,7 @@ function tickTether(B, p){
   const k = (p.t - tw.a)/(tw.b - tw.a), L = tlen(k);
   if (B.host && p.t > tw.a && p.t < tw.b){ const add = []; te.p.forEach(([a, b], i) => { if (te.x.includes(i)) return; const A = byUid(B, a), Bp = b === 'B' ? {x:bossPos(B)[0], y:bossPos(B)[1]} : byUid(B, b); if (!A || !Bp || A.down || Bp.down) return; if (Math.hypot(A.x - Bp.x, A.y - Bp.y) > L) add.push(i); });
     if (add.length) hostTx(B, 'tx' + tw.s + add.join(','), cur => { if (!cur.te || cur.te.s !== tw.s) return undefined; const x = [...new Set([...(cur.te.x || []), ...add])]; return {...cur, te:{...cur.te, x}}; }); }
-  if (B.me) te.p.forEach(([a, b], i) => { if ((te.x || []).includes(i) && (a === B.me.uid || b === B.me.uid)){ if (once(B, 'tsn' + tw.s + i)) B.sfx('slam', 0); B.hurt(dmg(B, 50), `te${tw.s}.${i}`); } });
+  if (B.me) te.p.forEach(([a, b], i) => { if ((te.x || []).includes(i) && (a === B.me.uid || b === B.me.uid)){ if (once(B, 'tsn' + tw.s + i)) B.sfx('slam', 0); B.hurt(420, `te${tw.s}.${i}`, {raw:1}); } });
 }
 function drawTape(c, x1, y1, x2, y2, col, dash, T){ c.save(); c.strokeStyle = col; c.lineWidth = 8; c.lineCap = 'round'; if (dash) c.setLineDash([12, 8]); const mx = (x1 + x2)/2, my = (y1 + y2)/2 + 26 + Math.sin(T*3)*4; c.beginPath(); c.moveTo(x1, y1); c.quadraticCurveTo(mx, my, x2, y2); c.stroke(); c.strokeStyle = 'rgba(60,40,10,.6)'; c.lineWidth = 1.5; c.setLineDash([2, 10]); c.stroke(); c.restore(); }
 function drawTether(B, c, p){
@@ -124,7 +124,7 @@ const bounce = (v, lo, hi) => { const L = hi - lo, m = ((v - lo) % (2*L) + 2*L) 
 function spools(B, p){ const o = geo(B, 'spo' + p.seed, () => { const q = posAgo(B, p.t), r = B.rng(p.seed + 'S'), a0 = r()*6.283; return {x:q[0], y:q[1], v:[0, 1, 2].map(i => { const a = a0 + i*2.094 + (r() - .5)*.5, sp = 240 + r()*60; return [Math.cos(a)*sp, Math.sin(a)*sp*.8]; })}; });
   const k = Math.max(0, Math.min(p.t, p.len - .5) - SP_GO); return o.v.slice(0, SP_N).map(([vx, vy]) => ({x:bounce(o.x + vx*k, X0, X1), y:bounce(o.y + vy*k, Y0, Y1), vx, vy, ox:o.x, oy:o.y})); }
 function tickSpool(B, p){ if (p.t > SP_GO && once(B, 'sp' + p.seed)) B.sfx('slam', 0); if (p.t < SP_GO || p.t > p.len - .5) return; const m = meXY(B); if (!m) return;
-  spools(B, p).forEach((s, i) => { const d = Math.hypot(m[0] - s.x, (m[1] - s.y)/.8); if (d < 44 && B.hurt(dmg(B, 40), `sp${p.seed}.${i}.${Math.floor(p.t/1.5)}`)) B.push(m[0] - s.x, m[1] - s.y, 80); }); }
+  spools(B, p).forEach((s, i) => { const d = Math.hypot(m[0] - s.x, (m[1] - s.y)/.8); if (d < 44 && B.hurt(500, `sp${p.seed}.${i}.${Math.floor(p.t/1.5)}`, {raw:1})) B.push(m[0] - s.x, m[1] - s.y, 80); }); }
 function drawSpoolsFloor(B, c, p){ const ss = spools(B, p); if (p.t < SP_GO){ const k = p.t/SP_GO; ss.forEach(s => { const a = Math.atan2(s.vy, s.vx); warnLine(c, s.ox, s.oy, s.ox + Math.cos(a)*260, s.oy + Math.sin(a)*260, k, 5, '255,140,190'); }); return; }
   const al = cl((p.len - p.t)/.5); ss.forEach(s => shadow(c, s.x, s.y + 6, 44*al, 14*al, .4)); }
 function drawSpoolsTop(B, c, p){ if (p.t < SP_GO) return; const al = cl((p.len - p.t)/.5)*cl((p.t - SP_GO)/.2), A = spoolArt(), T = B.now/1000;
@@ -143,7 +143,7 @@ function tickMirror(B, p){
   if (stunned(B)) return; const m = meXY(B);
   MIR_W.forEach((w, j) => { if (p.t < w || p.t > w + 1.4) return; const key = p.seed + '.' + j, pts = mirrorSnips(B, key);
     if (once(B, 'mw' + key)) B.sfx('warn', 0);
-    if (p.t > w + 1){ if (once(B, 'ms' + key)) B.sfx('slam', 0); if (m && p.t < w + 1.15 && pts.some(([x, y]) => inEll(m[0], m[1], x, y, 70, 42))) B.hurt(dmg(B, 60), `mi${key}`); } });
+    if (p.t > w + 1){ if (once(B, 'ms' + key)) B.sfx('slam', 0); if (m && p.t < w + 1.15 && pts.some(([x, y]) => inEll(m[0], m[1], x, y, 70, 42))) B.hurt(650, `mi${key}`, {raw:1}); } });
 }
 const mirrorSnips = (B, key) => geo(B, 'mp' + key, () => B.alive.map(q => [2*B.hx - q.x, q.y]));
 function drawMirrorFloor(B, c, p){ const al = cl(p.t/.6)*cl((p.len - p.t)/.5), T = B.now/1000, mx = B.hx;
@@ -209,7 +209,7 @@ function tickTug(B, p){
   if (tugOk(B, p) || stunned(B)) return; const m = meXY(B);
   YANK.forEach((w, j) => { if (w + 1.05 > p.len - .5 || p.t < w || p.t > w + 1.05) return; const key = p.seed + '.' + j; if (once(B, 'yw' + key)) B.sfx('warn', 0);
     if (p.t > w + .9){ if (once(B, 'ys' + key)) B.sfx('slam', 0); if (!m) return; const [bx, by] = bossPos(B), [kx, ky] = G.knot, d = segDist(m[0], m[1], bx, by, kx, ky);
-      if (d.d < 34 && B.hurt(dmg(B, 70), `yk${key}`)){ const nx = -(ky - by), ny = kx - bx, sg = (m[0] - d.x)*nx + (m[1] - d.y)*ny >= 0 ? 1 : -1; B.push(nx*sg, ny*sg, 70); } } });
+      if (d.d < 34 && B.hurt(700, `yk${key}`, {raw:1})){ const nx = -(ky - by), ny = kx - bx, sg = (m[0] - d.x)*nx + (m[1] - d.y)*ny >= 0 ? 1 : -1; B.push(nx*sg, ny*sg, 70); } } });
 }
 function segDist(px, py, ax, ay, bx, by){ const vx = bx - ax, vy = by - ay, k = cl(((px - ax)*vx + (py - ay)*vy)/(vx*vx + vy*vy || 1)), x = ax + vx*k, y = ay + vy*k; return {d:Math.hypot(px - x, py - y), x, y}; }
 function drawTugFloor(B, c, p){ const G = tugGeo(B, p), al = cl(p.t/.5)*cl((p.len + 3 - p.t)/.6), ok = tugOk(B, p), T = B.now/1000, [dx, dy] = G.door;
@@ -233,7 +233,7 @@ function drawTugTop(B, c, p){ const G = tugGeo(B, p), ok = tugOk(B, p), T = B.no
 // ===== ⑦ 실 감옥 =====
 function prisonR(t, len){ if (t < 1) return 470; if (t < 13) return lerp(470, 150, ease((t - 1)/12)); if (t < len - 1.5) return 150; return lerp(150, 560, ease((t - (len - 1.5))/1.5)); }
 function tickPrison(B, p){ if (once(B, 'pw' + p.seed)) B.sfx('warn', 0); if (p.t < 1.6 || p.t > p.len - 1.5) return; const m = meXY(B); if (!m) return; const [bx, by] = bossPos(B), r = prisonR(p.t, p.len) + 12;
-  if (!inEll(m[0], m[1], bx, by, r, r*.6)) B.hurt(dmg(B, 10), `pr${p.seed}.${Math.floor(p.t/1.4)}`); }
+  if (!inEll(m[0], m[1], bx, by, r, r*.6)) B.hurt(654, `pr${p.seed}.${Math.floor(p.t/1.4)}`, {raw:1}); }
 function drawPrisonFloor(B, c, p){ const [bx, by] = bossPos(B), r = prisonR(p.t, p.len), al = cl(p.t/.8)*cl((p.len - p.t)/1.2);
   c.save(); c.globalAlpha = al; c.fillStyle = 'rgba(80,0,30,.42)'; c.beginPath(); c.rect(-200, 0, B.W + 400, B.H + 200); c.ellipse(bx, by, r, r*.6, 0, 0, 7); c.fill('evenodd'); c.restore(); }
 function drawPrisonTop(B, c, p){ const [bx, by] = bossPos(B), r = prisonR(p.t, p.len), al = cl(p.t/.8)*cl((p.len - p.t)/1.2), T = B.now/1000, n = 32;
