@@ -1,6 +1,7 @@
 // 토토??? (탁도현 · 약속나무회 교주) 다크 보스 · 규칙은 docs/BOSS_ENGINE.md · 기획은 docs/DARK_STORY.md "보스 패턴 규칙"
 // 기본 공격: 고래 꼬리 (발밑 V 자) · ① 약속의 원 ② 생활 규칙 ③ 의자 나눠 앉기 → 50% 변신 → ④ 고해 장부 ⑤ 세뇌 ⑥ 설교 끊기 → 20% ⑦ 고래 등
 import { pick, beat, cl, lerp, ease, dist, inEll, shadow } from './kit.js';
+import { DARK_ROOMS } from '../dark.js';
 import { bossArt, cultist, CULT, chair, CHAIR, ticket, sea, SC, BX0, BY0, BW, BH } from './toto_art.js';
 
 const P = {
@@ -12,10 +13,17 @@ const GAP = 2.5, TRANS = 5;
 const LV = {fence:1, rule:.5, chair:.3, pages:.6, brain:.5, sermon:.25};
 const AX0 = 110, AX1 = 990, AY0 = 280, AY1 = 795;   // 걸을 수 있는 곳 (문 쪽으로 밀려 나가지 않게)
 const clampX = x => cl(x, AX0, AX1), clampY = y => cl(y, AY0, AY1);
-// 방 가구 자리 (dark.js SPOTS · 반지름 26 의 막힌 곳) · 의자 · 장부 쪽이 가구에 겹치지 않게 밀어내요
-const SPOTS = [[150, 300], [320, 300], [490, 300], [660, 300], [830, 300], [980, 300], [120, 450], [120, 600], [120, 740], [980, 450], [980, 600], [980, 740], [260, 790], [400, 790], [840, 790]];
-function free(x, y){ for (const [sx, sy] of SPOTS){ const d = dist(x, y, sx, sy); if (d < 64){ const k = 64/Math.max(1, d); x = sx + (x - sx)*k + (d < 1 ? 64 : 0); y = sy + (y - sy)*k; } } return [cl(x, 140, 960), cl(y, 330, 770)]; }
-// 내 캐릭터 옮기기는 B.push 로만 해요 (B.tp 는 엔진 안에서 const target 에 값을 넣다 멈춰요)
+// 방의 막힌 곳 (한 층 방: 문제 가구 둘레 · 3 층 방: 보스 층의 벽 · 계단) · 의자 · 장부 쪽 · 모이는 자리가 겹치지 않게 밀어내요
+let blk = null;
+function blocks(){ if (blk) return blk; const R = DARK_ROOMS.toto || {}, c = [], r = [];
+  if (R.floors){ for (const [f, x, y, w, h] of R.walls || []) if (f === R.floors) r.push([x, y, w, h]); for (const st of R.stairs || []) if (st.f === R.floors && st.rect) r.push(st.rect); }
+  else for (const pz of R.puzzles || []) c.push([pz.x, pz.y - 4]);
+  return blk = {c, r}; }
+function free(x, y){ const {c, r} = blocks();
+  for (const [sx, sy] of c){ const d = dist(x, y, sx, sy); if (d < 64){ const k = 64/Math.max(1, d); x = sx + (x - sx)*k + (d < 1 ? 64 : 0); y = sy + (y - sy)*k; } }
+  for (const [rx, ry, w, h] of r){ if (x > rx - 40 && x < rx + w + 40 && y > ry - 40 && y < ry + h + 40){ const L = x - (rx - 40), Rr = rx + w + 40 - x, T = y - (ry - 40), D = ry + h + 40 - y, m = Math.min(L, Rr, T, D); if (m === L) x = rx - 40; else if (m === Rr) x = rx + w + 40; else if (m === T) y = ry - 40; else y = ry + h + 40; } }
+  return [cl(x, 140, 960), cl(y, 330, 770)]; }
+// 내 캐릭터 옮기기는 B.push 로 해요 (가구 · 벽에 막혀요)
 const FONT = s => `bold ${s}px "Dongle",sans-serif`;
 const T2 = Math.PI*2;
 
@@ -76,7 +84,7 @@ function rules(B, p){
   const out = [], rnd0 = B.rng(p.seed + '.r'), flip = rnd0() < .5 ? 0 : 1, n = Math.max(1, B.alive.length);
   for (let i = 0; i < 3; i++){ const t0 = .5 + i*4, chk = t0 + 3.2, gather = (i + flip)%2 === 1, rnd = B.rng(`${p.seed}.r${i}`);
     const [fx, fy] = bodyAt(B, nowAt(B, p, t0)), a = rnd()*T2, rx = 80 + 16*n;
-    out.push({i, t0, chk, gather, x:cl(fx + Math.cos(a)*130, 150 + rx*.5, 950 - rx*.5), y:cl(fy + Math.sin(a)*80, 330, 760), rx, ry:rx*.6, bx:fx, by:fy}); }
+    const [gx, gy] = free(fx + Math.cos(a)*130, fy + Math.sin(a)*80); out.push({i, t0, chk, gather, x:cl(gx, 150 + rx*.5, 950 - rx*.5), y:cl(gy, 330, 760), rx, ry:rx*.6, bx:fx, by:fy}); }
   return out;
 }
 const APART_BOSS = 230, APART_P = 170;
@@ -198,11 +206,11 @@ export default {
         B.setBp({h:Math.round(bwH*100)/100}); bwBp = true;
       }
       if (W.on && W.T.uid !== me.uid){ const T = W.T, d = dist(T.x, T.y, mx, my), h = headOf(B, T);
-        const rear = h !== null && d > 1 && ((mx - T.x)*Math.cos(h) + (my - T.y)*Math.sin(h))/d < -.34;
+        const rear = h === null || d > 1 && ((mx - T.x)*Math.cos(h) + (my - T.y)*Math.sin(h))/d < -.34;
         if (d < 46 && !rear && B.hurt(B.lo + 40, `bt.${W.key}.${Math.floor(p.t/1.2)}`)) B.push(mx - T.x, my - T.y, 70); }
       // 호스트: 등 뒤로 닿은 친구가 있으면 깨워요
       if (B.host && W.on && now - hostAt > 300){ const T = W.T, h = headOf(B, T);
-        if (h !== null){ const by = B.alive.find(o => o.uid !== T.uid && dist(o.x, o.y, T.x, T.y) < 66 && ((o.x - T.x)*Math.cos(h) + (o.y - T.y)*Math.sin(h))/Math.max(1, dist(o.x, o.y, T.x, T.y)) < -.34);
+        { const by = B.alive.find(o => o.uid !== T.uid && dist(o.x, o.y, T.x, T.y) < 66 && (h === null || ((o.x - T.x)*Math.cos(h) + (o.y - T.y)*Math.sin(h))/Math.max(1, dist(o.x, o.y, T.x, T.y)) < -.34));   // 멈춰 있는 (자리를 비운) 노리는 몸은 닿기만 해도 깨어요
           if (by){ hostAt = now; B.tx(bs => bs.wake && bs.wake.k === W.key ? undefined : {...bs, wake:{k:W.key, by:by.uid, at:now}}); } } }
       if (W.woke && once('wk.' + W.key, now)){ B.sfx('hit'); const T = W.T; if (T) B.fx('툭!', T.x, T.y - 80, '#c8ffd0'); }
       if (!W.woke && W.T && W.T.uid === me.uid && !W.solo && p.t >= W.s1 && p.t < W.s1 + .5 && once('bx.' + W.key, now)){ if (B.hurt(B.lo + 100, 'bx.' + W.key)) B.shake(); }
@@ -268,7 +276,7 @@ export default {
       if (diveWarn(t3)){ for (let i = 0; i < 16; i++){ const an = i/16*T2 + now/900, r0 = 1 + ((now/400 + i*.37)%1)*.12; fillEll(c, C[0] + Math.cos(an)*rx*r0, C[1] + Math.sin(an)*ry*r0, 6, 4, 'rgba(200,240,255,.7)'); } ring(c, C[0], C[1], rx*.58, ry*.58, 'rgba(200,240,255,.7)', 2, .5 + .4*Math.sin(now/90), [8, 8]); }
       c.restore(); }
     // 변신 뒤: 방 구석의 촛불
-    if (s.phase >= 2 && s.ph2 > 4){ for (const [x, y] of [[120, 300], [980, 300], [120, 790], [980, 790]]){ c.save(); c.fillStyle = 'rgba(232,224,200,.8)'; c.fillRect(x - 3, y - 22, 6, 22); c.restore(); fillEll(c, x, y - 26, 3.5, 7, `rgba(255,${190 + Math.sin(now/70 + x)*40|0},90,.95)`); const gl = c.createRadialGradient(x, y - 26, 2, x, y - 26, 60); gl.addColorStop(0, 'rgba(255,190,90,.22)'); gl.addColorStop(1, 'rgba(255,190,90,0)'); c.fillStyle = gl; c.fillRect(x - 60, y - 86, 120, 120); } }
+    if (s.phase >= 2 && s.ph2 > 4){ for (const [x, y] of [[AX0 + 10, AY0 + 20], [AX1 - 10, AY0 + 20], [AX0 + 10, AY1 - 5], [AX1 - 10, AY1 - 5]]){ c.save(); c.fillStyle = 'rgba(232,224,200,.8)'; c.fillRect(x - 3, y - 22, 6, 22); c.restore(); fillEll(c, x, y - 26, 3.5, 7, `rgba(255,${190 + Math.sin(now/70 + x)*40|0},90,.95)`); const gl = c.createRadialGradient(x, y - 26, 2, x, y - 26, 60); gl.addColorStop(0, 'rgba(255,190,90,.22)'); gl.addColorStop(1, 'rgba(255,190,90,0)'); c.fillStyle = gl; c.fillRect(x - 60, y - 86, 120, 120); } }
     // 이동 연출: 촛불 든 두건 신도 그림자들이 줄지어 행진해요
     { const [x0, y0] = body(B), [x1, y1] = bodyAt(B, now - 150), sp = cl(dist(x0, y0, x1, y1)/.15/50);
       if (sp > .05){ const im = cultist(false, false);
