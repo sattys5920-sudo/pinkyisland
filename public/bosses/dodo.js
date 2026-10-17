@@ -11,18 +11,24 @@ const LINES = { mole:'땅속은 조용해야 해.', rail:'광차는 멈추지 �
 const LAMP_Y = (FOOT + LAMP)*S; // 발에서 헬멧 불빛까지
 
 // ① 두더지 굴
-const HOLES = [[330, 545], [770, 545], [400, 745], [700, 745]], POP_RX = 75, POP_RY = 45;
+let HOLES = [[330, 545], [770, 545], [400, 745], [700, 745]]; const POP_RX = 75, POP_RY = 45;
 const MOLE_I = .6, MOLE_C = 3.7, MOLE_BUMP = 2.0, MOLE_UP = 3.4;
 // ② 광차 선로
-const RY = 700, LEV = { L:[392, 628], R:[708, 628] }, FORKX = { L:380, R:720 }, CV = 320;
+let RY = 700, LEV = { L:[392, 628], R:[708, 628] }, FORKX = { L:380, R:720 }; const CV = 320;
 // ③ 발파
-const ROCKS3 = [[310, 640], [560, 770], [800, 640]];
+let ROCKS3 = [[310, 640], [560, 770], [800, 640]];
 // ④ 갱도 지도
-const COLS = [0, 367, 733, 1100], ROWS = [330, 615, 900], MAPR = [[.8, 2.8], [4.4, 6.4], [8.0, 10.0]], PIT = 1.6;
+let COLS = [0, 367, 733, 1100], ROWS = [330, 615, 900]; const MAPR = [[.8, 2.8], [4.4, 6.4], [8.0, 10.0]], PIT = 1.6;
 // ⑥ 쿵쿵쿵
-const WALL = [860, 455], RHY = [[0, .5, 1.0], [0, .45, .9, 1.6], [0, .9, 1.35], [0, .5, 1.4, 1.9], [0, .6, 1.0, 1.45]], KN0 = 1.0, KNC = 4.2;
+let WALL = [860, 455]; const RHY = [[0, .5, 1.0], [0, .45, .9, 1.6], [0, .9, 1.35], [0, .5, 1.4, 1.9], [0, .6, 1.0, 1.45]], KN0 = 1.0, KNC = 4.2;
 // ⑦ 출구로
-const EXITS = [[165, 530], [935, 530]], EV = 92;
+let EXITS = [[165, 530], [935, 530]]; const EV = 92;
+// 방 자리: 위 숫자는 보스 집 (550, 560) · 방 1100 × 900 기준이에요. 방이 달라지면 B.hx · B.hy · B.W · B.H 에 맞춰 옮겨요
+let RW = 1100, RH = 900, TOPY = 330, BUNY = 560, GEO = '';
+const G0 = { HOLES, RY, LEV, FORKX, ROCKS3, WALL, EXITS };
+function geo(B){ const k = `${B.hx},${B.hy},${B.W},${B.H}`; if (k === GEO) return; GEO = k; const ox = (B.hx ?? 550) - 550, oy = (B.hy ?? 560) - 560, P = ([x, y]) => [x + ox, y + oy];
+  RW = B.W || 1100; RH = B.H || 900; HOLES = G0.HOLES.map(P); RY = G0.RY + oy; LEV = { L:P(G0.LEV.L), R:P(G0.LEV.R) }; FORKX = { L:G0.FORKX.L + ox, R:G0.FORKX.R + ox };
+  ROCKS3 = G0.ROCKS3.map(P); WALL = P(G0.WALL); EXITS = G0.EXITS.map(P); TOPY = 330 + oy; BUNY = 560 + oy; COLS = [0, RW/3, RW*2/3, RW]; ROWS = [TOPY, 615 + oy, RH]; CAVE = null; }
 
 let lastB = null; // 레버를 누르러 걸어간 뒤에 쓸 가장 새 B
 const sm = {}; // 이 화면만의 기억 (말한 줄 · 부메랑 겨눔 · 호스트 기록 …)
@@ -32,7 +38,7 @@ function prune(){ const ks = Object.keys(sm); if (ks.length < 500) return; for (
 
 // 시간을 dt 초 뒤로 (음수면 앞으로) 돌린 B
 function shiftB(B, dt){ const o = Object.create(B); o.now = B.now - dt*1000; o.t = B.t - dt; o.pt = B.pt - dt; o.ph2 = B.ph2 >= 0 ? B.ph2 - dt : -1; o.ph3 = B.ph3 >= 0 ? B.ph3 - dt : -1; o._p = o._i = undefined; return o; }
-const pk = B => B._p || (B._p = pick(B, PAT, {gap:GAP, trans:TRANS}));
+const pk = B => { if (B._p) return B._p; geo(B); return (B._p = pick(B, PAT, {gap:GAP, trans:TRANS})); };
 const wander = t => [Math.cos(t*.42)*125 + Math.sin(t*1.07)*30, Math.sin(t*.61)*44 + Math.sin(t*1.3)*10];
 const stunned = B => (B.bs.stun || 0) > B.now;
 const half = B => B.phase >= 3 || (B.phase === 2 && B.ph2 >= 1.9);
@@ -87,13 +93,13 @@ function boomers(B){ const bt = beat(B, BEAT), out = []; for (const n of [bt.n, 
 
 // ===== ② 광차 =====
 function carts(B, p){ const k = 'ca' + p.seed; if (sm[k]) return sm[k]; const r = B.rng(p.seed + 'c');
-  return (sm[k] = [0, 1, 2].map(i => { const L = r() < .5, xs = L ? -40 : 1140, xf = FORKX[L ? 'L' : 'R']; return { i, L, t0:1.0 + i*3.6, xs, dir:L ? 1 : -1, xf, tf:Math.abs(xf - xs)/CV }; })); }
+  return (sm[k] = [0, 1, 2].map(i => { const L = r() < .5, xs = L ? -40 : RW + 40, xf = FORKX[L ? 'L' : 'R']; return { i, L, t0:1.0 + i*3.6, xs, dir:L ? 1 : -1, xf, tf:Math.abs(xf - xs)/CV }; })); }
 const switched = (B, p, c) => !!(B.bs.rl && B.bs.rl.k === p.seed && (B.bs.rl.on || []).includes(c.i));
 function cartAt(B, p, c){ const k = p.t - c.t0; if (k < 0) return null;
   if (k < c.tf) return { x:c.xs + c.dir*k*CV, y:RY, a:0 };
   if (switched(B, p, c)){ const u = (k - c.tf)/.8; if (u > 1) return null; const i = info(B), ex = i.x - c.dir*62, ey = i.y + 4, cx = c.xf + c.dir*120, q = 1 - u;
     return { x:q*q*c.xf + 2*u*q*cx + u*u*ex, y:q*q*RY + 2*u*q*RY + u*u*ey, a:u, br:1 }; }
-  const x = c.xf + c.dir*(k - c.tf)*CV*1.2; if (x < -80 || x > 1180) return null; return { x, y:RY, a:0 }; }
+  const x = c.xf + c.dir*(k - c.tf)*CV*1.2; if (x < -80 || x > RW + 80) return null; return { x, y:RY, a:0 }; }
 function leverCart(B, p, side){ for (const c of carts(B, p)) if ((side === 'L') === c.L && p.t < c.t0 + c.tf - .05) return c; return null; }
 function pullLever(B, side){ const p = pk(B); if (p.id !== 'rail') return; const c = leverCart(B, p, side); if (!c || switched(B, p, c)) return;
   B.sfx('hit', 100); B.fx('철컥', LEV[side][0], LEV[side][1] - 50, '#c8ffb0');
@@ -102,7 +108,7 @@ function pullLever(B, side){ const p = pk(B); if (p.id !== 'rail') return; const
 // ===== ③ 발파 =====
 function blasts(B, p){ const k = 'bl' + p.seed; if (sm[k]) return sm[k]; const r = B.rng(p.seed + 'b'), a = r() < .5; return (sm[k] = [{ L:a, lit:1.0, boom:3.8, j:0 }, { L:r() < .6 ? !a : a, lit:6.0, boom:8.8, j:1 }]); }
 const inShadow = (x, y, L) => ROCKS3.some(([rx, ry]) => Math.abs(y - ry) < 42 && (L ? x > rx + 28 && x < rx + 200 : x < rx - 28 && x > rx - 200));
-const frontX = (bl, t) => { const u = (t - bl.boom)/.6; return bl.L ? lerp(40, 1060, u) : lerp(1060, 40, u); };
+const frontX = (bl, t) => { const u = (t - bl.boom)/.6; return bl.L ? lerp(40, RW - 40, u) : lerp(RW - 40, 40, u); };
 
 // ===== ④ 갱도 지도 =====
 function mapCells(B, p){ const k = 'mc' + p.seed; if (sm[k]) return sm[k]; const r = B.rng(p.seed + 'g');
@@ -155,7 +161,7 @@ function drawTrailTop(B, c){
 let CAVE = null;
 function caveRocks(B){ if (CAVE) return CAVE; const P = []; let id = 0, W = B.W, H = B.H;
   for (const side of [-1, 1]) for (let r = 0; r < 5; r++){ const w = 240 - r*44, n = Math.max(1, Math.floor(w/28)); for (let i = 0; i < n; i++){ const s = 500 + (id++)*13.7, xo = 10 + (i + .5)*(w/n) + (fxH(s) - .5)*10; P.push({ x:side < 0 ? xo : W - xo, y:H - 14 - r*22 - (1 - i/n)*10, sz:17 - r*1.4 + fxH(s + 2)*10, t0:.05 + r*.17 + fxH(s + 3)*.35, s, pile:1 }); } }
-  for (let i = 0; i < 60; i++){ const s = 900 + i*7.31; P.push({ x:110 + fxH(s)*880, y:380 + fxH(s + 1)*480, sz:6 + Math.pow(fxH(s + 2), 2)*30, t0:fxH(s + 3)*1.35, s, pile:0 }); }
+  for (let i = 0; i < 60; i++){ const s = 900 + i*7.31; P.push({ x:110 + fxH(s)*(W - 220), y:H - 520 + fxH(s + 1)*480, sz:6 + Math.pow(fxH(s + 2), 2)*30, t0:fxH(s + 3)*1.35, s, pile:0 }); }
   for (const p of P) p.land = p.t0 + Math.sqrt(2*620/2400);
   return (CAVE = P.sort((a, b) => a.y - b.y)); }
 function drawRubble(B, c){ const k = B.ph2; if (k < 0) return; for (const p of caveRocks(B)){ if (!p.pile || k < p.land) continue; const q = cl((k - p.land)/.3), by = Math.abs(Math.sin(q*Math.PI*2))*p.sz*.35*(1 - q); rock(c, p.x, p.y - by, p.sz, p.s, fxH(p.s + 4)*6); } }
@@ -202,7 +208,7 @@ function bubble(c, x, y, s, bg = '#fff4e0', fg = '#5a3a10'){ c.save(); c.font = 
 function railSleepers(c, x0, y0, x1, y1){ const n = Math.hypot(x1 - x0, y1 - y0)/22; c.fillStyle = '#3e2c1a'; for (let i = 0; i < n; i++){ const u = i/n; c.fillRect(lerp(x0, x1, u) - 4, lerp(y0, y1, u) - 13, 8, 26); } }
 
 export default {
-  _t: { pk, info, mapCells, carts, blasts, knockRounds, escFoot, WALL, EXITS }, // 혼자 시험용 (엔진은 안 써요)
+  _t: { pk, info, mapCells, carts, blasts, knockRounds, escFoot, geo:() => ({ WALL, EXITS, LEV, ROCKS3, HOLES, RY, COLS, ROWS }) }, // 혼자 시험용 (엔진은 안 써요)
   reach: 125,
   height: 255,
   pos(B){ const i = info(B); return [i.x, i.y]; },
@@ -248,21 +254,21 @@ export default {
         if (k > .2 && k < MOLE_BUMP){ const q = cl((k - .2)/(MOLE_BUMP - .2)); for (let m = 0; m < 6; m++){ const a = m/6*6.28 + B.t*3; fill(c, x + Math.cos(a)*30, y - 4 + Math.sin(a)*10 - Math.abs(Math.sin(B.t*20 + m))*8*q, 9, 6, '#6a5040'); }
           ring(c, x, y, POP_RX, POP_RY, `rgba(255,216,112,${.45 + .4*Math.sin(B.t*14)})`, 3, [7, 5]); }
         if (k > MOLE_BUMP && k < MOLE_BUMP + .4){ c.save(); c.globalAlpha = 1 - (k - MOLE_BUMP)/.4; fill(c, x, y, POP_RX*1.1, POP_RY*1.1, 'rgba(160,120,80,.7)'); c.restore(); } } }
-    else if (p.id === 'rail'){ const al = Math.min(cl(t*3), cl((p.len + .4 - t)*3)); c.save(); c.globalAlpha = al; railSleepers(c, 20, RY, 1080, RY);
-      c.strokeStyle = '#8a8a92'; c.lineWidth = 3; c.beginPath(); for (const o of [-9, 9]){ c.moveTo(20, RY + o); c.lineTo(1080, RY + o); } c.stroke();
+    else if (p.id === 'rail'){ const al = Math.min(cl(t*3), cl((p.len + .4 - t)*3)); c.save(); c.globalAlpha = al; railSleepers(c, 20, RY, RW - 20, RY);
+      c.strokeStyle = '#8a8a92'; c.lineWidth = 3; c.beginPath(); for (const o of [-9, 9]){ c.moveTo(20, RY + o); c.lineTo(RW - 20, RY + o); } c.stroke();
       const i = info(B);
       for (const s of ['L', 'R']){ const xf = FORKX[s], d = s === 'L' ? 1 : -1, cx = xf + d*120, ex = i.x - d*62, ey = i.y + 4, nc = leverCart(B, p, s), on = nc ? switched(B, p, nc) : false;
         c.strokeStyle = on ? 'rgba(170,230,150,.85)' : 'rgba(120,120,128,.55)'; c.lineWidth = 3; c.setLineDash(on ? [] : [8, 7]); c.beginPath(); for (const o of [-8, 8]){ c.moveTo(xf, RY + o); c.quadraticCurveTo(cx, RY + o, ex + o*.3*d, ey + o*.6); } c.stroke(); c.setLineDash([]);
         const [lx, ly] = LEV[s]; c.fillStyle = '#2a2a30'; c.fillRect(lx - 22, ly - 4, 44, 12); c.save(); c.translate(lx, ly); c.rotate(on ? -d*.6 : d*.6); c.fillStyle = '#9a9aa2'; c.fillRect(-3, -38, 6, 38); fill(c, 0, -40, 8, 8, on ? '#7aff9a' : '#ff6a5a'); c.restore(); }
-      for (const ct of carts(B, p)){ const k = t - ct.t0; if (k > -1.0 && k < ct.tf){ const fx = ct.L ? 20 : 1080, len = 520; c.globalAlpha = al*(.35 + .3*Math.sin(B.t*18)); c.fillStyle = '#ffd870'; c.fillRect(ct.L ? fx : fx - len, RY - 3, len, 6); c.globalAlpha = al; } }
+      for (const ct of carts(B, p)){ const k = t - ct.t0; if (k > -1.0 && k < ct.tf){ const fx = ct.L ? 20 : RW - 20, len = 520; c.globalAlpha = al*(.35 + .3*Math.sin(B.t*18)); c.fillStyle = '#ffd870'; c.fillRect(ct.L ? fx : fx - len, RY - 3, len, 6); c.globalAlpha = al; } }
       c.restore(); }
     else if (p.id === 'blast'){ const al = Math.min(cl(t*3), cl((p.len + .4 - t)*3));
       for (const bl of blasts(B, p)){ if (t < bl.lit - .2 || t > bl.boom + .2) continue; const fl = .5 + .2*Math.sin(B.t*30); c.save(); c.globalAlpha = al*fl*cl((t - bl.lit + .2)*3);
         c.fillStyle = 'rgba(6,8,18,.75)'; for (const [rx, ry] of ROCKS3){ const x0 = bl.L ? rx + 20 : rx - 20, x1 = bl.L ? rx + 210 : rx - 210; c.beginPath(); c.moveTo(x0, ry - 36); c.lineTo(x1, ry - 42); c.lineTo(x1, ry + 42); c.lineTo(x0, ry + 30); c.closePath(); c.fill(); } c.restore(); }
       c.save(); c.globalAlpha = al; for (let n = 0; n < 3; n++){ const [rx, ry] = ROCKS3[n]; blit(c, bigRock(n), rx, ry); } c.restore();
-      for (const bl of blasts(B, p)){ if (t < bl.lit - .4 || t > bl.boom) continue; const x0 = bl.L ? 46 : 1054, fu = cl((bl.boom - t)/(bl.boom - bl.lit)); c.save(); c.globalAlpha = al;
-        for (let n = 0; n < 6; n++){ c.fillStyle = '#c82a2a'; c.fillRect(x0 - 18 + (n % 3)*12, 560 + Math.floor(n/3)*30, 10, 28); } c.strokeStyle = '#e8d0a0'; c.lineWidth = 3; c.beginPath(); c.moveTo(x0, 560); c.lineTo(x0, 560 - 90*fu); c.stroke();
-        fill(c, x0, 560 - 90*fu, 6 + Math.sin(B.t*40)*2, 6 + Math.sin(B.t*40)*2, '#fff0a0'); c.restore(); } }
+      for (const bl of blasts(B, p)){ if (t < bl.lit - .4 || t > bl.boom) continue; const x0 = bl.L ? 46 : RW - 46, fu = cl((bl.boom - t)/(bl.boom - bl.lit)); c.save(); c.globalAlpha = al;
+        for (let n = 0; n < 6; n++){ c.fillStyle = '#c82a2a'; c.fillRect(x0 - 18 + (n % 3)*12, BUNY + Math.floor(n/3)*30, 10, 28); } c.strokeStyle = '#e8d0a0'; c.lineWidth = 3; c.beginPath(); c.moveTo(x0, BUNY); c.lineTo(x0, BUNY - 90*fu); c.stroke();
+        fill(c, x0, BUNY - 90*fu, 6 + Math.sin(B.t*40)*2, 6 + Math.sin(B.t*40)*2, '#fff0a0'); c.restore(); } }
     else if (p.id === 'map'){ const cells = mapCells(B, p);
       MAPR.forEach(([, f], r) => { if (t < f || t > f + PIT + .4) return; const fade = cl((f + PIT + .4 - t)*2.5), grow = cl((t - f)/.25);
         for (const ci of cells[r]){ const [x, y, w, h] = cellRect(ci), cx = x + w/2, cy = y + h/2; c.save(); c.globalAlpha = fade; c.fillStyle = '#050302'; c.beginPath();
@@ -304,9 +310,9 @@ export default {
     if (p.id === 'rail'){ for (const ct of carts(B, p)){ const q = cartAt(B, p, ct); if (q){ blit(c, cartSpr(), q.x, q.y + 4); if (Math.floor(B.t*8) % 2) text(c, '덜컹', q.x, q.y - 54, 18, '#e8e0d0'); }
         const kc = t - ct.t0 - ct.tf - .8; if (switched(B, p, ct) && kc > 0 && kc < 1.2){ const i = info(B); text(c, '쾅!', i.x - ct.dir*40, i.y - 40 - kc*20, 40, '#ffe08a'); c.save(); c.globalAlpha = 1 - kc/1.2; for (let n = 0; n < 7; n++){ const a = -Math.PI*(.1 + n*.13); blit(c, nuggetSpr(), i.x - ct.dir*50 + Math.cos(a)*kc*140, i.y - 20 + Math.sin(a)*kc*120 + 200*kc*kc); } c.restore(); } } }
     else if (p.id === 'blast'){ for (const bl of blasts(B, p)){ if (t < bl.boom || t > bl.boom + 1.3) continue; const fx = frontX(bl, t), fade = cl((bl.boom + 1.3 - t)*1.5); c.save(); c.globalAlpha = fade*.4;
-        c.beginPath(); c.rect(bl.L ? 40 : fx, 330, bl.L ? fx - 40 : 1060 - fx, 570); c.clip(); c.beginPath(); c.rect(0, 330, 1100, 570);
+        c.beginPath(); c.rect(bl.L ? 40 : fx, TOPY, bl.L ? fx - 40 : RW - 40 - fx, RH - TOPY); c.clip(); c.beginPath(); c.rect(0, TOPY, RW, RH - TOPY);
         for (const [rx, ry] of ROCKS3){ if (bl.L) c.rect(rx + 28, ry - 42, 172, 84); else c.rect(rx - 200, ry - 42, 172, 84); } c.fillStyle = '#ff9a40'; c.fill('evenodd'); c.restore();
-        c.save(); c.globalAlpha = fade; c.fillStyle = 'rgba(255,240,200,.85)'; c.fillRect(fx - 8, 330, 16, 570); c.restore(); if (t < bl.boom + .6) text(c, '콰-앙!', info(B).x, 380, 44, '#ffe0a0'); } }
+        c.save(); c.globalAlpha = fade; c.fillStyle = 'rgba(255,240,200,.85)'; c.fillRect(fx - 8, TOPY, 16, RH - TOPY); c.restore(); if (t < bl.boom + .6) text(c, '콰-앙!', info(B).x, TOPY + 50, 44, '#ffe0a0'); } }
     else if (p.id === 'map'){ MAPR.forEach(([, f], r) => { if (t > f && t < f + .5) for (const ci of mapCells(B, p)[r]){ const [x, y, w, h] = cellRect(ci); text(c, '쿵', x + w/2, y + h/2, 34, '#ffd8a0'); } }); }
     else if (p.id === 'crack'){ const tg = B.target; if (tg && t > .3){ c.save(); c.translate(tg.x, tg.y - 50); c.fillStyle = '#e0b828'; c.beginPath(); c.arc(0, 2, 18, Math.PI, 0); c.fill(); c.fillStyle = '#b08a18'; c.fillRect(-22, 0, 44, 5); fill(c, 0, -9, 5, 4, '#fffad0'); c.restore(); } }
     else if (p.id === 'knock') drawKnockTop(B, c, p);
@@ -404,6 +410,6 @@ function drawMapPanel(B, c, w, h, p){ const cells = mapCells(B, p), t = p.t, al 
   for (let n = 0; n < 6; n++){ const cc = n % 3, r = Math.floor(n/3); let col = '#b8a888'; MAPR.forEach(([wn, f], q) => { if (cells[q].includes(n) && t > wn && t < f + PIT) col = t < f ? (Math.floor(B.t*6) % 2 ? '#e83a2a' : '#8a1a10') : '#1a0a08'; });
     c.fillStyle = col; c.fillRect(gx + cc*gw + 1.5, gy + r*gh + 1.5, gw - 3, gh - 3); }
   c.strokeStyle = 'rgba(90,70,48,.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(gx + gw*.5, gy + gh); c.lineTo(gx + gw*1.5, gy + gh*.6); c.lineTo(gx + gw*2.5, gy + gh*1.4); c.stroke();
-  const mp = (x, y) => [gx + cl(x/1100)*gw*3, gy + cl((y - ROWS[0])/(ROWS[2] - ROWS[0]))*gh*2], i = info(B), [bx, by] = mp(i.x, i.y); fill(c, bx, by, 4, 4, '#3a2a18');
+  const mp = (x, y) => [gx + cl(x/RW)*gw*3, gy + cl((y - ROWS[0])/(ROWS[2] - ROWS[0]))*gh*2], i = info(B), [bx, by] = mp(i.x, i.y); fill(c, bx, by, 4, 4, '#3a2a18');
   if (B.me){ const [px, py] = mp(B.me.x, B.me.y); fill(c, px, py, 3.5, 3.5, '#ff5a9a'); ring(c, px, py, 5.5, 5.5, '#fff', 1.5); }
   c.restore(); }
