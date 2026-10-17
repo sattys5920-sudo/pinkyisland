@@ -368,7 +368,7 @@ function tickCrack(B, p, me, lo){
     if (buf.h.length && now - buf.at > 1000){ buf.at = now; const add = buf.h.splice(0); B.tx(bs => { const old = bs.ch && bs.ch.k === p.seed ? bs.ch.h || [] : []; return {...bs, ch:{k:p.seed, h:[...old, ...add].filter(h => B.now - h[2] < 8000).slice(-40)}}; }); } } }
 function knockSwing(B, p){ const kr = knockRounds(B, p), r = kr.find(r => p.t > r.a0 && p.t < r.a1); B.sfx('hit', 60); B.fx('쿵', WALL[0] + (Math.random() - .5)*40, WALL[1] - 120, '#c8ffd0');
   if (!r || !B.me) return; const k = 'ks' + p.seed + r.j, L = sm[k] || (sm[k] = []); L.push(B.now); if (L.length > 8) L.shift();
-  const n = r.b.length; if (L.length < n || sm['kok' + p.seed + r.j]) return; const s = L.slice(-n), ok = r.b.every((b, q) => Math.abs((s[q] - s[0]) - b*1000) < 180);
+  const n = r.b.length; if (L.length < n || sm['kok' + p.seed + r.j]) return; const s = L.slice(-n), ok = r.b.every((b, q) => Math.abs((s[q] - s[0]) - b*1000) < 220);
   if (ok){ sm['kok' + p.seed + r.j] = 1; const uid = B.me.uid; B.fx('!', B.me.x, B.me.y - 70, '#c8ffd0'); B.tx(bs => { const a = bs.kn && bs.kn.k === p.seed ? bs.kn.a || [] : []; if (a.some(x => x[0] === r.j && x[1] === uid)) return undefined; return {...bs, kn:{k:p.seed, a:[...a, [r.j, uid]]}}; }); } }
 function tickKnock(B, p, me, lo){ const kr = knockRounds(B, p), open = kOpen(B, p);
   if (!open) for (const r of kr) for (let q = 0; q < r.b.length; q++){ const k = p.t - r.t - r.b[q]; if (k >= 0 && k < .2 && once('kb' + p.seed + r.j + '.' + q)) B.sfx('slam', 80); }
