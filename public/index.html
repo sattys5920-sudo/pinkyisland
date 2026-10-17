@@ -7421,6 +7421,7 @@ function hitTarget(w){
   { const mb = mailboxTap(w); if (mb) return mb; }
   for (const [id, o] of others) if (o.down && o.z === zoneId && Math.abs(w.x-o.x) < 40 && Math.abs(w.y-(o.y-10)) < 34) return {x:o.x + 30, y:o.y + 10, act:()=>{ darkRevive = {id, uid:o.uid, at:performance.now()}; toast(`${o.nick} 님을 ${downWords().helping}.... 곁에 있어 줘요`); }};
   const pt = petTap(w); if (pt) return pt;
+  { const dt_ = darkTap(w); if (dt_) return dt_; } // 다크 모드 집 문 · 게시판 · 판매대는 건물(우체국 · 공방 …)보다 먼저 (같은 자리에 있어요)
   for (const pl of (Z().places||[])) if (pl.post){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:()=>postPanel()}; }
   for (const pl of (Z().places||[])) if (pl.shelter){ const r = houseRect(pl); if (w.x>r.x && w.x<r.x+r.w && w.y>r.y && w.y<r.y+r.h+10) return {x:pl.x, y:pl.y+26, act:shelterPanel}; }
   { const bt = bazaarTap(w); if (bt) return bt; }
@@ -7429,7 +7430,6 @@ function hitTarget(w){
   if (zoneId==='starhill'){ for (const st of stars){ const a = (performance.now()-st.t)/4000, sx = st.x + a*160, sy = st.y + a*90; if (Math.hypot(w.x-sx, w.y-sy) < 40){ makeWish(); return {x:pos.x, y:pos.y, act:null, mark:performance.now()}; } } { const tr = Z().places.find(p=>p.kind==='tree'); if (tr && Math.hypot(w.x-tr.x, w.y-(tr.y-20)) < 70) return {x:tr.x, y:tr.y+100, act:promiseTree}; } }
   if (bossAlive() && Math.hypot(w.x-BOSS.x, w.y-(BOSS.y-30)) < 60){ if (!me.inv.sword){ toast('검이 없어요. 마을 광장의 콩이에게 가 봐요'); return {x:pos.x,y:pos.y,act:null,mark:performance.now()}; } return {x:BOSS.x, y:BOSS.y+70, act:()=>{ faceTo(BOSS.x, BOSS.y); swing(); }}; }
   for (const [id,s] of snowmenHere()) if (Math.abs(w.x-s.x)<22 && w.y>s.y-70 && w.y<s.y+8) return {x:s.x, y:s.y+34, act:()=>say('눈사람', id===uid ? '내가 만든 눈사람이에요. 눈이 그치면 녹아요.' : `${s.nick} 님이 만든 눈사람이에요. 눈이 그치면 녹아요.`)};
-  { const dt_ = darkTap(w); if (dt_) return dt_; }
   for (const n of NPCS) if (n.zone===zoneId && npcVisible(n) && Math.abs(w.x-n.x)<22 && w.y>n.y-48 && w.y<n.y+8) return {x:n.x, y:n.y+30, act:()=>talkTo(n)};
   if (zoneId==='home' && me.lot!=null) for (const [i,s] of slotsOf(me.lot, me.plots).entries()) if (Math.abs(w.x-s.x)<18 && Math.abs(w.y-s.y)<18) return {x:s.x, y:s.y+26, act:()=>useSlot(i)};
   return null;
