@@ -122,6 +122,8 @@ const kOpen = (B, p) => B.bs.ko === p.seed;
 
 // ===== 움직일 때 연출: 땅 밑으로 흙이 불룩 지나가요 · 천장에서 흙먼지 =====
 function moveK(B){ const a = info(B), b = info(shiftB(B, .05)); if (Math.abs(a.vis - b.vis) > .01 && !a.ug) return [0, 0, 0]; const v = dist(a.x, a.y, b.x, b.y)/.05; if (v > 900) return [0, 0, 0]; const d = dist(a.x, a.y, b.x, b.y) || 1; return [cl((v - 6)/90), (a.x - b.x)/d, (a.y - b.y)/d]; }
+const mkC = new Map(); // 지난 시각의 움직임은 바뀌지 않으니 기억해 둬요
+function moveAt(B, a){ const key = `${B.r.bossAt}|${Math.round((B.t - a)*100)}`; let v = mkC.get(key); if (!v){ const Bb = shiftB(B, a), i = info(Bb); v = [...moveK(Bb), i.x, i.y]; mkC.set(key, v); if (mkC.size > 160) mkC.delete(mkC.keys().next().value); } return v; }
 function crackSeg(c, x, y, rx, ry, seed){ const N = 18; c.beginPath(); for (let i = 0; i < N; i++){ if (fxH(seed + i*1.7) < .3) continue; const a0 = i/N*6.283, a1 = (i + 1)/N*6.283, j0 = .84 + fxH(seed + i)*.32, j1 = .84 + fxH(seed + (i + 1) % N)*.32; c.moveTo(x + Math.cos(a0)*rx*j0, y + Math.sin(a0)*ry*j0); c.lineTo(x + Math.cos(a1)*rx*j1, y + Math.sin(a1)*ry*j1); } c.stroke(); }
 function drawTrailFloor(B, c){
   const [k, ux, uy] = moveK(B); if (k < .03) return; const i = info(B), fx = i.x, fy = i.y, t = B.t; c.save();
@@ -139,10 +141,10 @@ function drawTrailFloor(B, c){
   c.restore(); }
 function drawTrailTop(B, c){
   const t = B.t; c.save();
-  { const Sx = .07, n0 = Math.floor(t/Sx); for (let j = 0; j < 8; j++){ const n = n0 - j, tb = n*Sx, a = t - tb; if (a < 0 || a > .55) continue; const Bb = shiftB(B, a), [k, ux, uy] = moveK(Bb); if (k < .1) continue; const ib = info(Bb);
+  { const Sx = .07, n0 = Math.floor(t/Sx); for (let j = 0; j < 8; j++){ const n = n0 - j, tb = n*Sx, a = t - tb; if (a < 0 || a > .55) continue; const [k, ux, uy, bx, by] = moveAt(B, a); if (k < .1) continue; const ib = {x:bx, y:by};
     for (let q = 0; q < 2; q++){ const s = n*7.13 + q*3.31; if (fxH(s) > k) continue; const side = fxH(s + 1)*2 - 1, x0 = ib.x + ux*(40 + fxH(s + 2)*70) + side*56, y0 = ib.y + uy*24 + (fxH(s + 3) - .5)*20, vy = -(150 + fxH(s + 4)*180)*(.6 + k*.5), y = y0 + vy*a + 850*a*a;
       if (y > y0 + 6) continue; c.globalAlpha = 1 - a/.6; rock(c, x0 + (side*70 + ux*60)*a, y, 3 + fxH(s + 5)*4*(.6 + k*.6), s*7, a*9); } } }
-  { const Sx = .1, n0 = Math.floor(t/Sx); for (let j = 0; j < 10; j++){ const n = n0 - j, tb = n*Sx, a = t - tb; if (a < 0) continue; const Bb = shiftB(B, a), [k, ux] = moveK(Bb); if (k < .08) continue; const ib = info(Bb), s = n*5.31 + 3;
+  { const Sx = .1, n0 = Math.floor(t/Sx); for (let j = 0; j < 10; j++){ const n = n0 - j, tb = n*Sx, a = t - tb; if (a < 0) continue; const [k, ux, , bx, by] = moveAt(B, a); if (k < .08) continue; const ib = {x:bx, y:by}, s = n*5.31 + 3;
     if (fxH(s) > k*.85) continue; const x = ib.x + ux*60 + (fxH(s + 1) - .5)*220, yL = ib.y - 30 + fxH(s + 2)*70, top = ib.y - 360, dust = fxH(s + 3) < .35, acc = dust ? 900 : 1500, fT = Math.sqrt(2*(yL - top)/acc);
     if (a < fT){ const y = top + .5*acc*a*a; c.globalAlpha = .6; c.strokeStyle = 'rgba(176,156,126,.35)'; c.lineWidth = dust ? 5 : 2; c.beginPath(); c.moveTo(x, Math.max(top, y - 26 - a*70)); c.lineTo(x, y); c.stroke(); c.globalAlpha = 1; if (!dust) rock(c, x, y, 3 + fxH(s + 4)*4, s, a*4); else { c.fillStyle = 'rgba(150,132,106,.45)'; c.beginPath(); c.arc(x, y, 7, 0, 7); c.fill(); } }
     else if (a < fT + .4){ const q = (a - fT)/.4; c.globalAlpha = (1 - q)*.6; c.fillStyle = 'rgba(160,138,108,.7)'; c.beginPath(); c.ellipse(x, yL - q*10, 6 + q*24, 2 + q*8, 0, 0, 7); c.fill(); } } }

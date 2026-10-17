@@ -234,7 +234,7 @@ function patTick(B, p){ const me = B.me, now = B.now, live = me && !me.down, see
   else if (p.id === 'paint'){ if (p.t < .6 && once(B, 'pw' + seed)) sayOnce(B, 'p' + seed, '새로 칠했어요. 하늘색으로.');
     if (live && p.t < p.len - PEND){ const tl = paintTiles(B, p), cx = Math.floor((me.x - GX0)/GW), cy = Math.floor((me.y - GY0)/GH); const i = tl.findIndex(q => q[0] === cx && q[1] === cy);
       if (i >= 0){ const pt = PT0 + i*PDT; if (p.t >= pt){ B.ctl.slip = .7; if (p.t < pt + .3) B.hurt(B.lo + 20, `pt.${seed}.${i}`); } } } }
-  else if (p.id === 'trans'){ if (B.ph2 > 2.2) sayOnce(B, 'tr' + B.r.rageAt, `${B.targetNick} 님, 새벽 5 시 40 분에 갈게요`, 3200); }
+  else if (p.id === 'trans'){ if (B.ph2 > 2.2) sayOnce(B, 'tr' + B.r.rageAt, `${B.target?.nick || B.targetNick} 님, 새벽 5 시 40 분에 갈게요`, 3200); }
   else if (p.id === 'rew'){ const l = loc(B); if (p.t < .6) sayOnce(B, 'rw' + seed, '다시… 처음부터…');
     RK.forEach((rk, i) => { const key = seed + '.' + i;
       if (p.t >= rk - 1 && p.t < rk && once(B, 'rwb' + key)){ B.sfx('warn'); const [x, y] = pos(B); B.fx('땡… 땡…', x + 90, y - 150, '#ffe9a0'); }
@@ -242,7 +242,7 @@ function patTick(B, p){ const me = B.me, now = B.now, live = me && !me.down, see
         l.rw[key] = e; B.sfx('slam'); if (live){ const d = histAt(l.hist, t3); if (d) try { B.tp(d[0], d[1]); } catch(e){} } }
       if (p.t >= rk + RBOOM && p.t < rk + RBOOM + .4 && once(B, 'rwx' + key)){ const e = l.rw[key]; if (e && live && e.pts.some(q => q[2] && inCross(me.x, me.y, q[0], q[1]))){ B.hurt(B.lo + 80, 'rwx.' + key); B.shake(); } } }); }
   else if (p.id === 'dlv'){ const d = dlOf(B, p); if (p.t < .6 && once(B, 'dw' + seed)) B.sfx('warn');
-    if (d && once(B, 'ds' + seed)) B.say(`${B.all.find(q => q.uid === d.uid)?.nick || B.targetNick} 님, 마지막 배달이요`, 2800);
+    if (d && once(B, 'ds' + seed)) B.say(`${B.all.find(q => q.uid === d.uid)?.nick || B.target?.nick || B.targetNick} 님, 마지막 배달이요`, 2800);
     if (d && d.cut && once(B, 'dc' + seed)){ const [x, y] = pos(B); B.fx('배달 취소', x, y - 170, '#c8ffd0'); B.sfx('slam'); }
     if (d && live && d.uid === me.uid && !d.cut && !d.done && p.t > DL0 && p.t < DL1){ const dx = d.box[0] - me.x, dy = d.box[1] - me.y, dd = Math.hypot(dx, dy) || 1, D = nAlive(B) <= 1 ? 45 : 120;
       B.ctl.drift = [dx/dd*D, dy/dd*D]; B.ctl.speed = .55;

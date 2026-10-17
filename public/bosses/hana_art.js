@@ -102,7 +102,7 @@ export function puff(){ if (PUFF) return PUFF; const cv = mkCanvas(128, 80), g =
   q.addColorStop(0, 'rgba(120,112,106,.75)'); q.addColorStop(.6, 'rgba(96,90,86,.45)'); q.addColorStop(1, 'rgba(80,76,72,0)'); g.fillStyle = q; g.fillRect(0, 0, 128, 128); return (PUFF = cv); }
 
 // ===== 50% 변신: 가장자리부터 종이처럼 타들어 가는 화면 =====
-const GW = 96, GH = 80;
+const GW = 150, GH = 124;
 const hsh = (i, j) => { const s = Math.sin(i*127.1 + j*311.7)*43758.5453; return s - Math.floor(s); };
 const mix = (a, b, u) => a + (b - a)*u;
 function vnoise(x, y){ const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j, u = fx*fx*(3 - 2*fx), v = fy*fy*(3 - 2*fy);
@@ -110,7 +110,7 @@ function vnoise(x, y){ const i = Math.floor(x), j = Math.floor(y), fx = x - i, f
 let BN = null, BNk = '', BM = null, BG = null, RESID = null, RESk = '';
 function burnInit(w, h){ const key = `${w|0}x${h|0}`; if (BN && BNk === key) return; BNk = key; BN = new Float32Array(GW*GH); const m = Math.min(w, h)/2;
   for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++){ const x = i/(GW - 1)*w, y = j/(GH - 1)*h, e = Math.min(x, w - x, y, h - y)/m;
-    const n = vnoise(i/6, j/6)*.6 + vnoise(i/2.2, j/2.2)*.3 + vnoise(i/.9, j/.9)*.1; BN[j*GW + i] = e + (n - .5)*.38; }
+    const n = vnoise(i/9, j/9)*.6 + vnoise(i/3.4, j/3.4)*.3 + vnoise(i/1.4, j/1.4)*.1; BN[j*GW + i] = e + (n - .5)*.38; }
   BM = mkCanvas(GW, GH); BG = mkCanvas(GW, GH); RESID = null; }
 function burnPaint(p, live, t){ const mc = BM.getContext('2d'), gc = BG.getContext('2d'), md = mc.createImageData(GW, GH), gd = gc.createImageData(GW, GH), M = md.data, G = gd.data;
   const band = live ? .06 : .035, gI = live ? 1 : .5, hA = live ? 255 : 220;
@@ -124,5 +124,5 @@ export function drawBurn(c, w, h, p, live, t, alpha = 1){ if (p <= .002) return;
   if (!live){ const key = `${w|0}x${h|0}:${p.toFixed(3)}`; if (!RESID || RESk !== key){ burnPaint(p, false, 0); RESk = key; RESID = [mkCanvas(GW, GH), mkCanvas(GW, GH)]; RESID[0].getContext('2d').drawImage(BM, 0, 0); RESID[1].getContext('2d').drawImage(BG, 0, 0); }
     c.save(); c.imageSmoothingEnabled = true; c.globalAlpha = alpha; c.drawImage(RESID[0], 0, 0, w, h); c.globalCompositeOperation = 'lighter'; c.globalAlpha = alpha*(.3 + .1*Math.sin(t*3.1)); c.drawImage(RESID[1], 0, 0, w, h); c.restore(); return; }
   burnPaint(p, true, t);
-  c.save(); c.imageSmoothingEnabled = true; c.globalAlpha = alpha; c.drawImage(BM, 0, 0, w, h); c.globalCompositeOperation = 'lighter'; c.drawImage(BG, -6, -6, w + 12, h + 12); c.globalAlpha = alpha*.8; c.drawImage(BG, 0, 0, w, h); c.restore(); }
+  c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.globalAlpha = alpha; c.drawImage(BM, 0, 0, w, h); c.globalCompositeOperation = 'lighter'; c.drawImage(BG, -6, -6, w + 12, h + 12); c.globalAlpha = alpha*.8; c.drawImage(BG, 0, 0, w, h); c.restore(); }
 export { hsh };

@@ -71,7 +71,7 @@ const inRect = (x, y, z) => x >= z[0] && x <= z[2] && y >= z[1] && y <= z[3];
 const BUB = 85;
 function smokeA(p){ return cl((p.t - .3)/.8)*cl((p.len - .4 - p.t)/.6); }
 function bubbles(B, p){ const a0 = B.rng(p.seed + 's')()*PI*2, out = [];
-  for (let i = 0; i < 2; i++){ const a = a0 + p.t*.32 + i*PI; out.push([cl(B.hx + Math.cos(a)*300, X0 + 120, X1 - 120), cl(B.hy + 40 + Math.sin(a)*170, Y0 + 90, Y1 - 50)]); } return out; }
+  for (let i = 0; i < 2; i++){ const a = a0 + p.t*.32 + i*PI; out.push([cl(B.hx + Math.cos(a)*230, X0 + 120, X1 - 120), cl(B.hy + 40 + Math.sin(a)*150, Y0 + 90, Y1 - 50)]); } return out; }
 
 // ===== ④ 밭고랑 벽 (솟아오르는 벽 · 틈) =====
 const GAP = 120;
@@ -82,7 +82,7 @@ function ridges(B, p){ if (RIk === p.seed) return RI; RIk = p.seed; const R = B.
 const wallD = (w, x, y) => w.o === 'h' ? [y - w.c, Math.abs(x - w.g) < GAP/2 - 8] : [x - w.c, Math.abs(y - w.g) < GAP/2 - 8];
 
 // ===== ⑤ 옮는 불씨 =====
-const TROUGH = [[235, 690], [865, 690]], SPREAD = 80, IGN = [.8, 6.8];
+const TROUGH = [[330, 715], [770, 715]], SPREAD = 80, IGN = [.8, 6.8];
 const emOn = (B, p) => B.bs.em && B.bs.em.k === p.seed ? B.bs.em.on || {} : {};
 
 // ===== ⑥ 양동이 릴레이 =====

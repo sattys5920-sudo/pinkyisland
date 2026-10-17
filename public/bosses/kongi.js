@@ -9,7 +9,7 @@ const HAND = [-206*S, 110*S - FOOTD];                    // 손전등 머리 (�
 const CR = 30, CG = 46;                                  // 수갑 고리 반지름 · 고리 사이 반
 const P = { 1:[{id:'ff', len:12}, {id:'search', len:11}, {id:'shadow', len:10}], 2:[{id:'white', len:12}, {id:'link', len:12}, {id:'haram', len:14}], 3:[{id:'door', len:14}] };
 const AMP = { ff:.4, search:.6, shadow:.5, white:.3, link:.6, haram:.2, door:.3 };
-const SAY = { ff:'시간은 내 편이야', search:'어디 숨었어?', shadow:'그림자는 거짓말 안 해', white:'그런 일은 없었어', link:'이름표 바꿔 달았지', haram:'…문… 열지…', door:'문이 열린다' };
+const SAY = { ff:'시간은 내 편이야', search:'어디 숨었어?', shadow:'그림자는 거짓말 안 해', white:'그런 일은 없었어', link:'이름표 바꿔 달았지', haram:'조용히 해', door:'문이 열린다' };
 const PHRASE = '문열지마';                               // 배지 뒷면 「문 열지 마」 (떨어진 경비대 배지 · 방 단서 ⑫)
 const norm = s => String(s || '').replace(/[\s.,!?~…·'"「」『』\-—]/g, '');
 
@@ -158,7 +158,7 @@ function haramChat(B, text){ const c = cur(B); if (c.id !== 'haram' || !meOk(B) 
 function haramTop(B, c2){ const c = cur(B), [fx, fy] = foot(B), top = fy - FOOTD - 150*S;
   for (const p of B.all){ if (!(p.bp && p.bp.c)) continue; c2.save(); c2.fillStyle = 'rgba(240,244,255,.95)'; c2.beginPath(); c2.roundRect(p.x - 26, p.y - 92, 52, 22, 10); c2.fill(); c2.fillStyle = '#5a6a9a'; for (let i = 0; i < 3; i++){ c2.beginPath(); c2.arc(p.x - 10 + i*10, p.y - 81 - (Math.floor(B.now/160 + i)%3 === 0 ? 3 : 0), 3, 0, 7); c2.fill(); } c2.restore(); }
   if (c.id === 'haram' && !stunned(B)){ const c6 = B.bs.c6, n = B.alive.length, got = c6 && c6.s === c.seed ? B.alive.filter(p => c6.u[p.uid]).length : 0;
-    for (let i = 0; i < n; i++){ c2.save(); c2.globalAlpha = i < got ? 1 : .35; badge(c2, fx - (n - 1)*13 + i*26, top - 40, .55, true, i < got); c2.restore(); }
+    for (let i = 0; i < n; i++){ c2.save(); c2.globalAlpha = i < got ? 1 : .35; badge(c2, fx - (n - 1)*13 + i*26, fy + 22, .55, true, i < got); c2.restore(); }
     const k = Math.sin(B.now/330); bubble(c2, fx + 90, top + 10 + k*6, '…문… 열지…', .75, -.1, -1, true, .45 + .4*Math.abs(k)); }
   const st = B.bs.stun || 0; if (st > B.now){ const u = cl((B.now - st + 8000)/500), out = cl((st - B.now)/600); badgeBack(c2, fx, top - 40 - u*20, .8 + u*.4, out); } }
 
@@ -210,7 +210,7 @@ function transScreen(B, c, w, h){ const k = B.phase === 2 ? B.ph2 : -1; if (k < 
     c.strokeStyle = '#d01818'; c.lineWidth = 4; c.beginPath(); c.moveTo(w/2 - fs*4.6, cy); c.lineTo(w/2 - fs*4.6 + fs*9.4*cl(u*2), cy); c.stroke();
     const s2 = '→ 배달원 옷'; text(c, s2.slice(0, Math.ceil(s2.length*cl(u*1.6 - .3))), w/2 + fs, cy + fs*1.7, fs*1.4, '#d01818', 'center', null); text(c, '담당 형사 : 공태식', w/2, cy + fs*3.4, fs*.8, '#4a4a5a', 'center', null); c.restore(); }
   if (k > 2.6){ const words = ['도망가', '문 열지 마', '그건 내가 아니야', '나는 여기 있어', '열면 바뀌어', '하람이야']; for (let i = 0; i < 6; i++){ const kk = k - 2.6 - i*.12; if (kk < 0) continue; const a = i*1.05 + .3, r2 = Math.min(w, h)*.18 + kk*Math.min(w, h)*.32; bubble(c, w/2 + Math.cos(a)*r2, h*.48 + Math.sin(a)*r2*.75, words[i], Math.min(1.3, w/420)*(1 + kk*.2), Math.sin(i)*.2, 1, true, fin*cl(kk*4)); } } }
-function smudges(B, c, w, h){ if (B.phase < 2 || (B.phase === 2 && B.ph2 < 4.4)) return; c.save(); c.globalAlpha = .4; c.fillStyle = '#e8e8e2'; for (const [x, y, w2, h2, a2] of [[0, .3, 70, 24, .2], [1, .38, 80, 22, -.15], [0, .86, 90, 26, -.1], [1, .82, 96, 24, .12]]){ c.save(); c.translate(x ? w - w2*.4 : w2*.4, y*h); c.rotate(a2); c.beginPath(); c.roundRect(-w2/2, -h2/2, w2, h2, 10); c.fill(); c.restore(); } c.restore(); }
+function smudges(B, c, w, h){ if (B.phase < 2 || (B.phase === 2 && B.ph2 < 4.4)) return; c.save(); c.globalAlpha = .28; c.fillStyle = '#e8e8e2'; for (const [x, y, w2, h2, a2] of [[0, .3, 70, 24, .2], [1, .38, 80, 22, -.15], [0, .86, 90, 26, -.1], [1, .82, 96, 24, .12]]){ c.save(); c.translate(x ? w - w2*.4 : w2*.4, y*h); c.rotate(a2); c.beginPath(); c.roundRect(-w2/2, -h2/2, w2, h2, 10); c.fill(); c.restore(); } c.restore(); }
 
 // ===== 모듈 =====
 export default {
@@ -218,8 +218,8 @@ export default {
   height: 248,
   pos(B){ return foot(B); },
   tick(B, dt){ reset(B); const c = cur(B);
-    if (c.id && c.id !== 'trans' && L.said !== c.seed){ L.said = c.seed; B.say(c.id === 'link' && B.target ? `${B.targetNick}, 이름표 바꿔 달았지` : SAY[c.id], 2400); }
-    if (c.id === 'trans'){ if (c.t > 1.85 && once(`tr1${B.r.rageAt}`)){ B.shake(); B.sfx('slam', 0); } if (c.t > 4.2 && once(`tr2${B.r.rageAt}`)) B.say(`${B.targetNick === '???' ? '그 몸' : B.targetNick} 몸으로 나간다. 19 년 기다렸어`, 2600); }
+    if (c.id && c.id !== 'trans' && L.said !== c.seed){ L.said = c.seed; { const nk = B.target?.nick || (B.targetNick !== '???' ? B.targetNick : ''); B.say(c.id === 'link' && nk ? `${nk}, 이름표 바꿔 달았지` : SAY[c.id], 2400); } }
+    if (c.id === 'trans'){ if (c.t > 1.85 && once(`tr1${B.r.rageAt}`)){ B.shake(); B.sfx('slam', 0); } if (c.t > 4.2 && once(`tr2${B.r.rageAt}`)) { const nk = B.target?.nick || (B.targetNick !== '???' ? B.targetNick : ''); B.say(nk ? `${nk} 몸으로 나간다. 19 년 기다렸어` : '이 몸으로 나간다. 19 년 기다렸어', 2600); } }
     trailTick(B);
     if (!stunned(B)){ basicTick(B); ffTick(B); searchTick(B); shadowTick(B); whiteTick(B); linkTick(B); doorTick(B); }
     haramTick(B); },
