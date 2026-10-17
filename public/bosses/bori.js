@@ -249,6 +249,13 @@ function darkTick(B, p, bx, by){ const me = B.me, s = sneakShot(B, p);
 function darkFloor(B, p, c){ const s = sneakShot(B, p); if (!s) return; if (s.t < 1) warnCircle(c, s.x, s.y, 66, 32, s.t, '255,170,60');
   else if (s.t < 1.35){ c.save(); c.globalAlpha = cl((1.35 - s.t)/.35); c.strokeStyle = '#ffb060'; c.lineWidth = 5; c.lineCap = 'round'; for (let i = -1; i <= 1; i++){ c.beginPath(); c.moveTo(s.x - 50, s.y - 30 + i*14); c.lineTo(s.x + 50, s.y + 10 + i*14); c.stroke(); } c.restore(); } }
 
+// 어둠 (겹친 빛이 다시 어두워지지 않게 따로 그린 캔버스에서 구멍을 지워요)
+let dkC = null;
+function darkSoft(c, w, h, a, holes){ if (a <= 0) return; if (!dkC) dkC = document.createElement('canvas'); const W = Math.ceil(w/2), H = Math.ceil(h/2); if (dkC.width !== W || dkC.height !== H){ dkC.width = W; dkC.height = H; }
+  const q = dkC.getContext('2d'); q.globalCompositeOperation = 'source-over'; q.clearRect(0, 0, W, H); q.fillStyle = `rgba(4,2,8,${cl(a)})`; q.fillRect(0, 0, W, H); q.globalCompositeOperation = 'destination-out';
+  for (const [x, y, r] of holes){ const g = q.createRadialGradient(x/2, y/2, r*.15, x/2, y/2, r/2); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.55, 'rgba(0,0,0,.85)'); g.addColorStop(1, 'rgba(0,0,0,0)'); q.fillStyle = g; q.fillRect(x/2 - r/2, y/2 - r/2, r, r); }
+  q.globalCompositeOperation = 'source-over'; c.drawImage(dkC, 0, 0, w, h); }
+
 // ===== 움직임 연출: 시곗바늘 잔상 · '철컥' =====
 function trailFloor(B, c, bx, by){ if (hidden(B)) return; const n = Math.floor(B.t/STEP);
   c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = '#b8f0c8'; c.lineCap = 'round';
@@ -356,9 +363,9 @@ export default {
     trailTop(B, c); },
   drawScreen(B, c, w, h){ transScreen(B, c, w, h); const p = cur(B); if (p.id !== 'dark' || stunned(B)) return;
     const al = cl(p.t/.8)*cl((p.len - p.t)/.6), z = B.view.zoom || 1, holes = [], soft = [], [bx, by] = bossPos(B);
-    for (const o of B.all){ const [x, y] = B.toScreen(o.x, o.y - 26), r = (o.down ? 60 : 118)*z; holes.push([x, y, r]); soft.push([x, y, r*.68]); }
-    if (revealed(B, p)){ const [x, y] = B.toScreen(bx, by - 100), r = 190*z; holes.push([x, y, r]); soft.push([x, y, r*.7]); }
-    darkness(c, w, h, .5*al, soft); darkness(c, w, h, .82*al, holes);
+    for (const o of B.all){ const [x, y] = B.toScreen(o.x, o.y - 26), r = (o.down ? 70 : 145)*z; holes.push([x, y, r]); }
+    if (revealed(B, p)){ const [x, y] = B.toScreen(bx, by - 100), r = 230*z; holes.push([x, y, r]); }
+    darkSoft(c, w, h, .9*al, holes);
     // 짤랑: 어둠 속 열쇠 꾸러미가 잠깐씩 반짝여요
     if (!revealed(B, p)){ const per = 1.4, n = Math.floor(B.now/1000/per), k = (B.now/1000 - n*per)/.35; if (k < 1){ const rng = B.rng(p.seed + 'jg' + n), [x, y] = B.toScreen(bx + (rng() - .5)*90, by - 60 - rng()*80);
         c.save(); c.globalAlpha = al*(1 - k); for (let i = 0; i < 4; i++){ const a = i*1.7 + n; A.keyShot(c, x + Math.cos(a)*22*k*z, y - k*16*z + Math.sin(a)*8*z, a, .5*Math.max(.7, z)); } c.restore();
