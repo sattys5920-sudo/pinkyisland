@@ -12,6 +12,7 @@ const P = {
 const GAP = 2.5, TRANS = 5, LOCK = 1.9, STEP = .2, BK = .5; // BK: 곰 그림 캔버스 → 월드 배율
 const LV = {clock:.6, clone:.85, cage:.5, dial:.2, chain:.35, music:.15, trans:0}; // 패턴마다 돌아다니는 정도
 const LINES = {clock:'보통 몇 시에 자?', clone:'똑같이 깎아 줄게.', cage:'문은 내가 잠가 줄게.', dial:'잠겼어. 못 열걸?', chain:'열쇠, 직접 건네줄래?', music:'이 노래… 알지?', dark:'아무도 없는 집이네.'};
+const tNick = B => (B.targetNick && B.targetNick !== '???') ? B.targetNick : (B.target?.nick || '???');
 const NONE = {id:null, t:0, len:0, n:0, k:0, seed:''};
 
 // ===== 내 화면 기억 (그리기 · 한 번만 하기) =====
@@ -164,7 +165,7 @@ function dialFloor(B, p, c){ const dl = dialState(B, p), al = cl(p.t*2)*cl((p.le
     c.fillStyle = bad ? 'rgba(255,60,70,.6)' : lit ? 'rgba(120,230,150,.55)' : 'rgba(40,52,48,.82)'; c.beginPath(); c.ellipse(x, y, PRX, PRY, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(210,220,200,.7)'; c.lineWidth = 3; c.stroke();
     c.lineWidth = 1.5; c.beginPath(); c.ellipse(x, y, PRX*.75, PRY*.75, 0, 0, 7); c.stroke(); text(c, d, x, y + 1, 30, '#f0f4e8'); } c.restore(); }
 function dialTop(B, p, c, bx, by){ const dl = dialState(B, p); if (!dl) return; const al = cl(p.t*2)*cl((p.len - p.t)*2), open = vaultOpenDial(B, dl), n = dl.code.length, done = open ? n : dl.p;
-  c.save(); c.globalAlpha = al; const w = 40*n + 24, y0 = by - 300; c.fillStyle = 'rgba(10,14,12,.86)'; c.beginPath(); c.roundRect(bx - w/2, y0, w, 44, 10); c.fill(); c.strokeStyle = open ? '#9affb0' : '#b8913f'; c.lineWidth = 2; c.stroke();
+  c.save(); c.globalAlpha = al; const w = 40*n + 24, y0 = by - 352; c.fillStyle = 'rgba(10,14,12,.86)'; c.beginPath(); c.roundRect(bx - w/2, y0, w, 44, 10); c.fill(); c.strokeStyle = open ? '#9affb0' : '#b8913f'; c.lineWidth = 2; c.stroke();
   for (let i = 0; i < n; i++) text(c, i < done ? dl.code[i] : '?', bx - (n - 1)*20 + i*40, y0 + 23, 34, i < done ? '#9affb0' : '#ffd080'); c.restore();
   if (!open){ text(c, dl.code, bx, by - 66, 22, '#3a2a10', 'center', 'rgba(255,240,200,.6)'); } }
 
@@ -193,7 +194,7 @@ function chainTop(B, p, c, bx, by){ const cn = chainNow(B, p), T = B.target; if 
   c.save(); c.globalAlpha = 1 - brk; for (let i = 0; i <= n*grow; i++){ const u = i/n, sp = brk*60*(i%2 ? 1 : -1)*Math.sin(u*Math.PI);
     const x = lerp(ox, tx_, u) + sp, y = lerp(oy, ty_, u) + Math.sin(u*Math.PI)*(prot ? 10 : 26) + Math.sin(B.now/120 + i)*2 + brk*brk*80*u;
     c.strokeStyle = prot ? '#9aa8a0' : '#c8b070'; c.lineWidth = 4; c.beginPath(); c.ellipse(x, y, 9, 5, Math.atan2(ty_ - oy, tx_ - ox) + (i%2)*1.57, 0, 7); c.stroke(); }
-  A.tag(c, tx_ + 30, ty_ - 44, `24 · ${B.targetNick}의 집`, -.2 + Math.sin(B.now/300)*.08, 1.5);
+  A.tag(c, tx_ + 30, ty_ - 44, `24 · ${tNick(B)}의 집`, -.2 + Math.sin(B.now/300)*.08, 1.5);
   c.setLineDash([7, 6]); c.lineWidth = 3; c.strokeStyle = prot ? 'rgba(130,255,160,.9)' : 'rgba(255,90,90,.75)'; c.beginPath(); c.ellipse(T.x, T.y, 92, 36, 0, 0, 7); c.stroke(); c.setLineDash([]);
   if (prot){ const u = cl((B.now - ch.g)/(GUARD*1000)); c.strokeStyle = '#9affb0'; c.lineWidth = 6; c.beginPath(); c.arc(T.x, T.y - 26, 40, -Math.PI/2, -Math.PI/2 + u*Math.PI*2); c.stroke(); }
   c.restore(); }
@@ -282,14 +283,14 @@ function transScreen(B, c, w, h){ const hk = B.ph2; if (B.phase !== 2 || hk < 0 
 function transTick(B){ const hk = B.ph2; if (B.phase !== 2 || hk < 0 || hk > TRANS) return; const key = B.r.rageAt;
   if (hk > .9 && hk < 1.6 && once('tw' + key)) B.sfx('warn', 0);
   if (hk >= LOCK && hk < LOCK + .6 && once('tl' + key)){ B.sfx('slam', 0); B.shake(); }
-  if (hk >= 2.4 && hk < 3.5 && once('ts' + key)) sayL(`다음 집은 ${B.targetNick}네야.`, 3000); }
+  if (hk >= 2.4 && hk < 3.5 && once('ts' + key)) sayL(`다음 집은 ${tNick(B)}네야.`, 3000); }
 
 // ===== 그림 =====
 function vaultOpen(B, p){ if (B.phase < 2) return false; if (B.phase === 2 && B.ph2 < LOCK) return false; if (p.id === 'dial'){ const dl = dialState(B, p); return !dl || vaultOpenDial(B, dl) || p.t > p.len - .4; } return true; }
 function drawBear(B, c, bx, by){ const p = active(B), hk = B.phase === 2 ? B.ph2 : -1; let sh = 0, al = 1;
   if (hk >= 0 && hk < 2.2) sh = Math.sin(B.now*.07)*6*(1 - hk/2.2); if (stunned(B)) sh = Math.sin(B.now/300)*6;
   if (p.id === 'dark' && revealed(B, p)){ const k = (B.now - B.bs.dk.at)/REVEAL; al = k > .85 ? cl((1 - k)/.15) : 1; }
-  const img = A.bear(vaultOpen(B, p), B.targetNick || '???'), w = A.BEAR.w*BK, h = A.BEAR.h*BK;
+  const img = A.bear(vaultOpen(B, p), tNick(B)), w = A.BEAR.w*BK, h = A.BEAR.h*BK;
   c.save(); c.globalAlpha = al; c.drawImage(img, bx - A.BEAR.fx*BK + sh, by - A.BEAR.fy*BK, w, h); c.restore(); }
 
 // ===== 이름표 (엔진 모양 그대로 · 어둠에 숨으면 안 보여요 · 말풍선은 여기서) =====
