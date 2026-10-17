@@ -164,9 +164,9 @@ function tickRelay(B, p, dt){ const G = relayGeo(B, p);
   if (L.rlSeed !== p.seed){ L.rlSeed = p.seed; L.rlAcc = 0; }
   if (!G.rl){ tx(B, bs => ({...bs, rl:{k:p.seed, n:Math.max(1, B.alive.length), d:0}})); return; }
   if (G.rl.ok || p.t > p.len - .2) return;
-  const ch = chain(B, G); if (ch.ok) L.rlAcc += dt; else L.rlAcc = Math.max(0, L.rlAcc - dt*2);
-  if (L.rlAcc >= 1.6){ const d = (G.rl.d | 0) + 1, now = B.now;
-    if (tx(B, bs => ({...bs, rl:{...G.rl, d, ...(d >= NEED ? {ok:now} : {})}, ...(d >= NEED ? {stun:now + 8000, stunAt:now} : {})}))) L.rlAcc = 0; } }
+  const ch = chain(B, G); if (!ch.ok){ L.rlAcc = 0; return; } if (!L.rlAcc) L.rlAcc = B.now; // 줄이 이어진 채로 1.6 초마다 양동이 하나
+  if (B.now - L.rlAcc >= 1600){ const d = (G.rl.d | 0) + 1, now = B.now;
+    if (tx(B, bs => ({...bs, rl:{...G.rl, d, ...(d >= NEED ? {ok:now} : {})}, ...(d >= NEED ? {stun:now + 8000, stunAt:now} : {})}))) L.rlAcc = now; } }
 
 // ===== 그리기 =====
 const T = B => B.now/1000;
@@ -222,7 +222,7 @@ function drawRelayFloor(B, c, p, t){ const G = relayGeo(B, p), [wx, wy] = G.well
   for (let i = 0; i < NEED; i++){ c.save(); c.fillStyle = i < d ? '#7ad0ff' : 'rgba(30,20,20,.8)'; c.strokeStyle = '#cfeaff'; c.lineWidth = 1.5; c.beginPath(); c.arc(bx - (NEED - 1)*9 + i*18, by + 26, 6, 0, 7); c.fill(); c.stroke(); c.restore(); }
   if (p.id === 'relay' && !(G.rl && G.rl.ok)){ const ch = chain(B, G); c.save(); c.lineWidth = 3; c.setLineDash([8, 7]); for (let i = 0; i < ch.path.length - 1; i++){ c.strokeStyle = 'rgba(150,255,170,.7)'; c.beginPath(); c.moveTo(ch.path[i][0], ch.path[i][1] - 20); c.lineTo(ch.path[i + 1][0], ch.path[i + 1][1] - 20); c.stroke(); }
     if (!ch.ok && ch.path.length){ const a = ch.path[ch.path.length - 1]; c.strokeStyle = 'rgba(255,90,90,.75)'; c.beginPath(); c.moveTo(a[0], a[1] - 20); c.lineTo(bx, by - 20); c.stroke(); }
-    c.restore(); for (const q of B.alive){ c.save(); c.globalAlpha = .25; c.strokeStyle = '#9affb0'; c.lineWidth = 1.5; c.setLineDash([4, 6]); c.beginPath(); c.ellipse(q.x, q.y, G.R, G.R*.6, 0, 0, 7); c.stroke(); c.restore(); break; } }
+    c.restore(); const q = B.me; if (q && !q.down){ c.save(); c.globalAlpha = .22; c.strokeStyle = '#9affb0'; c.lineWidth = 1.5; c.setLineDash([4, 6]); c.beginPath(); c.ellipse(q.x, q.y, G.R, G.R*.6, 0, 0, 7); c.stroke(); c.restore(); } }
 }
 function drawBody(B, c){ const p = cur(B), t = T(B), [x, y] = posAt(B, B.now);
   let sx = 0, rot = 0; if (p.id === 'trans' && p.t < 2.2) sx = Math.sin(B.now*.07)*6*(1 - p.t/2.2); if (stunned(B)) rot = Math.sin(t*3)*.12; if (hot(B)) sx += Math.sin(B.now*.09)*3;

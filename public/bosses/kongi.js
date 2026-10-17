@@ -156,11 +156,11 @@ function haramTick(B){ const c = cur(B), on = c.id === 'haram';
   const st = B.bs.stun || 0; if (st > B.now && L.stunSeen !== st){ L.stunSeen = st; B.sfx('slam', 0); B.shake(); B.say('…고마워. 나 여기 있어', 3200); } }
 function haramChat(B, text){ const c = cur(B); if (c.id !== 'haram' || !meOk(B) || stunned(B) || L.called[c.seed] || L.callUntil > B.now) return; if (norm(text) !== PHRASE) return; L.callUntil = B.now + 2000; L.callSeed = c.seed; }
 function haramTop(B, c2){ const c = cur(B), [fx, fy] = foot(B), top = fy - FOOTD - 150*S;
-  for (const p of B.all){ if (!(p.bp && p.bp.c)) continue; c2.save(); c2.fillStyle = 'rgba(240,244,255,.95)'; c2.beginPath(); c2.roundRect(p.x - 26, p.y - 92, 52, 22, 10); c2.fill(); c2.fillStyle = '#5a6a9a'; for (let i = 0; i < 3; i++){ c2.beginPath(); c2.arc(p.x - 10 + i*10, p.y - 81 - (Math.floor(B.now/160 + i)%3 === 0 ? 3 : 0), 3, 0, 7); c2.fill(); } c2.restore(); }
+  for (const p of B.all){ if (!(p.bp && p.bp.c)) continue; c2.save(); c2.fillStyle = 'rgba(240,244,255,.95)'; c2.beginPath(); c2.roundRect(p.x + 8, p.y - 70, 52, 22, 10); c2.fill(); c2.fillStyle = '#5a6a9a'; for (let i = 0; i < 3; i++){ c2.beginPath(); c2.arc(p.x + 24 + i*10, p.y - 59 - (Math.floor(B.now/160 + i)%3 === 0 ? 3 : 0), 3, 0, 7); c2.fill(); } c2.restore(); }
   if (c.id === 'haram' && !stunned(B)){ const c6 = B.bs.c6, n = B.alive.length, got = c6 && c6.s === c.seed ? B.alive.filter(p => c6.u[p.uid]).length : 0;
     for (let i = 0; i < n; i++){ c2.save(); c2.globalAlpha = i < got ? 1 : .35; badge(c2, fx - (n - 1)*13 + i*26, fy + 22, .55, true, i < got); c2.restore(); }
     const k = Math.sin(B.now/330); bubble(c2, fx + 90, top + 10 + k*6, '…문… 열지…', .75, -.1, -1, true, .45 + .4*Math.abs(k)); }
-  const st = B.bs.stun || 0; if (st > B.now){ const u = cl((B.now - st + 8000)/500), out = cl((st - B.now)/600); badgeBack(c2, fx, top - 40 - u*20, .8 + u*.4, out); } }
+  const st = B.bs.stun || 0; if (st > B.now){ const u = cl((B.now - st + 8000)/500), out = cl((st - B.now)/600); badgeBack(c2, fx + 130, fy - FOOTD - 10 - u*16, .7 + u*.35, out); } }
 
 // ===== ⑦ 열리는 출구: 일정 시간마다 모두의 자리가 돌아가며 바뀌어요 · 바뀌기 전 내 자리에 덫이 뜨면 비켜 줘요 =====
 const DOOR_S = [2.2, 5.4, 8.6, 11.8], DOOR_LEAD = 1.2;

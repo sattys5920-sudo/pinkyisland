@@ -6852,10 +6852,10 @@ function bossCtx(npc, r, dt = 0){
   for (const o of others.values()) if (o.z === zoneId && !o.adm && o.uid && o.uid !== uid && up(o.y)) all.push({uid:o.uid, x:o.x, y:o.y, down:!!o.down, nick:o.nick, bp:o.bp || null});
   all.sort((a, b) => a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
   const alive = all.filter(p => !p.down), tg = darkTgt(npc), phase = r.lowAt ? 3 : r.rageAt ? 2 : 1, ps = phase === 3 ? r.lowAt : phase === 2 ? r.rageAt : r.bossAt;
-  const target = all.find(p => p.uid === tg?.uid && !p.down) || (alive.length ? alive[hashU(String(r.bossAt) + npc) % alive.length] : null);
+  const tgtP = all.find(p => p.uid === tg?.uid && !p.down) || (alive.length ? alive[hashU(String(r.bossAt) + npc) % alive.length] : null);
   const B = bossB = {npc, r, bs:r.bs || {}, now, dt, t:(now - (r.bossAt || now))/1000, pt:(now - (ps || now))/1000, phase, hpF:r.max ? r.hp/r.max : 1,
     ph2:r.rageAt ? (now - r.rageAt)/1000 : -1, ph3:r.lowAt ? (now - r.lowAt)/1000 : -1,
-    W:Z().W, H:fl ? FLOOR_H : Z().H, hx, hy, all, alive, me:all.find(p => p.me) || null, target, targetNick:tg?.nick || '???', host:!admin && !!all.length && all[0].uid === uid,
+    W:Z().W, H:fl ? FLOOR_H : Z().H, hx, hy, all, alive, me:all.find(p => p.me) || null, target:tgtP, targetNick:tg?.nick || '???', host:!admin && !!all.length && all[0].uid === uid,
     lo:darkAtkLo(npc), name:NPC[npc]?.name || '', real:(CLUE_CASE[npc] || [])[0] || '', ctl:bossCtl, view, admin,
     hurt:(n, key) => { if (admin || !me || darkDown || !up(pos.y)) return false; if (key){ if (bossHurtKeys[key]) return false; bossHurtKeys[key] = now; } darkHurt(Math.round(n), performance.now()); return true; },
     push:(dx, dy, dist = 60) => { if (!admin && !darkDown && up(pos.y)) pushPlayer(dx, dy, dist); },

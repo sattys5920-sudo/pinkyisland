@@ -320,7 +320,7 @@ function fxData(){ if (FX) return FX; let s = 977; const R = () => (s = (s*16807
   return FX = {ROOMF, ASH, SNOW, DRIPS, VEINS}; }
 const bell = (x, a, p, b) => x <= a || x >= b ? 0 : x < p ? ease((x - a)/(p - a)) : ease((b - x)/(b - p));
 const petalAt = (f, P, k) => [f.x + f.side*f.r*1.4 + Math.sin(k*2.8 + P.ph)*26*Math.sqrt(k) + P.wind*k, f.y - f.r*1.2 + P.fall*(k*.7 + k*k*.12)/1.2];
-const PX = 575, PY = 150;   // 가족 액자 (벽)
+const PX = 236, PY = 196, PS = .56;   // 가족 액자 (벽)
 let ashCv = null;
 function ashLayer(){ if (ashCv) return ashCv; ashCv = document.createElement('canvas'); ashCv.width = 1100; ashCv.height = 900; const g = ashCv.getContext('2d');
   for (const a of fxData().ASH){ g.globalAlpha = .3; g.fillStyle = '#6a6466'; g.beginPath(); g.ellipse(a.x, a.y, a.r*1.4, a.r*.5, a.rot*.2, 0, 7); g.fill(); g.fillStyle = '#8a8486'; g.beginPath(); g.ellipse(a.x + a.r*.6, a.y - 1, a.r*.6, a.r*.3, 0, 0, 7); g.fill(); } return ashCv; }
@@ -329,9 +329,9 @@ function transFloor(B, c){ const hk = B.ph2; if (hk < 0) return; const D = fxDat
   if (hk < 4) for (const f of D.ROOMF){ const k = hk - f.d, grow = ease(k/.4), wilt = ease((k - .85)/.9), al = cl((3.6 - k)/.8); let left = 5; for (const P of f.pet) if (k > 1.4 + P.td) left--; wiltFlower(c, f.x, f.y, f.r, f.col, grow, wilt, al, f.side, Math.max(1, left)); } }
 let portCv = null;
 function portraitDraw(B, c){ if (!portCv){ portCv = document.createElement('canvas'); portCv.width = 260; portCv.height = 160; const g = portCv.getContext('2d'); g.scale(1.5, 1.5); portrait(g, 87, 53); }
-  c.drawImage(portCv, PX - 87*.72, PY - 53*.72, 174*.72, 106.7*.72);
+  c.drawImage(portCv, PX - 87*PS, PY - 53*PS, 174*PS, 106.7*PS);
   const hk = B.ph2; if (hk < .3) return; const stage = hk < 4.6, fadeS = cl((5.6 - hk)/1.0), t = B.now/1000;
-  c.save(); c.translate(PX, PY); c.scale(.72, .72); c.lineCap = 'round';
+  c.save(); c.translate(PX, PY); c.scale(PS, PS); c.lineCap = 'round';
   const seep = stage ? cl((hk - .3)/1.2) : lerp(.35, 1, fadeS);
   if (seep > 0){ c.globalAlpha = seep*.85; const q = c.createLinearGradient(0, -10, 0, 38); q.addColorStop(0, 'rgba(60,140,30,0)'); q.addColorStop(1, 'rgba(110,220,60,.75)'); c.fillStyle = q; c.fillRect(-72, -10, 144, 48);
     c.strokeStyle = 'rgba(120,230,70,.9)'; c.lineWidth = 2.5; for (const ex of [-39, -29, 29, 39]){ const L = 6 + cl((hk - .4)/1.4)*30; c.beginPath(); c.moveTo(ex, -2); c.quadraticCurveTo(ex + 2, -2 + L*.5, ex - 1, -2 + L); c.stroke(); } }

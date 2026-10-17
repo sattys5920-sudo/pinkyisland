@@ -101,7 +101,7 @@ const lzState = (cur, k) => { const tt = cur.t - LZ[k]; return tt < 0 ? -1 : tt 
 // ===== ⑤ 전시 조명 =====
 const BEAM = [[1.0, 5.4], [6.2, 10.4]];
 // ===== ⑥ 새벽 파랑 =====
-const CAN = {w:[230, 700, '#f4f4f8', '흰색'], n:[870, 700, '#1e2e78', '남색']};
+const CAN = {w:[250, 640, '#f4f4f8', '흰색'], n:[850, 640, '#1e2e78', '남색']};
 const cansUp = (s, B) => s.cur.id === 'blue' && s.cur.t > .5 && s.cur.t < 9.5 && B.bs.mixK !== s.cur.seed;
 // ===== ⑦ 입찰 패들 =====
 const HAM = [2.4, 5.0, 7.6, 10.2], WORD = ['하나', '둘', '셋', '낙찰!'];

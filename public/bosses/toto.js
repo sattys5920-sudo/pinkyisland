@@ -135,9 +135,10 @@ export default {
     // 위치 기록 (세뇌 · 등 뒤 판정)
     for (const o of B.all){ let h = hist.get(o.uid); if (!h) hist.set(o.uid, h = []); const l = h[h.length - 1]; if (!l || now - l[0] > 40) h.push([now, o.x, o.y]); while (h.length && now - h[0][0] > 700) h.shift(); }
     // 보스 대사 (모두 같은 때)
-    const LINES = {fence:'약속의 원 안에 있게나', rule:'생활 규칙은 지켜야지', chair:'자, 앉게. 설교 시간이야', pages:'네 고해는 내가 다 적어 두었지', brain:`${B.targetNick}, 아버지에게 오너라`, sermon:'세상은 곧 가라앉는다…', back:'가라앉는다! 내 등에 타라!'};
+    const tn = B.targetNick && B.targetNick !== '???' ? B.targetNick : B.target ? B.target.nick : '???';
+    const LINES = {fence:'약속의 원 안에 있게나', rule:'생활 규칙은 지켜야지', chair:'자, 앉게. 설교 시간이야', pages:'네 고해는 내가 다 적어 두었지', brain:`${tn}, 아버지에게 오너라`, sermon:'세상은 곧 가라앉는다…', back:'가라앉는다! 내 등에 타라!'};
     if (p.id && LINES[p.id] && p.t < .8 && once('say.' + p.seed, now)){ B.say(LINES[p.id], 2600); B.sfx('warn'); }
-    if (p.id === 'trans' && p.t > 2.6 && p.t < 3.4 && once('say.tr.' + B.r.rageAt, now)) B.say(`${B.targetNick}, 다음 '큰 고래'는 자네야`, 2600);
+    if (p.id === 'trans' && p.t > 2.6 && p.t < 3.4 && once('say.tr.' + B.r.rageAt, now)) B.say(`${tn}, 다음 '큰 고래'는 자네야`, 2600);
     if (B.bs.stun > now && B.bs.stunAt && now - B.bs.stunAt < 1500 && once('say.st.' + B.bs.stunAt, now)){ B.say('배표는… 한 장뿐이었는데', 2600); B.sfx('slam'); B.shake(); }
     if (!me || me.down){ if (bwBp){ B.setBp(null); bwBp = false; } outT = 0; return; }
     const mx = me.x, my = me.y;
