@@ -201,6 +201,7 @@ function bubble(c, x, y, s, bg = '#fff4e0', fg = '#5a3a10'){ c.save(); c.font = 
 function railSleepers(c, x0, y0, x1, y1){ const n = Math.hypot(x1 - x0, y1 - y0)/22; c.fillStyle = '#3e2c1a'; for (let i = 0; i < n; i++){ const u = i/n; c.fillRect(lerp(x0, x1, u) - 4, lerp(y0, y1, u) - 13, 8, 26); } }
 
 export default {
+  _t: { pk, info, mapCells, carts, blasts, knockRounds, escFoot, WALL, EXITS }, // 혼자 시험용 (엔진은 안 써요)
   reach: 125,
   height: 255,
   pos(B){ const i = info(B); return [i.x, i.y]; },

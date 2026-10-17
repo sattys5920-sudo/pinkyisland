@@ -38,7 +38,7 @@ function posAt(B, noStun){
 function bossPos(B){ const k = B.now + ':' + B.r.bossAt + ':' + (B.bs.stun || 0) + ':' + (B.bs.dk ? B.bs.dk.at : 0); if (L.posK === k) return L.pos; L.posK = k; return (L.pos = posAt(B)); }
 
 // ===== 누가 갇혔나 (③) =====
-const LAND = 1.2, HOLD = 4.2, KEYPOS = [[-58, 6], [0, 50], [58, 6]];
+const LAND = 1.2, HOLD = 3.6, KEYPOS = [[-58, 6], [0, 50], [58, 6]];
 function cageOf(B, p, uid){ const cg = B.bs.cg; if (p.id !== 'cage' || !cg || cg.s !== p.seed || !cg.c || B.now > cg.at + (LAND + HOLD)*1000) return -1;
   for (const [u, i] of cg.c) if (u === uid && !(cg.f && cg.f[i])) return i; return -1; }
 
@@ -97,9 +97,10 @@ function cloneTop(B, p, c){ if (p.t < CL_ON) return; const al = cl((p.t - CL_ON)
   for (const o of B.alive){ const q = clonePos(B, o.uid); if (q) A.ghost(c, q[0], q[1], al, (o.nick || '') + '?'); } }
 
 // ===== ③ 철컥 (자물쇠 우리 · 친구가 맞는 열쇠를 골라 꺼내 줘요) =====
-const WAVES = [.8, 4.9];
+const WAVES = [.6, 5.6];
 function cageHost(B, p){ const cg = B.bs.cg;
   for (let w = 0; w < WAVES.length; w++){ if (p.t < WAVES[w] || p.t > WAVES[w] + 1.2 || (cg && cg.s === p.seed && cg.w >= w) || !B.alive.length) continue;
+    if (cg && cg.s === p.seed && B.now < cg.at + (LAND + HOLD)*1000 + 300) return; // 앞 우리가 끝난 뒤에
     const rng = B.rng(p.seed + 'cg' + w), pool = B.alive.slice(), n = Math.max(1, Math.ceil(pool.length/2)), sp = [];
     for (let i = 0; i < n && pool.length; i++){ const o = pool.splice(Math.floor(rng()*pool.length), 1)[0]; sp.push({x:Math.round(cl(o.x, 160, 940)), y:Math.round(cl(o.y, 330, 790)), ok:Math.floor(rng()*3)}); }
     const seed = p.seed, now = B.now; tx(B, 'cg', bs => (bs.cg && bs.cg.s === seed && bs.cg.w >= w) ? undefined : {...bs, cg:{s:seed, w, at:now, sp}}); return; }

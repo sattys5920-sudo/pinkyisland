@@ -12,6 +12,9 @@ const GAP = 2.5, TRANS = 5;
 const LV = {fence:1, rule:.5, chair:.3, pages:.6, brain:.5, sermon:.25};
 const AX0 = 110, AX1 = 990, AY0 = 280, AY1 = 795;   // 걸을 수 있는 곳 (문 쪽으로 밀려 나가지 않게)
 const clampX = x => cl(x, AX0, AX1), clampY = y => cl(y, AY0, AY1);
+// 방 가구 자리 (dark.js SPOTS · 반지름 26 의 막힌 곳) · 의자 · 장부 쪽이 가구에 겹치지 않게 밀어내요
+const SPOTS = [[150, 300], [320, 300], [490, 300], [660, 300], [830, 300], [980, 300], [120, 450], [120, 600], [120, 740], [980, 450], [980, 600], [980, 740], [260, 790], [400, 790], [840, 790]];
+function free(x, y){ for (const [sx, sy] of SPOTS){ const d = dist(x, y, sx, sy); if (d < 64){ const k = 64/Math.max(1, d); x = sx + (x - sx)*k + (d < 1 ? 64 : 0); y = sy + (y - sy)*k; } } return [cl(x, 140, 960), cl(y, 330, 770)]; }
 const FONT = s => `bold ${s}px "Dongle",sans-serif`;
 const T2 = Math.PI*2;
 
@@ -80,7 +83,7 @@ const APART_BOSS = 230, APART_P = 170;
 function chairs(B, p){
   const out = [], n = cl(B.alive.length, 1, 8);
   for (let i = 0; i < 3; i++){ const t0 = .3 + i*3.7, rnd = B.rng(`${p.seed}.c${i}`), [fx, fy] = bodyAt(B, nowAt(B, p, t0)), a0 = rnd()*T2, ps = [];
-    for (let j = 0; j < n; j++){ const a = a0 + j*T2/n + (rnd() - .5)*.5, d = 170 + rnd()*120; ps.push([cl(fx + Math.cos(a)*d, 140, 960), cl(fy + Math.sin(a)*d*.62, 320, 780)]); }
+    for (let j = 0; j < n; j++){ const a = a0 + j*T2/n + (rnd() - .5)*.5, d = 170 + rnd()*120; ps.push(free(fx + Math.cos(a)*d, fy + Math.sin(a)*d*.62)); }
     out.push({i, t0, blast:t0 + 2.4, end:t0 + 3.1, ps}); }
   return out;
 }
@@ -88,7 +91,7 @@ function chairs(B, p){
 function pages(B, p){
   const out = [];
   for (let i = 0; i < 2; i++){ const t0 = .2 + i*6.1, land = t0 + 1.4, dead = land + 3.6, key = `${p.seed}.p${i}`, [fx, fy] = bodyAt(B, nowAt(B, p, t0));
-    const own = B.alive.map((o, j) => { const rnd = B.rng(`${key}.${o.uid}`), a = rnd()*T2, d = 190 + rnd()*140; return {uid:o.uid, nick:o.nick || '???', j, x:cl(fx + Math.cos(a)*d, 140, 960), y:cl(fy + Math.sin(a)*d*.62, 320, 780)}; });
+    const own = B.alive.map((o, j) => { const rnd = B.rng(`${key}.${o.uid}`), a = rnd()*T2, d = 190 + rnd()*140; const [x, y] = free(fx + Math.cos(a)*d, fy + Math.sin(a)*d*.62); return {uid:o.uid, nick:o.nick || '???', j, x, y}; });
     out.push({i, t0, land, dead, gone:dead + 1.6, key, fx, fy, own}); }
   return out;
 }
