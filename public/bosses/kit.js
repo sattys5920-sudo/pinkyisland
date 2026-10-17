@@ -1,6 +1,6 @@
 // 다크 보스 공용 도구 (public/bosses/<주민>.js 가 가져다 써요) · 규칙은 docs/BOSS_ENGINE.md
 // 난이도: 패턴 사이 쉬는 틈 · 기본 공격 간격 배수 (작을수록 어려워요)
-export const HARD = { gap: .45, beat: .65 };
+export const HARD = { gap: .3, beat: .45 };
 export const cl = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, k) => a + (b - a)*k;
 export const ease = k => { k = cl(k); return k < .5 ? 2*k*k : 1 - (-2*k + 2)**2/2; };
