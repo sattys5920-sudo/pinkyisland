@@ -103,6 +103,7 @@ function once(key){ if (L.sent[key]) return false; L.sent[key] = 1; const ks = O
 
 export default {
   reach: 125,
+  touch: [320, 375, 430], // 밀쳐 내기 피해 (1 · 2 · 3 단계)
   height: 272,
   pos(B){ return posOf(B); },
 
@@ -128,7 +129,7 @@ export default {
 
     if (k.id === 'crew'){
       if (B.host && (B.bs.cr?.s !== k.seed) && now - L.txT > 600){ L.txT = now; const n = Math.max(2, Math.min(5, 1 + Math.ceil(B.alive.length/2))); B.tx(bs => bs.cr?.s === k.seed ? undefined : {...bs, cr:{s:k.seed, n, h:{}}}); }
-      if (me) for (const m of crewList(B, k)) if (m.alive && m.ready && inEll(me.x, me.y, m.x, m.y, 34, 22)){ if (B.hurt(lo(B), `cr.${k.seed}.${m.i}.${Math.floor(k.t/1.5)}`)) B.push(me.x - m.x, me.y - m.y, 50); } }
+      if (me) for (const m of crewList(B, k)) if (m.alive && m.ready && inEll(me.x, me.y, m.x, m.y, 34, 22)){ if (B.hurt(567, `cr.${k.seed}.${m.i}.${Math.floor(k.t/1.5)}`, {raw:1})) B.push(me.x - m.x, me.y - m.y, 50); } }
 
     if (k.id === 'share'){ const cs = coins(B, k), sh = B.bs.sh && B.bs.sh.s === k.seed ? B.bs.sh : null, nTaken = sh ? Object.keys(sh.g || {}).length : 0;
       if (nTaken > L.shN && L.shSeed === k.seed){ const [bx, by] = posOf(B, k); B.fx(`+몫 ${nTaken - L.shN}`, bx + 60, by - 250, '#9affb0'); }
@@ -139,14 +140,14 @@ export default {
         const ids = Object.keys(add); if (ids.length){ L.txT = now; for (const i of ids) L.sent['g' + k.seed + i] = 1; B.sfx('warn', 300);
           B.tx(bs => { const o = bs.sh && bs.sh.s === k.seed ? bs.sh : {s:k.seed, g:{}}; const g2 = {...(o.g || {})}; for (const i of ids) if (!g2[i]) g2[i] = add[i]; return {...bs, sh:{s:k.seed, g:g2}}; });
           L.heal += ids.length; }
-        if (L.heal && now - L.healT > 500){ B.heal(Math.round(B.r.max*.012*L.heal)); L.heal = 0; L.healT = now; } } }
+        if (L.heal && now - L.healT > 500){ B.heal(10000*L.heal); L.heal = 0; L.healT = now; } } }
 
     if (k.id === 'fog'){ const hs = horns(B, k);
       for (let i = 0; i < hs.length; i++){ const hn = hs[i];
         if (k.t > hn.h && k.t < hn.h + .9 && once('hw' + k.seed + i)) B.sfx('warn');
         if (!me) continue; const R = ringR(hn, k.t); if (R < 40 || R > 620) continue;
         const dx = me.x - hn.x, dy = (me.y - hn.y)/.55, rr = Math.hypot(dx, dy);
-        if (Math.abs(rr - R) < 20 && !inGap(hn, Math.atan2(dy, dx))) B.hurt(lo(B) + 60, `horn.${k.seed}.${i}`); } }
+        if (Math.abs(rr - R) < 20 && !inGap(hn, Math.atan2(dy, dx))) B.hurt(712, `horn.${k.seed}.${i}`, {raw:1}); } }
 
     if (k.id === 'tk'){ const tk = tkStove(B, k);
       if (B.host && !tk && B.target && k.t < k.len - 2 && now - L.txT > 600){ L.txT = now; const tg = B.target, best = STOVES.map(s => [dist(s[0], s[1], tg.x, tg.y), s]).sort((a, b) => b[0] - a[0])[1][1], n = Math.max(2, Math.min(5, 1 + B.alive.length));
