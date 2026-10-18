@@ -160,7 +160,7 @@ const slumpNow = (B, cur) => slumpsOf(B, cur).find(s => cur.t >= s.t0 && cur.t <
 function fakeTick(B, cur){ const s = slumpNow(B, cur); if (!s) return;
   if (s.fake && cur.t < s.t1 && first(`fs${cur.seed}.${s.i}`)) B.say(s.i%2 ? '다리가… 아파요' : '아파요… 좀 도와줘요', 2200);
   if (s.fake && cur.t >= s.t1 && !stunned(B)){ if (first(`fb${cur.seed}.${s.i}`)){ B.sfx('slam', 100); B.shake(); }
-    const me = B.me, [fx, fy] = posAt(B, B.now); if (me && cur.t < s.t1 + .5 && inEll(me.x, me.y, fx, fy - 10, TRAP, TRAP*.6) && B.hurt(B.lo + 150, `fb${cur.seed}.${s.i}`)) B.push(me.x - fx, me.y - fy, 90); }
+    const me = B.me, [fx, fy] = posAt(B, B.now); if (me && cur.t < s.t1 + .5 && inEll(me.x, me.y, fx, fy - 10, TRAP, TRAP*.6) && B.hurt(3121, `fb${cur.seed}.${s.i}`, {raw:1})) B.push(me.x - fx, me.y - fy, 90); }
   if (!s.fake && cur.t < s.t1 && first(`fr${cur.seed}.${s.i}`)) B.sfx('warn', 100); }
 function fakeFloor(B, c, cur){ const s = slumpNow(B, cur); if (!s) return; const [fx, fy] = posAt(B, B.now);
   if (s.fake && cur.t < s.t1){ c.save(); c.globalAlpha = .12 + .1*Math.sin(B.now/90); c.strokeStyle = '#ff6a9a'; c.lineWidth = 2; c.setLineDash([4, 10]); c.beginPath(); c.ellipse(fx, fy - 10, TRAP, TRAP*.6, 0, 0, 7); c.stroke(); c.restore(); }
@@ -265,7 +265,7 @@ function inBloom(B, cur, x, y, ms){ const sd = seedsOf(B, cur); for (let i = 0; 
 function witherTick(B, cur){ const ps = pulses(cur), me = B.me;
   for (const [j, pt] of ps.entries()){ if (cur.t >= pt - PWARN && cur.t < pt && first(`pw${cur.seed}.${j}`)) B.sfx('warn', 100);
     if (cur.t >= pt && cur.t < pt + .3){ if (first(`pp${cur.seed}.${j}`)){ B.sfx('slam', 100); B.shake(); }
-      if (me && !inBloom(B, cur, me.x, me.y, B.now)) B.hurt(B.lo + 180, `pp${cur.seed}.${j}`); } } }
+      if (me && !inBloom(B, cur, me.x, me.y, B.now)) B.hurt(3678, `pp${cur.seed}.${j}`, {raw:1}); } } }
 function witherSwing(B, cur, cx, cy){ const sd = seedsOf(B, cur);
   for (let i = 0; i < sd.length; i++){ const b = bloomAt(B, cur, i); if (b && B.now < b + BLOOM_D + 400) continue; if (Math.hypot(sd[i][0] - cx, (sd[i][1] - cy)/.8) > 58) continue;
     localBloom.set(cur.seed + ':' + i, B.now); const now = B.now;
@@ -379,6 +379,7 @@ const LINES = { back:'등은 만지지 마요. 따가워요.', vine:'꽃은 꾸�
 
 export default {
   reach: 125,
+  touch: [494, 555, 612], // 밀쳐 내기 피해 (1 · 2 · 3 단계)
   get height(){ return curK ? 330 : 285; },
   pos(B){ return posAt(B, B.now); },
   tick(B, dt){ const cur = cur0(B); curK = halfLook(B);
