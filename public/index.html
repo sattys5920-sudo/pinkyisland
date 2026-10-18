@@ -4834,7 +4834,8 @@ function candyTrade(n){
 }
 // 다크 모드: TV 를 켜면 뉴스 채널이 먼저 나와요 (장면 4 개가 7 초마다 넘어가요 · 흘러가는 속보 자막 · 지금 시각)
 // 관리자 '지지직': 모두의 화면이 치직거리면서 무서운 장면이 아주 짧게 번쩍였다 사라져요 (알림 없이 그냥 일어나요)
-const GL_LINES = ['여기서 꺼내 줘', '보고 있어', '집에 가고 싶어', '누가 내 이름 불렀어?', '나가는 문은 없어', '엄마', '돌아갈 몸이 없어', '아직 거기 있어?', '이건 게임이 아니야', '뒤 돌아보지 마'];
+const GL_LINES = ['여기서 꺼내 줘', '보고 있어', '집에 가고 싶어', '누가 내 이름 불렀어?', '나가는 문은 없어', '엄마', '돌아갈 몸이 없어', '아직 거기 있어?', '이건 게임이 아니야', '뒤 돌아보지 마', '화면 끄지 마', '너도 곧 여기로 와', '왜 대답 안 해', '불 켜 줘', '문 열지 마', '하나 둘 셋 넷… 열셋'];
+const GL_NAME = ['찾았다', '뒤에 있어', '거기 있는 거 알아', '같이 놀자', '이번엔 너야', '왜 혼자야?'];
 let glSeen = null, glRun = false;
 function glitchCheck(){
   const g = world.glitch, at = g ? +g.at || 0 : 0;
@@ -4922,6 +4923,66 @@ function glGame(c, W, H){ // 지금 내 화면이 뒤집혀서 한 번
   c.filter = 'invert(1) grayscale(.6) contrast(1.9)'; try { c.drawImage(cv, 0, 0, W, H); } catch(e){ c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); } c.filter = 'none';
   glGrain(c, W, H, .3); glWords(c, W, H, GL_LINES[glR()*GL_LINES.length|0], H*.5, Math.min(W*.1, 60), '#100000');
 }
+function glCorridor(c, W, H, k){ // 끝이 안 보이는 복도 · 깜빡일 때마다 그것이 조금씩 가까워져요 (k 0 → 1)
+  c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+  const vx = W/2, vy = H*.46, d = W*.08;
+  const wall = (pts, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.fill(); };
+  wall([0, 0, vx - d, vy - d*1.3, vx - d, vy + d*1.3, 0, H], '#16140f'); wall([W, 0, vx + d, vy - d*1.3, vx + d, vy + d*1.3, W, H], '#1b1812');
+  wall([0, H, vx - d, vy + d*1.3, vx + d, vy + d*1.3, W, H], '#0e0c09'); wall([0, 0, vx - d, vy - d*1.3, vx + d, vy - d*1.3, W, 0], '#0a0907');
+  c.strokeStyle = 'rgba(120,110,90,.18)'; c.lineWidth = 1; for (let i = 1; i < 9; i++){ const q = Math.pow(i/9, 1.8), x0 = vx - d - (vx - d)*q, x1 = vx + d + (W - vx - d)*q, y0 = vy - d*1.3 - (vy - d*1.3)*q, y1 = vy + d*1.3 + (H - vy - d*1.3)*q; c.strokeRect(x0, y0, x1 - x0, y1 - y0); }
+  const lg = c.createRadialGradient(vx, vy, 2, vx, vy, d*2.2); lg.addColorStop(0, 'rgba(255,240,200,.55)'); lg.addColorStop(1, 'rgba(255,240,200,0)'); c.fillStyle = lg; c.fillRect(0, 0, W, H);
+  const fh = H*(.1 + .82*k*k), fw = fh*.2, fx = vx + (k > .5 ? (glR() - .5)*W*.02 : 0), fy = vy + d*1.3 + (H - vy - d*1.3)*k*k*.9;
+  c.fillStyle = '#000'; c.beginPath(); c.ellipse(fx, fy - fh*.92, fw*.42, fw*.55, .25, 0, 7); c.fill();
+  c.beginPath(); c.moveTo(fx - fw*.5, fy - fh*.8); c.lineTo(fx + fw*.5, fy - fh*.8); c.lineTo(fx + fw*.32, fy - fh*.2); c.lineTo(fx + fw*.22, fy); c.lineTo(fx - fw*.22, fy); c.lineTo(fx - fw*.32, fy - fh*.2); c.fill();
+  c.lineWidth = fw*.14; c.lineCap = 'round'; c.strokeStyle = '#000'; for (const s of [-1, 1]){ c.beginPath(); c.moveTo(fx + s*fw*.45, fy - fh*.78); c.quadraticCurveTo(fx + s*fw*.75, fy - fh*.4, fx + s*fw*.6, fy - fh*.08); c.stroke(); }
+  if (k > .55){ c.fillStyle = `rgba(235,235,225,${(k - .55)*2})`; for (const s of [-1, 1]){ c.beginPath(); c.arc(fx + s*fw*.15, fy - fh*.94, Math.max(1, fw*.05), 0, 7); c.fill(); } }
+  c.globalCompositeOperation = 'multiply'; c.fillStyle = '#b8b0a0'; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over';
+  glVig(c, W, H); glGrain(c, W, H, .3);
+}
+function glHands(c, W, H){ // 안쪽에서 화면 유리를 짚은 손자국들
+  c.filter = 'grayscale(1) brightness(.35) contrast(1.4)'; try { c.drawImage(cv, 0, 0, W, H); } catch(e){ c.fillStyle = '#111'; c.fillRect(0, 0, W, H); } c.filter = 'none';
+  const n = 7 + (glR()*7|0), s0 = Math.min(W, H)*.1;
+  for (let i = 0; i < n; i++){ const x = glR()*W, y = glR()*H*.85, s = s0*(.7 + glR()*.6), a = (glR() - .5)*.9; c.save(); c.translate(x, y); c.rotate(a);
+    c.fillStyle = `rgba(${110 + glR()*60|0},0,${glR()*20|0},${.55 + glR()*.3})`; c.beginPath(); c.ellipse(0, 0, s*.42, s*.5, 0, 0, 7); c.fill();
+    [[-.36, -.55, .5], [-.14, -.78, .62], [.1, -.8, .66], [.32, -.66, .56], [.5, -.05, .42]].forEach(([fx, fy, fl], j) => { c.save(); c.translate(fx*s, fy*s*.8); c.rotate(j === 4 ? 1.1 : (fx)*.4); c.beginPath(); c.ellipse(0, -fl*s*.45, s*.085, fl*s*.5, 0, 0, 7); c.fill(); c.restore(); });
+    for (let k = 0; k < 3; k++){ const dx = (glR() - .5)*s*.6, dl = s*(.4 + glR()*1.6); c.fillRect(dx, s*.3, s*.04 + glR()*s*.03, dl); c.beginPath(); c.arc(dx + s*.03, s*.3 + dl, s*.05, 0, 7); c.fill(); }
+    c.restore(); }
+  glVig(c, W, H, 'rgba(20,0,0,.9)'); glGrain(c, W, H, .25);
+}
+function glHang(c, W, H){ // 위에서 거꾸로 매달린 얼굴
+  const k = document.createElement('canvas'); k.width = W; k.height = H; glFace(k.getContext('2d'), W, H);
+  c.fillStyle = '#000'; c.fillRect(0, 0, W, H); c.save(); c.translate(W/2, H*.26); c.rotate(Math.PI + (glR() - .5)*.3); c.drawImage(k, -W/2, -H*.45); c.restore();
+  glGrain(c, W, H, .2);
+}
+function glSmile(c, W, H){ // 어둠 속에서 귀까지 찢어진 웃음
+  c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+  const cx = W/2, cy = H*.55, mw = W*.42, mh = mw*.32;
+  c.fillStyle = '#e8e2d6'; c.beginPath(); c.moveTo(cx - mw, cy - mh*.4); c.quadraticCurveTo(cx, cy + mh*1.9, cx + mw, cy - mh*.4); c.quadraticCurveTo(cx, cy + mh*.6, cx - mw, cy - mh*.4); c.fill();
+  c.strokeStyle = '#1a0a08'; c.lineWidth = Math.max(1, W*.004); for (let i = 1; i < 26; i++){ const t = i/26, x = cx - mw + t*mw*2, top = cy - mh*.4 + (mh*.6 + mh*.4)*Math.sin(Math.PI*t)*.55, bot = cy - mh*.4 + (mh*1.9 + mh*.4)*Math.sin(Math.PI*t)*.5; c.beginPath(); c.moveTo(x, top); c.lineTo(x + (glR() - .5)*W*.006, bot); c.stroke(); }
+  c.fillStyle = 'rgba(232,226,214,.95)'; for (const s of [-1, 1]){ c.beginPath(); c.arc(cx + s*mw*.42, cy - mh*1.9, Math.max(2, W*.009), 0, 7); c.fill(); }
+  glVig(c, W, H); glGrain(c, W, H, .3);
+}
+function glEyes(c, W, H){ // 어둠 가득 눈들
+  c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+  const n = 26 + (glR()*30|0); for (let i = 0; i < n; i++){ const x = glR()*W, y = glR()*H, r = Math.max(1.5, Math.min(W, H)*(.004 + glR()*.012)), red = glR() < .35, gap = r*(3 + glR()*2), op = .45 + glR()*.55;
+    c.fillStyle = red ? `rgba(255,30,40,${op})` : `rgba(245,240,220,${op})`; c.shadowColor = c.fillStyle; c.shadowBlur = r*3;
+    for (const s of [-1, 1]){ c.beginPath(); c.ellipse(x + s*gap, y, r*1.3, r*(glR() < .15 ? .2 : .9), 0, 0, 7); c.fill(); } }
+  c.shadowBlur = 0; glGrain(c, W, H, .2);
+}
+function glName(c, W, H){ // 내 이름을 불러요
+  c.fillStyle = '#060000'; c.fillRect(0, 0, W, H); glGrain(c, W, H, .2);
+  const nick = (me && me.nick) || '너', sz = Math.min(W*.14, 84);
+  glWords(c, W, H, nick, H*.42, sz, '#f4e0e0'); glWords(c, W, H, GL_NAME[glR()*GL_NAME.length|0], H*.42 + sz*1.4, sz*.6, '#ff2a3a');
+  glVig(c, W, H, 'rgba(40,0,0,.95)');
+}
+function glScrawl(c, W, H, line){ // 벽 가득 같은 말을 손으로 꾹꾹 눌러 썼어요
+  c.fillStyle = '#c9bea8'; c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 40; i++){ c.fillStyle = `rgba(80,60,40,${glR()*.12})`; c.beginPath(); c.arc(glR()*W, glR()*H, glR()*W*.15, 0, 7); c.fill(); }
+  c.textBaseline = 'middle'; for (let y = H*.04; y < H; y += H*(.04 + glR()*.03)){ const sz = Math.min(W, H)*(.03 + glR()*.035); c.font = `900 ${sz}px "Noto Sans KR", sans-serif`; c.fillStyle = `rgba(${90 + glR()*70|0},${glR()*20|0},${glR()*15|0},${.55 + glR()*.4})`;
+    c.save(); c.translate(-glR()*W*.3, y); c.rotate((glR() - .5)*.08); let x = 0; while (x < W*1.3){ c.fillText(line, x, (glR() - .5)*sz*.2); x += c.measureText(line).width + sz*(.3 + glR()); } c.restore(); }
+  c.globalCompositeOperation = 'multiply'; c.fillStyle = '#9a8e80'; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over';
+  glVig(c, W, H); glGrain(c, W, H, .25);
+}
 function glitchSound(len, flashes){
   try { const A = new (window.AudioContext || window.webkitAudioContext)(); if (A.resume) A.resume(); const out = A.createGain(); out.gain.value = .55; out.connect(A.destination);
     const sec = len/1000 + .3, t0 = A.currentTime + .03, nb = A.createBuffer(1, Math.ceil(A.sampleRate*sec), A.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
@@ -4943,8 +5004,13 @@ function glitchRun(len, big){
   const clueImg = (() => { const n = DARK_ORDER[glR()*DARK_ORDER.length|0], im = new Image(); im.src = `art/clue/${n}/${1 + (glR()*14|0)}.jpg`; return im; })();
   const lines = [...GL_LINES].sort(() => glR() - .5);
   const pool = [mk(k => glFace(k, W, H)), mk(k => glEye(k, W, H)), mk(k => glText(k, W, H, lines[0])), mk(k => glText(k, W, H, lines[1])), mk(k => glNews(k, W, H, glR()*NEWS_SCENES.length|0)), mk(k => glList(k, W, H)), 'clue', 'game'];
-  if (big) pool.push(mk(k => glFace(k, W, H)), mk(k => glText(k, W, H, lines[2])), mk(k => glNews(k, W, H, glR()*NEWS_SCENES.length|0)));
-  const flashes = []; for (let t = 220, last = -1; t < len - 350;){ let k; do { k = glR()*pool.length|0; } while (k === last); last = k; const d = 45 + glR()*(big ? 110 : 75); flashes.push({t, d, k}); t += d + (big ? 80 + glR()*300 : 150 + glR()*380); }
+  pool.push(mk(k => glHands(k, W, H)), mk(k => glHang(k, W, H)), mk(k => glSmile(k, W, H)), mk(k => glEyes(k, W, H)), mk(k => glName(k, W, H)), mk(k => glScrawl(k, W, H, lines[3])));
+  if (big) pool.push(mk(k => glFace(k, W, H)), mk(k => glText(k, W, H, lines[2])), mk(k => glNews(k, W, H, glR()*NEWS_SCENES.length|0)), mk(k => glScrawl(k, W, H, lines[4])));
+  const nRand = pool.length, endAt = big ? len - 900 : len - 350;
+  const flashes = []; for (let t = 220, last = -1; t < endAt;){ let k; do { k = glR()*nRand|0; } while (k === last); last = k; const d = 45 + glR()*(big ? 110 : 75); flashes.push({t, d, k}); t += d + (big ? 80 + glR()*300 : 150 + glR()*380); }
+  { const cor = [.12, .4, .68, .9].map(q => (pool.push(mk(k => glCorridor(k, W, H, q))), pool.length - 1)), n = flashes.length; // 복도 끝의 그것: 번쩍일 때마다 가까워져요
+    if (big){ cor.forEach((ci, j) => { const f = flashes[Math.min(n - 1, Math.floor((j + .5)*n/4))]; if (f){ f.k = ci; f.d = Math.max(f.d, 140); } }); pool.push(mk(k => glFace(k, W, H))); flashes.push({t:len - 760, d:380, k:pool.length - 1}); } // 마지막엔 얼굴이 길게
+    else if (n){ const f = flashes[n - 1]; f.k = cor[glR()*cor.length|0]; } }
   glitchSound(len, flashes);
   try { if (navigator.vibrate){ const v = []; let p = 0; for (const f of flashes){ v.push(Math.max(0, Math.round(f.t - p)), Math.round(f.d)); p = f.t + f.d; } navigator.vibrate(v); } } catch(e){}
   const nz = document.createElement('canvas'); nz.width = 180; nz.height = Math.max(80, Math.round(180*H/W)); const nc = nz.getContext('2d'), nd = nc.createImageData(nz.width, nz.height);
@@ -4960,6 +5026,11 @@ function glitchRun(len, big){
     for (let y = 0; y < nz.height; y++) if (glR() < .06){ for (let x = 0; x < nz.width; x++){ const i = (y*nz.width + x)*4; nd.data[i] = nd.data[i+1] = nd.data[i+2] = 235; } }
     nc.putImageData(nd, 0, 0); c.imageSmoothingEnabled = false;
     c.globalAlpha = f ? .16 : !f && glR() < .07*e ? 1 : .1 + .42*e*glR(); c.drawImage(nz, 0, 0, W, H); c.globalAlpha = 1;
+    if (!f){ const r = glR();
+      if (r < .05*e){ c.fillStyle = '#000'; c.fillRect(0, 0, W, H); if (glR() < .6){ const x = W*(.25 + glR()*.5), y = H*(.3 + glR()*.4), rr = Math.max(2, W*.008); c.fillStyle = glR() < .5 ? '#ff2030' : '#f4f0e0'; c.shadowColor = c.fillStyle; c.shadowBlur = rr*4; c.beginPath(); c.arc(x - rr*4, y, rr, 0, 7); c.arc(x + rr*4, y, rr, 0, 7); c.fill(); c.shadowBlur = 0; } } // 갑자기 깜깜 · 눈 두 개
+      else if (r < .09*e){ c.fillStyle = 'rgba(200,0,20,.45)'; c.fillRect(0, 0, W, H); } // 붉게 번쩍
+      else if (r < .3*e){ const n = 2 + (glR()*5|0); for (let i = 0; i < n; i++){ const y = glR()*H, h = H*(.02 + glR()*.1), dx = (glR() - .5)*W*.35; try { c.drawImage(cv, 0, y/H*cv.height, cv.width, h/H*cv.height, dx, y, W, h); } catch(e2){} } } // 화면이 가로로 찢겨 밀려요
+      else if (r < .36*e){ const oy = (glR()*.6 + .2)*H; c.globalAlpha = .55; try { c.drawImage(cv, 0, oy - H, W, H); c.drawImage(cv, 0, oy, W, H); } catch(e2){} c.globalAlpha = 1; c.fillStyle = '#000'; c.fillRect(0, oy - 3*dpr, W, 6*dpr); } } // 화면이 위아래로 굴러요
     const bars = (glR()*(2 + 6*e))|0; for (let i = 0; i < bars; i++){ const y = glR()*H, h = (2 + glR()*30)*dpr; c.fillStyle = glR() < .4 ? `rgba(0,0,0,${.5 + glR()*.5})` : glR() < .5 ? 'rgba(255,40,90,.35)' : 'rgba(230,240,255,.5)'; c.fillRect(0, y, W, h); }
     root.style.filter = f && glR() < .15 ? 'invert(1)' : glR() < .08*e ? `hue-rotate(${glR()*360|0}deg) saturate(3)` : glR() < .1*e ? 'contrast(2) grayscale(1)' : '';
     cv.style.transform = `translate(${((glR() - .5)*16*e).toFixed(1)}px,${((glR() - .5)*9*e).toFixed(1)}px)`;
