@@ -133,6 +133,7 @@ const PINS = [[.08, .1], [.92, .1], [.2, .05], [.8, .05], [.04, .3], [.96, .3], 
 
 export default {
   reach: 125,
+  touch: [489, 591, 623], // 밀쳐 내기 피해 (1 · 2 · 3 단계)
   get height(){ return phaseNow === 3 ? 198 : 236; },
 
   pos(B){ return body(B); },
@@ -156,7 +157,7 @@ export default {
     for (const f of flukes(B)){
       if (f.k < .3 && once('fw.' + f.key, now)) B.sfx('warn', 300);
       if (f.k >= FL.warn && f.k < FL.slam){ if (once('fs.' + f.key, now)){ B.sfx('slam', 200); }
-        if (inFluke(f, mx, my) && B.hurt(B.lo + 20, 'fl.' + f.key)){ B.shake(); const n = f.a + Math.PI/2, side = Math.sign(Math.sin(Math.atan2((my - f.y)/.62, mx - f.x) - f.a)) || 1; B.push(Math.cos(n)*side, Math.sin(n)*side, 60); } }
+        if (inFluke(f, mx, my) && B.hurt([876, 910, 930][B.phase - 1], 'fl.' + f.key, {raw:1})){ B.shake(); const n = f.a + Math.PI/2, side = Math.sign(Math.sin(Math.atan2((my - f.y)/.62, mx - f.x) - f.a)) || 1; B.push(Math.cos(n)*side, Math.sin(n)*side, 60); } }
     }
 
     // ① 약속의 원: 밖에 오래 있으면 채찍
@@ -171,7 +172,7 @@ export default {
         let bad;
         if (R.gather) bad = !inEll(mx, my, R.x, R.y, R.rx, R.ry);
         else { const [bx, by] = body(B); bad = inEll(mx, my, bx, by, APART_BOSS, APART_BOSS*.6) || B.alive.some(o => !o.me && dist(o.x, o.y, mx, my) < APART_P); }
-        if (bad && B.hurt(B.lo + 80, `rl.${p.seed}.${R.i}`)){ B.sfx('slam'); B.shake(); }
+        if (bad && B.hurt(1900, `rl.${p.seed}.${R.i}`, {raw:1})){ B.sfx('slam'); B.shake(); }
       }
     }
 
@@ -213,7 +214,7 @@ export default {
         { const by = B.alive.find(o => o.uid !== T.uid && dist(o.x, o.y, T.x, T.y) < 66 && (h === null || ((o.x - T.x)*Math.cos(h) + (o.y - T.y)*Math.sin(h))/Math.max(1, dist(o.x, o.y, T.x, T.y)) < -.34));   // 멈춰 있는 (자리를 비운) 노리는 몸은 닿기만 해도 깨어요
           if (by){ hostAt = now; B.tx(bs => bs.wake && bs.wake.k === W.key ? undefined : {...bs, wake:{k:W.key, by:by.uid, at:now}}); } } }
       if (W.woke && once('wk.' + W.key, now)){ B.sfx('hit'); const T = W.T; if (T) B.fx('툭!', T.x, T.y - 80, '#c8ffd0'); }
-      if (!W.woke && W.T && W.T.uid === me.uid && !W.solo && p.t >= W.s1 && p.t < W.s1 + .5 && once('bx.' + W.key, now)){ if (B.hurt(B.lo + 100, 'bx.' + W.key)) B.shake(); }
+      if (!W.woke && W.T && W.T.uid === me.uid && !W.solo && p.t >= W.s1 && p.t < W.s1 + .5 && once('bx.' + W.key, now)){ if (B.hurt(2678, 'bx.' + W.key, {raw:1})) B.shake(); }
     }
     if (!bwOn){ bwH = null; if (bwBp){ B.setBp(null); bwBp = false; } }
 
@@ -221,7 +222,7 @@ export default {
     if (p.id === 'sermon' && !(B.bs.stun > now)){ const m = cutMask(B, p), [bx, by] = body(B);
       for (const S of casts(B, p)){ if (bits(m) >= 2) break;
         if (p.t >= S.t0 && p.t < S.t0 + .4 && once(`sw.${p.seed}.${S.i}`, now)) B.sfx('warn');
-        if (!(m & 1 << S.i) && p.t >= S.end && p.t < S.end + .45 && inEll(mx, my, bx, by, 400, 250) && B.hurt(B.lo + 120, `se.${p.seed}.${S.i}`)){ B.sfx('slam'); B.shake(); B.push(mx - bx, my - by, 80); } } }
+        if (!(m & 1 << S.i) && p.t >= S.end && p.t < S.end + .45 && inEll(mx, my, bx, by, 400, 250) && B.hurt(2890, `se.${p.seed}.${S.i}`, {raw:1})){ B.sfx('slam'); B.shake(); B.push(mx - bx, my - by, 80); } } }
 
     // ⑦ 고래 등: 등 위에서 같이 떠다녀요 · 바다에 빠지면 아프고 등으로 올려져요
     if (s.phase === 3 && s.ph3 > 1.2){ const t3 = s.ph3, C = whaleC(B, t3), C2 = whaleC(B, t3 + .1), [rx, ry] = backR(t3);
@@ -229,7 +230,7 @@ export default {
       let vx = (C2[0] - C[0])/.1 + Math.cos(now/700)*14, vy = (C2[1] - C[1])/.1 + Math.sin(now/530)*10;
       if (!inEll(mx, my, C[0], C[1], rx, ry)){
         if (t3 < 4.5){ const d = Math.max(1, dist(mx, my, C[0], C[1])); vx += (C[0] - mx)/d*330; vy += (C[1] - my)/d*330; }   // 물이 차오르는 동안은 파도가 등으로 실어다 줘요
-        else { if (B.hurt(B.lo + 100, 'sea.' + Math.floor(now/1600))){ B.fx('풍덩', mx, my - 60, '#cfeaff'); B.sfx('slam'); }
+        else { if (B.hurt(3390, 'sea.' + Math.floor(now/1600), {raw:1})){ B.fx('풍덩', mx, my - 60, '#cfeaff'); B.sfx('slam'); }
           const a = Math.atan2((my - C[1])/ry, (mx - C[0])/rx), tx = C[0] + Math.cos(a)*rx*.62, ty = C[1] + Math.sin(a)*ry*.62; B.push(tx - mx, ty - my, Math.hypot(tx - mx, ty - my)); } }
       B.ctl.drift = [vx, vy];
     }
