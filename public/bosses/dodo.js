@@ -234,7 +234,7 @@ export default {
     // 기본 공격 (내 몸만)
     for (const b of boomers(B)){ if (b.k < .1 && once('bw' + b.key)) B.sfx('warn', 300);
       const k0 = Math.max(.6, Math.min(b.k, sm['bk' + b.key] ?? b.k)); sm['bk' + b.key] = b.k; // 프레임이 느려도 지나간 길을 다 봐요
-      if (me && !me.down && b.k > .6) for (let k = k0; k <= Math.min(2.0, b.k) + 1e-6; k += .025){ const u = cl((k - .6)/1.4), [x, y] = boomAt(b, u); if (dist(x, y, me.x, me.y - 20) < 32){ if (B.hurt(lo + 40, b.key + (u < .5 ? 'a' : 'b'))) B.push(b.nm[0], b.nm[1], 40); break; } } }
+      if (me && !me.down && b.k > .6) for (let k = k0; k <= Math.min(2.0, b.k) + 1e-6; k += .025){ const u = cl((k - .6)/1.4), [x, y] = boomAt(b, u); if (dist(x, y, me.x, me.y - 20) < 32){ if (B.hurt([828, 929, 989][B.phase - 1], b.key + (u < .5 ? 'a' : 'b'), {raw:1})) B.push(b.nm[0], b.nm[1], 40); break; } } }
     // 패턴
     if (p.id === 'mole') tickMole(B, p, me, lo);
     else if (p.id === 'rail') tickRail(B, p, me, lo);
@@ -339,12 +339,12 @@ function tickMole(B, p, me, lo){ const H = moleOrder(B, p);
   for (let n = 0; n < 3; n++){ const s = MOLE_I + n*MOLE_C, k = p.t - s, [x, y] = HOLES[H[n]];
     if (k > .2 && k < .4 && once('mw' + p.seed + n)) B.sfx('warn', 200);
     if (k >= MOLE_BUMP && k < MOLE_BUMP + .4){ if (once('ms' + p.seed + n)){ B.sfx('slam', 150); B.shake(); }
-      if (me && !me.down && inEll(me.x, me.y, x, y, POP_RX, POP_RY) && B.hurt(lo + 80, `mp${p.seed}.${n}`)) B.push(me.x - x || 1, me.y - y, 80); } } }
+      if (me && !me.down && inEll(me.x, me.y, x, y, POP_RX, POP_RY) && B.hurt(1889, `mp${p.seed}.${n}`, {raw:1})) B.push(me.x - x || 1, me.y - y, 80); } } }
 function tickRail(B, p, me, lo){
   for (const ct of carts(B, p)){ const k = p.t - ct.t0;
     if (k > -1 && k < -.8 && once('cw' + p.seed + ct.i)) B.sfx('warn', 200);
     const kk = 'cl' + p.seed + ct.i, t0 = Math.max(p.t - .5, Math.min(p.t, sm[kk] ?? p.t)); sm[kk] = p.t;
-    if (me && !me.down && Math.abs(me.y - RY) < 26) for (let tt = t0; tt <= p.t + 1e-6; tt += .03){ const q = cartAt(B, {...p, t:tt}, ct); if (q && !q.br && Math.abs(me.x - q.x) < 44){ if (B.hurt(lo + 120, `ct${p.seed}.${ct.i}`)) B.push(0, me.y < RY ? -1 : 1, 80); break; } }
+    if (me && !me.down && Math.abs(me.y - RY) < 26) for (let tt = t0; tt <= p.t + 1e-6; tt += .03){ const q = cartAt(B, {...p, t:tt}, ct); if (q && !q.br && Math.abs(me.x - q.x) < 44){ if (B.hurt(2087, `ct${p.seed}.${ct.i}`, {raw:1})) B.push(0, me.y < RY ? -1 : 1, 80); break; } }
     const tc = ct.t0 + ct.tf + .8; if (switched(B, p, ct) && p.t >= tc && p.t < tc + .5){ if (once('cs' + p.seed + ct.i)){ B.sfx('slam', 100); B.shake(); }
       if (B.host && once('ch' + p.seed + ct.i)){ const at = Math.round(B.now - (p.t - tc)*1000); B.tx(bs => (bs.stun || 0) >= at + 3000 ? undefined : {...bs, stun:at + 3000, st0:at}); } } } }
 function tickBlast(B, p, me, lo){
@@ -354,7 +354,7 @@ function tickBlast(B, p, me, lo){
 function tickMap(B, p, me, lo){ const cells = mapCells(B, p);
   MAPR.forEach(([wn, f], r) => { if (p.t > wn && p.t < wn + .3 && once('gw' + p.seed + r)) B.sfx('warn', 200);
     if (p.t >= f && p.t < f + PIT){ if (once('gf' + p.seed + r)){ B.sfx('slam', 100); B.shake(); }
-      if (me && !me.down && cells[r].includes(cellOf(me.x, me.y))) B.hurt(lo + 120, `pt${p.seed}.${r}`); } }); }
+      if (me && !me.down && cells[r].includes(cellOf(me.x, me.y))) B.hurt(1980, `pt${p.seed}.${r}`, {raw:1}); } }); }
 function tickCrack(B, p, me, lo){
   const tg = B.target, now = B.now, t1 = now - (p.t - 1)*1000;
   if (!tg || p.t < 1 || p.t > p.len - .3) return;
@@ -380,7 +380,7 @@ function tickEsc(B, p, me, lo, i){
   const f = escFoot(B, p), e = f.e, now = B.now, running = e.run && e.mode !== 'catch' && f.u < 1 && p.t > .8;
   // 지나간 자리에 화약 (1 초마다)
   const sec = Math.floor(now/1000); if (running && sm.dynS !== sec){ sm.dynS = sec; (sm.dyn = dynList(B)).push({ x:f.x, y:f.y, at:sec*1000 }); }
-  for (const d of dynList(B)){ const k = (now - d.at)/1000; if (k >= 1.3 && k < 1.6){ if (once('dx' + d.at)) B.sfx('slam', 200); if (me && !me.down && inEll(me.x, me.y, d.x, d.y, 60, 33) && B.hurt(lo + 100, `dy${d.at}`)) B.push(me.x - d.x || 1, me.y - d.y, 70); } }
+  for (const d of dynList(B)){ const k = (now - d.at)/1000; if (k >= 1.3 && k < 1.6){ if (once('dx' + d.at)) B.sfx('slam', 200); if (me && !me.down && inEll(me.x, me.y, d.x, d.y, 60, 33) && B.hurt(2999, `dy${d.at}`, {raw:1})) B.push(me.x - d.x || 1, me.y - d.y, 70); } }
   if (f.u >= 1 && once('ex' + e.k + e.seg)){ B.sfx('slam', 100); B.shake(); }
   if (!B.host || !later('esc', 350, now)) return;
   const set = o => B.tx(bs => { const cur = bs.esc && bs.esc.k === p.seed ? bs.esc : e; if ((cur.seg|0) !== (e.seg|0) || (cur.v|0) !== (e.v|0)) return undefined; return {...bs, esc:{...cur, ...o, v:(cur.v|0) + 1}}; });
