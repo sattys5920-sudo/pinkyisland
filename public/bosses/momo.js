@@ -237,7 +237,7 @@ function patTick(B, p){ const me = B.me, now = B.now, live = me && !me.down, see
     if (u && !u.fz && p.t > LU_A && p.t < LU_E && live){ const [x, y] = pos(B); if (inEll(me.x, me.y, x, y, 62, 38) && B.hurt(B.lo + 60, `lu.${seed}.${Math.floor(now/1100)}`)) B.push(me.x - x, me.y - y, 70); } }
   else if (p.id === 'paint'){ if (p.t < .6 && once(B, 'pw' + seed)) sayOnce(B, 'p' + seed, '새로 칠했어요. 하늘색으로.');
     if (live && p.t < p.len - PEND){ const tl = paintTiles(B, p), cx = Math.floor((me.x - GX0)/GW), cy = Math.floor((me.y - GY0)/GH); const i = tl.findIndex(q => q[0] === cx && q[1] === cy);
-      if (i >= 0){ const pt = PT0 + i*PDT; if (p.t >= pt){ B.ctl.slip = .7; if (p.t < pt + .3) B.hurt(B.lo + 20, `pt.${seed}.${i}`); } } } }
+      if (i >= 0){ const pt = PT0 + i*PDT; if (p.t >= pt){ B.ctl.slip = .7; if (p.t < pt + .3) B.hurt(689, `pt.${seed}.${i}`, {raw:1}); } } } }
   else if (p.id === 'trans'){ if (B.ph2 > 2.2) sayOnce(B, 'tr' + B.r.rageAt, `${B.target?.nick || B.targetNick} 님, 새벽 5 시 40 분에 갈게요`, 3200); }
   else if (p.id === 'rew'){ const l = loc(B); if (p.t < .6) sayOnce(B, 'rw' + seed, '다시… 처음부터…');
     RK.forEach((rk, i) => { const key = seed + '.' + i;
@@ -258,7 +258,7 @@ function patTick(B, p){ const me = B.me, now = B.now, live = me && !me.down, see
     if (p.t > SP_A) sayOnce(B, 's' + seed, '내가 안 그랬어… 바퀴 탓이야');
     if (s && s.f && once(B, 'sf' + seed + s.f)){ B.sfx('warn'); B.say('…다시 붙었다', 1800); }
     if (s && s.ok && once(B, 'so' + seed)){ B.sfx('slam'); B.shake(); }
-    if (sp.live && !(s && s.ok) && live && !stunned(B)){ const [x, y] = sp.C; if (inEll(me.x, me.y, x, y, 66, 36) && B.hurt(B.lo + 60, `sc.${seed}.${Math.floor(now/1200)}`)) B.push(me.x - x, me.y - y, 70); } } }
+    if (sp.live && !(s && s.ok) && live && !stunned(B)){ const [x, y] = sp.C; if (inEll(me.x, me.y, x, y, 66, 36) && B.hurt(1478, `sc.${seed}.${Math.floor(now/1200)}`, {raw:1})) B.push(me.x - x, me.y - y, 70); } } }
 
 // ---------- 바닥 그리기 ----------
 function drawAlleyZone(c, side, a){ const z = zone(side), x0 = z[0], x1 = z[2], y0 = z[1], y1 = z[3]; c.save(); c.globalAlpha = a;
