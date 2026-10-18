@@ -42,10 +42,10 @@ function basicCuffs(B, n){ const c = cur(B);
     for (const p of pickU){ const a = rnd()*Math.PI; out.push({x:p.x + Math.cos(a)*CG, y:p.y + Math.sin(a)*CG*.6, a}); }
     return out; }); }
 const inCuff = (b, x, y, pad = 8) => { const ax = Math.cos(b.a)*CG, ay = Math.sin(b.a)*CG*.6; return inEll(x, y, b.x + ax, b.y + ay, CR + pad) || inEll(x, y, b.x - ax, b.y - ay, CR + pad); };
-function basicTick(B){ const bt = beat(B, 2.8), cs = basicCuffs(B, bt.n);
+function basicTick(B){ const bt = beat(B, 2.8, 1.35), cs = basicCuffs(B, bt.n);
   if (cs.length && bt.t < .3 && once(`bw${bt.n}`)) B.sfx('warn', 300);
   if (bt.t >= .9 && bt.t < 1.25 && once(`bl${bt.n}`) && cs.length){ B.sfx('slam', 200); if (meOk(B) && cs.some(b => inCuff(b, B.me.x, B.me.y))) B.hurt(B.lo + 20, `kb${B.r.bossAt}.${bt.n}`); } }
-function basicDraw(B, c, top){ const bt = beat(B, 2.8);
+function basicDraw(B, c, top){ const bt = beat(B, 2.8, 1.35);
   for (const n of [bt.n - 1, bt.n]){ const k = B.t - n*bt.len, cs = L.cache[`b${n}`]; if (!cs || k < 0 || k > 1.6) continue;
     for (const b of cs){ const ax = Math.cos(b.a)*CG, ay = Math.sin(b.a)*CG*.6;
       if (!top){ if (k < .9){ c.save(); c.globalAlpha = .45 + .4*Math.abs(Math.sin(k*10)); c.strokeStyle = '#9ab0ff'; c.lineWidth = 3; c.setLineDash([6, 5]); for (const s2 of [-1, 1]){ c.beginPath(); c.ellipse(b.x + s2*ax, b.y + s2*ay, CR, CR*.6, 0, 0, 7); c.stroke(); } c.beginPath(); c.moveTo(b.x - ax, b.y - ay); c.lineTo(b.x + ax, b.y + ay); c.stroke(); c.globalAlpha = .12 + .2*k; c.fillStyle = '#9ab0ff'; for (const s2 of [-1, 1]){ c.beginPath(); c.ellipse(b.x + s2*ax, b.y + s2*ay, CR*k/.9, CR*.6*k/.9, 0, 0, 7); c.fill(); } c.restore(); }

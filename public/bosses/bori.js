@@ -47,7 +47,7 @@ function cageOf(B, p, uid){ const cg = B.bs.cg; if (p.id !== 'cage' || !cg || cg
 const BEVERY = 3.0, BWARN = .8, BFLY = .3;
 function basicShot(B, p){
   if (p.id === 'trans' || p.id === 'dark' || stunned(B) || !B.alive.length) return null;
-  const bt = beat(B, BEVERY); if (bt.t > BWARN + BFLY + .1 || bt.n < 1) return null;
+  const bt = beat(B, BEVERY, BWARN + BFLY + .15); if (bt.t > BWARN + BFLY + .1 || bt.n < 1) return null;
   const key = B.r.bossAt + ':' + B.phase + ':' + bt.n; let s = L.lines.get(key);
   if (!s){ const list = B.alive.filter(o => cageOf(B, p, o.uid) < 0); if (!list.length) return null;
     const tg = list[B.hash(key) % list.length], [ox, oy] = posAt(shift(B, -bt.t)), sy = oy - 14, a = Math.atan2(tg.y - sy, tg.x - ox), len = Math.max(320, dist(ox, sy, tg.x, tg.y) + 170);
@@ -239,7 +239,7 @@ function darkHost(B, p, bx, by, dt){ if (revealed(B, p) || p.t < 1 || p.t > p.le
   const need = Math.min(3, B.alive.length), near = B.alive.filter(o => inEll(o.x, o.y, bx, by, 165, 105)).length;
   if (need && near >= need){ L.dkHold += dt; if (L.dkHold > .4){ const seed = p.seed, now = B.now; tx(B, 'dk', bs => { const z = bs.dk; if (z && z.s === seed && now - z.at < REVEAL) return undefined; return {...bs, dk:{s:seed, c:(z && z.s === seed ? z.c : 0) + 1, at:now}}; }, 600); } }
   else L.dkHold = 0; }
-function sneakShot(B, p){ if (p.t < 1.2 || p.t > p.len - .8 || !B.alive.length) return null; const bt = beat(B, SNEAK); if (bt.t > 1.35) return null;
+function sneakShot(B, p){ if (p.t < 1.2 || p.t > p.len - .8 || !B.alive.length) return null; const bt = beat(B, SNEAK, 1.4); if (bt.t > 1.35) return null;
   const key = 'sn' + B.r.bossAt + ':' + bt.n; let s = L.lines.get(key); if (!s){ const tg = B.alive[B.hash(key) % B.alive.length]; s = {key, x:tg.x + (B.hash(key + 'x') % 2 ? 30 : -30), y:tg.y - 4, uid:tg.uid}; L.lines.set(key, s); } return {...s, t:bt.t}; }
 function darkTick(B, p, bx, by){ const me = B.me, s = sneakShot(B, p);
   if (s && me && !me.down){ if (s.uid === me.uid && s.t < .15 && once('snw' + s.key)) B.sfx('warn', 200); if (s.t >= 1 && s.t < 1.3 && inEll(me.x, me.y, s.x, s.y, 66, 32)){ if (B.hurt(B.lo + 80, s.key)) B.sfx('slam', 100); } }

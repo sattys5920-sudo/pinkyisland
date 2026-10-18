@@ -96,7 +96,7 @@ const cartPos = B => { const p = P_(B); if (p.id === 'split' && !stunned(B)){ co
 // ---------- 크림 폭탄 (기본 공격 · 십자) ----------
 const ARM = 135, ARMW = 34, CBW = .9;
 const inCross = (px, py, x, y) => { const dx = Math.abs(px - x), dy = Math.abs(py - y); return (dx < ARM && dy < ARMW*.6) || (dy < ARM*.55 && dx < ARMW); };
-const cbBeat = B => beat(B, 3.4);
+const cbBeat = B => beat(B, 3.4, CBW + .45);
 const cbOff = B => (B.phase === 2 && B.ph2 < TRANS) || stunned(B);
 function cbTick(B){ const l = loc(B), b = cbBeat(B), me = B.me; if (cbOff(B)) return;
   let e = l.cb[b.n];

@@ -20,7 +20,8 @@ export function pick(B, P, opt = {}){
   return {id:null, t:0, len:0, n:0, k:0, seed:''};
 }
 // 기본 공격 박자: every 초마다 한 번 (50% · 20% 아래로 갈수록 자주). 같은 박자 번호를 돌려줘요 (모두 같은 값)
-export function beat(B, every){ const f = B.phase === 3 ? .55 : B.phase === 2 ? .75 : 1, len = every*f*HARD.beat, n = Math.floor(B.t/len); return {n, t:B.t - n*len, len}; }
+// need: 공격 한 번이 끝까지 가는 데 드는 초 (박자가 이보다 짧아지면 공격이 잘려서 안 나와요)
+export function beat(B, every, need = 0){ const f = B.phase === 3 ? .55 : B.phase === 2 ? .75 : 1, len = Math.max(every*f*HARD.beat, need), n = Math.floor(B.t/len); return {n, t:B.t - n*len, len}; }
 
 // 예고 표시 (깜빡이는 테두리 + 차오르는 안쪽). k: 0 → 1 (1 이면 곧 터짐)
 export function warnCircle(c, x, y, rx, ry, k, col = '255,45,85'){

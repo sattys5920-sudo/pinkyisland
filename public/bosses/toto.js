@@ -67,7 +67,7 @@ const nowAt = (B, p, pt) => B.now - (p.t - pt)*1000;   // 패턴 안 시각 pt �
 const FL = {warn:.9, slam:1.15, end:1.6};
 function flukes(B){
   const s = st(B); if (s.p.id === 'trans' || B.bs.stun > B.now || (s.phase === 3 && s.ph3 < 4.5)) return [];
-  const bt = beat(B, 3.6); if (bt.t > FL.end || bt.n < 1) return [];
+  const bt = beat(B, 3.6, FL.slam + .25); if (bt.t > FL.end || bt.n < 1) return [];
   const t0 = B.now - bt.t*1000, s0 = stAt(B, t0); if (s0.p.id === 'trans' || s0.phase !== s.phase) return [];
   const [fx, fy] = bodyAt(B, t0), rnd = B.rng(`${B.r.bossAt}.fl.${bt.n}`), a = rnd()*T2, out = [];
   const n = s.phase === 1 ? 1 : 2;
