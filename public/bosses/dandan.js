@@ -160,7 +160,7 @@ export default {
     if (!alive){ L.d = 0; L.sleepAt = 0; L.boxT = 0; setBp(B); return; }
     // ① 졸음 · 잠듦 (패턴이 끝나도 깨워 줄 때까지 · 혼자면 스스로 깨요)
     if (L.sleepAt){
-      const w = B.bs.wake?.[me.uid] || 0, lim = B.alive.length > 1 ? 6500 : 3500;
+      const w = B.bs.wake?.[me.uid] || 0, lim = B.alive.length > 1 ? 6500 : Infinity; // 혼자면 스스로 못 깨요
       if (w > L.sleepAt || now - L.sleepAt > lim){ L.sleepAt = 0; L.d = 0; L.wakeImm = now + 2000; B.fx('!', me.x, me.y - 70, '#c8ffd0'); }
       else { ctl.lock = true; ctl.noAtk = true; }
     } else {
@@ -175,10 +175,10 @@ export default {
       if (p.t >= gr.ts + 1.0 && p.t < gr.ts + 1.25 && once('gh' + gr.key)){ if (inEll(me.x, me.y, aim[0], aim[1], 62, 40) && !L.stolen){ L.stolen = {at:now}; B.shake(); B.sfx('slam'); } } }
     if (L.stolen){ ctl.noAtk = true; const bx = boxPos(B);
       if (inEll(me.x, me.y, bx[0], bx[1] + 30, 80, 55)) L.boxT += dt; else L.boxT = Math.max(0, L.boxT - dt);
-      if (L.boxT > .6 || now - L.stolen.at > 30000){ L.stolen = null; L.boxT = 0; B.sfx('hit'); B.fx('칼 되찾음', me.x, me.y - 70, '#c8ffd0'); } }
+      if (L.boxT > 3 || now - L.stolen.at > 30000){ L.stolen = null; L.boxT = 0; B.sfx('hit'); B.fx('칼 되찾음', me.x, me.y - 70, '#c8ffd0'); } }
     // ③ 테이프 몸통
     if (p.id === 'tape' && p.t > .8 && p.t < p.len - .8){ const body = tapeBody(B, p);
-      for (const [sx, sy] of body){ const d = Math.hypot(me.x - sx, (me.y - sy)*1.3); if (d < 32){ if (B.hurt(B.lo + 40, `tp.${p.seed}.${Math.floor(p.t/1.1)}`)){ B.push(me.x - sx || 1, me.y - sy, 70); B.sfx('hit'); } break; } } }
+      for (const [sx, sy] of body){ const d = Math.hypot(me.x - sx, (me.y - sy)*1.3); if (d < 32){ if (B.hurt(733, `tp.${p.seed}.${Math.floor(p.t/1.1)}`, {raw:1})){ B.push(me.x - sx || 1, me.y - sy, 70); B.sfx('hit'); } break; } } }
     // ④ 붓는 순간 둘레 · 남은 수면 커피 웅덩이
     if (p.id === 'cups' || (B.phase === 2 && p.id === null)){ const pc = p.id === 'cups' ? p : null;
       if (pc){ const cups = cupsOf(B, pc), m = cupMask(B, pc); ARRIVE.forEach((a, i) => { if (m & (1 << i)) return; const c = cups[i];
