@@ -58,7 +58,7 @@ function baList(B){
   if (B.t < 3 || transOn(B) || stunned(B) || !B.alive.length) return [];
   const p = pk(B);
   if (p.id === 'freeze'){ const lk = looks(p); if (lk.some(([a, b]) => p.t > a - 1.4 && p.t < b + .2)) return []; }
-  const b = beat(B, 2.8); if (b.len < BA_WARN + BA_SWEEP + .1) return [];
+  const b = beat(B, 2.8, BA_WARN + BA_SWEEP + .15);
   const n = b.n, out = [], al = B.alive, cnt = B.phase >= 2 && al.length >= 3 ? 2 : 1;
   for (let j = 0; j < cnt; j++){
     const tg = al[(n + j*Math.ceil(al.length/2)) % al.length], key = `ba${n}.${j}`;

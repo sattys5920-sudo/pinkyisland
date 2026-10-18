@@ -52,7 +52,7 @@ let txT = 0; const txOk = (B, gap = 350) => { if (performance.now() - txT < gap)
 // ===== 기본 공격: 덩굴 채찍 =====
 const VL = 250, VWID = 30, WARN = .85, RISE = .45;
 function waves(B){ if (B.phase === 2 && B.ph2 < TRANS + .5) return null; if (stunned(B)) return null;
-  const bt = beat(B, 3.2); if (bt.t > WARN + RISE + .4) return null;
+  const bt = beat(B, 3.2, WARN + RISE + .15); if (bt.t > WARN + RISE + .4) return null;
   const list = keep(`w${B.r.bossAt}.${B.phase}.${bt.n}`, () => { const al = B.alive.length ? B.alive : B.all; if (!al.length) return [];
     const n = Math.min(al.length, 1 + (al.length >= 3) + (al.length >= 6)), rn = B.rng(`w${B.r.bossAt}.${bt.n}`), out = [];
     for (let j = 0; j < n; j++){ const p = al[(B.hash(`${bt.n}.${j}`) + j) % al.length], a = rn()*Math.PI, o = (rn() - .5)*40;
