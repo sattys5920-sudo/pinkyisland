@@ -6924,7 +6924,7 @@ function drawBossScreen(c){
 }
 // 혼자 보기(solo)에서 보스 패턴 시험: __pinky.boss.start('bori', .45) · bot(1, {x, y}) · warp(초) · set({bs:{}})
 const bossDev = {
-  async start(npc, frac = 1, opt = {}){ const i = DARK_ORDER.indexOf(npc), now = darkNow(); await net.setWorld({dark:true, darkAt:now, darkShift:i});
+  async start(npc, frac = 1, opt = {}){ const i = DARK_ORDER.indexOf(npc), now = darkNow(); await net.setWorld({dark:true, darkAt:now, darkShift:0}); void i;
     const max = DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, hp = Math.max(1, Math.round(max*frac)), solved = {}; for (const pz of darkPuzzles(npc)) solved[pz.id] = {uid, nick:me.nick, at:now, ans:'x'};
     await net.darkTx(npc, () => ({start:now, first:now, att:0, solved, hp, max, bossAt:now - (opt.t || 0)*1000, ...(frac <= .5 ? {rageAt:now - (opt.t2 || 0)*1000} : {}), ...(frac <= .2 ? {lowAt:now - (opt.t3 || 0)*1000} : {}), bt:DARK_BOSS_BONUS}));
     if (!me.inv.sword){ me.inv.sword = true; me.inv.weapon = 'w1'; me.inv.weapons = ['w1']; }
