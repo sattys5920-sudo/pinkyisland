@@ -1243,6 +1243,7 @@ let admin = false; // 관리자 코드로 들어온 CCTV 모드: 캐릭터 없�
 // 관리자가 '오투모'로 섬에 들어가 걸어 다닐 수 있어요: 다른 사람에게도 보이고, 기절한 사람 곁에 2 초 있으면 깨워 줘요
 let admWalk = false, admRevive = null, admPresSig = '', admPresT = 0;
 const OTUMO_NAME = '오투모 the god';
+const otFight = () => admin && admWalk && !!Z().dark && Z().dark !== 'tori'; // 오투모로 다크 방에 들어가면 같이 싸워요 (불꽃 고래 검 +5 · 불꽃 고래 반지 · Lv 100)
 const OTUMO_LOOK = {skin:'#f9d3b8', hair:'short', hairColor:'#3a3a4a', top:'t01', bottom:'b01', set:'', hat:'robot', acc:'none', shoes:'sh01', expr:'happy', cc:{}};
 // 오투모 옷 입히기: 관리자가 고른 옷 (이 기기에 저장). null 이면 원래 로봇 몸
 let otumoDress = (()=>{ try { return JSON.parse(localStorage.getItem('otumoDress') || 'null'); } catch(e){ return null; } })();
@@ -1345,7 +1346,7 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz; o.bp = s.bp && typeof s.bp === 'object' ? s.bp : null;
-    Object.assign(o, {adm: !!s.adm, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, pet2: s.pet2 && PET_DRAW[s.pet2.sp] ? {sp:s.pet2.sp, col:Math.max(0, Math.min(2, s.pet2.col|0)), name:String(s.pet2.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', wp:WEAPONS[s.wp] ? s.wp : '', wu:Math.max(0, Math.min(5, s.wu|0)), nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
+    Object.assign(o, {adm: !!s.adm, fi: !!s.fi, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, pet2: s.pet2 && PET_DRAW[s.pet2.sp] ? {sp:s.pet2.sp, col:Math.max(0, Math.min(2, s.pet2.col|0)), name:String(s.pet2.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', wp:WEAPONS[s.wp] ? s.wp : '', wu:Math.max(0, Math.min(5, s.wu|0)), nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
     if (typeof s.sw==='number' && s.sw !== o.swT){ const fresh = o.swT !== undefined && Date.now() - s.sw < 1500; o.swT = s.sw; if (fresh){ o.swAt = performance.now(); o.swDir = ['up','down','left','right'].includes(s.sd) ? s.sd : o.dir; } }
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
     else o.goal = null;
@@ -1902,7 +1903,7 @@ function enterGame(doc){
   const sideFold = open => { const sb = $('sideBtns'); sb.classList.toggle('open', open); $('sideTog').textContent = open ? '✕' : '☰'; $('sideTog').setAttribute('aria-expanded', open); };
   $('sideTog').onclick = () => sideFold(!$('sideBtns').classList.contains('open'));
   document.querySelectorAll('#sideBtns .fold').forEach(b => b.addEventListener('click', () => sideFold(false)));
-  $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); swing(); });
+  $('swingBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); if (admin) otSwing(); else swing(); });
   loadStats(); // 체력·기력은 자리 옮기며 저장하기 전에 먼저 불러와요
   if (me.downAt){ darkDown = me.downAt; downOffer = false; } // 기절한 채로 나갔다면 그대로 (자리 옮기며 저장하기 전에 먼저)
   if (me.dkDown && me.dkDown.n && !admin){ dkBack = me.dkDown; darkDown = dkBack.at; downOffer = false; } // 보스전에서 쓰러진 채로 나갔다면 방 정보가 오면 그 방으로 (그 사이엔 먹지 못하게 쓰러진 채로)
@@ -2806,7 +2807,7 @@ const COMBAT_ZONES = {forest:6, deepforest:7, seacave:5, cave:7, starhill:5, cav
 // ===== 체력·기력·레벨 =====
 // 레벨이 오를 때마다 최대 체력·최대 기력이 10 씩 늘어요. 경험치는 퀘스트·몬스터·이야기·채집·낚시·채굴에서 받아요
 const LV_MAX = 100;
-const lvOf = () => Math.max(1, Math.min(LV_MAX, (me && me.lv) || 1));
+const lvOf = () => admin ? LV_MAX : Math.max(1, Math.min(LV_MAX, (me && me.lv) || 1));
 // 반지: 보리 공방에서 만들고 하나만 껴요. 최대 체력을 올리고 막는 힘을 더해 줘요 (되팔 수 없어요)
 // [id, 이름, 최대 체력, 골드, 재료, 효과, 색] · 효과: dr 받는 피해 감소, bossDr 보스 탄막 추가 감소, regen 회복 배수, noSlow 느려짐 무시, sta 최대 기력, kb 밀려남 배수, shield 보호막 주기(초), phoenix 하루 한 번 바로 일어남
 const RING_LIST = [
@@ -2827,7 +2828,7 @@ const RING_LIST = [
 const TREASURE_ONLY = new Set(['r12', 'w10', 'w11']); // 공방·무기고에서 못 만들어요 (가진 사람만 목록에 보여요) · w11 은 리조트에서만
 const RING_OPEN = true; // 반지 그림·이름표가 정해지면 공방에 열어요
 const RINGS = Object.fromEntries(RING_LIST.map(r=>[r[0], {name:r[1], hp:r[2], gold:r[3], need:r[4], fx:r[5], color:r[6]}]));
-const ring = () => (me && RINGS[me.inv?.ring]) || null, ringFx = () => ring()?.fx || {};
+const ring = () => admin ? RINGS.r13 : (me && RINGS[me.inv?.ring]) || null, ringFx = () => ring()?.fx || {};
 let ringShieldAt = 0;
 function ringDmg(d, boss){ const f = ringFx(), t = performance.now(); if (tfx('dodge') && Math.random() < tfx('dodge')){ fx.push({x:pos.x, y:pos.y-70, text:'피했다!', t, color:'#7ab8ff'}); return 0; } if (f.shield && t - ringShieldAt > f.shield*1000){ ringShieldAt = t; fx.push({x:pos.x, y:pos.y-70, text:'보호막!', t, color:'#ffb3d9'}); return 0; } return Math.max(1, Math.round(d * (1 - (f.dr||0) - tfx('dr') - (boss ? (f.bossDr||0) : 0)))); }
 const ringKb = n => n * (ringFx().kb || 1);
@@ -3100,9 +3101,9 @@ const WEAPON_LIST = [
   ['w11','불꽃 고래 검',210,150000,[['loot:m78',2],['loot:m77',10],['ore:o38',2]],'#ff6a3a'], // 불꽃 고래 왕 (화산 분화구) 비늘로
 ];
 const WEAPONS = Object.fromEntries(WEAPON_LIST.map(w=>[w[0], {name:w[1], atk:w[2], gold:w[3], need:w[4], color:w[5]}]));
-const weapon = () => WEAPONS[me.inv.weapon] || WEAPONS.w1;
+const weapon = () => admin ? WEAPONS.w11 : WEAPONS[me.inv.weapon] || WEAPONS.w1;
 let swingTired = false; // 기력이 없으면 힘이 반만 들어가요
-const myWpUp = () => me && me.inv && me.inv.weapon === 'w11' ? Math.max(0, Math.min(5, (me.inv.wpUp || {}).w11 | 0)) : 0; // 끼룩이 매점에서 강화 (+1 마다 공격 +8)
+const myWpUp = () => admin ? 5 : me && me.inv && me.inv.weapon === 'w11' ? Math.max(0, Math.min(5, (me.inv.wpUp || {}).w11 | 0)) : 0; // 끼룩이 매점에서 강화 (+1 마다 공격 +8)
 function swordAtk(){ const a = weapon().atk + myWpUp()*8, v = Math.round((a + Math.floor(Math.random()*(a*.25+1)))*(1 + tfx('atk'))); return swingTired ? Math.ceil(v/2) : v; }
 function weaponPanel(){
   const own = me.inv.weapons || ['w1'];
@@ -3304,6 +3305,7 @@ function swing(){
     }
   }
 }
+function otSwing(){ if (!otFight() || darkDown) return; const t = performance.now(); if (t - swingAt < 380) return; swingAt = t; swingDir = pos.dir; lunge = .12; target = null; swingTired = false; const [vx, vy] = DIRV[pos.dir] || DIRV.down; darkSwing(pos.x + vx*26, pos.y + vy*26, vx, vy, t); }
 function updateSwing(dt){
   if (lunge > 0){ lunge -= dt; const [vx,vy] = DIRV[swingDir] || DIRV.down; pushPlayer(vx, vy, 170*dt); }
 }
@@ -6928,8 +6930,8 @@ function bossMod(npc){
 }
 function bossCtx(npc, r, dt = 0){
   const now = darkNow(), rm = darkRoomOf(npc), [hx, hy] = rm?.boss || [DARK_ROOM.W/2, 560], all = [], fl = rm?.floors || 0, up = y => !fl || y < FLOOR_H; // 층 방: 보스는 꼭대기 층 (y 0 ~ 900) · 그 층 사람만
-  if (!admin && me && up(pos.y)) all.push({uid, me:true, x:pos.x, y:pos.y, down:!!darkDown, nick:me.nick, bp:bossBp});
-  for (const o of others.values()) if (o.z === zoneId && !o.adm && o.uid && o.uid !== uid && up(o.y)) all.push({uid:o.uid, x:o.x, y:o.y, down:!!o.down, nick:o.nick, bp:o.bp || null});
+  if (((!admin && me) || otFight()) && up(pos.y)) all.push({uid, me:true, x:pos.x, y:pos.y, down:!!darkDown, nick:admin ? OTUMO_NAME : me.nick, bp:bossBp});
+  for (const o of others.values()) if (o.z === zoneId && (!o.adm || o.fi) && o.uid && o.uid !== uid && up(o.y)) all.push({uid:o.uid, x:o.x, y:o.y, down:!!o.down, nick:o.nick, bp:o.bp || null});
   all.sort((a, b) => a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
   const alive = all.filter(p => !p.down), tg = darkTgt(npc), phase = r.lowAt ? 3 : r.rageAt ? 2 : 1, ps = phase === 3 ? r.lowAt : phase === 2 ? r.rageAt : r.bossAt;
   const tgtP = all.find(p => p.uid === tg?.uid && !p.down) || (alive.length ? alive[hashU(String(r.bossAt) + npc) % alive.length] : null);
@@ -6937,7 +6939,7 @@ function bossCtx(npc, r, dt = 0){
     ph2:r.rageAt ? (now - r.rageAt)/1000 : -1, ph3:r.lowAt ? (now - r.lowAt)/1000 : -1,
     W:Z().W, H:fl ? FLOOR_H : Z().H, hx, hy, all, alive, me:all.find(p => p.me) || null, target:tgtP, targetNick:tg?.nick || tgtP?.nick || '???', host:!admin && !!all.length && all[0].uid === uid,
     lo:darkAtkLo(npc), name:NPC[npc]?.name || '', real:(CLUE_CASE[npc] || [])[0] || '', ctl:bossCtl, view, admin,
-    hurt:(n, key, o) => { if (admin || !me || darkDown || !up(pos.y)) return false; if (key){ if (bossHurtKeys[key]) return false; bossHurtKeys[key] = now; } if (bossGod) return true; const big = o?.raw ? n >= 500 : n >= B.lo + 80; darkHurt(Math.round(o?.raw ? n : n*(big ? BOSS_BIG : BOSS_DMG)*bossRoomK(B.npc)*BOSS_PH[B.phase - 1]), performance.now()); if (big){ bossShakeAt = performance.now(); fx.push({x:pos.x, y:pos.y-90, text:'치명상!', t:performance.now(), color:'#ff2040'}); } return true; },
+    hurt:(n, key, o) => { if ((admin ? !otFight() : !me) || darkDown || !up(pos.y)) return false; if (key){ if (bossHurtKeys[key]) return false; bossHurtKeys[key] = now; } if (bossGod) return true; const big = o?.raw ? n >= 500 : n >= B.lo + 80; darkHurt(Math.round(o?.raw ? n : n*(big ? BOSS_BIG : BOSS_DMG)*bossRoomK(B.npc)*BOSS_PH[B.phase - 1]), performance.now()); if (big){ bossShakeAt = performance.now(); fx.push({x:pos.x, y:pos.y-90, text:'치명상!', t:performance.now(), color:'#ff2040'}); } return true; },
     push:(dx, dy, dist = 60) => { if (!admin && !darkDown && up(pos.y)) pushPlayer(dx, dy, dist); },
     tp:(x, y) => { if (!admin && !darkDown && up(pos.y)){ pos.x = Math.max(20, Math.min(B.W - 20, x)); pos.y = Math.max(20, Math.min(B.H - 20, y)); target = null; } },
     tx:fn => net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear || cur.bossAt !== r.bossAt) return undefined; const nb = fn({...(cur.bs || {})}, cur); return nb === undefined ? undefined : {...cur, bs:nb}; }),
@@ -6958,7 +6960,7 @@ function bossTick(npc, r, dt){
   // 몸에 바짝 붙으면 밀쳐 내요 (칼은 조금 떨어져서 닿아요 · 기절 · 변신 중엔 안 해요)
   if (B.me && !B.me.down && !(B.bs.stun > B.now) && !(B.phase === 2 && B.ph2 < 5)){ let bp = null; try { bp = M.pos(B); } catch(e){}
     if (bp && Math.hypot(pos.x - bp[0], pos.y - bp[1]) < 72 && performance.now() > bossTouchT){ bossTouchT = performance.now() + [1300, 1100, 900][B.phase - 1]; pushPlayer(pos.x - bp[0], pos.y - bp[1], [80, 110, 140][B.phase - 1]*(1 + .05*Math.max(0, DARK_ORDER.indexOf(B.npc) - 1))); if (M.touch) B.hurt(M.touch[B.phase - 1], undefined, {raw:1}); else B.hurt(Math.round(B.lo*.6)); } }
-  if (!admin && !darkDown){ pos.x = Math.max(20, Math.min(B.W - 20, pos.x)); pos.y = Math.max(20, Math.min(B.H - 20, pos.y)); }
+  if ((!admin || otFight()) && !darkDown){ pos.x = Math.max(20, Math.min(B.W - 20, pos.x)); pos.y = Math.max(20, Math.min(B.H - 20, pos.y)); }
   return true;
 }
 function bossStep(dt, ix, iy){
@@ -7025,11 +7027,11 @@ function darkSwing(cx, cy, vx, vy, t){
   if (M && B.phase === 2 && B.ph2 < 5) mul = 0; // 변신하는 5 초는 무적
   if (!(mul > 0)){ fx.push({x:bx + (Math.random()-.5)*40, y:by-120, text:'팅', t, color:'#9ab0c0'}); bossFx('hit', 60); return; }
   const dmg = Math.round(swordAtk()*mul); addDmg(dmg); darkPending += dmg; darkHurtT = .2; bossFx('hit', 60); fx.push({x:bx + (Math.random()-.5)*50, y:by-130, text:String(dmg), t, color:'#ffffff'});
-  me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.start||0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
+  if (admin) return; me.darkHit = me.darkHit || {}; const key = `${z.dark}:${r.start||0}`; if (me.darkHit[z.dark] !== key){ me.darkHit[z.dark] = key; saveMe(); }
 }
 // 방 차례마다 보스 피해가 20 씩 세져요: 토리 100 ~ 300, 보리 120 ~ 320 … 콩이 320 ~ 520
 const darkAtkLo = npc => 100 + 20*Math.max(0, DARK_ORDER.indexOf(npc));
-function darkHurt(n, t){ if (darkGuard > 0) return; n = ringDmg(n, true); /* 다크 보스도 보스예요: 반지의 '보스 피해 감소'가 적용돼요 */ if (!n) return; bossFx('hurt', 200); playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0) darkRespawn(); }
+function darkHurt(n, t){ if (darkGuard > 0) return; n = ringDmg(n, true); /* 다크 보스도 보스예요: 반지의 '보스 피해 감소'가 적용돼요 */ if (!n) return; bossFx('hurt', 200); playerHp -= n; lastHurt = t; setExpr('surprised', 1000); fx.push({x:pos.x, y:pos.y-50, text:'-'+n, t, color:'#ff3b6b'}); if (playerHp <= 0){ if (admin){ playerHp = 0; darkDown = darkNow(); target = null; } else darkRespawn(); } }
 // ===== 다크 보스전 음악 · 효과음 (주민마다 다른 테마곡 · 배경 음악을 끄면 같이 꺼져요) =====
 let bossRageKey = '', bossClearKey = '', bossSfxT = {};
 const bossFx = (kind, gap = 120) => { if (!bgmOn() || !zoneId.startsWith('dark:')) return; const now = performance.now(); if (now - (bossSfxT[kind] || 0) < gap) return; bossSfxT[kind] = now; try { bossSnd.sfx(Z().dark, kind); } catch(e){} };
@@ -7066,6 +7068,27 @@ function darkAssignTick(npc, r, t){
   if (same(plan(r), r.asg)) return;
   net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear) return undefined; const a = plan(cur); return same(a, cur.asg) ? undefined : {...cur, asg:a}; });
 }
+function darkFlush(npc, t){
+  if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
+    net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; let hp = Math.max(0, cur.hp - dmg), ph = {};
+      if (!cur.rageAt && hp <= cur.max/2){ hp = Math.max(hp, Math.floor(cur.max/2)); ph = {rageAt:darkNow()}; } // 50%: 변신 (넘친 피해는 버려요)
+      else if (npc !== 'tori' && cur.rageAt && !cur.lowAt && hp <= cur.max*.2){ hp = Math.max(hp, Math.floor(cur.max*.2)); ph = {lowAt:darkNow()}; } // 20%: 마지막 패턴
+      return {...cur, hp, ...ph, ...(hp === 0 ? {clear:{at:darkNow(), nick:admin ? OTUMO_NAME : me.nick}} : {})}; }); }
+}
+// 오투모로 싸울 때: 피해 보내기 · 보스 패턴 · 쓰러지면 4 초 뒤 혼자 일어나요 (살리기 횟수는 안 써요)
+let otWipe = -1, otOn = false;
+function otDarkTick(dt, t){
+  updateSwing(dt); const on = otFight(); if ($('swingBtn').hidden === on) $('swingBtn').hidden = !on;
+  if (on !== otOn){ otOn = on; darkDown = null; playerHp = maxHp(); darkGuard = 2; }
+  if (!on) return;
+  const npc = Z().dark, r = roomOf(npc); darkGuard -= dt; darkHurtT -= dt;
+  if (playerHp <= 0 && !darkDown) playerHp = maxHp();
+  if ((r.wipe|0) !== otWipe){ otWipe = r.wipe|0; darkDown = null; playerHp = maxHp(); }
+  if (darkDown && darkNow() - darkDown > 4000){ darkDown = null; playerHp = maxHp(); darkGuard = 3; }
+  if (!darkDown && t - lastHurt > 4000) playerHp = Math.min(maxHp(), playerHp + maxHp()*.02*dt*(ringFx().regen || 1));
+  darkFlush(npc, t);
+  if (darkBossUp(r)) bossTick(npc, r, dt);
+}
 function updateDark(dt, t){
   bossMusicSync(); filmTick();
   if (t > darkHudT){ darkHudT = t + 1000; if (zoneId.startsWith('dark:')) darkHud(); }
@@ -7078,16 +7101,12 @@ function updateDark(dt, t){
   if (darkWipeSeen[npc] === undefined) darkWipeSeen[npc] = r.wipe|0;
   if ((r.wipe|0) !== darkWipeSeen[npc]){ darkWipeSeen[npc] = r.wipe|0; darkSlams = []; if (darkDown){ darkDown = null; darkGuard = 3; wakeGuardUntil = performance.now() + 5000; flushSave(); } playerHp = maxHp(); const [sx, sy] = darkBossStart(npc); pos.x = sx; pos.y = sy; target = null; renderHud(); say('....', `모두 쓰러졌어요.... ${npc === 'tori' ? '토리???가' : NPC[npc].name + '이(가)'} 다시 처음 모습으로 돌아왔어요. 푼 문제는 그대로, 보스전만 처음부터 다시 해요.`); }
   // 방 안 사람이 모두 쓰러지면 (3 초 확인) 보스 체력과 살리기 횟수를 처음으로
-  if (darkBossUp(r) && darkDown && t > darkWipeT){ darkWipeT = t + 3000; const mates = [...others.values()].filter(o=>o.z===zoneId && !o.adm);
+  if (darkBossUp(r) && darkDown && t > darkWipeT){ darkWipeT = t + 3000; const mates = [...others.values()].filter(o=>o.z===zoneId && (!o.adm || o.fi));
     if (mates.every(o=>o.down) && darkNow() - darkDown > 2500){ const w = r.wipe|0; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && (cur.wipe|0) === w ? (({rageAt, lowAt, bs, ...c}) => ({...c, hp:cur.max, rv:0, wipe:w + 1, bossAt:darkNow()}))(cur) : undefined); } }
   if (!r.hp && !r.clear && r.start && darkNow() <= darkEnd(r) && darkSolvedN(r) >= darkPuzzles(npc).length && t > darkWakeT){ darkWakeT = t + 3000; darkWake(npc); } // 문제를 다 푼 방에 다시 들어오면 (토큰 재도전 등) 보스를 깨워요
   if (darkBossUp(r) && !r.bt && t > darkWakeT){ darkWakeT = t + 3000; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && !cur.bt && darkNow() <= darkEnd(cur) ? {...cur, bt:DARK_BOSS_BONUS} : undefined); } // 보스 +30 분 (이 기능 전에 깨어난 보스도)
   if (r.start && !r.clear && darkNow() > darkEnd(r)){ const st = r.start; net.darkTx(npc, cur => cur && cur.start === st && !cur.clear ? darkRetry(npc, cur) : undefined); return darkLeave(); }
-  if (darkPending && t - darkFlushT > 800){ darkFlushT = t; const dmg = darkPending; darkPending = 0;
-    net.darkTx(npc, cur => { if (!cur || !(cur.hp > 0) || cur.clear) return undefined; let hp = Math.max(0, cur.hp - dmg), ph = {};
-      if (!cur.rageAt && hp <= cur.max/2){ hp = Math.max(hp, Math.floor(cur.max/2)); ph = {rageAt:darkNow()}; } // 50%: 변신 (넘친 피해는 버려요)
-      else if (npc !== 'tori' && cur.rageAt && !cur.lowAt && hp <= cur.max*.2){ hp = Math.max(hp, Math.floor(cur.max*.2)); ph = {lowAt:darkNow()}; } // 20%: 마지막 패턴
-      return {...cur, hp, ...ph, ...(hp === 0 ? {clear:{at:darkNow(), nick:me.nick}} : {})}; }); }
+  darkFlush(npc, t);
   if (bossTick(npc, r, dt)){ darkSlams = []; return; } // 보리 ~ 콩이: 주민마다 패턴 (public/bosses)
   if (!darkBossUp(r)){ darkSlams = []; return; }
   if (darkDown){ darkSlams = []; return; }
@@ -7576,7 +7595,7 @@ function openChat(){ document.body.classList.add('chat-open'); insetT = 0; $('ch
 $('chatin').addEventListener('blur', ()=>setTimeout(()=>{ if (!typing() && !$('chatin').value.trim()) { document.body.classList.remove('chat-open'); $('emorow').hidden = true; insetT = 0; } }, 150));
 addEventListener('keydown', e=>{
   if (mg){ mgKey(e); return; } // 미니게임 중엔 키가 게임으로만 가요
-  if (admin){ const tg = document.activeElement?.tagName; if (admWalk && tg !== 'INPUT' && tg !== 'TEXTAREA' && tg !== 'SELECT'){ keys[e.key.toLowerCase()] = true; if (e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); admReviveNear(); } } return; }
+  if (admin){ const tg = document.activeElement?.tagName; if (admWalk && tg !== 'INPUT' && tg !== 'TEXTAREA' && tg !== 'SELECT'){ keys[e.key.toLowerCase()] = true; if (otFight() && (e.key.toLowerCase()==='f' || e.key.toLowerCase()==='j')){ e.preventDefault(); otSwing(); } else if (e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); admReviveNear(); } } return; }
   if (!me || obStep) return;
   if (dlg && !typing()){ if (e.key==='Enter' || e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); dlgTap(); } else if (e.key==='Escape' && dlg.waiting) dlgClose(); return; }
   if (typing() && document.activeElement.id !== 'chatin') return; // 편지·메신저 입력칸은 그 칸이 알아서
@@ -8039,7 +8058,7 @@ function frameBody(t){
   if (obStep==='maker'){ const pc = $('obprev'); if (pc && pc.width){ const c = pc.getContext('2d'), k = pc.width/240; c.setTransform(k,0,0,k,0,0); c.fillStyle='#fffafb'; c.fillRect(0,0,240,120); const d = CH.mattePainter(c); d.ell(120,108,110,9,'#f6dcd3',{flat:true,noShadow:true}); const L = applyStarter(EDIT); for (const [px,dir] of [[45,'down'],[120,'right'],[195,'up']]){ c.save(); c.translate(px,110); c.scale(1.45,1.45); CH.figure(d, L, dir, t/1000, true, L.expr); c.restore(); } } }
   if ((me || admin) && !obStep){
     updateNpcs(Date.now());
-    if (admin){ moveOthers(dt); if (admWalk){ step(dt); admWalkTick(t); } else adminCam(); adminMobs(dt); updateBossFx(dt, t); aucTick(); oxTick(); festTick(); }
+    if (admin){ moveOthers(dt); if (admWalk){ step(dt); admWalkTick(t); otDarkTick(dt, t); } else adminCam(); adminMobs(dt); updateBossFx(dt, t); aucTick(); oxTick(); festTick(); }
     else { step(dt); moveOthers(dt); aucSheet(); oxTick(); festTick(); walkFade(t); updatePets(dt); sendPresence(t); updateFishing(dt, t); updateMobs(dt, t); updateBossFx(dt, t); updateBoss(dt, t); updateDark(dt, t); updateRelics(); updateDown(dt, t); updateStats(dt, t); updateSwing(dt); updateStars(t); rainWater(t); }
     updateBars();
     buildStatic();
@@ -9815,8 +9834,8 @@ function otumoLabel(c, x, y){
   tag(c, OTUMO_NAME, x, y + 22, '#7fb8ff');
   const w = 54, bx = x - w/2, by = y - 72;
   c.save(); c.fillStyle = 'rgba(40,30,50,.55)'; c.beginPath(); c.roundRect(bx - 1, by - 1, w + 2, 9, 4.5); c.fill();
-  const g = c.createLinearGradient(bx, 0, bx + w, 0); g.addColorStop(0, '#7fe3a0'); g.addColorStop(1, '#3fbf7a'); c.fillStyle = g; c.beginPath(); c.roundRect(bx, by, w, 7, 3.5); c.fill();
-  c.font = 'bold 9px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(OTUMO_HP.toLocaleString(), x, by + 6.5); c.restore();
+  const fk = otFight() && x === pos.x && y === pos.y ? Math.max(0, Math.min(1, playerHp/maxHp())) : 1; const g = c.createLinearGradient(bx, 0, bx + w, 0); g.addColorStop(0, '#7fe3a0'); g.addColorStop(1, '#3fbf7a'); c.fillStyle = g; if (fk > 0){ c.beginPath(); c.roundRect(bx, by, Math.max(7, w*fk), 7, 3.5); c.fill(); }
+  c.font = 'bold 9px "Dongle",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(fk < 1 || (otFight() && x === pos.x && y === pos.y) ? Math.ceil(playerHp).toLocaleString() : OTUMO_HP.toLocaleString(), x, by + 6.5); c.restore();
   titleTag(c, '관리자', x, y - 80); festOtumoBubble(c, x, y);
   aucBubble(c, x, y);
 }
@@ -9827,7 +9846,7 @@ function admWalkOn(){
   document.body.classList.add('admwalk'); toast('오투모로 섬에 들어왔어요 · 화면을 누르거나 방향키로 걸어요'); renderAdmin();
 }
 function admWalkOff(){
-  if (!admWalk) return; admWalk = false; target = null; admRevive = null; pos.moving = false;
+  if (!admWalk) return; admWalk = false; target = null; admRevive = null; pos.moving = false; otOn = false; darkDown = null; $('swingBtn').hidden = true;
   net && net.presenceRemove && net.presenceRemove(); cam.zone = zoneId; document.body.classList.remove('admwalk');
   toast('오투모가 섬에서 나갔어요 · 다시 CCTV 로 봐요'); renderAdmin();
 }
@@ -9845,7 +9864,7 @@ function admWalkTick(t){
     else if (o.z !== zoneId || Math.hypot(pos.x-o.x, pos.y-o.y) > 80){ admRevive = null; toast('깨우기가 끊겼어요'); }
     else if (t - admRevive.at > ADM_REVIVE_MS){ const nick = o.nick; net.reviveSend(admRevive.uid, OTUMO_NAME).then(()=>toast(`${nick} 님을 깨웠어요`)).catch(()=>toast('깨우지 못했어요')); admRevive = null; } }
   if (!net || !net.presence) return;
-  const p = {adm:1, z:zoneId, nick:OTUMO_NAME, look:otumoDress ? otumoDressLook(otumoDress) : OTUMO_LOOK, roof:0, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, ex:'happy', ti:'관리자', emo:'', emoAt:0};
+  const p = {adm:1, z:zoneId, nick:OTUMO_NAME, look:otumoDress ? otumoDressLook(otumoDress) : OTUMO_LOOK, roof:0, x:Math.round(pos.x), y:Math.round(pos.y), dir:pos.dir, mv:pos.moving?1:0, ex:'happy', ti:'관리자', emo:'', emoAt:0, ...(otFight() ? {fi:1, ...(darkDown ? {down:1} : {}), bp:bossBp || null} : {})};
   const sig = JSON.stringify(p);
   if (sig === admPresSig || t - admPresT < (pos.moving ? 250 : 120)) return;
   admPresSig = sig; admPresT = t; net.presence(p).catch(()=>{});
