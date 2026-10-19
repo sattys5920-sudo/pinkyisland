@@ -15,6 +15,8 @@ export default {
   swing(B, cx, cy){ return false; },     // 칼을 휘두른 자리 (cx, cy). 물건을 쳤으면 true (보스는 안 맞아요)
   tap(B, wx, wy){ return null; },        // 화면을 누른 자리. {x, y, act} 를 돌려주면 그 자리로 걸어가서 act()
   chat(B, text){},                       // 이 방에서 채팅을 보냈을 때 (콩이 ⑥)
+  touch: [p1, p2, p3],                   // (선택) 몸에 닿았을 때 밀쳐 내기 피해 (단계별 · 그대로 들어가요)
+  pushMul(B){ return 1; },               // (선택) 밀쳐 내기 거리 배수 (몽실 실 감옥 동안 .3)
   drawFloor(B, c){},                     // 바닥 (사람 · 가구 아래) · 월드 좌표
   drawBody(B, c){},                      // 보스 몸 (발 y 로 앞뒤 정렬) · 월드 좌표
   drawTop(B, c){},                       // 사람 위 (날아가는 물건 · 사슬 …) · 월드 좌표
