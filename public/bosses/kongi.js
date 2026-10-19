@@ -12,6 +12,9 @@ const AMP = { ff:.4, search:.6, shadow:.5, white:.3, link:.6, haram:.2, door:.3 
 const SAY = { ff:'시간은 내 편이야', search:'어디 숨었어?', shadow:'그림자는 거짓말 안 해', white:'그런 일은 없었어', link:'이름표 바꿔 달았지', haram:'조용히 해', door:'문이 열린다' };
 const PHRASE = '문열지마';                               // 배지 뒷면 「문 열지 마」 (떨어진 경비대 배지 · 방 단서 ⑫)
 const norm = s => String(s || '').replace(/[\s.,!?~…·'"「」『』\-—]/g, '');
+// 폰 자판 오타 · 마지막 글자 빠짐도 받아 줘요: 한 글자까지 틀려도 OK (문열지마 ← 문열지, 문열지머, 문 열지 마요)
+const lev = (a, b) => { const d = Array.from({length:a.length + 1}, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[a.length][b.length]; };
+const phraseOk = t => { const s = norm(t); return s.includes(PHRASE) || lev([...s], [...PHRASE]) <= 1; };
 
 // ----- 내 화면에만 있는 기억 (그림 · 한 번만 하기) -----
 const L = { cache:{}, done:{}, hist:[], prints:[], acc:0, side:0, said:'', seen:'', inCone:0, callUntil:0, callSeed:'', called:{}, lhN:{}, txAt:{}, stunSeen:0, bossAt:0 };
@@ -158,7 +161,7 @@ function haramTick(B){ const c = cur(B), on = c.id === 'haram';
 // 필요한 사람 수: 움직이고 있는 (최근 20 초) 살아 있는 사람 + 이미 부른 사람 · 가만히 있거나 자리를 비운 사람은 세지 않아요 (최소 1)
 const haramGot = (B, c6) => c6 ? B.alive.filter(p => c6.u[p.uid]).length : 0;
 const haramNeed = (B, c6) => Math.max(1, B.alive.filter(p => (p.bp && p.bp.a) || (c6 && c6.u[p.uid])).length);
-function haramChat(B, text){ const c = cur(B); if (c.id !== 'haram' || !meOk(B) || stunned(B) || L.called[c.seed] || L.callUntil > B.now) return; if (norm(text) !== PHRASE) return; L.callUntil = B.now + 2000; L.callSeed = c.seed; }
+function haramChat(B, text){ const c = cur(B); if (c.id !== 'haram' || !meOk(B) || stunned(B) || L.called[c.seed] || L.callUntil > B.now) return; if (!phraseOk(text)) return; L.callUntil = B.now + 2000; L.callSeed = c.seed; }
 function haramTop(B, c2){ const c = cur(B), [fx, fy] = foot(B), top = fy - FOOTD - 150*S;
   for (const p of B.all){ if (!(p.bp && p.bp.c)) continue; c2.save(); c2.fillStyle = 'rgba(240,244,255,.95)'; c2.beginPath(); c2.roundRect(p.x + 8, p.y - 70, 52, 22, 10); c2.fill(); c2.fillStyle = '#5a6a9a'; for (let i = 0; i < 3; i++){ c2.beginPath(); c2.arc(p.x + 24 + i*10, p.y - 59 - (Math.floor(B.now/160 + i)%3 === 0 ? 3 : 0), 3, 0, 7); c2.fill(); } c2.restore(); }
   if (c.id === 'haram' && !stunned(B)){ const c6 = B.bs.c6 && B.bs.c6.s === c.seed ? B.bs.c6 : null, n = haramNeed(B, c6), got = Math.min(n, haramGot(B, c6));

@@ -6757,7 +6757,8 @@ function darkPuzzlePanel(pz){
     else toast('누군가 먼저 풀었거나 방이 바뀌었어요');
   };
   if (notMine){ darkHintWire(npc, pz); return; }
-  $('dkGo').onclick = go; $('dkIn').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229){ e.preventDefault(); go(); } };
+  $('dkGo').onclick = go; { const di = $('dkIn'); let wait = 0, sent = 0; const fire = () => { if (wait){ clearTimeout(wait); wait = 0; sent = Date.now(); setTimeout(go, 0); } };
+    di.addEventListener('compositionend', fire); di.onkeydown = e => { if (e.key !== 'Enter') return; e.preventDefault(); if (e.isComposing || e.keyCode === 229){ if (!wait) wait = setTimeout(()=>{ wait = 0; sent = Date.now(); go(); }, 300); return; } if (!wait && Date.now() - sent > 400) go(); }; } // 한글 조합 중 Enter 도 한 번에 내요
   darkHintWire(npc, pz);
   setTimeout(()=>$('dkIn')?.focus(), 50);
 }
@@ -7603,7 +7604,7 @@ addEventListener('keydown', e=>{
   if (!me || obStep) return;
   if (dlg && !typing()){ if (e.key==='Enter' || e.key===' ' || e.key.toLowerCase()==='e'){ e.preventDefault(); dlgTap(); } else if (e.key==='Escape' && dlg.waiting) dlgClose(); return; }
   if (typing() && document.activeElement.id !== 'chatin') return; // 편지·메신저 입력칸은 그 칸이 알아서
-  if (e.key==='Enter'){ if (e.isComposing || e.keyCode === 229) return; if (typing()){ sendChat(); } else { openChat(); } e.preventDefault(); return; } // 한글 조합 중 Enter 는 글자 확정용이에요
+  if (e.key==='Enter'){ if (e.isComposing || e.keyCode === 229){ if (document.activeElement?.id === 'chatin' && !chatSendWait) chatSendWait = setTimeout(()=>{ chatSendWait = 0; if ($('chatin').value.trim()) sendChat(); }, 300); return; } if (chatSendWait || Date.now() - chatSentAt < 400){ e.preventDefault(); return; } if (typing()){ sendChat(); } else { openChat(); } e.preventDefault(); return; } // 한글 조합 중 Enter 는 글자 확정용이에요
   if (e.key==='Escape'){ closeTalk(); $('chatin').blur(); return; }
   if (typing()) return;
   if (darkDown) return;
@@ -7614,9 +7615,9 @@ addEventListener('keydown', e=>{
 });
 addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
 $('sendBtn').addEventListener('pointerdown', e=>e.preventDefault()); // 눌러도 키패드가 내려가지 않게
-let chatComposing = false, chatSendWait = 0;
+let chatComposing = false, chatSendWait = 0, chatSentAt = 0;
 $('chatin').addEventListener('compositionstart', ()=>{ chatComposing = true; });
-$('chatin').addEventListener('compositionend', ()=>{ chatComposing = false; if (chatSendWait){ clearTimeout(chatSendWait); chatSendWait = 0; setTimeout(()=>{ if ($('chatin').value.trim()) sendChat(); }, 0); } });
+$('chatin').addEventListener('compositionend', ()=>{ chatComposing = false; if (chatSendWait){ clearTimeout(chatSendWait); chatSendWait = 0; chatSentAt = Date.now(); setTimeout(()=>{ if ($('chatin').value.trim()) sendChat(); }, 0); } });
 // 폰 키보드는 마지막 글자를 아직 조합 중일 수 있어요: 확정될 때까지 잠깐 기다렸다가 보내요 (글자가 빠지거나 남지 않게)
 $('sendBtn').addEventListener('click', ()=>{ const inp = $('chatin');
   if (chatComposing){ chatSendWait = setTimeout(()=>{ chatSendWait = 0; chatComposing = false; if (inp.value.trim()) sendChat(); }, 250); inp.blur(); return; }
