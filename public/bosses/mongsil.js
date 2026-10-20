@@ -322,6 +322,7 @@ function arrow(c, x, y, a, col){ c.save(); c.translate(x, y); c.rotate(a); c.fil
 export default {
   reach: 125,
   height: 222,
+  touchR(B){ return B.phase === 3 ? 36 : 72; }, // 3단계에선 몸에 거의 닿아야 밀쳐 내요
   pushMul(B){ return pk(B).id === 'prison' ? .3 : 1; }, // 실 감옥 동안 밀쳐 내기는 살짝만 (울타리 밖으로 튕겨 나가지 않게)
   pos(B){ arena(B); return bossPos(B); },
   tick(B, dt){
