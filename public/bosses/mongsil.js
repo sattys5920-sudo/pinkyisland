@@ -54,11 +54,12 @@ const byUid = (B, u) => B.all.find(p => p.uid === u) || null;
 
 // ===== 기본 공격: 줄자 휘두르기 =====
 const CONE_R = 230, CONE_A = .6, BA_WARN = .8, BA_SWEEP = .25;
+const P3_HIT = .85, P3_BA = 1.5, PR_PAD = 30; // 3 단계: 줄자 판정은 그림의 85% · 줄자 간격 1.5 초 · 울타리 판정은 그림보다 30 넉넉하게
 function baList(B){
   if (B.t < 3 || transOn(B) || stunned(B) || !B.alive.length) return [];
   const p = pk(B);
   if (p.id === 'freeze'){ const lk = looks(p); if (lk.some(([a, b]) => p.t > a - 1.4 && p.t < b + .2)) return []; }
-  const b = beat(B, 2.8, BA_WARN + BA_SWEEP + .15);
+  const b = beat(B, 2.8, B.phase === 3 ? P3_BA : BA_WARN + BA_SWEEP + .15);
   const n = b.n, out = [], al = B.alive, cnt = B.phase >= 2 && al.length >= 3 ? 2 : 1;
   for (let j = 0; j < cnt; j++){
     const tg = al[(n + j*Math.ceil(al.length/2)) % al.length], key = `ba${n}.${j}`;
@@ -77,7 +78,7 @@ function drawBaTop(B, c){ for (const s of baList(B)){ const k = s.t - BA_WARN; i
 function tickBa(B){ const m = meXY(B); for (const s of baList(B)){
   if (s.t < .2 && once(B, 'baw' + s.key)) B.sfx('warn', 400);
   const k = s.t - BA_WARN; if (k < 0 || k > BA_SWEEP + .05) continue; if (once(B, 'bas' + s.key)) B.sfx('slam', 250);
-  if (m && inSector(m[0], m[1], s.x, s.y, CONE_R, s.a - CONE_A, s.a + CONE_A, .6) && B.hurt(dmg(B, 20), `ba${B.r.bossAt}.${s.key}`)) B.push(m[0] - s.x, m[1] - s.y, 60); } }
+  const hk = B.phase === 3 ? P3_HIT : 1; if (m && inSector(m[0], m[1], s.x, s.y, CONE_R*hk, s.a - CONE_A*hk, s.a + CONE_A*hk, .6) && B.hurt(dmg(B, 20), `ba${B.r.bossAt}.${s.key}`)) B.push(m[0] - s.x, m[1] - s.y, 60); } }
 
 // ===== ① 몽실아~ (얼음) =====
 function looks(p){ const r = rngOf(p.seed + 'L'); return [0, 1, 2].map(i => { const a = 2.0 + i*3.5 + r()*.9; return [a, a + 1.5]; }); }
@@ -232,7 +233,7 @@ function drawTugTop(B, c, p){ const G = tugGeo(B, p), ok = tugOk(B, p), T = B.no
 
 // ===== ⑦ 실 감옥 =====
 function prisonR(t, len){ if (t < 1) return 470; if (t < 13) return lerp(470, 150, ease((t - 1)/12)); if (t < len - 1.5) return 150; return lerp(150, 560, ease((t - (len - 1.5))/1.5)); }
-function tickPrison(B, p){ if (once(B, 'pw' + p.seed)) B.sfx('warn', 0); if (p.t < 1.6 || p.t > p.len - 1.5) return; const m = meXY(B); if (!m) return; const [bx, by] = bossPos(B), r = prisonR(p.t, p.len) + 12;
+function tickPrison(B, p){ if (once(B, 'pw' + p.seed)) B.sfx('warn', 0); if (p.t < 1.6 || p.t > p.len - 1.5) return; const m = meXY(B); if (!m) return; const [bx, by] = bossPos(B), r = prisonR(p.t, p.len) + PR_PAD;
   if (!inEll(m[0], m[1], bx, by, r, r*.6)) B.hurt(654, `pr${p.seed}.${Math.floor(p.t/1.4)}`, {raw:1}); }
 function drawPrisonFloor(B, c, p){ const [bx, by] = bossPos(B), r = prisonR(p.t, p.len), al = cl(p.t/.8)*cl((p.len - p.t)/1.2);
   c.save(); c.globalAlpha = al; c.fillStyle = 'rgba(80,0,30,.42)'; c.beginPath(); c.rect(-200, 0, B.W + 400, B.H + 200); c.ellipse(bx, by, r, r*.6, 0, 0, 7); c.fill('evenodd'); c.restore(); }
@@ -375,7 +376,7 @@ export default {
     const p = pk(B), T = B.now/1000;
     if (p.id === 'trans'){ drawTrans(B, c, w, h); return; }
     if (p.id === 'freeze'){ const lk = lookNow(p); if (lk?.look) tint(c, w, h, '#ff2060', .12 + .04*Math.sin(T*10)); }
-    if (p.id === 'prison' && B.me && !B.me.down && p.t > 1.6 && p.t < p.len - 1.5){ const [bx, by] = bossPos(B), r = prisonR(p.t, p.len) + 12; if (!inEll(B.me.x, B.me.y, bx, by, r, r*.6)){ const vg = c.createRadialGradient(w/2, h/2, Math.min(w, h)*.3, w/2, h/2, Math.hypot(w, h)*.6); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(160,0,40,${.45 + .15*Math.sin(T*8)})`); c.fillStyle = vg; c.fillRect(0, 0, w, h); } }
+    if (p.id === 'prison' && B.me && !B.me.down && p.t > 1.6 && p.t < p.len - 1.5){ const [bx, by] = bossPos(B), r = prisonR(p.t, p.len) + PR_PAD; if (!inEll(B.me.x, B.me.y, bx, by, r, r*.6)){ const vg = c.createRadialGradient(w/2, h/2, Math.min(w, h)*.3, w/2, h/2, Math.hypot(w, h)*.6); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(160,0,40,${.45 + .15*Math.sin(T*8)})`); c.fillStyle = vg; c.fillRect(0, 0, w, h); } }
     if (p.id === 'letters'){ const lw = letterWave(p), lt = lw && B.bs.lt && B.bs.lt.s === lw.s ? B.bs.lt : null; if (lt && p.t > lw.a + L_SC && p.t < lw.end){ const sp = letterSpots(B, lw, lt.n), {ch, idx} = nickPick(lt.tn, lt.n);
       sp.forEach(([x, y], i) => { if (lt.st[i] !== 0) return; edgeMark(B, c, w, h, x, y, (ex, ey, a) => { arrow(c, ex, ey, a, 'rgba(255,170,205,.9)'); text(c, ch[idx[i]] || '?', ex - Math.cos(a)*6, ey - Math.sin(a)*6, 26, '#ffe0ec', 'center', 'rgba(120,20,60,.9)'); }); });
       const tg = byUid(B, lt.tu); if (tg && B.me && tg.uid !== B.me.uid && lt.st.some(v => v === B.me.uid)) edgeMark(B, c, w, h, tg.x, tg.y - 40, (ex, ey, a) => arrow(c, ex, ey, a, 'rgba(255,90,140,.95)')); } }
