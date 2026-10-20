@@ -6965,7 +6965,8 @@ function bossTick(npc, r, dt){
   try { M.tick?.(B, dt); } catch(e){ console.error(e); }
   // 몸에 바짝 붙으면 밀쳐 내요 (칼은 조금 떨어져서 닿아요 · 기절 · 변신 중엔 안 해요)
   if (B.me && !B.me.down && !(B.bs.stun > B.now) && !(B.phase === 2 && B.ph2 < 5)){ let bp = null; try { bp = M.pos(B); } catch(e){}
-    if (bp && Math.hypot(pos.x - bp[0], pos.y - bp[1]) < 72 && performance.now() > bossTouchT){ bossTouchT = performance.now() + [1300, 1100, 900][B.phase - 1]; let pm = 1; try { pm = M.pushMul ? M.pushMul(B) : 1; } catch(e){} pushPlayer(pos.x - bp[0], pos.y - bp[1], [80, 110, 140][B.phase - 1]*(1 + .05*Math.max(0, DARK_ORDER.indexOf(B.npc) - 1))*pm); if (M.touch) B.hurt(M.touch[B.phase - 1], undefined, {raw:1}); else B.hurt(Math.round(B.lo*.6)); } }
+    let tr = 72; try { tr = M.touchR ? M.touchR(B) : 72; } catch(e){}
+    if (bp && Math.hypot(pos.x - bp[0], pos.y - bp[1]) < tr && performance.now() > bossTouchT){ bossTouchT = performance.now() + [1300, 1100, 900][B.phase - 1]; let pm = 1; try { pm = M.pushMul ? M.pushMul(B) : 1; } catch(e){} pushPlayer(pos.x - bp[0], pos.y - bp[1], [80, 110, 140][B.phase - 1]*(1 + .05*Math.max(0, DARK_ORDER.indexOf(B.npc) - 1))*pm); if (M.touch) B.hurt(M.touch[B.phase - 1], undefined, {raw:1}); else B.hurt(Math.round(B.lo*.6)); } }
   if ((!admin || otFight()) && !darkDown){ pos.x = Math.max(20, Math.min(B.W - 20, pos.x)); pos.y = Math.max(20, Math.min(B.H - 20, pos.y)); }
   return true;
 }
