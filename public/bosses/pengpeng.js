@@ -103,7 +103,7 @@ function tiltState(B, k){ if (k.id !== 'tilt') return {d:0, f:0, j:-1, next:0, w
   return {j, d:ds[j], f, next:nxt, w:nxt ? 1 - ((j + 1)*TSEG - (k.t - TL0))/.7 : 0}; }
 
 // ===== 내 화면 상태 (장식 · 보낸 일 기억) =====
-const L = {said:'', sent:{}, hostT:0, txT:0, shN:0, trK:'', stunK:'', cols:{}, horn:'', flip:'', tilt:'', heal:0, healT:0, startK:''};
+const L = {said:'', sent:{}, hostT:0, txT:0, shN:0, trK:'', stunK:'', cols:{}, horn:'', flip:'', tilt:'', heal:0, healT:0, hd:0, hdS:'', startK:''};
 function once(key){ if (L.sent[key]) return false; L.sent[key] = 1; const ks = Object.keys(L.sent); if (ks.length > 300) delete L.sent[ks[0]]; return true; }
 
 export default {
@@ -145,7 +145,8 @@ export default {
         const ids = Object.keys(add); if (ids.length){ L.txT = now; for (const i of ids) L.sent['g' + k.seed + i] = 1; B.sfx('warn', 300);
           B.tx(bs => { const o = bs.sh && bs.sh.s === k.seed ? bs.sh : {s:k.seed, g:{}}; const g2 = {...(o.g || {})}; for (const i of ids) if (!g2[i]) g2[i] = add[i]; return {...bs, sh:{s:k.seed, g:g2}}; });
           L.heal += ids.length; }
-        if (L.heal && now - L.healT > 500){ B.heal(10000*L.heal); L.heal = 0; L.healT = now; } } }
+        if (L.hdS !== k.seed){ L.hdS = k.seed; L.hd = 0; } // 한 번의 몫 패턴에서 회복은 모두 합쳐 2 만까지
+        if (L.heal && now - L.healT > 500){ const n = Math.min(10000*L.heal, 20000 - L.hd); if (n > 0){ B.heal(n); L.hd += n; } L.heal = 0; L.healT = now; } } }
 
     if (k.id === 'fog'){ const hs = horns(B, k);
       for (let i = 0; i < hs.length; i++){ const hn = hs[i];
