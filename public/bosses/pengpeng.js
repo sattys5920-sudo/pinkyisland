@@ -73,7 +73,7 @@ const STOVES = [[330, 470], [770, 470], [330, 690], [770, 690]];
 
 // ===== ③ 몫 1/5 =====
 const CC = new Map();
-// 동전 사이로 좌우 한 줄씩 길이 나 있어요 (폭 LANE_W · 바닥이 살짝 마른 자리) → 안 밟고 들어가서 때릴 수 있어요
+// 동전 사이로 좌우 한 줄씩 길이 나 있어요 (폭 LANE_W · 표시는 없어요) → 안 밟고 들어가서 때릴 수 있어요
 const LANE_W = 64;
 function lanes(B, k){ const r = B.rng(k.seed + 'L'); return [Math.PI + (r() - .5)*1.1, (r() - .5)*1.1]; }
 const laneD = (a, dx, dy) => { const ux = Math.cos(a), uy = Math.sin(a)*.55, l = Math.hypot(ux, uy), along = (dx*ux + dy*uy)/l; return along < 0 ? 1e9 : Math.abs(dx*uy - dy*ux)/l; };
@@ -326,9 +326,6 @@ function drawMinions(B, c, list, now, back){ const img = pirateArt(1.6), S2 = 1.
 // ===== ③ 금화 =====
 function drawCoins(B, c, k){ const cs = coins(B, k), al = cl((k.len - k.t)*2), t = k.t;
   c.save(); c.globalAlpha = al;
-  { const [cx, cy] = coinC(B, k), ga = cl((t - .9)/.8); if (ga > 0) for (const l of lanes(B, k)){ const ux = Math.cos(l), uy = Math.sin(l)*.55, n = Math.hypot(ux, uy);
-      c.save(); c.globalAlpha = al*ga; c.translate(cx, cy + 20); c.rotate(Math.atan2(uy, ux)); const g = c.createLinearGradient(110, 0, 430, 0); g.addColorStop(0, 'rgba(255,236,190,.0)'); g.addColorStop(.25, 'rgba(255,236,190,.2)'); g.addColorStop(1, 'rgba(255,236,190,0)'); c.fillStyle = g; c.fillRect(110, -LANE_W*.55, 320, LANE_W*1.1);
-      c.strokeStyle = 'rgba(255,236,190,.4)'; c.lineWidth = 3; c.setLineDash([14, 12]); for (const sy of [-1, 1]){ c.beginPath(); c.moveTo(130, sy*LANE_W*.5); c.lineTo(420, sy*LANE_W*.5); c.stroke(); } c.restore(); } }
   for (const q of cs){ if (coinTaken(B, k, q.i)) continue; const u = cl((t - .3 - q.d)/.8);
     if (u < 1){ if (t < .3 + q.d) continue; const x = lerp(q.sx, q.x, u), y = lerp(q.sy, q.y, u) - Math.sin(u*Math.PI)*120; coin(c, x, y, 7); continue; }
     c.fillStyle = 'rgba(0,0,0,.4)'; c.beginPath(); c.ellipse(q.x, q.y + 4, 12, 4, 0, 0, TAU); c.fill(); coin(c, q.x, q.y - Math.abs(Math.sin(B.now/400 + q.i))*2, 9); }
