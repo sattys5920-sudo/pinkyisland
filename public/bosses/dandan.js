@@ -8,9 +8,9 @@ import { pandaArt, cubeArt, blobArt, cupArt, bigCupArt, ART_S, FOOT } from './da
 const P = {
   1: [{id:'sleep', len:14}, {id:'grab', len:13}, {id:'tape', len:13}],
   2: [{id:'cups', len:14}, {id:'strong', len:12}, {id:'push', len:15}],
-  3: [{id:'close', len:42}],
+  3: [{id:'close', len:62}],
 };
-const GAP = 2.5, CLOSE_T = 40;
+const GAP = 2.5, CLOSE_T = 60; // 영업 마감 1 분 (각설탕 없이 다 같이 몰아치는 시간)
 const pk = B => pick(B, P, {gap:GAP});
 const hsh = n => { const v = Math.sin(n*12.9898 + 78.233)*43758.5453; return v - Math.floor(v); };
 const CREAM = '250,236,214', BROWN = '120,74,44';
@@ -115,7 +115,7 @@ function pushCup(B, p){
 // ===== 기본 공격: 각설탕 통통 =====
 const HOP = .42, LAUNCH = .35, CUBE_R = [34, 34, 50];
 function volleys(B, p){
-  if (B.t < 2 || p.id === 'trans' || (p.id === 'close' && p.t > CLOSE_T)) return [];
+  if (B.t < 2 || p.id === 'trans' || p.id === 'close') return [];
   const bt = beat(B, 3.4), out = [], f = bossFoot(B, p);
   for (const n of [bt.n, bt.n - 1]){ const age = B.t - n*bt.len; if (age < 0 || age > LAUNCH + HOP*3 + .3) continue;
     const key = `${B.phase}.${n}`; let v = L.snaps['c' + key];
@@ -418,6 +418,6 @@ function drawShutter(B, c, w, h, p){ let u;
   if (p.id === 'close') u = p.t < CLOSE_T ? p.t/CLOSE_T : 1; else if (p.id === null) u = 1 - cl(p.t/1.5); else return; if (u <= 0) return;
   const top = 0, sh = u*h*.27; c.save(); const q = c.createLinearGradient(0, 0, 0, sh); q.addColorStop(0, '#5a5a62'); q.addColorStop(1, '#3a3a42'); c.fillStyle = q; c.fillRect(0, top, w, sh);
   c.strokeStyle = 'rgba(20,20,26,.6)'; c.lineWidth = 3; for (let y = top + sh % 16; y < top + sh; y += 16){ c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); } c.fillStyle = '#2a2a30'; c.fillRect(0, sh - 8, w, 8); c.restore();
-  if (p.id === 'close' && p.t < CLOSE_T){ const left = Math.ceil(CLOSE_T - p.t), s = `영업 마감 0:${String(left).padStart(2, '0')}`; c.save(); c.fillStyle = 'rgba(30,14,6,.92)'; c.beginPath(); c.roundRect(w/2 - 80, sh + 4, 160, 40, 8); c.fill(); c.strokeStyle = left <= 5 ? '#ff6a6a' : '#d8b890'; c.lineWidth = 2; c.stroke(); c.restore();
+  if (p.id === 'close' && p.t < CLOSE_T){ const left = Math.ceil(CLOSE_T - p.t), s = `영업 마감 ${Math.floor(left/60)}:${String(left%60).padStart(2, '0')}`; c.save(); c.fillStyle = 'rgba(30,14,6,.92)'; c.beginPath(); c.roundRect(w/2 - 80, sh + 4, 160, 40, 8); c.fill(); c.strokeStyle = left <= 5 ? '#ff6a6a' : '#d8b890'; c.lineWidth = 2; c.stroke(); c.restore();
     text(c, s, w/2, sh + 25, 30, left <= 5 ? '#ff9a9a' : '#fff0d0'); if (left <= 5) B.sfx('warn', 1000); }
   if (p.id === 'close' && p.t >= CLOSE_T) tint(c, w, h, '#120804', .55*cl((p.t - CLOSE_T)*3)); }
