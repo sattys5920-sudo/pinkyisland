@@ -73,9 +73,14 @@ const STOVES = [[330, 470], [770, 470], [330, 690], [770, 690]];
 
 // ===== ③ 몫 1/5 =====
 const CC = new Map();
-function coins(B, k){ let cs = CC.get(k.seed); if (cs) return cs; const [cx, cy] = posAt(B, k.t), r = B.rng(k.seed + 'g'), lane = r()*TAU; cs = [];
-  for (let tries = 0; cs.length < 24 && tries < 400; tries++){ const a = r()*TAU, rad = 135 + r()*250; let bad = false; for (let m = 0; m < 4; m++){ const d = Math.abs(((a - lane - m*Math.PI/2)%TAU + TAU*1.5)%TAU - Math.PI); if (d < .22) bad = true; } if (bad) continue;
-    const x = cx + Math.cos(a)*rad, y = cy + 20 + Math.sin(a)*rad*.55; if (x < 190 || x > 910 || y < 385 || y > 865) continue; if (cs.some(q => Math.hypot(q.x - x, q.y - y) < 40)) continue; cs.push({i:cs.length, x, y, sx:cx, sy:cy - 90, d:r()*.3}); }
+// 동전 사이로 좌우 한 줄씩 길이 나 있어요 (폭 LANE_W · 표시는 없어요) → 안 밟고 들어가서 때릴 수 있어요
+const LANE_W = 64;
+function lanes(B, k){ const r = B.rng(k.seed + 'L'); return [Math.PI + (r() - .5)*1.1, (r() - .5)*1.1]; }
+const laneD = (a, dx, dy) => { const ux = Math.cos(a), uy = Math.sin(a)*.55, l = Math.hypot(ux, uy), along = (dx*ux + dy*uy)/l; return along < 0 ? 1e9 : Math.abs(dx*uy - dy*ux)/l; };
+function coinC(B, k){ return posAt(B, k.t - k.len/2); } // 패턴 중간에 보스가 서 있는 자리
+function coins(B, k){ let cs = CC.get(k.seed); if (cs) return cs; const [cx, cy] = coinC(B, k), r = B.rng(k.seed + 'g'), ln = lanes(B, k); cs = [];
+  for (let tries = 0; cs.length < 24 && tries < 600; tries++){ const a = r()*TAU, rad = 135 + r()*250;
+    const x = cx + Math.cos(a)*rad, y = cy + 20 + Math.sin(a)*rad*.55; if (x < 190 || x > 910 || y < 385 || y > 865) continue; if (ln.some(l => laneD(l, x - cx, y - cy - 20) < LANE_W)) continue; if (cs.some(q => Math.hypot(q.x - x, q.y - y) < 40)) continue; cs.push({i:cs.length, x, y, sx:cx, sy:cy - 90, d:r()*.3}); }
   CC.set(k.seed, cs); if (CC.size > 6) CC.delete(CC.keys().next().value); return cs; }
 const coinTaken = (B, k, i) => B.bs.sh && B.bs.sh.s === k.seed && B.bs.sh.g?.[i];
 
