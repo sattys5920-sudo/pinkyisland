@@ -43,7 +43,7 @@ function rings(B){ const p = cur(B); if (p.id === 'trans' || !B.alive.length) re
     const cnt = B.phase === 2 ? Math.min(2, B.alive.length) : 1;
     for (let i = 0; i < cnt; i++){ const key = `${B.r.bossAt}.${B.phase}.${m}.${i}`;
       if (!L.ring[key]){ if (k > .5 || stunned(B)){ L.ring[key] = 'x'; continue; }
-        const pl = B.alive[(m + i) % B.alive.length], a = B.rng(key)()*PI*2; L.ring[key] = [pl.x + Math.cos(a)*55, pl.y + Math.sin(a)*55*RSQ, m]; }
+        const n = B.alive.length, base = Math.floor(B.rng(`${B.r.bossAt}.${B.phase}.${m}.tg`)()*n), pl = B.alive[(base + i) % n], a = B.rng(key)()*PI*2; L.ring[key] = [pl.x + Math.cos(a)*55, pl.y + Math.sin(a)*55*RSQ, m]; } // 고리마다 노리는 사람을 무작위로 (둘이면 서로 다른 사람)
       const c = L.ring[key]; if (c === 'x') continue; out.push({key, x:c[0], y:c[1], k}); } }
   return out; }
 const inDonut = (x, y, r) => { const d = Math.hypot(x - r.x, (y - r.y)/RSQ); return d > RIN && d < ROUT; };
