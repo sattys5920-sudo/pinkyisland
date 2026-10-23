@@ -5402,6 +5402,7 @@ function buildChopTrees(z){
   const n = 24, rng = seeded(hash('chop:' + zoneId)), out = [];
   const cx = z.W/2, cy = z.H/2, ex = z.exits || {}, rocks = (MINE_ZONES[zoneId]?.spots || []), npcs = NPCS.filter(p=>p.zone===zoneId), fs = z.fspots || [];
   const avoid = zoneId==='beach' ? [[bridgeX(), 300, 190]] : [];
+  for (const npc of DARK_ORDER) if (darkDoorZone(npc)===zoneId){ const [dx, dy] = darkDoorOf(npc); avoid.push([dx, dy - 30, 120]); } // 주민 방 입구 둘레는 비워요 (다크 모드가 아닐 때 나무가 먼저 자라 입구를 막지 않게)
   for (let tries = 0; out.length < n && tries < 4000; tries++){
     const x = M + 40 + rng()*(z.W - 2*M - 80), y = M + 70 + rng()*(z.H - 2*M - 90);
     if (blocked(x, y) || blocked(x, y-24) || blocked(x-22, y) || blocked(x+22, y)) continue;
