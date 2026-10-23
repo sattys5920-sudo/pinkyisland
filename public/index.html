@@ -1691,10 +1691,28 @@ function menuPanel(){
   const row = (key, icon, label, sub) => `<button class="np" data-id="${key}" style="grid-template-columns:auto 1fr;align-items:center"><span>${ui(icon,'mi')}</span><span class="np-name">${label}${sub ? ` <small>${sub}</small>` : ''}</span></button>`;
   openPanel('메뉴',
     `<div class="np" style="grid-template-columns:auto 1fr;align-items:center"><span>${ui('people','mi')}</span><span class="np-name">${esc(me.nick)} <small>${solo ? '혼자 보기 모드' : id ? '아이디 ' + esc(id) : '로그인 중'}</small></span></div>` +
-    row('bag','bag','가방','아이템·도감·거래') + row('closet','shirt','옷장','갈아입기') + row('quest','scroll','퀘스트','진행 중인 부탁') + row('dlv','box','배달 주문서', `${(me.orders||[]).length} 건 · 오늘 ${dlvDone()}/${DLV_DAY}`) + row('ach','trophy','업적','칭호 고르기') + row('map','map','섬 지도','') + row('bgm','sparkle', bgmOn() ? '배경 음악 끄기' : '배경 음악 켜기', bgmOn() ? '지금 켜져 있어요' : '지금 꺼져 있어요') + row('dlgsize','scroll','대화 글자 크기',{s:'작게',m:'보통',l:'크게'}[dlgSize]) + row('dlglog','scroll','대화 기록','최근 대사 다시 보기') +
+    row('bag','bag','가방','아이템·도감·거래') + row('closet','shirt','옷장','갈아입기') + row('quest','scroll','퀘스트','진행 중인 부탁') + row('dlv','box','배달 주문서', `${(me.orders||[]).length} 건 · 오늘 ${dlvDone()}/${DLV_DAY}`) + row('ach','trophy','업적','칭호 고르기') + row('map','map','섬 지도','') + row('bgm','sparkle', bgmOn() ? '배경 음악 끄기' : '배경 음악 켜기', bgmOn() ? '지금 켜져 있어요' : '지금 꺼져 있어요') + row('dlgsize','scroll','대화 글자 크기',{s:'작게',m:'보통',l:'크게'}[dlgSize]) + row('dlglog','scroll','대화 기록','최근 대사 다시 보기') + (!solo && !admin ? row('pw','door','비밀번호 바꾸기','') : '') +
     `<button class="btn ghost" id="logoutBig" style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px">${ui('door','mi')}로그아웃</button>`,
-    b=>({bag:showBag, closet:clothesPanel, quest:questLog, dlv:dlvPanel, ach:achPanel, dlgsize:()=>{ setDlgSize({s:'m', m:'l', l:'s'}[dlgSize]); menuPanel(); }, dlglog:()=>{ $('npcPanel').hidden = true; dlgLogOpen(); }, map:()=>{ $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }, bgm:()=>{ bgmSet(!bgmOn()); menuPanel(); }})[b.dataset.id]?.());
+    b=>({bag:showBag, closet:clothesPanel, quest:questLog, dlv:dlvPanel, ach:achPanel, dlgsize:()=>{ setDlgSize({s:'m', m:'l', l:'s'}[dlgSize]); menuPanel(); }, dlglog:()=>{ $('npcPanel').hidden = true; dlgLogOpen(); }, map:()=>{ $('npcPanel').hidden = true; togglePanel('mapPanel', renderMap); }, bgm:()=>{ bgmSet(!bgmOn()); menuPanel(); }, pw:pwPanel})[b.dataset.id]?.());
   $('logoutBig').onclick = ()=>{ if (confirm('로그아웃할까요? 캐릭터와 집은 아이디에 저장돼 있어요.')) logout(); };
+}
+// ===== 비밀번호 바꾸기: 지금 비밀번호로 한 번 더 확인하고 새 비밀번호로 바꿔요 (관리자가 정해 준 임시 비밀번호를 내 것으로) =====
+function pwPanel(){
+  const f = (id, label, ac) => `<label class="field" style="display:block;margin:6px 0"><b>${label}</b><input id="${id}" type="password" autocomplete="${ac}" maxlength="40" placeholder="5 자 이상" style="width:100%"></label>`;
+  openPanel('비밀번호 바꾸기', f('pwOld', '지금 비밀번호', 'current-password') + f('pwNew', '새 비밀번호', 'new-password') + f('pwNew2', '새 비밀번호 확인', 'new-password') +
+    '<p class="err" id="pwErr" style="min-height:1.2em"></p><button class="btn" id="pwGo" style="width:100%">바꾸기</button>');
+  $('pwGo').onclick = async ()=>{
+    const old = $('pwOld').value, nw = $('pwNew').value, err = $('pwErr'), user = F && app ? F.getAuth(app).currentUser : null;
+    if (!user) return err.textContent = '로그인한 뒤에 바꿀 수 있어요.';
+    if (nw.length < 5) return err.textContent = '새 비밀번호는 5 자 이상이어야 해요.';
+    if (nw !== $('pwNew2').value) return err.textContent = '새 비밀번호 확인이 달라요.';
+    $('pwGo').disabled = true; err.textContent = '바꾸는 중.......';
+    try {
+      await F.reauthenticateWithCredential(user, F.EmailAuthProvider.credential(user.email, pwPad(old)));
+      await F.updatePassword(user, pwPad(nw));
+      $('npcPanel').hidden = true; toast('비밀번호를 바꿨어요. 다음부터 새 비밀번호로 들어가요.');
+    } catch(ex){ $('pwGo').disabled = false; err.textContent = ex.code === 'auth/invalid-credential' || ex.code === 'auth/wrong-password' ? '지금 비밀번호가 맞지 않아요.' : AUTH_MSG[ex.code] || `바꾸지 못했어요. (${ex.code || ex.message})`; }
+  };
 }
 // ===== 배경 음악: 들어오면 무한 반복. 메뉴에서 끄고 켤 수 있어요 (이 기기에 기억) =====
 // public/audio/bgm.mp3 가 있으면 그 곡을 반복 재생하고, 없으면 섬 오르골 곡(직접 만든 곡)을 브라우저에서 연주해요.
