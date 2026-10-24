@@ -2665,6 +2665,8 @@ function itemName(key){
   if (cat==='staple') return STAPLES[id]?.[0] || '재료';
   if (cat==='tmap') return tmapName(id);
   if (cat==='wood') return WOOD[id]?.name || '목재';
+  if (cat==='weapon') return WEAPONS[id]?.name || '칼';
+  if (cat==='ring') return RINGS[id]?.name || '반지';
   return key;
 }
 function itemPrice(key){
@@ -8929,6 +8931,13 @@ const aucLive = () => !!(auc && auc.meta && auc.meta.id && !auc.meta.done && !au
 const aucEnd = () => { const m = auc.meta, t = auc.top && auc.top.aid === m.id ? auc.top : null; return Math.max(m.endAt || 0, t ? (t.at || 0) + AUC_EXT : 0); };
 const aucTop = () => (auc && auc.top && auc.meta && auc.top.aid === auc.meta.id) ? auc.top : null;
 const aucItemName = m => m.name || itemName(m.k);
+// 반지 · 칼은 하나씩만 받아요 (가진 걸 또 받으면 골드로 돌려받아요)
+const isGear = k => !!k && (k.startsWith('ring:') || k.startsWith('weapon:'));
+const gearName = k => k.startsWith('ring:') ? (RINGS[k.slice(5)]?.name || '반지') : (WEAPONS[k.slice(7)]?.name || '칼');
+const gearGold = k => k.startsWith('ring:') ? (RINGS[k.slice(5)]?.gold || 0) : (WEAPONS[k.slice(7)]?.gold || 0);
+function gearGive(k){ // 새로 받았으면 true · 이미 있으면 false
+  if (k.startsWith('ring:')){ const id = k.slice(5); if ((me.inv.rings || []).includes(id)) return false; me.inv.rings = [...(me.inv.rings || []), id]; return true; }
+  const id = k.slice(7), own = me.inv.weapons || ['w1']; if (own.includes(id)) return false; me.inv.weapons = [...own, id]; me.inv.sword = true; return true; }
 function onAuction(v){
   auc = v || null; const m = auc && auc.meta;
   if (m && aucLive() && aucSeen !== m.id){ aucSeen = m.id;
@@ -8946,7 +8955,7 @@ function aucSettle(){
   const res = (m && m.id === h.id && (m.done || m.cancel)) ? (m.cancel ? {cancel:1} : (m.win || {})) : hist;
   if (res){
     if (res.uid === uid && !res.cancel){ const k = auc.meta?.id === h.id ? auc.meta.k : res.k, n = (auc.meta?.id === h.id ? auc.meta.n : res.n) || 1;
-      if (k && k.startsWith('ring:')){ const id = k.slice(5); if ((me.inv.rings || []).includes(id)) return refund('이미 가진 반지라 맡긴 골드를 돌려받았어요'); me.inv.rings = [...(me.inv.rings || []), id]; }
+      if (isGear(k)){ if (!gearGive(k)) return refund(`이미 가진 ${k.startsWith('ring:') ? '반지' : '칼'}라 맡긴 골드를 돌려받았어요`); }
       else if (k){ invAdd(k, n); if (k.startsWith('wear:')){ const id = k.slice(5).replace('~', '#'); if (!CLOSET().includes(id)) CLOSET().push(id); } }
       me.aucHold = null; stat('aucWon'); saveMe(true); renderHud(); toast(`🔨 낙찰! ${res.name || itemName(k)} 을(를) ${Number(h.p).toLocaleString()} G 에 샀어요`); return; }
     return refund(res.cancel ? '경매가 취소돼서 맡긴 골드를 돌려받았어요' : '다른 사람이 낙찰받아서 맡긴 골드를 돌려받았어요');
@@ -8978,7 +8987,7 @@ function aucSheet(){
   const sig = [m.id, t && t.p, t && t.uid, left, me.inv.gold, mine].join('|'); if (sig === aucSheetSig) return; aucSheetSig = sig;
   const keep = $('aucIn') ? $('aucIn').value : '', focus = document.activeElement && document.activeElement.id === 'aucIn';
   el.innerHTML = `<div class="au-h">🔨 <b>오투모 경매장</b><small>경매장 안이라 값을 부를 수 있어요</small></div>
-    <div class="au-i">${m.k && !m.k.startsWith('ring:') ? iconImg(m.k, 'au-ic') : '<span class="au-ic">💍</span>'}<div><b>${esc(aucItemName(m))}${m.n > 1 ? ` ${m.n} 개` : ''}</b><div>지금 최고가 <b class="au-p">${(t ? t.p : m.start).toLocaleString()} G</b> ${t ? `(${esc(t.nick)}${t.uid === uid ? ' · 나' : ''})` : '(아직 아무도 안 불렀어요 · 시작가)'}</div><small>⏱ ${left} 초 남음 · 누가 부르면 10 초 늘어나요</small></div></div>
+    <div class="au-i">${m.k && !isGear(m.k) ? iconImg(m.k, 'au-ic') : `<span class="au-ic">${m.k && m.k.startsWith('weapon:') ? '🗡️' : '💍'}</span>`}<div><b>${esc(aucItemName(m))}${m.n > 1 ? ` ${m.n} 개` : ''}</b><div>지금 최고가 <b class="au-p">${(t ? t.p : m.start).toLocaleString()} G</b> ${t ? `(${esc(t.nick)}${t.uid === uid ? ' · 나' : ''})` : '(아직 아무도 안 불렀어요 · 시작가)'}</div><small>⏱ ${left} 초 남음 · 누가 부르면 10 초 늘어나요</small></div></div>
     <div class="au-b">${t ? [1000, 5000, 10000].map(v => `<button class="mini" data-bid="${v}">+${v.toLocaleString()}</button>`).join('') : `<button class="mini" data-bid="${AUC_STEP}">시작가로 부르기</button>`}</div>
     <div class="au-b"><input id="aucIn" type="number" inputmode="numeric" placeholder="${((t ? t.p : m.start - AUC_STEP) + AUC_STEP)}" value="${esc(keep)}"> G <button class="mini" data-bid="in">이 값 부르기</button></div>
     <small class="au-n">내 골드 ${me.inv.gold.toLocaleString()} G${mine ? ` · 맡긴 골드 ${me.aucHold.p.toLocaleString()} G` : ''} · 낙찰되면 물건이 가방에 들어와요</small>`;
@@ -9003,7 +9012,7 @@ const admAuc = {aucK:'ring:r10', aucN:'1', aucStart:'100000', aucDur:'60'};
 function aucItems(){
   // 원가: 반지는 공방에서 만드는 값, 가구는 상점 값, 광석·요리는 기본 판매가 (시세·보너스 빼고)
   const paid = (list, pre) => Object.entries(list).filter(([id, it]) => id !== 'none' && it && !it.otumo && (it.price || 0) > 0).map(([id, it]) => [pre + id, it.name + (pre === 'umb:' ? ' 우산' : ''), it.price]);
-  const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1], r[3]])], ...CH.CATS.map(([, l, list]) => [l, paid(list, 'wear:')]).filter(([, l]) => l.length), ['우산', paid(UMB, 'umb:')], ['벽지', paid(WALLS, 'wall:')], ['바닥', paid(FLOORS, 'floor:')], ['가구', Object.entries(FURN).filter(([, f]) => !f.prize).map(([id, f]) => ['furn:' + id, f.name, f.gold])],
+  const o = [['반지', RING_LIST.map(r => ['ring:' + r[0], r[1], r[3]])], ['칼', WEAPON_LIST.filter(w => w[0] !== 'w1').map(w => ['weapon:' + w[0], w[1], w[3]])], ...CH.CATS.map(([, l, list]) => [l, paid(list, 'wear:')]).filter(([, l]) => l.length), ['우산', paid(UMB, 'umb:')], ['벽지', paid(WALLS, 'wall:')], ['바닥', paid(FLOORS, 'floor:')], ['가구', Object.entries(FURN).filter(([, f]) => !f.prize).map(([id, f]) => ['furn:' + id, f.name, f.gold])],
     ['별 조각', [['star:shard', '별 조각', STAR_PRICE]]],
     ['광석', Object.keys(ORES).map(id => ['ore:' + id, ORES[id].name, itemPrice('ore:' + id)])], ['요리', Object.keys(DISHES).map(id => ['dish:' + id, DISHES[id].name, itemPrice('dish:' + id)])]];
   // 상품 고를 때: 이미 가진 주민 수를 보여 줘요 (🆕 = 아직 아무도 없음 · 👥N = N 명이 가짐 · ★ = 상품 전용 옷)
@@ -9016,6 +9025,7 @@ function prizeOwners(){ const regs = Object.values(players || {}).filter(p=>p &&
   return k => { if (k in memo) return memo[k]; const [cat, id] = k.split(':'); let f = null;
     if (cat === 'wear') f = p => [...(p.closet || []), ...CH.lookItems(CH.migrateLook(p.look || {}))].some(x=>String(x).split('#')[0] === id) || Object.keys(p.inv?.wear || {}).some(x=>x.split(/[~#]/)[0] === id);
     else if (cat === 'ring') f = p => (p.inv?.rings || []).includes(id);
+    else if (cat === 'weapon') f = p => (p.inv?.weapons || ['w1']).includes(id);
     else if (cat === 'furn') f = p => (p.inv?.furn?.[id] || 0) > 0 || (p.furn || []).some(x=>x && x.id === id);
     else if (cat === 'umb') f = p => (p.inv?.umbrellas?.[id] || 0) > 0 || (p.umbs || []).includes?.(id);
     else if (cat === 'wall' || cat === 'floor') f = p => (p.inv?.[cat === 'wall' ? 'walls' : 'floors']?.[id] || 0) > 0;
@@ -9033,10 +9043,10 @@ function adminAucSec(){
 function adminAucGo(){
   const num = v => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0; // 쉼표·공백이 섞여도 숫자만
   const k = admAuc.aucK, n = Math.max(1, Math.min(99, num(admAuc.aucN))), start = Math.max(1000, Math.round(num(admAuc.aucStart) / 1000) * 1000), dur = Math.max(30, Math.min(300, admAuc.aucDur | 0));
-  if (!k) return toast('물건을 골라요'); const name = k.startsWith('ring:') ? (RINGS[k.slice(5)]?.name || '반지') : itemName(k);
-  if (!confirm(`${name} ${k.startsWith('ring:') ? 1 : n} 개 · 시작가 ${start.toLocaleString()} G · ${dur} 초 경매를 시작할까요?`)) return;
+  if (!k) return toast('물건을 골라요'); const name = isGear(k) ? gearName(k) : itemName(k);
+  if (!confirm(`${name} ${isGear(k) ? 1 : n} 개 · 시작가 ${start.toLocaleString()} G · ${dur} 초 경매를 시작할까요?`)) return;
   const now = Date.now() + serverOffset, id = 'a' + now.toString(36);
-  net.aucStart({id, k, n: k.startsWith('ring:') ? 1 : n, name, start, endAt: now + dur * 1000, z: zoneId, x: Math.round(pos.x), y: Math.round(pos.y), at: now}).then(()=>toast('경매를 시작했어요 · 섬 사람들에게 알림이 갔어요')).catch(e=>toast('경매를 시작하지 못했어요 ' + (e.message||'')));
+  net.aucStart({id, k, n: isGear(k) ? 1 : n, name, start, endAt: now + dur * 1000, z: zoneId, x: Math.round(pos.x), y: Math.round(pos.y), at: now}).then(()=>toast('경매를 시작했어요 · 섬 사람들에게 알림이 갔어요')).catch(e=>toast('경매를 시작하지 못했어요 ' + (e.message||'')));
 }
 function adminAucEnd(cancel){
   if (!aucLive()) return; const m = auc.meta, t = aucTop();
@@ -9075,7 +9085,7 @@ function onOx(v){
   // 상품: 끝났고 내가 살아남았으면
   if (!admin && me && m && m.done && m.win && m.win[uid] && me.oxGot !== m.id){ me.oxGot = m.id;
     if (m.k === 'gold') me.inv.gold += Number(m.n) || 0;
-    else if (m.k.startsWith('ring:')){ const id = m.k.slice(5); if (!(me.inv.rings || []).includes(id)) me.inv.rings = [...(me.inv.rings || []), id]; else me.inv.gold += RINGS[id]?.gold || 0; }
+    else if (isGear(m.k)){ if (!gearGive(m.k)) me.inv.gold += gearGold(m.k); }
     else { invAdd(m.k, m.n || 1); if (m.k.startsWith('wear:')){ const id = m.k.slice(5).replace('~', '#'); if (!CLOSET().includes(id)) CLOSET().push(id); } }
     saveMe(true); renderHud(); setExpr('sparkle', 3000); say('🎉 OX 퀴즈 우승!', `끝까지 살아남았어요!\n상품 ${oxPrizeName(m)}을(를) 받았어요`, [['좋아요', closeTalk]]); }
   oxBarSig = ''; if (admin) renderAdmin();
@@ -9141,8 +9151,8 @@ function adminOxSec(){
 }
 function adminOxGo(){
   const num = v => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0, k = admOx.oxK || 'gold';
-  const n = k === 'gold' ? Math.max(100, num(admOx.oxN)) : k.startsWith('ring:') ? 1 : Math.max(1, Math.min(99, num(admOx.oxN)));
-  const name = k === 'gold' ? '골드' : k.startsWith('ring:') ? (RINGS[k.slice(5)]?.name || '반지') : itemName(k), m0 = {k, n, name};
+  const n = k === 'gold' ? Math.max(100, num(admOx.oxN)) : isGear(k) ? 1 : Math.max(1, Math.min(99, num(admOx.oxN)));
+  const name = k === 'gold' ? '골드' : isGear(k) ? gearName(k) : itemName(k), m0 = {k, n, name};
   if (!confirm(`상품 ${oxPrizeName(m0)} · OX 퀴즈를 열까요?`)) return;
   const now = Date.now() + serverOffset, id = 'x' + now.toString(36);
   admOx.ans = ''; admOx.r = 0; admOx.oxQ = '';
@@ -9183,7 +9193,7 @@ const prizeName = m => !m ? '' : m.k === 'gold' ? `${Number(m.n).toLocaleString(
 function givePrize(m){
   if (!m || !me) return;
   if (m.k === 'gold') me.inv.gold += Number(m.n) || 0;
-  else if (m.k.startsWith('ring:')){ const id = m.k.slice(5); if (!(me.inv.rings || []).includes(id)) me.inv.rings = [...(me.inv.rings || []), id]; else me.inv.gold += RINGS[id]?.gold || 0; }
+  else if (isGear(m.k)){ if (!gearGive(m.k)) me.inv.gold += gearGold(m.k); }
   else { invAdd(m.k, m.n || 1); if (m.k.startsWith('wear:')){ const id = m.k.slice(5).replace('~', '#'); if (!CLOSET().includes(id)) CLOSET().push(id); } }
   saveMe(true); renderHud();
 }
@@ -9194,8 +9204,8 @@ function festWin(key, m, title, text){ // 한 번만 받아요
 }
 function prizeOf(k, nStr){
   const num = v => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0; k = k || 'gold';
-  const n = k === 'gold' ? Math.max(100, num(nStr)) : k.startsWith('ring:') ? 1 : Math.max(1, Math.min(99, num(nStr)));
-  return {k, n, name: k === 'gold' ? '골드' : k.startsWith('ring:') ? (RINGS[k.slice(5)]?.name || '반지') : itemName(k)};
+  const n = k === 'gold' ? Math.max(100, num(nStr)) : isGear(k) ? 1 : Math.max(1, Math.min(99, num(nStr)));
+  return {k, n, name: k === 'gold' ? '골드' : isGear(k) ? gearName(k) : itemName(k)};
 }
 const prizeSelect = (id, cur) => `<select id="${id}"><optgroup label="골드"><option value="gold"${cur === 'gold' ? ' selected' : ''}>골드</option></optgroup>${aucItems().replace(/ selected/g, '').replace(`value="${cur}"`, `value="${cur}" selected`)}</select>`;
 const prizeInputs = (kId, nId) => `${prizeSelect(kId, admFest[kId])}<label>${admFest[kId] === 'gold' ? '골드' : '개수'} <input id="${nId}" data-rk="fest|${nId}" type="text" inputmode="numeric" maxlength="9" value="${esc(admFest[nId])}"></label>`;
