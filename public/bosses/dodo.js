@@ -81,8 +81,9 @@ function throws(B, n, t0){
   const key = `pk${B.r.bossAt}.${n}`; if (sm[key] !== undefined) return sm[key];
   const B0 = shiftB(B, B.t - t0), i0 = info(B0), p0 = i0.p;
   let out = null;
-  if (i0.vis >= 1 && p0.id !== 'trans' && !stunned(B0) && B.alive.length && t0 > 1.5){
-    const al = B.alive, r = B.rng(key), n2 = B.phase >= 2 && al.length >= 3 ? 2 : 1, j0 = (n + Math.floor(r()*al.length)) % al.length; out = [];
+  const kn = p0.id === 'knock'; // 쿵쿵쿵 박자를 두드리는 동안은 곡괭이를 절반만 (한 번 걸러서 한 명에게만)
+  if (i0.vis >= 1 && p0.id !== 'trans' && !stunned(B0) && B.alive.length && t0 > 1.5 && !(kn && n % 2)){
+    const al = B.alive, r = B.rng(key), n2 = !kn && B.phase >= 2 && al.length >= 3 ? 2 : 1, j0 = (n + Math.floor(r()*al.length)) % al.length; out = [];
     for (let q = 0; q < n2; q++){ const tg = al[(j0 + q) % al.length], o = [i0.x - 58, i0.y - 72], dx = tg.x - o[0], dy = tg.y - 20 - o[1], d = Math.hypot(dx, dy) || 1, side = (r() < .5 ? 1 : -1)*(q ? -1 : 1);
       out.push({ o, p:[tg.x + dx/d*70, tg.y - 20 + dy/d*70], nm:[-dy/d*side, dx/d*side], key:`${key}.${q}` }); } }
   const ks = Object.keys(sm).filter(k => k.startsWith('pk')); if (ks.length > 12) delete sm[ks[0]];
