@@ -6750,7 +6750,7 @@ const DARK_TOK = 1000000;
 const darkFirst = r => (r && (r.first || r.start)) || 0;
 const darkEnd = r => r.start + darkLimit(r);
 // 문제를 다 푼 뒤(보스전)에 시간이 다 되면 보스 체력만 처음부터, 문제를 풀던 중이면 문제도 모두 처음부터 (열쇠는 그대로)
-const darkRetry = (npc, {start, hp, max, bossAt, rageAt, lowAt, bs, rv, wipe, pen, bt, tok, ...r}) => darkSolvedN(r) >= darkPuzzles(npc).length ? {...r, att:(r.att|0)+1, first:darkFirst({...r, start})} : {att:(r.att|0)+1, first:darkFirst({...r, start}), ...(r.keys ? {keys:r.keys} : {})};
+const darkRetry = (npc, {start, hp, max, bossAt, rageAt, lowAt, bs, rv, wipe, pen, bt, tok, ...r}) => darkSolvedN(r) >= darkPuzzles(npc).length ? {...r, att:(r.att|0)+1, first:darkFirst({...r, start}), ...(rageAt || r.ph2 ? {ph2:1} : {})} : {att:(r.att|0)+1, first:darkFirst({...r, start}), ...(r.keys ? {keys:r.keys} : {})};
 // 열쇠로 처음 들어간 뒤 48 시간 안에 못 꿰매면 기회가 사라져요 (날이 바뀌어도 48 시간 안이면 토큰으로 다시 열 수 있어요)
 const DARK_GRACE = 48*3600000;
 function darkLive(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(), r = roomOf(npc); if (i < 0 || i > di || r.clear) return false; if (i === di) return !darkFirst(r) || darkNow() <= darkFirst(r) + DARK_GRACE; return !!darkFirst(r) && darkNow() <= darkFirst(r) + DARK_GRACE; }
@@ -6870,7 +6870,7 @@ function filmSnd(k){ if (!bgmOn()) return; try { const A = filmAc || (filmAc = n
   else if (k === 'snap'){ tone(0, 2200, .05, .2, 'square', 1200); hiss(0, .06, .25, 2000); [523, 659, 784, 1047, 1319].forEach((f, i) => { tone(.1 + i*.09, f, 1.5, .07, 'triangle'); tone(.1 + i*.09, f*2.01, .9, .02); }); }
 } catch(e){} }
 // ----- 보스: 문제를 다 풀면 그 주민이 깨어나요. 체력은 모두가 같이 깎아요 -----
-function darkWake(npc){ net.darkTx(npc, cur => cur && cur.start && darkNow() <= darkEnd(cur) && !cur.clear && !(cur.hp > 0) && darkSolvedN(cur) >= darkPuzzles(npc).length ? {...cur, hp:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, max:DARK_BOSS.hpOf[npc] || DARK_BOSS.hp, bossAt:darkNow(), bt:DARK_BOSS_BONUS} : undefined); }
+function darkWake(npc){ net.darkTx(npc, cur => cur && cur.start && darkNow() <= darkEnd(cur) && !cur.clear && !(cur.hp > 0) && darkSolvedN(cur) >= darkPuzzles(npc).length ? (mx => cur.ph2 ? {...cur, hp:Math.floor(mx/2), max:mx, bossAt:darkNow(), rageAt:darkNow(), bt:DARK_BOSS_BONUS} : {...cur, hp:mx, max:mx, bossAt:darkNow(), bt:DARK_BOSS_BONUS})(DARK_BOSS.hpOf[npc] || DARK_BOSS.hp) : undefined); } // 2 단계까지 갔던 방은 토큰으로 다시 열어도 2 단계 (체력 절반) 부터
 // ----- 토리??? (토리 방 보스): 모두에게 같은 시계(bossAt · rageAt)로 움직여서 누구 화면이든 같은 자리·같은 공격이에요 -----
 // 1 페이즈: 정해진 자리를 뒤뚱뒤뚱 돌며, 멈추면 8 방향 편지 탄막, 걸을 땐 쿵 할 때마다 발밑에서 편지 고리
 // 체력 절반: 화면이 붉게 번쩍이고 뒤뚱뒤뚱 돌아서요 → 등의 실밥이 끊어지며 갈라지고 손이 나와요
