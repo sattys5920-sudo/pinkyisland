@@ -1346,6 +1346,7 @@ function onOnline(raw){
     const oz = zoneOk(s.z) ? s.z : 'home';
     if (o.z && o.z!==oz){ o.x = s.x; o.y = s.y; }
     o.z = oz; o.bp = s.bp && typeof s.bp === 'object' ? s.bp : null;
+    { const sg = `${s.x},${s.y},${s.tx},${s.ty},${s.mv},${s.down},${s.sw},${s.emoAt},${oz},${s.bp ? JSON.stringify(s.bp) : ''}`; if (o.sigP !== sg){ o.sigP = sg; o.chgAt = Date.now(); } } // 마지막으로 움직이거나 휘두른 때 (한참 가만히 있는 사람은 보스전 전멸 판정에서 빼요)
     Object.assign(o, {adm: !!s.adm, fi: !!s.fi, um: umbOk(s.um), down: !!s.down, sx:s.x, sy:s.y, dir:s.dir||'down', mvRemote:s.mv, look:CH.migrateLook(s.look), ex:typeof s.ex==='string' ? s.ex : 'dot', pet: s.pet && PET_DRAW[s.pet.sp] ? {sp:s.pet.sp, col:Math.max(0, Math.min(2, s.pet.col|0)), name:String(s.pet.name||'').slice(0,8)} : null, pet2: s.pet2 && PET_DRAW[s.pet2.sp] ? {sp:s.pet2.sp, col:Math.max(0, Math.min(2, s.pet2.col|0)), name:String(s.pet2.name||'').slice(0,8)} : null, ti:String(s.ti||'').slice(0,12), rg:RINGS[s.rg] ? s.rg : '', wp:WEAPONS[s.wp] ? s.wp : '', wu:Math.max(0, Math.min(5, s.wu|0)), nick:String(s.nick||'').slice(0, s.adm ? 14 : 8), uid:id});
     if (typeof s.sw==='number' && s.sw !== o.swT){ const fresh = o.swT !== undefined && Date.now() - s.sw < 1500; o.swT = s.sw; if (fresh){ o.swAt = performance.now(); o.swDir = ['up','down','left','right'].includes(s.sd) ? s.sd : o.dir; } }
     if (typeof s.tx==='number'){ o.goal = {x:s.tx, y:s.ty}; if (Math.hypot(o.x-s.x, o.y-s.y) > 48){ o.x = s.x; o.y = s.y; } }
@@ -7130,7 +7131,7 @@ function updateDark(dt, t){
   if (darkWipeSeen[npc] === undefined) darkWipeSeen[npc] = r.wipe|0;
   if ((r.wipe|0) !== darkWipeSeen[npc]){ darkWipeSeen[npc] = r.wipe|0; darkSlams = []; if (darkDown){ darkDown = null; darkGuard = 3; wakeGuardUntil = performance.now() + 5000; flushSave(); } playerHp = maxHp(); const [sx, sy] = darkBossStart(npc); pos.x = sx; pos.y = sy; target = null; renderHud(); say('....', `모두 쓰러졌어요.... ${npc === 'tori' ? '토리???가' : NPC[npc].name + '이(가)'} 다시 처음 모습으로 돌아왔어요. 푼 문제는 그대로, 보스전만 처음부터 다시 해요.`); }
   // 방 안 사람이 모두 쓰러지면 (3 초 확인) 보스 체력과 살리기 횟수를 처음으로
-  if (darkBossUp(r) && darkDown && t > darkWipeT){ darkWipeT = t + 3000; const mates = [...others.values()].filter(o=>o.z===zoneId && (!o.adm || o.fi));
+  if (darkBossUp(r) && darkDown && t > darkWipeT){ darkWipeT = t + 3000; const mates = [...others.values()].filter(o=>o.z===zoneId && (!o.adm || o.fi) && (o.down || Date.now() - (o.chgAt || 0) < 20000)); // 20 초 넘게 아무것도 안 한 사람은 빼요
     if (mates.every(o=>o.down) && darkNow() - darkDown > 2500){ const w = r.wipe|0; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && (cur.wipe|0) === w ? (({rageAt, lowAt, bs, ...c}) => rageAt ? ({...c, hp:Math.floor(cur.max/2), rv:0, wipe:w + 1, bossAt:darkNow(), rageAt:darkNow()}) /* 2 단계까지 갔으면 전멸해도 2 단계 (반피) 부터 다시 */ : ({...c, hp:cur.max, rv:0, wipe:w + 1, bossAt:darkNow()}))(cur) : undefined); } }
   if (!r.hp && !r.clear && r.start && darkNow() <= darkEnd(r) && darkSolvedN(r) >= darkPuzzles(npc).length && t > darkWakeT){ darkWakeT = t + 3000; darkWake(npc); } // 문제를 다 푼 방에 다시 들어오면 (토큰 재도전 등) 보스를 깨워요
   if (darkBossUp(r) && !r.bt && t > darkWakeT){ darkWakeT = t + 3000; net.darkTx(npc, cur => cur && cur.hp > 0 && !cur.clear && !cur.bt && darkNow() <= darkEnd(cur) ? {...cur, bt:DARK_BOSS_BONUS} : undefined); } // 보스 +30 분 (이 기능 전에 깨어난 보스도)
