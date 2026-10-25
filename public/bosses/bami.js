@@ -258,7 +258,7 @@ function cupsDraw(B, c, cur){ const R = roundOf(cur), t = B.now/1000, H = cupHom
 // ===== ⑦ 시드는 바닥 =====
 const BLOOM_D = 7000, BR = 74, PULSE0 = 3.0, PULSE_GAP = 3.2, PWARN = 1.4;
 function seedsOf(B, cur){ return keep('s' + cur.seed, () => { const rn = B.rng(cur.seed + 's'), n = Math.min(8, 3 + B.all.length), o = rn()*TAU, out = [];
-    for (let i = 0; i < n; i++){ const a = o + i/n*TAU, r = 1 + (i%2)*.25; out.push([B.hx + Math.cos(a)*165*r, B.hy + 20 + Math.sin(a)*100*r]); } return out; }); }
+    for (let i = 0; i < n; i++){ const a = o + i/n*TAU, r = 1 + (i%2)*.25; out.push([B.hx + Math.cos(a)*205*r, B.hy + 20 + Math.sin(a)*125*r]); } return out; }); }
 const pulses = cur => { const out = []; for (let j = 0; ; j++){ const t = PULSE0 + j*PULSE_GAP; if (t > cur.len - .4) break; out.push(t); } return out; };
 const localBloom = new Map();
 function bloomAt(B, cur, i){ const sd = B.bs.sd, b = sd && sd.s === cur.seed && sd.b && sd.b[i]; const l = localBloom.get(cur.seed + ':' + i); return Math.max(b || 0, l && B.now - l < 1500 ? l : 0); }
@@ -399,6 +399,7 @@ export default {
     else if (cur.id === 'cups') cupsTick(B, cur);
     else if (cur.id === 'wither') witherTick(B, cur);
     if (cur.id !== 'cups' && myCup){ myCup = null; B.setBp(null); } },
+  touchR(B){ return B.phase === 3 ? 48 : 72; }, // 3 단계는 꽃 안전지대가 몸에 닿지 않게
   hitMul(B, x, y){ const cur = cur0(B), st = stunned(B); let m = st ? 2 : 1;
     if (cur.id === 'back' && !st && cur.t > .3 && cur.t < cur.len - .2 && !inBelly(B, cur, x, y)) return 0;
     if (cur.id === 'fake' && !st){ const s = slumpNow(B, cur); if (s && !s.fake && cur.t < s.t1) m *= 1.5; }
