@@ -1436,6 +1436,7 @@ function soloNet(){
     darkWipe: async npc => { const st_ = soloNet.dark || (soloNet.dark = {}); if (npc) delete st_[npc]; else for (const k in st_) delete st_[k]; onDarkRooms(structuredClone(st_)); },
     darkFilmXY: async (npc, x, y) => { const f = soloNet.dark?.[npc]?.film; if (f){ f.x = x; f.y = y; onDarkRooms(structuredClone(soloNet.dark)); } },
     adminRemove: async id => { delete st.players[id]; onPlayers(structuredClone(st.players)); },
+    adminDisconnect: async id => {},
     sessionClaim: () => {},
     presence: async () => {},
     presenceRemove: async () => {},
@@ -1517,6 +1518,7 @@ function firebaseNet(){
     cleanupClaims: async (roof, lot) => { for (const [kind, mine] of [['roofs', roof], ['lots', lot]]){ try { const v = (await F.get(F.ref(db, kind))).val() || {}; for (const [k,c] of Object.entries(v)) if (c && c.uid===uid && +k !== mine) await F.remove(F.ref(db, kind+'/'+k)).catch(()=>{}); } catch(e){} } },
     adminCapPts: (ups) => F.update(F.ref(db), ups),
     adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ...bzRemovePaths(id), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ['snowmen/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
+    adminDisconnect: id => F.update(F.ref(db), {['sessions/'+id]:'admin-' + Date.now().toString(36), ['online/'+id]:null}), // 접속만 끊어요 (캐릭터·가방은 그대로)
     sessionClaim: sid => { const r = F.ref(db, 'sessions/'+uid); F.set(r, sid).catch(()=>{}); F.onValue(r, s=>{ const v = s.val(); if (v && v !== sid) onKicked(); }); },
     presence: p => F.set(meRef, p),
     presenceRemove: () => F.remove(meRef).catch(()=>{}),
@@ -8382,6 +8384,11 @@ function chatDownload(){
 }
 // 모두의 현재 자금과 주민 12 명과의 호감도 (칸 = 하트 수, 색 = 관계 단계, 초록 점 = 오늘 대화함)
 let admScroll = [0, 0];
+async function adminDisconnect(id){
+  const p = players[id]; if (!p) return;
+  if (!confirm(`${p.nick} 님의 접속만 끊을까요? 캐릭터·가방은 그대로예요. 그 사람 화면이 멈추고, 다시 들어오면 돼요.`)) return;
+  try { await net.adminDisconnect(id); toast(`${p.nick} 님의 접속을 끊었어요`); } catch(e){ toast('접속을 끊지 못했어요. 관리자 권한을 확인해 주세요.'); }
+}
 async function adminKick(id){
   const p = players[id]; if (!p) return;
   if (!confirm(`${p.nick} 님을 섬에서 내보낼까요? 캐릭터·가방·호감도가 지워지고, 지붕 색과 집터가 비어서 새 사람이 들어올 수 있어요. 되돌릴 수 없어요.`)) return;
@@ -8419,7 +8426,7 @@ function adminTable(regs){
     return `<td class="g ${pl>0 ? 'up' : pl<0 ? 'dn' : ''}" title="${t}"><b>${l[0].n.toLocaleString()}개</b><small>${v.toLocaleString()} G · ${pl>=0?'+':''}${pl.toLocaleString()}</small><small class="cdl">${lots.map(x=>`${x.n}개 ~${candyMeltName(x.until).replace('월 ', '/').replace('일 ', ' ').replace(' 시', '시')}`).join('<br>')}</small></td>`; };
   const cell = (p, n) => { const r = (p.rel||{})[n.id] || {}, h = heartsOf(r.pts), ev = [4,7,10].filter(k=>r['ev'+k]).map(k=>'♥'+k).join(' ');
     return `<td class="t${tierOf(h)}" title="${esc(p.nick)} → ${esc(n.name)} · ${TIERS[tierOf(h)]} · 호감도 ${r.pts||0}/500 · 본 이야기 ${ev || '없음'}${r.talkDay===d ? ' · 오늘 대화함' : ''}">${h}${r.talkDay===d ? '<em></em>' : ''}</td>`; };
-  return `<div class="adm-tbl">${grantForm(regs)}<div class="adm-tbl-head"><b>자금 · 별사탕 · 호감도</b><small>총자산 = 자금 + 별사탕(최근 방송 값) · 별사탕 = 개수 (아래: 지금 값 · 손익 · 묶음별 기한) · 숫자 = 하트 (0~10) · 색 = 관계 단계 (아는 사이 → 괜찮은 사람 → 친한 친구 → 소중한 짝) · 초록 점 = 오늘 대화함 · 칸을 누르면 자세히</small>${admTbl && players[admTbl] ? `<button data-a="kick" data-u="${admTbl}" class="adm-btn warn">${esc(players[admTbl].nick)} 님 내보내기</button>` : ''}<button data-a="tclose" class="adm-btn">닫기</button></div>
+  return `<div class="adm-tbl">${grantForm(regs)}<div class="adm-tbl-head"><b>자금 · 별사탕 · 호감도</b><small>총자산 = 자금 + 별사탕(최근 방송 값) · 별사탕 = 개수 (아래: 지금 값 · 손익 · 묶음별 기한) · 숫자 = 하트 (0~10) · 색 = 관계 단계 (아는 사이 → 괜찮은 사람 → 친한 친구 → 소중한 짝) · 초록 점 = 오늘 대화함 · 칸을 누르면 자세히</small>${admTbl && players[admTbl] ? `<button data-a="kick" data-u="${admTbl}" class="adm-btn warn">${esc(players[admTbl].nick)} 님 내보내기</button><button data-a="disc" data-u="${admTbl}" class="adm-btn">${esc(players[admTbl].nick)} 님 접속만 끊기</button>` : ''}<button data-a="tclose" class="adm-btn">닫기</button></div>
     <div class="adm-tbl-scroll"><table><thead><tr><th>닉네임</th><th>총자산</th><th>자금</th><th>별사탕</th>${NPCS.map(n=>`<th>${esc(n.name)}</th>`).join('')}<th>♥ 합계</th></tr></thead><tbody>${rows.map(([id,p])=>`<tr class="${admTbl===id ? 'sel' : ''}"><td>${esc(p.nick)}</td><td class="g"><b>${total(p).toLocaleString()} G</b></td><td class="g">${Number(p.inv?.gold||0).toLocaleString()} G</td>${stCell(p)}${NPCS.map(n=>cell(p, n)).join('')}<td>${NPCS.reduce((a,n)=>a + heartsOf(((p.rel||{})[n.id]||{}).pts), 0)}</td></tr>`).join('') || `<tr><td colspan="${NPCS.length+5}">아직 주민이 없어요</td></tr>`}</tbody></table></div></div>`;
 }
 // 주민·오투모에게 온 편지: 답장 안 한 것 먼저, 최신 순. 답장은 그 주민(또는 오투모) 이름으로 보내져요
@@ -8530,6 +8537,7 @@ function adminClick(e){
   if (b.dataset.a==='pclose'){ admPost = false; return renderAdmin(); }
   if (b.dataset.a==='lreply') return adminReply(b.dataset.to, b.dataset.id);
   if (b.dataset.a==='kick') return adminKick(b.dataset.u);
+  if (b.dataset.a==='disc') return adminDisconnect(b.dataset.u);
   if (b.dataset.a==='chatdl') return chatDownload();
   if (b.dataset.a==='wipe'){ admDm = null; admPost = false; admWipe = !admWipe; admTbl = null; admChat = null; admWipeTxt = ''; return renderAdmin(); }
   if (b.dataset.a==='wclose'){ admWipe = false; admWipeTxt = ''; return renderAdmin(); }
