@@ -10,6 +10,8 @@ const GAP = 2.5, TRANS = 5;
 const P = { 1:[{id:'back', len:12}, {id:'vine', len:15}, {id:'dizzy', len:12}],
             2:[{id:'fake', len:12}, {id:'bees', len:12}, {id:'cups', len:18}],
             3:[{id:'wither', len:16}] };
+const DM = .88, RAWM = .85; // 맞는 피해를 조금 낮춰요 (일반 .88 · 정해진 큰 피해 .85)
+const hurt = (B, n, key, o) => B.hurt(Math.round(n*(o && o.raw ? RAWM : DM)), key, o);
 const AMP = { back:.3, vine:.25, dizzy:.5, fake:.12, bees:.6, cups:.2, wither:.3 };
 const OPT = { gap:GAP, trans:TRANS };
 const TAU = Math.PI*2;
@@ -64,7 +66,7 @@ function wavesTick(B){ const W = waves(B); if (!W) return; const {bt, list} = W,
   if (first(`ww${B.r.bossAt}.${B.phase}.${bt.n}`)) B.sfx('warn', 400);
   if (bt.t >= WARN && first(`ws${B.r.bossAt}.${B.phase}.${bt.n}`)) B.sfx('slam', 300);
   if (!me || bt.t < WARN || bt.t > WARN + .35) return;
-  list.forEach((w, j) => { if (onWave(w, me.x, me.y) && B.hurt(B.lo + 20, `w${B.r.bossAt}.${B.phase}.${bt.n}.${j}`)) B.push(-Math.sin(w.a), Math.cos(w.a), 30); }); }
+  list.forEach((w, j) => { if (onWave(w, me.x, me.y) && hurt(B, B.lo + 20, `w${B.r.bossAt}.${B.phase}.${bt.n}.${j}`)) B.push(-Math.sin(w.a), Math.cos(w.a), 30); }); }
 function wavesDraw(B, c, under){ const W = waves(B); if (!W) return; const {bt, list} = W, k = bt.t;
   for (const w of list){
     if (under && k < WARN){ c.save(); c.globalAlpha = .45 + .4*Math.abs(Math.sin(k*10)); c.strokeStyle = '#b0f070'; c.lineWidth = 4; c.setLineDash([8, 7]); c.beginPath(); for (let i = 0; i <= 24; i++){ const p = waveAt(w, i/24); i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]); } c.stroke();
@@ -80,7 +82,7 @@ const WEDGE = .72;
 const faceOf = (B, cur) => Math.PI/2 + Math.sin(cur.t*.5 + (B.hash(cur.seed) % 7))*1.9;
 function inBelly(B, cur, x, y){ const [fx, fy] = posAt(B, B.now), a = Math.atan2((y - fy)/.6, x - fx); return angD(a, faceOf(B, cur)) < WEDGE + .08; }
 function backTick(B, cur){ const me = B.me; if (!me) return; const [fx, fy] = posAt(B, B.now);
-  if (cur.t > .6 && cur.t < cur.len - .3 && inEll(me.x, me.y, fx, fy, 112, 70) && !inBelly(B, cur, me.x, me.y) && B.hurt(B.lo, `bk${cur.seed}.${Math.floor(B.now/1200)}`)){ B.push(me.x - fx, me.y - fy, 46); B.fx('따끔', me.x, me.y - 70, '#ffb0c8'); } }
+  if (cur.t > .6 && cur.t < cur.len - .3 && inEll(me.x, me.y, fx, fy, 112, 70) && !inBelly(B, cur, me.x, me.y) && hurt(B, B.lo, `bk${cur.seed}.${Math.floor(B.now/1200)}`)){ B.push(me.x - fx, me.y - fy, 46); B.fx('따끔', me.x, me.y - 70, '#ffb0c8'); } }
 function backFloor(B, c, cur){ const [fx, fy] = posAt(B, B.now), f = faceOf(B, cur), al = Math.min(cl(cur.t*2), cl((cur.len - cur.t)*2));
   c.save(); c.globalAlpha = al; sector(c, fx, fy, 236, f + WEDGE, f - WEDGE + TAU, 'rgba(255,70,110,.12)'); sector(c, fx, fy, 236, f - WEDGE, f + WEDGE, 'rgba(120,255,150,.2)');
   c.translate(fx, fy); c.scale(1, .6); c.strokeStyle = 'rgba(150,255,170,.75)'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 236, f - WEDGE, f + WEDGE); c.closePath(); c.stroke();
@@ -137,8 +139,8 @@ function dizzyTick(B, cur){ const D = dizzyOf(B, cur), f = cl((cur.t - .4)/.6)*c
   if (f > 0) B.ctl.steer = D.sg*(.5 + .22*Math.sin(cur.t*1.1))*f;
   for (const s of sprouts(B, cur)){ if (cur.t >= s.t0 && first(`dz${cur.seed}.${s.t0}`)) B.sfx('slam', 200); else if (cur.t >= s.t0 - .9 && first(`dw${cur.seed}.${s.t0}`)) B.sfx('warn', 200); }
   const me = B.me; if (!me || cur.t > cur.len - .3) return;
-  D.th.forEach(([x, y, t0], i) => { if (cur.t > t0 + .3 && inEll(me.x, me.y, x, y, 40, 20) && B.hurt(B.lo + 40, `dt${cur.seed}.${i}.${Math.floor(B.now/1400)}`)) B.push(me.x - x, me.y - y, 40); });
-  sprouts(B, cur).forEach((s, j) => { if (cur.t > s.t0 && inEll(me.x, me.y, s.x, s.y, 44, 22) && B.hurt(B.lo + 40, `ds${cur.seed}.${j}.${cur.t < s.t0 + .4 ? 0 : Math.floor(B.now/1400)}`)) B.push(me.x - s.x, me.y - s.y, 40); }); }
+  D.th.forEach(([x, y, t0], i) => { if (cur.t > t0 + .3 && inEll(me.x, me.y, x, y, 40, 20) && hurt(B, B.lo + 40, `dt${cur.seed}.${i}.${Math.floor(B.now/1400)}`)) B.push(me.x - x, me.y - y, 40); });
+  sprouts(B, cur).forEach((s, j) => { if (cur.t > s.t0 && inEll(me.x, me.y, s.x, s.y, 44, 22) && hurt(B, B.lo + 40, `ds${cur.seed}.${j}.${cur.t < s.t0 + .4 ? 0 : Math.floor(B.now/1400)}`)) B.push(me.x - s.x, me.y - s.y, 40); }); }
 function thornPatch(c, x, y, g, al){ if (g <= 0) return; c.save(); c.globalAlpha = al; c.fillStyle = 'rgba(20,30,10,.7)'; c.beginPath(); c.ellipse(x, y, 40*g, 16*g, 0, 0, 7); c.fill(); c.fillStyle = '#2a3a1a';
   for (let i = 0; i < 10; i++){ const xx = x - 32*g + i*7*g; c.beginPath(); c.moveTo(xx - 4, y + 4); c.lineTo(xx + (i % 2 ? 4 : -4), y - (20 + (i % 3)*7)*g); c.lineTo(xx + 4, y + 4); c.fill(); } c.restore(); }
 let pollenImg = null;
@@ -160,7 +162,7 @@ const slumpNow = (B, cur) => slumpsOf(B, cur).find(s => cur.t >= s.t0 && cur.t <
 function fakeTick(B, cur){ const s = slumpNow(B, cur); if (!s) return;
   if (s.fake && cur.t < s.t1 && first(`fs${cur.seed}.${s.i}`)) B.say(s.i%2 ? '다리가… 아파요' : '아파요… 좀 도와줘요', 2200);
   if (s.fake && cur.t >= s.t1 && !stunned(B)){ if (first(`fb${cur.seed}.${s.i}`)){ B.sfx('slam', 100); B.shake(); }
-    const me = B.me, [fx, fy] = posAt(B, B.now); if (me && cur.t < s.t1 + .5 && inEll(me.x, me.y, fx, fy - 10, TRAP, TRAP*.6) && B.hurt(3121, `fb${cur.seed}.${s.i}`, {raw:1})) B.push(me.x - fx, me.y - fy, 90); }
+    const me = B.me, [fx, fy] = posAt(B, B.now); if (me && cur.t < s.t1 + .5 && inEll(me.x, me.y, fx, fy - 10, TRAP, TRAP*.6) && hurt(B, 3121, `fb${cur.seed}.${s.i}`, {raw:1})) B.push(me.x - fx, me.y - fy, 90); }
   if (!s.fake && cur.t < s.t1 && first(`fr${cur.seed}.${s.i}`)) B.sfx('warn', 100); }
 function fakeFloor(B, c, cur){ const s = slumpNow(B, cur); if (!s) return; const [fx, fy] = posAt(B, B.now);
   if (s.fake && cur.t < s.t1){ c.save(); c.globalAlpha = .12 + .1*Math.sin(B.now/90); c.strokeStyle = '#ff6a9a'; c.lineWidth = 2; c.setLineDash([4, 10]); c.beginPath(); c.ellipse(fx, fy - 10, TRAP, TRAP*.6, 0, 0, 7); c.stroke(); c.restore(); }
@@ -182,7 +184,7 @@ function beesTick(B, cur, dt){ const on = cur.t > .8 && cur.t < cur.len - .6, h 
   if (!swarm || swarm.s !== cur.seed){ swarm = {s:cur.seed, x:fx - 60, y:fy - 80}; if (first('bz' + cur.seed)) B.sfx('warn', 100); }
   if (on && h){ const tx = h.x, ty = h.y - 34, dx = tx - swarm.x, dy = ty - swarm.y, d = Math.hypot(dx, dy); if (d > 3){ const st = Math.min(d, BEE_V*Math.min(.1, dt)); swarm.x += dx/d*st; swarm.y += dy/d*st; } }
   else if (!on && cur.t >= cur.len - .6){ swarm.y -= 220*Math.min(.1, dt); }
-  const me = B.me; if (on && me && h && h.uid === me.uid && Math.hypot(swarm.x - me.x, (swarm.y - me.y + 34)/.8) < 44) B.hurt(B.lo + 30, `bee${cur.seed}.${Math.floor(B.now/1100)}`);
+  const me = B.me; if (on && me && h && h.uid === me.uid && Math.hypot(swarm.x - me.x, (swarm.y - me.y + 34)/.8) < 44) hurt(B, B.lo + 30, `bee${cur.seed}.${Math.floor(B.now/1100)}`);
   // 호스트: 쫓기는 사람이 친구와 닿으면 향기를 넘겨요
   if (B.host && on && h){ const sc = B.bs.sc && B.bs.sc.s === cur.seed ? B.bs.sc : null, at = sc ? sc.at : 0;
     if (B.now - at > 1300){ const o = B.alive.find(p => p.uid !== h.uid && Math.hypot(p.x - h.x, p.y - h.y) < 52 && !(sc && p.uid === sc.p && B.now - at < 3500));
@@ -217,7 +219,7 @@ function cupsTick(B, cur){ const R = roundOf(cur); if (!R){ if (myCup && cur.t >
   if (t < .2 && first(`cs${cur.seed}.${i}`)) B.sfx('warn', 100);
   if (t >= REV && first(`cr${cur.seed}.${i}`)){ const ws = waterSlot(B, cur, i), me = B.me;
     B.sfx('slam', 100);
-    if (me && myCup && myCup[0] === cur.n && myCup[1] === i && myCup[2] !== ws){ B.hurt(B.lo + 70, `cup${cur.seed}.${i}`); }
+    if (me && myCup && myCup[0] === cur.n && myCup[1] === i && myCup[2] !== ws){ hurt(B, B.lo + 70, `cup${cur.seed}.${i}`); }
     if (B.host){ let good = 0, bad = 0; for (const p of B.alive){ const ch = choiceOf(p, cur, i); if (ch < 0) continue; if (ch === ws) good++; else bad++; }
       const ok = good > 0 && good > bad ? 1 : 0, sn = B.now;
       B.tx(bs => { const cu = bs.cu && bs.cu.s === cur.seed ? {...bs.cu, r:{...bs.cu.r}} : {s:cur.seed, r:{}}; if (cu.r[i] != null) return undefined; cu.r[i] = ok;
@@ -265,7 +267,7 @@ function inBloom(B, cur, x, y, ms){ const sd = seedsOf(B, cur); for (let i = 0; 
 function witherTick(B, cur){ const ps = pulses(cur), me = B.me;
   for (const [j, pt] of ps.entries()){ if (cur.t >= pt - PWARN && cur.t < pt && first(`pw${cur.seed}.${j}`)) B.sfx('warn', 100);
     if (cur.t >= pt && cur.t < pt + .3){ if (first(`pp${cur.seed}.${j}`)){ B.sfx('slam', 100); B.shake(); }
-      if (me && !inBloom(B, cur, me.x, me.y, B.now)) B.hurt(3678, `pp${cur.seed}.${j}`, {raw:1}); } } }
+      if (me && !inBloom(B, cur, me.x, me.y, B.now)) hurt(B, 3678, `pp${cur.seed}.${j}`, {raw:1}); } } }
 function witherSwing(B, cur, cx, cy){ const sd = seedsOf(B, cur);
   for (let i = 0; i < sd.length; i++){ const b = bloomAt(B, cur, i); if (b && B.now < b + BLOOM_D + 400) continue; if (Math.hypot(sd[i][0] - cx, (sd[i][1] - cy)/.8) > 58) continue;
     localBloom.set(cur.seed + ':' + i, B.now); const now = B.now;
