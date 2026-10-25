@@ -123,7 +123,7 @@ const crackHoles = (B, p) => B.bs.ch && B.bs.ch.k === p.seed ? B.bs.ch.h || [] :
 // ===== ⑥ 쿵쿵쿵 =====
 function knockRounds(B, p){ const k = 'kr' + p.seed; if (sm[k]) return sm[k]; const r = B.rng(p.seed + 'k'), used = [];
   return (sm[k] = [0, 1, 2].map(j => { let q; do q = Math.floor(r()*RHY.length); while (used.includes(q)); used.push(q); const b = RHY[q], t = KN0 + j*KNC, last = b[b.length - 1]; return { j, b, t, a0:t + last + .9, a1:t + last + 3.0, judge:t + last + 3.4 }; })); }
-const kneed = B => B.alive.length >= 4 ? 2 : 1;
+const kneed = B => 1; // 한 명만 맞춰도 성공
 const kAns = (B, p, j) => B.bs.kn && B.bs.kn.k === p.seed ? (B.bs.kn.a || []).filter(a => a[0] === j).length : 0;
 const kDone = (B, p) => [0, 1, 2].filter(j => kAns(B, p, j) >= kneed(B)).length;
 const kOpen = (B, p) => B.bs.ko === p.seed;
