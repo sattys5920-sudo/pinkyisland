@@ -6064,7 +6064,7 @@ const npcVisible = n => !(darkOn() && !roomOf(n.id).clear); // 다크 모드: �
 // 가게 건물이 있는 주민은 그 건물 문이 꿰매진 문이 돼요 (없는 주민은 자리 옆에 문만 서 있어요)
 const darkBldgCache = {};
 // 건물이 없는 주민의 숨겨진 집: 다크 모드에서만 지도에 나타나요 (콩이의 집이 마지막)
-const DARK_HIDE = {hana:{zone:'pond', x:zk(1250), y:zk(880)}, toto:{zone:'starhill', x:zk(430), y:zk(1000)}, dodo:{zone:'cave1', x:zk(1360), y:zk(600)}, kongi:{zone:'deepforest', x:zk(150), y:zk(430)}};
+const DARK_HIDE = {hana:{zone:'pond', x:zk(1250), y:zk(880)}, toto:{zone:'starhill', x:zk(430), y:zk(890)}, dodo:{zone:'cave1', x:zk(1360), y:zk(600)}, kongi:{zone:'deepforest', x:zk(150), y:zk(430)}};
 const darkDoorZone = npc => DARK_HIDE[npc]?.zone || NPC[npc]?.zone;
 function darkBldg(npc){ if (npc in darkBldgCache) return darkBldgCache[npc]; const n = NPC[npc]; if (DARK_HIDE[npc]) return darkBldgCache[npc] = {...DARK_HIDE[npc], hidden:true};
   return darkBldgCache[npc] = (ZONES[n.zone]?.places || []).find(p => (p.kind === 'house' && p.label && p.label.startsWith(n.name + ' ')) || (npc === 'pengpeng' && p.kind === 'lighthouse')) || null; }
