@@ -9,6 +9,8 @@ const P = {
   2: [{id:'pages', len:12.5}, {id:'brain', len:12}, {id:'sermon', len:13}],
   3: [{id:'back', len:3600}],
 };
+const DM = .85, RAWM = .8; // 맞는 피해를 조금 낮춰요 (일반 .85 · 정해진 큰 피해 .8) · 큰 일반 피해(기본 + 80 이상)는 큰 피해로 남도록 그 선까지만
+const hurt = (B, n, key, o) => B.hurt(o && o.raw ? Math.round(n*RAWM) : n >= B.lo + 80 ? Math.max(B.lo + 80, Math.round(n*DM)) : Math.round(n*DM), key, o);
 const GAP = 2.5, TRANS = 5;
 const LV = {fence:1, rule:.5, chair:.3, pages:.6, brain:.5, sermon:.25};
 const AX0 = 110, AX1 = 990, AY0 = 280, AY1 = 795;   // 걸을 수 있는 곳 (문 쪽으로 밀려 나가지 않게)
@@ -157,12 +159,12 @@ export default {
     for (const f of flukes(B)){
       if (f.k < .3 && once('fw.' + f.key, now)) B.sfx('warn', 300);
       if (f.k >= FL.warn && f.k < FL.slam){ if (once('fs.' + f.key, now)){ B.sfx('slam', 200); }
-        if (inFluke(f, mx, my) && B.hurt([876, 910, 930][B.phase - 1], 'fl.' + f.key, {raw:1})){ B.shake(); const n = f.a + Math.PI/2, side = Math.sign(Math.sin(Math.atan2((my - f.y)/.62, mx - f.x) - f.a)) || 1; B.push(Math.cos(n)*side, Math.sin(n)*side, 60); } }
+        if (inFluke(f, mx, my) && hurt(B, [876, 910, 930][B.phase - 1], 'fl.' + f.key, {raw:1})){ B.shake(); const n = f.a + Math.PI/2, side = Math.sign(Math.sin(Math.atan2((my - f.y)/.62, mx - f.x) - f.a)) || 1; B.push(Math.cos(n)*side, Math.sin(n)*side, 60); } }
     }
 
     // ① 약속의 원: 밖에 오래 있으면 채찍
     if (p.id === 'fence'){ const F = fence(B, p);
-      if (F.on && !inEll(mx, my, F.x, F.y, F.rx, F.ry)){ outT += dt; if (outT > .45){ outT = -.6; if (B.hurt(B.lo + 50, `fn.${p.seed}.${Math.floor(p.t/1.5)}`)){ B.sfx('slam'); B.push(F.x - mx, F.y - my, 70); } } } else outT = 0;
+      if (F.on && !inEll(mx, my, F.x, F.y, F.rx, F.ry)){ outT += dt; if (outT > .45){ outT = -.6; if (hurt(B, B.lo + 50, `fn.${p.seed}.${Math.floor(p.t/1.5)}`)){ B.sfx('slam'); B.push(F.x - mx, F.y - my, 70); } } } else outT = 0;
     } else outT = 0;
 
     // ② 생활 규칙: 판이 바뀌는 때에 맞춰 봐요
@@ -172,7 +174,7 @@ export default {
         let bad;
         if (R.gather) bad = !inEll(mx, my, R.x, R.y, R.rx, R.ry);
         else { const [bx, by] = body(B); bad = inEll(mx, my, bx, by, APART_BOSS, APART_BOSS*.6) || B.alive.some(o => !o.me && dist(o.x, o.y, mx, my) < APART_P); }
-        if (bad && B.hurt(1900, `rl.${p.seed}.${R.i}`, {raw:1})){ B.sfx('slam'); B.shake(); }
+        if (bad && hurt(B, 1900, `rl.${p.seed}.${R.i}`, {raw:1})){ B.sfx('slam'); B.shake(); }
       }
     }
 
@@ -182,7 +184,7 @@ export default {
       if (p.t >= C.blast && p.t < C.blast + .4 && once(`cb.${p.seed}.${C.i}`, now)){
         B.sfx('slam'); const seat = C.ps.findIndex(([x, y]) => dist(x, y, mx, my) < 40);
         const taken = seat >= 0 && B.alive.some(o => !o.me && o.uid < me.uid && dist(o.x, o.y, C.ps[seat][0], C.ps[seat][1]) < 40);
-        if ((seat < 0 || taken) && B.hurt(B.lo + 70, `ch.${p.seed}.${C.i}`)) B.shake();
+        if ((seat < 0 || taken) && hurt(B, B.lo + 70, `ch.${p.seed}.${C.i}`)) B.shake();
       }
     }
 
@@ -190,7 +192,7 @@ export default {
     if (p.id === 'pages') for (const pg of pages(B, p)){
       if (p.t >= pg.t0 && p.t < pg.t0 + .4 && once('pw.' + pg.key, now)) B.sfx('warn');
       if (p.t >= pg.dead && p.t < pg.dead + .5 && pg.own.some(o => o.uid === me.uid) && !torn(B, pg, me.uid) && once('pd.' + pg.key, now)){
-        if (B.hurt(B.lo + 60, 'pg.' + pg.key)){ boundUntil = now + 1800; B.sfx('slam'); B.shake(); } }
+        if (hurt(B, B.lo + 60, 'pg.' + pg.key)){ boundUntil = now + 1800; B.sfx('slam'); B.shake(); } }
     }
 
     // ⑤ 세뇌: 노리는 몸이 친구를 쫓아요 · 등 뒤에서 닿으면 깨어나요
@@ -208,13 +210,13 @@ export default {
       }
       if (W.on && W.T.uid !== me.uid){ const T = W.T, d = dist(T.x, T.y, mx, my), h = headOf(B, T);
         const rear = h === null || d > 1 && ((mx - T.x)*Math.cos(h) + (my - T.y)*Math.sin(h))/d < -.34;
-        if (d < 46 && !rear && B.hurt(B.lo + 40, `bt.${W.key}.${Math.floor(p.t/1.2)}`)) B.push(mx - T.x, my - T.y, 70); }
+        if (d < 46 && !rear && hurt(B, B.lo + 40, `bt.${W.key}.${Math.floor(p.t/1.2)}`)) B.push(mx - T.x, my - T.y, 70); }
       // 호스트: 등 뒤로 닿은 친구가 있으면 깨워요
       if (B.host && W.on && now - hostAt > 300){ const T = W.T, h = headOf(B, T);
         { const by = B.alive.find(o => o.uid !== T.uid && dist(o.x, o.y, T.x, T.y) < 66 && (h === null || ((o.x - T.x)*Math.cos(h) + (o.y - T.y)*Math.sin(h))/Math.max(1, dist(o.x, o.y, T.x, T.y)) < -.34));   // 멈춰 있는 (자리를 비운) 노리는 몸은 닿기만 해도 깨어요
           if (by){ hostAt = now; B.tx(bs => bs.wake && bs.wake.k === W.key ? undefined : {...bs, wake:{k:W.key, by:by.uid, at:now}}); } } }
       if (W.woke && once('wk.' + W.key, now)){ B.sfx('hit'); const T = W.T; if (T) B.fx('툭!', T.x, T.y - 80, '#c8ffd0'); }
-      if (!W.woke && W.T && W.T.uid === me.uid && !W.solo && p.t >= W.s1 && p.t < W.s1 + .5 && once('bx.' + W.key, now)){ if (B.hurt(2678, 'bx.' + W.key, {raw:1})) B.shake(); }
+      if (!W.woke && W.T && W.T.uid === me.uid && !W.solo && p.t >= W.s1 && p.t < W.s1 + .5 && once('bx.' + W.key, now)){ if (hurt(B, 2678, 'bx.' + W.key, {raw:1})) B.shake(); }
     }
     if (!bwOn){ bwH = null; if (bwBp){ B.setBp(null); bwBp = false; } }
 
@@ -222,7 +224,7 @@ export default {
     if (p.id === 'sermon' && !(B.bs.stun > now)){ const m = cutMask(B, p), [bx, by] = body(B);
       for (const S of casts(B, p)){ if (bits(m) >= 2) break;
         if (p.t >= S.t0 && p.t < S.t0 + .4 && once(`sw.${p.seed}.${S.i}`, now)) B.sfx('warn');
-        if (!(m & 1 << S.i) && p.t >= S.end && p.t < S.end + .45 && inEll(mx, my, bx, by, 400, 250) && B.hurt(2890, `se.${p.seed}.${S.i}`, {raw:1})){ B.sfx('slam'); B.shake(); B.push(mx - bx, my - by, 80); } } }
+        if (!(m & 1 << S.i) && p.t >= S.end && p.t < S.end + .45 && inEll(mx, my, bx, by, 400, 250) && hurt(B, 2890, `se.${p.seed}.${S.i}`, {raw:1})){ B.sfx('slam'); B.shake(); B.push(mx - bx, my - by, 80); } } }
 
     // ⑦ 고래 등: 등 위에서 같이 떠다녀요 · 바다에 빠지면 아프고 등으로 올려져요
     if (s.phase === 3 && s.ph3 > 1.2){ const t3 = s.ph3, C = whaleC(B, t3), C2 = whaleC(B, t3 + .1), [rx, ry] = backR(t3);
@@ -230,7 +232,7 @@ export default {
       let vx = (C2[0] - C[0])/.1 + Math.cos(now/700)*14, vy = (C2[1] - C[1])/.1 + Math.sin(now/530)*10;
       if (!inEll(mx, my, C[0], C[1], rx, ry)){
         if (t3 < 4.5){ const d = Math.max(1, dist(mx, my, C[0], C[1])); vx += (C[0] - mx)/d*330; vy += (C[1] - my)/d*330; }   // 물이 차오르는 동안은 파도가 등으로 실어다 줘요
-        else { if (B.hurt(3390, 'sea.' + Math.floor(now/1600), {raw:1})){ B.fx('풍덩', mx, my - 60, '#cfeaff'); B.sfx('slam'); }
+        else { if (hurt(B, 3390, 'sea.' + Math.floor(now/1600), {raw:1})){ B.fx('풍덩', mx, my - 60, '#cfeaff'); B.sfx('slam'); }
           const a = Math.atan2((my - C[1])/ry, (mx - C[0])/rx), tx = C[0] + Math.cos(a)*rx*.62, ty = C[1] + Math.sin(a)*ry*.62; B.push(tx - mx, ty - my, Math.hypot(tx - mx, ty - my)); } }
       B.ctl.drift = [vx, vy];
     }

@@ -4,6 +4,8 @@
 import { pick, beat, warnCircle, inEll, shadow, tint, text, cl, lerp, ease, dist } from './kit.js';
 import { drawWolf, wolfCanvas, cuff, badge, badgeBack, bubble } from './kongi_art.js';
 
+const DM = .85, RAWM = .8; // 맞는 피해를 조금 낮춰요 (일반 .85 · 정해진 큰 피해 .8) · 큰 일반 피해(기본 + 80 이상)는 큰 피해로 남도록 그 선까지만
+const hurt = (B, n, key, o) => B.hurt(o && o.raw ? Math.round(n*RAWM) : n >= B.lo + 80 ? Math.max(B.lo + 80, Math.round(n*DM)) : Math.round(n*DM), key, o);
 const S = .36, FOOTD = 340*S - 4;                       // 그림 크기 · 발(발판 바닥) → 몸 원점
 const HAND = [-206*S, 110*S - FOOTD];                    // 손전등 머리 (발 기준)
 const CR = 30, CG = 46;                                  // 수갑 고리 반지름 · 고리 사이 반
@@ -44,7 +46,7 @@ function basicCuffs(B, n){ const c = cur(B);
 const inCuff = (b, x, y, pad = 8) => { const ax = Math.cos(b.a)*CG, ay = Math.sin(b.a)*CG*.6; return inEll(x, y, b.x + ax, b.y + ay, CR + pad) || inEll(x, y, b.x - ax, b.y - ay, CR + pad); };
 function basicTick(B){ const bt = beat(B, 2.8, 1.35), cs = basicCuffs(B, bt.n);
   if (cs.length && bt.t < .3 && once(`bw${bt.n}`)) B.sfx('warn', 300);
-  if (bt.t >= .9 && bt.t < 1.25 && once(`bl${bt.n}`) && cs.length){ B.sfx('slam', 200); if (meOk(B) && cs.some(b => inCuff(b, B.me.x, B.me.y))) B.hurt(B.lo + 20, `kb${B.r.bossAt}.${bt.n}`); } }
+  if (bt.t >= .9 && bt.t < 1.25 && once(`bl${bt.n}`) && cs.length){ B.sfx('slam', 200); if (meOk(B) && cs.some(b => inCuff(b, B.me.x, B.me.y))) hurt(B, B.lo + 20, `kb${B.r.bossAt}.${bt.n}`); } }
 function basicDraw(B, c, top){ const bt = beat(B, 2.8, 1.35);
   for (const n of [bt.n - 1, bt.n]){ const k = B.t - n*bt.len, cs = L.cache[`b${n}`]; if (!cs || k < 0 || k > 1.6) continue;
     for (const b of cs){ const ax = Math.cos(b.a)*CG, ay = Math.sin(b.a)*CG*.6;
@@ -69,7 +71,7 @@ function ffTick(B){ const w = ffNow(B); if (!w) return; const {F, i, c} = w, tr 
   if (once(`fa${c.seed}.${i}`)) B.sfx('warn');
   const sp = ffSpeed(F, c.t); if (sp === 0 && c.t < F.boom) B.ctl.lock = true;
   if (L.seen !== `${c.seed}.${i}.${sp}`){ if (L.seen.startsWith(`${c.seed}.${i}.`)) B.sfx('warn', 0); L.seen = `${c.seed}.${i}.${sp}`; }
-  if (c.t >= F.boom && c.t < F.boom + .35 && once(`fb${c.seed}.${i}`)){ B.sfx('slam'); B.shake(); if (meOk(B) && tr.some(([x, y]) => inEll(B.me.x, B.me.y, x, y, TRAP))) B.hurt(B.lo + 80, `ff${c.seed}.${i}`); } }
+  if (c.t >= F.boom && c.t < F.boom + .35 && once(`fb${c.seed}.${i}`)){ B.sfx('slam'); B.shake(); if (meOk(B) && tr.some(([x, y]) => inEll(B.me.x, B.me.y, x, y, TRAP))) hurt(B, B.lo + 80, `ff${c.seed}.${i}`); } }
 function ffDraw(B, c2){ const w = ffNow(B); if (!w) return; const {F, i, c} = w, tr = L.cache[`ft${c.seed}.${i}`]; if (!tr) return; const prog = cl(ffProg(F, Math.min(c.t, F.boom))/FF_T), sp = ffSpeed(F, c.t);
   for (const [x, y] of tr){ if (c.t < F.boom){ c2.save(); c2.globalAlpha = .45 + .3*Math.sin(B.now/80); c2.strokeStyle = sp === 2 ? '#ff8a9a' : sp === 0 ? '#9affd0' : '#9ab0ff'; c2.lineWidth = 3; c2.setLineDash([6, 5]); c2.beginPath(); c2.ellipse(x, y, TRAP, TRAP*.6, 0, 0, 7); c2.stroke(); c2.globalAlpha = .3; c2.fillStyle = c2.strokeStyle; c2.beginPath(); c2.ellipse(x, y, TRAP*prog, TRAP*.6*prog, 0, 0, 7); c2.fill(); c2.restore();
       text(c2, Math.max(0, FF_T*(1 - prog)).toFixed(1), x, y - TRAP*.6 - 14, 22, '#d8e0ff'); }
@@ -91,7 +93,7 @@ function searchOn(B){ const c = cur(B); return c.id === 'search' && c.t > .8 && 
 function inCone(B, x, y){ if (!searchOn(B)) return false; const [hx, hy] = hand(B), d = Math.hypot(x - hx, y - hy); if (d > CONE_L) return false; if (d < 30) return true; const a = Math.atan2(y - hy, x - hx), da = Math.atan2(Math.sin(a - coneA(B)), Math.cos(a - coneA(B))); return Math.abs(da) < CONE; }
 function searchTick(B){ const c = cur(B); if (c.id !== 'search') return; if (once(`sa${c.seed}`)) B.sfx('warn');
   if (!meOk(B) || !inCone(B, B.me.x, B.me.y)){ L.inCone = 0; return; }
-  if (!L.inCone) L.inCone = B.now; if (B.now - L.inCone > 250){ const k = `sr${c.seed}.${Math.floor(c.t/1.5)}`; if (B.hurt(B.lo + 60, k)){ const [hx, hy] = hand(B); B.fx('발견!', B.me.x, B.me.y - 70, '#ffe08a'); B.push(B.me.x - hx, B.me.y - hy, 60); B.sfx('slam', 300); } } }
+  if (!L.inCone) L.inCone = B.now; if (B.now - L.inCone > 250){ const k = `sr${c.seed}.${Math.floor(c.t/1.5)}`; if (hurt(B, B.lo + 60, k)){ const [hx, hy] = hand(B); B.fx('발견!', B.me.x, B.me.y - 70, '#ffe08a'); B.push(B.me.x - hx, B.me.y - hy, 60); B.sfx('slam', 300); } } }
 function searchDraw(B, c2){ const c = cur(B); if (c.id !== 'search') return; const al = Math.min(cl(c.t*1.5), cl((c.len - c.t)*3)), [hx, hy] = hand(B), a = coneA(B);
   c2.save(); c2.globalCompositeOperation = 'lighter'; c2.globalAlpha = al*.5; const q = c2.createRadialGradient(hx, hy, 10, hx, hy, CONE_L); q.addColorStop(0, 'rgba(255,250,210,.95)'); q.addColorStop(1, 'rgba(255,250,210,0)'); c2.fillStyle = q; c2.beginPath(); c2.moveTo(hx, hy); c2.arc(hx, hy, CONE_L, a - CONE, a + CONE); c2.closePath(); c2.fill(); c2.restore(); }
 
@@ -102,7 +104,7 @@ function tipOf(px, py, lx, ly, len){ const dx = px - lx, dy = (py - ly)/.6, d = 
 function shTips(B, c, k){ return memo(`sh${c.seed}.${k}`, () => { const [lx, ly] = lampPos(B), [fx, fy] = foot(B), out = B.alive.map(p => [...tipOf(p.x, p.y, lx, ly, SH_L), 40]); out.push([...tipOf(fx, fy, lx, ly, SHB_L), 74]); return out; }); }
 function shadowTick(B){ const c = cur(B); if (c.id !== 'shadow') return;
   SH_T.forEach((s, k) => { if (c.t >= s - .9 && c.t < s + .8){ const tp = shTips(B, c, k); if (once(`sw${c.seed}.${k}`)) B.sfx('warn', 200);
-    if (c.t >= s && c.t < s + .35 && once(`sx${c.seed}.${k}`)){ B.sfx('slam', 200); if (meOk(B) && tp.some(([x, y, r]) => inEll(B.me.x, B.me.y, x, y, r))) B.hurt(B.lo + 70, `sh${c.seed}.${k}`); } } }); }
+    if (c.t >= s && c.t < s + .35 && once(`sx${c.seed}.${k}`)){ B.sfx('slam', 200); if (meOk(B) && tp.some(([x, y, r]) => inEll(B.me.x, B.me.y, x, y, r))) hurt(B, B.lo + 70, `sh${c.seed}.${k}`); } } }); }
 function shadowDraw(B, c2){ const c = cur(B); if (c.id !== 'shadow') return; const al = Math.min(cl(c.t*2), cl((c.len - c.t)*3)), [lx, ly] = lampPos(B), [fx, fy] = foot(B);
   c2.save(); c2.globalAlpha = al*.55; c2.fillStyle = '#04040a';
   const sh = (px, py, len, wd) => { const [tx, ty] = tipOf(px, py, lx, ly, len), dx = tx - px, dy = ty - py, d = Math.hypot(dx, dy) || 1, nx = -dy/d*wd, ny = dx/d*wd*.6; c2.beginPath(); c2.moveTo(px + nx, py + ny); c2.quadraticCurveTo((px + tx)/2 + nx*.8, (py + ty)/2 + ny*.8, tx, ty); c2.quadraticCurveTo((px + tx)/2 - nx*.8, (py + ty)/2 - ny*.8, px - nx, py - ny); c2.closePath(); c2.fill(); };
@@ -117,7 +119,7 @@ const WH_W = [.6, 4.4, 8.2], WH_SHOW = 1.1, WH_BOOM = 2.8;
 function whSpots(B, c, i){ return memo(`ws${c.seed}.${i}`, () => { const r = B.rng(c.seed + 's' + i), n = 6 + Math.min(4, B.alive.length), out = []; for (let k = 0; k < n; k++) out.push([B.hx - 320 + r()*640, B.hy - 10 + r()*Math.min(300, B.H - 50 - B.hy)]); return out; }); }
 function whiteTick(B){ const c = cur(B); if (c.id !== 'white') return;
   WH_W.forEach((t0, i) => { const k = c.t - t0; if (k < 0 || k > WH_BOOM + .8) return; const sp = whSpots(B, c, i); if (once(`wa${c.seed}.${i}`)) B.sfx('warn');
-    if (k >= WH_BOOM && k < WH_BOOM + .35 && once(`wb${c.seed}.${i}`)){ B.sfx('slam'); if (meOk(B) && sp.some(([x, y]) => inEll(B.me.x, B.me.y, x, y, 66, 40))) B.hurt(B.lo + 90, `wh${c.seed}.${i}`); } }); }
+    if (k >= WH_BOOM && k < WH_BOOM + .35 && once(`wb${c.seed}.${i}`)){ B.sfx('slam'); if (meOk(B) && sp.some(([x, y]) => inEll(B.me.x, B.me.y, x, y, 66, 40))) hurt(B, B.lo + 90, `wh${c.seed}.${i}`); } }); }
 function whiteDraw(B, c2){ const c = cur(B); if (c.id !== 'white') return;
   WH_W.forEach((t0, i) => { const k = c.t - t0, sp = L.cache[`ws${c.seed}.${i}`]; if (!sp || k < 0 || k > WH_BOOM + .8) return;
     for (const [x, y] of sp){ if (k < WH_SHOW){ c2.save(); c2.globalAlpha = .5 + .3*Math.sin(B.now/70); c2.strokeStyle = '#ff6a7a'; c2.lineWidth = 3; c2.beginPath(); c2.ellipse(x, y, 66, 40, 0, 0, 7); c2.stroke(); c2.fillStyle = 'rgba(255,90,110,.22)'; c2.fill(); c2.restore(); } else if (k > WH_BOOM) cuff(c2, x, y, .2, cl((WH_BOOM + .8 - k)*2), 1.3); }
@@ -132,7 +134,7 @@ const linkOn = B => { const c = cur(B); return c.id === 'link' && c.t > .6 && c.
 function linkTick(B){ const c = cur(B); if (c.id !== 'link') return; if (once(`la${c.seed}`)) B.sfx('warn');
   const tg = B.target, [lx, ly] = lightPos(B), k = B.bs.cut5;
   if (B.host && tg && c.t > .6 && inEll(tg.x, tg.y, lx, ly, 90, 54) && !(k && k.s === c.seed && k.u > B.now + 1500) && txOk('cut5', 600)){ const s = c.seed, u = B.now + 3500; B.tx(bs => ({...bs, cut5:{s, u}})); }
-  const lh = B.bs.lh; if (lh && lh.s === c.seed && B.me && lh.u === B.me.uid && lh.n > (L.lhN[c.seed] || 0)){ L.lhN[c.seed] = lh.n; if (B.hurt(B.lo, `lh${c.seed}.${Math.floor(B.now/1500)}`)) B.fx('?!', B.me.x, B.me.y - 74, '#ff8a9a'); }
+  const lh = B.bs.lh; if (lh && lh.s === c.seed && B.me && lh.u === B.me.uid && lh.n > (L.lhN[c.seed] || 0)){ L.lhN[c.seed] = lh.n; if (hurt(B, B.lo, `lh${c.seed}.${Math.floor(B.now/1500)}`)) B.fx('?!', B.me.x, B.me.y - 74, '#ff8a9a'); }
   if (linkCut(B) && once(`lc${k.s}.${k.u}`)) B.sfx('hit', 0); }
 function linkHit(B){ const tg = B.target, c = cur(B); if (!tg) return; if (!txOk('lh', 300)) return; const s = c.seed, u = tg.uid; B.tx(bs => ({...bs, lh:{s, u, n:(bs.lh && bs.lh.s === s ? bs.lh.n : 0) + 1}})); }
 function linkFloor(B, c2){ const c = cur(B); if (c.id !== 'link') return; const al = Math.min(cl(c.t*2), cl((c.len - c.t)*3)), [lx, ly] = lightPos(B);
@@ -174,7 +176,7 @@ function doorTick(B){ const c = cur(B); if (c.id !== 'door') return; if (once(`d
     if (m && m.k === key && c.t >= s - DOOR_LEAD && c.t < s && once(`dw${key}`)) B.sfx('warn', 0);
     if (c.t >= s && c.t < s + .5 && m && m.k === key){
       if (once(`ds${key}`)){ B.sfx('slam', 0); const i = B.me ? m.p.findIndex(q => q[0] === B.me.uid) : -1; if (i >= 0 && meOk(B) && m.p.length > 1){ const nu = m.p[(i + 1) % m.p.length][0], to = B.all.find(q => q.uid === nu && !q.down); if (to) try { B.tp(to.x, to.y); } catch(e){} } }
-      else if (c.t >= s + .12 && once(`dh${key}`) && meOk(B) && m.p.some(([, x, y]) => inEll(B.me.x, B.me.y, x, y, 46, 28))) B.hurt(B.lo + 100, `d7${key}`); } }); }
+      else if (c.t >= s + .12 && once(`dh${key}`) && meOk(B) && m.p.some(([, x, y]) => inEll(B.me.x, B.me.y, x, y, 46, 28))) hurt(B, B.lo + 100, `d7${key}`); } }); }
 function doorFloor(B, c2){ if (B.phase !== 3) return; const open = cl(B.ph3/45), gap = 8 + open*120, x = B.hx, y0 = Math.max(0, B.hy - 600);
   c2.save(); c2.globalCompositeOperation = 'lighter'; const q = c2.createLinearGradient(0, y0, 0, y0 + 640); q.addColorStop(0, `rgba(220,230,255,${.2 + open*.35})`); q.addColorStop(1, 'rgba(220,230,255,0)'); c2.fillStyle = q; c2.beginPath(); c2.moveTo(x - gap/2, y0); c2.lineTo(x + gap/2, y0); c2.lineTo(x + gap*2.2, y0 + 640); c2.lineTo(x - gap*2.2, y0 + 640); c2.closePath(); c2.fill(); c2.restore();
   c2.save(); c2.globalAlpha = .85; c2.fillStyle = '#e8eeff'; c2.fillRect(x - gap/2, y0, gap, 150); c2.restore();
