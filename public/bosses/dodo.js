@@ -211,6 +211,7 @@ function railSleepers(c, x0, y0, x1, y1){ const n = Math.hypot(x1 - x0, y1 - y0)
 export default {
   _t: { pk, info, mapCells, carts, blasts, knockRounds, escFoot, geo:() => ({ WALL, EXITS, LEV, ROCKS3, HOLES, RY, COLS, ROWS }) }, // 혼자 시험용 (엔진은 안 써요)
   reach: 125,
+  touchR(B){ return B.phase === 3 ? 0 : 72; }, // 3 단계 출구로: 앞을 막아서 버티는 사람은 몸이 닿아도 다치지 않아요
   height: 255,
   pos(B){ const i = info(B); return [i.x, i.y]; },
 
