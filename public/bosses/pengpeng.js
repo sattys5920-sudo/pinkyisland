@@ -145,8 +145,8 @@ export default {
         const ids = Object.keys(add); if (ids.length){ L.txT = now; for (const i of ids) L.sent['g' + k.seed + i] = 1; B.sfx('warn', 300);
           B.tx(bs => { const o = bs.sh && bs.sh.s === k.seed ? bs.sh : {s:k.seed, g:{}}; const g2 = {...(o.g || {})}; for (const i of ids) if (!g2[i]) g2[i] = add[i]; return {...bs, sh:{s:k.seed, g:g2}}; });
           L.heal += ids.length; }
-        if (L.hdS !== k.seed){ L.hdS = k.seed; L.hd = 0; } // 한 번의 몫 패턴에서 회복은 모두 합쳐 2 만까지
-        if (L.heal && now - L.healT > 500){ const n = Math.min(10000*L.heal, 20000 - L.hd); if (n > 0){ B.heal(n); L.hd += n; } L.heal = 0; L.healT = now; } } }
+        if (L.hdS !== k.seed){ L.hdS = k.seed; L.hd = 0; } // 한 번의 몫 패턴에서 회복은 모두 합쳐 1 만까지
+        if (L.heal && now - L.healT > 500){ const n = Math.min(5000*L.heal, 10000 - L.hd); if (n > 0){ B.heal(n); L.hd += n; } L.heal = 0; L.healT = now; } } }
 
     if (k.id === 'fog'){ const hs = horns(B, k);
       for (let i = 0; i < hs.length; i++){ const hn = hs[i];
