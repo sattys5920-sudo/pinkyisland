@@ -357,6 +357,9 @@
       },
       "$other": {
         ".validate": false
+      },
+      "endOpen": {
+        ".validate": "newData.isBoolean()"
       }
     },
     "goals": {

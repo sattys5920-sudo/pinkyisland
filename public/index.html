@@ -29,6 +29,7 @@ html,body{height:100%;overscroll-behavior:none;-webkit-tap-highlight-color:trans
 @font-face{font-family:"Maple";font-weight:600 900;font-display:swap;src:url("fonts/Maplestory_Bold.woff2") format("woff2")}
 @font-face{font-family:"HoodHand";font-weight:100 900;font-display:swap;src:url("fonts/HoodHand.woff2") format("woff2")} /* 단체 후드티 가슴 글씨: 개구쟁이체 Bold (OFL) 13 글자만 */
 body{margin:0;background:var(--sea);color:var(--ink);font:700 21px/1.15 "Dongle",system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#endLock{position:fixed;inset:0;z-index:300;background:#000;color:#e8e0ec;font-family:"Maple",sans-serif}#endLock canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}#endLock .el-bar{position:absolute;left:0;right:0;bottom:max(22px,env(safe-area-inset-bottom));display:flex;justify-content:center;opacity:0;transition:opacity 1.6s}#endLock .el-bar.on{opacity:.8}#endLock .el-bar button{background:transparent;border:1px solid rgba(232,224,236,.35);color:#e8e0ec;padding:8px 18px;border-radius:999px;font:inherit;font-size:16px;letter-spacing:1px}
 #kicked{position:fixed;inset:0;z-index:50;background:rgba(60,30,50,.45);display:grid;place-items:center;padding:16px}#kicked .pill{max-width:340px;padding:18px 20px;text-align:center}#kicked b{font-size:24px}#kicked p{font-size:18px;color:var(--soft)}
 #game{position:fixed;inset:0;width:100%;height:100%;display:block}
 .pill{background:linear-gradient(#fff,#fff8fa);border-radius:16px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
@@ -1292,7 +1293,7 @@ function saveMe(now){
   if (!saveTimer) saveTimer = setTimeout(flushSave, SAVE_DELAY);
 }
 // 같은 아이디로 다른 기기·창에서 들어오면, 먼저 있던 화면은 멈춰요 (서로 저장을 덮어써서 물건이 사라지거나 늘지 않게)
-let kicked = false;
+let kicked = false, endLocked = false, worldSeen = false; // endLocked: 엔딩을 본 사람은 더 들어올 수 없어요
 function onKicked(){
   if (kicked || !me) return; kicked = true; clearTimeout(saveTimer); saveTimer = 0; net && net.presenceOff && net.presenceOff();
   const d = document.createElement('div'); d.id = 'kicked';
@@ -1301,7 +1302,7 @@ function onKicked(){
 }
 async function flushSave(){
   clearTimeout(saveTimer); saveTimer = 0;
-  if (admin || !me || kicked) return;
+  if (admin || !me || kicked || endLocked) return;
   if (!zoneId.startsWith('house:') && !zoneId.startsWith('dark:') && ZONES[zoneId] && !darkDown){ me.zone = zoneId; me.zx = Math.round(pos.x); me.zy = Math.round(pos.y); } // 마지막으로 서 있던 자리
   if (saving){ saveAgain=true; return; }
   saving=true; lastSaved = saveSig();
@@ -1908,7 +1909,7 @@ function sizePrev(){ const c = $('obprev'); if (!c) return; const r = c.getBound
 
 // ===== 게임 =====
 function enterGame(doc){
-  me = doc; obStep = null; $('ob').hidden = true; migrateItems(); capHearts(); setTimeout(friendBackfill, 1500);
+  me = doc; obStep = null; $('ob').hidden = true; setTimeout(endLockCheck, 600); migrateItems(); capHearts(); setTimeout(friendBackfill, 1500);
   for (const id of ['hud','quest','bar','chatbox','sideBtns']) $(id).hidden = false;
   $('npcBtn').onclick = ()=>togglePanel('npcPanel', renderNpcPanel);
   $('mapBtn').onclick = ()=>togglePanel('mapPanel', renderMap);
@@ -6515,7 +6516,39 @@ function playEnding(kind, done){
 }
 // 다크 모드가 켜진 동안 끝이 정해지면 한 번 (다시 접속해도 한 번만)
 setInterval(() => { try { if (endRun || !me || admin || !darkOn() || !$('talk').hidden) return; const k = endingKind(); if (!k) return; const key = `${world.darkAt || 0}:${k}`; if (me.endSeen === key) return;
-  playEnding(k, () => { me.endSeen = key; saveMe(true); }); } catch(e){} }, 4000);
+  playEnding(k, () => { me.endSeen = key; saveMe(true); setTimeout(endLockCheck, 400); }); } catch(e){} }, 4000);
+// ===== 끝낸 게임: 엔딩을 본 사람은 다시 들어올 수 없어요 (오투모가 world.endOpen 을 켜면 들어올 수 있어요) =====
+const END_LOCK_LINE = {true:'열두 명 모두 집으로 돌아갔어요.', home:'돌아온 사람들은 이제 섬을 떠났어요.', taken:'빼앗긴 몸은 돌아오지 않아요.', closed:'닫힌 섬의 문은 다시 열리지 않아요.'};
+function endLockCheck(){
+  if (admin || !me || !worldSeen || !me.endSeen) return;
+  if (world.endOpen){ if (endLocked){ endLocked = false; location.reload(); } return; }
+  if (endLocked || endRun) return; endLocked = true;
+  clearTimeout(saveTimer); saveTimer = 0; try { net && net.presenceOff && net.presenceOff(); } catch(e){} try { bgmStop(); } catch(e){}
+  for (const id of ['npcPanel', 'mapPanel', 'talk', 'dim']) try { $(id).hidden = true; } catch(e){}
+  const kind = String(me.endSeen).split(':')[1] || '', box = document.createElement('div'); box.id = 'endLock';
+  box.innerHTML = '<canvas id="elCv"></canvas><div class="el-bar" id="elBar"><button id="elOut">로그아웃</button></div>'; document.body.appendChild(box);
+  $('elOut').onclick = () => logout(); setTimeout(() => $('elBar') && $('elBar').classList.add('on'), 5000);
+  const cv = $('elCv'), c = cv.getContext('2d', {willReadFrequently:true}); let W = 0, H = 0, img = null;
+  const fit = () => { W = Math.max(120, Math.round(innerWidth/1.7)); H = Math.max(120, Math.round(innerHeight/1.7)); cv.width = W; cv.height = H; img = c.createImageData(W, H); }; fit(); addEventListener('resize', fit);
+  const T0 = performance.now(), rnd = Math.random;
+  const lines = [['이야기는 끝났어요', 0, 1], [END_LOCK_LINE[kind] || '이 섬의 문은 닫혔어요.', 2.4, .8], ['이 섬은 더 이상 열리지 않아요.', 4.6, .8], ['함께해 줘서 고마워요.', 6.8, .8]];
+  let last = 0;
+  const frame = t => { if (!$('endLock')) return; requestAnimationFrame(frame); if (t - last < 55) return; last = t;
+    const e = (t - T0)/1000, burst = (Math.sin(e*1.7) > .93 || (e % 4.3) < .22) ? 1 : 0, d = img.data;
+    for (let i = 0; i < d.length; i += 4){ const v = rnd() < .5 ? 0 : (rnd()*(burst ? 90 : 38)) | 0; d[i] = v; d[i + 1] = v; d[i + 2] = v + (v >> 2); d[i + 3] = 255; }
+    c.putImageData(img, 0, 0);
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    lines.forEach(([tx, at, sz], k) => { const f = Math.min(1, Math.max(0, (e - at)/1.2)); if (f <= 0) return;
+      const fs = Math.round(Math.min(W/(k ? 13 : 12), H/(k ? 16 : 9))*sz*(k ? 1.05 : 1)), y = H*(.36 + k*.12) + (k ? H*.04 : 0), fl = rnd() < (burst ? .5 : .06) ? .25 : 1, jx = burst ? (rnd() - .5)*W*.03 : 0;
+      c.font = `700 ${fs}px "Maple", "Dongle", sans-serif`;
+      if (burst || rnd() < .12){ c.fillStyle = `rgba(255,40,90,${.55*f*fl})`; c.fillText(tx, W/2 - 2 + jx, y); c.fillStyle = `rgba(60,220,255,${.5*f*fl})`; c.fillText(tx, W/2 + 2 + jx, y); }
+      c.fillStyle = `rgba(240,232,244,${(k ? .86 : .96)*f*fl})`; c.fillText(tx, W/2 + jx, y); });
+    for (let n = 0; n < (burst ? 7 : 1); n++){ const y = (rnd()*H) | 0, h = 2 + ((rnd()*(burst ? 22 : 6)) | 0), dx = ((rnd() - .5)*(burst ? W*.18 : W*.03)) | 0; try { c.drawImage(cv, 0, y, W, h, dx, y, W, h); } catch(e){} }
+    for (let y = 0; y < H; y += 3){ c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(0, y, W, 1); }
+    if (burst){ c.fillStyle = `rgba(255,255,255,${.04 + rnd()*.07})`; c.fillRect(0, (rnd()*H) | 0, W, 1 + ((rnd()*4) | 0)); }
+    if (rnd() < (burst ? .5 : .08)){ c.fillStyle = 'rgba(232,224,236,.6)'; c.font = `${Math.round(H/22)}px "Maple", sans-serif`; c.fillText('…치지직…', W*(.2 + rnd()*.6), H*(.1 + rnd()*.8)); } };
+  requestAnimationFrame(frame);
+}
 // 접속을 끊은 사람: 마지막 자리에 몸만 남아요
 const husksHere = () => !darkOn() || Z().dark || Z().house ? [] : Object.entries(players).filter(([id, p]) => id !== uid && p && !p.adm && p.lot != null && p.zone === zoneId && typeof p.zx === 'number' && ![...others.values()].some(o => o.uid === id));
 function huskLook(id){ say('....', ['불러도 대답이 없어요. 눈은 뜨고 있는데, 아무것도 보지 않아요.', '어깨를 흔들어도 인형처럼 흔들리기만 해요.', '숨소리 대신 어디선가 게임 배경음악이 작게 들려요.'][Math.floor(Math.random()*3)]); }
@@ -8161,7 +8194,7 @@ function nightBrand(){ const on = darkOn(); if (on === brandNight) return; brand
   const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = on ? '#120a1a' : '#fffafb';
   const at = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (at) at.content = on ? 'ƃuɐlsıʎʞuıd¿' : 'pinkyisland'; // 아이폰 '홈 화면에 추가' 이름
   set('link[rel="manifest"]', on ? 'manifest-night.webmanifest' : 'manifest.webmanifest'); } // 안드로이드 앱 설치 이름 · 아이콘
-function onWorld(w){ const was = darkOn(), nmSig = JSON.stringify([world.dark, world.darkNames]), wxSig = JSON.stringify(world.wx || null); world = w || {};
+function onWorld(w){ worldSeen = true; setTimeout(endLockCheck, 0); const was = darkOn(), nmSig = JSON.stringify([world.dark, world.darkNames]), wxSig = JSON.stringify(world.wx || null); world = w || {};
   if (me && wxSig !== JSON.stringify(world.wx || null)) setTimeout(()=>{ staticSig = ''; renderHud(); }, 0); // 관리자가 날씨를 바꾸면 바로
   if (me && !admin && nmSig !== JSON.stringify([world.dark, world.darkNames])){ setTimeout(()=>{ renderHud(); renderChatHist(); }, 0); } // 다크 모드 이름이 바뀌면 상단 · 채팅도 바로
   nightBrand(); glitchCheck(); if (reloadSeen === undefined) reloadSeen = world.reloadAt || 0; else if ((world.reloadAt || 0) !== reloadSeen){ reloadSeen = world.reloadAt || 0; if (!admin){ toast('관리자가 새로고침했어요 · 잠깐만요'); setTimeout(updateNow, 1500); } } if (admin) renderAdmin(); if (was !== darkOn() && (me || admin)){ staticSig = ''; if (me){ rebuildObstacles(); if (!darkOn() && zoneId.startsWith('dark:')) darkLeave('눈앞이 하얘졌다가.... 정신을 차려 보니 밖이에요'); } glitchBurst = performance.now(); if (darkOn()){ darkSwitchAt = performance.now(); glitchSound(1900, [{t:120, d:90}, {t:620, d:140}, {t:1150, d:70}, {t:1500, d:110}]); } if (darkOn() && !admin){ // 아무 말 없이 바로: 주민과 하던 이야기는 끊겨요
@@ -8321,6 +8354,7 @@ function adminDarkSec(){
   return `<div class="adm-dark"><b>${i+1} 일 차 · ${npc ? esc(NPC[npc].name)+'의 방' : '-'}</b><small>${state} · 방 안 ${inRoom} 명${r.clear ? '' : pen}</small>${keyHtml}
     <small>방 닫기 · 열기 (닫으면 열쇠도 안 떨어지고 문이 꿰매져 있어요)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${DARK_ORDER.map(n => { const lk = !!(world.darkLock || {})[n], cl = roomOf(n).clear; return `<button data-a="dklock" data-k="${n}" class="adm-btn${lk ? ' warn' : ''}" style="flex:0 0 auto;padding:4px 8px">${esc(NPC[n].name)} ${cl ? '✓' : lk ? '닫힘' : '열림'}</button>`; }).join('')}</div>
     ${npc && r.start && !r.clear ? `<small>푼 문제 되돌리기 (누르면 그 문제부터 다시 풀어요 · 보스는 잠들어요)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${darkPuzzles(npc).filter(p => (r.solved || {})[p.id]).map(p => `<button data-a="dkunsolve" data-k="${p.id}" class="adm-btn" style="flex:0 0 auto;padding:4px 8px">${parseInt(p.id.slice(1), 10)}번</button>`).join('') || '<small>아직 푼 문제가 없어요</small>'}</div>` : ''}
+    <small>끝낸 게임 · 엔딩을 본 사람은 접속할 수 없어요 (지금 ${world.endOpen ? '들어올 수 있어요' : '막혀 있어요'})</small><div class="adm-wrow"><button data-a="endopen" class="adm-btn${world.endOpen ? ' warn' : ''}">${world.endOpen ? '다시 막기' : '엔딩 본 사람도 들어오게 하기'}</button></div>
     <div class="adm-wrow"><button data-a="dkprev" class="adm-btn">◀ 이전 방</button><button data-a="dknext" class="adm-btn">다음 방 ▶</button></div>
     ${(() => { const L = DARK_ORDER.filter(n => darkFirst(roomOf(n)) && !roomOf(n).clear); return L.length ? `<small>토큰으로 다시 열 때 2 페이즈 · 체력 절반부터 시작 (눌러서 켜고 끄기)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${L.map(n => `<button data-a="dkph2" data-k="${n}" class="adm-btn${roomOf(n).ph2 ? ' warn' : ''}" style="flex:0 0 auto;padding:4px 8px">${esc(NPC[n].name)} ${roomOf(n).ph2 ? '2 페이즈부터 ✓' : '1 페이즈부터'}</button>`).join('')}</div>` : ''; })()}
     <div class="adm-wrow"><button data-a="dkview" class="adm-btn" ${npc ? '' : 'disabled'}>방 보기</button><button data-a="dkreset" class="adm-btn warn" ${npc ? '' : 'disabled'}>이 방 처음으로</button></div>
@@ -8560,6 +8594,7 @@ function adminClick(e){
     Promise.resolve(net.darkTx(npc, cur => { if (!cur || cur.clear) return undefined; const sv = {...(cur.solved || {})}; ids.slice(from).forEach(k => delete sv[k]); const { hp, max, bossAt, rageAt, lowAt, bs, rv, bt, ...c } = cur; return {...c, solved:sv}; })).then(ok => toast(ok ? `${parseInt(id.slice(1), 10)}번부터 다시 풀 수 있어요` : '되돌리지 못했어요')).catch(()=>toast('되돌리지 못했어요')); }
   else if (b.dataset.a==='dkph2'){ const npc = b.dataset.k; if (!NPC[npc]) return; let on = false;
     Promise.resolve(net.darkTx(npc, cur => { if (!cur || cur.clear) return undefined; const {ph2, ...c} = cur; on = !ph2; return ph2 ? c : {...c, ph2:1}; })).then(ok => toast(ok ? `${NPC[npc].name}의 방: ${on ? '다음에 2 페이즈부터 시작해요' : '1 페이즈부터로 되돌렸어요'}` : '바꾸지 못했어요')).catch(()=>toast('바꾸지 못했어요')); }
+  else if (b.dataset.a==='endopen'){ const on = !world.endOpen; Promise.resolve(net.setWorld({endOpen:on})).then(()=>toast(on ? '엔딩을 본 사람도 들어올 수 있어요' : '엔딩을 본 사람은 다시 막혀요')).catch(()=>toast('바꾸지 못했어요')); }
   else if (b.dataset.a==='dklock'){ const n = b.dataset.k, lk = {...(world.darkLock || {})}; if (lk[n]) delete lk[n]; else lk[n] = true; Promise.resolve(net.setWorld({darkLock:lk})).then(()=>toast(`${NPC[n].name}의 방을 ${lk[n] ? '닫았어요' : '열었어요'}`)).catch(()=>toast('바꾸지 못했어요')); }
   else if (b.dataset.a==='dkprev' || b.dataset.a==='dknext'){ Promise.resolve(net.setWorld({darkShift:(world.darkShift|0) + (b.dataset.a==='dknext' ? 1 : -1)})).catch(()=>toast('방을 옮기지 못했어요. 관리자 권한을 확인해 주세요')); }
   else if (b.dataset.rv){ net.reviveSend(b.dataset.rv, '관리자').then(()=>toast('깨웠어요')); }
