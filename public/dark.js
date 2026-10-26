@@ -10,7 +10,7 @@
 export const DARK_ORDER = ['tori', 'bori', 'olly', 'mongsil', 'pengpeng', 'dandan', 'momo', 'hana', 'dodo', 'bami', 'toto', 'kongi'];
 export const DARK_LIMIT_MS = 2 * 3600 * 1000;   // 첫 입장부터 2 시간
 export const DARK_ROOM = { W: 1100, H: 900, door: [550, 800] };
-export const DARK_BOSS = { hp: 60000, hpOf: { tori: 150000, bori: 160000, olly: 170000, mongsil: 180000, pengpeng: 190000, dandan: 200000, momo: 210000, hana: 220000, dodo: 230000, bami: 240000, toto: 250000, kongi: 260000 }, touch: 35, slam: 60, slamR: 80, slamGap: 3.6, slamWarn: 1.2 }; // 토리 15 만부터 방마다 1 만씩 더 (콩이 26 만) · 12 명 기준의 반으로 줄였어요
+export const DARK_BOSS = { hp: 60000, hpOf: { tori: 150000, bori: 160000, olly: 170000, mongsil: 180000, pengpeng: 190000, dandan: 200000, momo: 210000, hana: 220000, dodo: 230000, bami: 300000, toto: 320000, kongi: 350000 }, touch: 35, slam: 60, slamR: 80, slamGap: 3.6, slamWarn: 1.2 }; // 토리 15 만부터 방마다 1 만씩 더 (12 명 기준의 반) · 밤이 30 만 · 토토 32 만 · 콩이 35 만
 export const DARK_REWARD = { gold: 20000, exp: 800 };
 
 // 방 가장자리를 따라 놓이는 물건 15 개 (가운데는 보스와 싸우는 자리)
