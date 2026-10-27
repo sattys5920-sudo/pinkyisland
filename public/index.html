@@ -5143,6 +5143,9 @@ function stats(){ me.stats = me.stats || {}; return me.stats; }
 const addDmg = n => { if (me && !admin) stats().dmgDealt = (stats().dmgDealt||0) + (n|0); };
 setInterval(() => { if (me && !admin && document.visibilityState === 'visible') stats().playMin = (stats().playMin||0) + 1; }, 60000);
 function stat(key, n=1){ const st = stats(); st[key] = (st[key]||0) + n; checkAchievements(); goalCount(key, n); return st[key]; }
+// 돈을 쓴 금액 누적 (순위용): 1 초마다 골드를 보고, 줄어든 만큼 쌓아요 (번 돈과 같은 초에 쓰면 차이만 잡혀요)
+let goldSeen = null;
+setInterval(() => { try { if (!me || admin || solo) { goldSeen = null; return; } const g = me.inv.gold|0; if (goldSeen !== null && g < goldSeen) { stat('goldSpent', goldSeen - g); saveMe(); } goldSeen = g; } catch(e){} }, 1000);
 function statSet(key, v){ const st = stats(); if (st[key] !== v){ st[key] = v; checkAchievements(); } }
 function syncStats(){ // 다른 데이터에서 바로 계산되는 기록
   const st = stats(); st.friendCount = (me.friends||[]).length; st.dexFish = Object.keys(me.dex||{}).length; st.dexOre = Object.keys(me.odex||{}).length; st.dexMon = Object.keys(me.mdex||{}).length;
@@ -6764,7 +6767,7 @@ function drawDowned(c, x, y, look, t, key){
   c.save(); c.fillStyle = '#ffd76a'; for (let i = 0; i < 3; i++){ const a = t/400 + i*2.1; c.beginPath(); c.arc(x - 6 + Math.cos(a)*16, y - 26 + Math.sin(a)*5, 2.6, 0, 7); c.fill(); } c.restore(); // 머리 위 별
   if (darkRevive && darkRevive.id === key){ const a = Math.min(1, (performance.now() - darkRevive.at) / 2000); c.save(); c.strokeStyle = '#59c27a'; c.lineWidth = 5; c.beginPath(); c.arc(x, y-20, 24, -Math.PI/2, -Math.PI/2 + a*Math.PI*2); c.stroke(); c.restore(); }
 }
-function darkReviveSend(npc, id, by){ return net.reviveSend(id, by); }
+function darkReviveSend(npc, id, by){ stat('revives'); return net.reviveSend(id, by); }
 // 누가 나를 깨웠어요 (revive/<내 uid>)
 function onRevive(v){ if (!v || !darkDown || !(v.at >= darkDown)) return; if (admin){ darkDown = null; playerHp = Math.round(maxHp()*.5); darkGuard = 3; toast(`${String(v.by).slice(0,12)} 님이 깨워 줬어요`); net.reviveClear && net.reviveClear(); return; } darkStandUp(v.by); net.reviveClear && net.reviveClear(); }
 // 기절·쓰러짐: 깨우는 중 진행, 혼자 깨어나기 제안 (모든 구역)
@@ -8330,6 +8333,9 @@ function adminRankSec(regs){
     ['💬 (예전부터) 채팅을 가장 많이 한 사람', p=>+S(p).chatSent||0, v=>`${v.toLocaleString()} 번`, '접속 시간 참고용'],
     ['✉️ 편지를 가장 많이 쓴 사람', p=>+S(p).lettersSent||0, v=>`${v.toLocaleString()} 통`, '주민 · 친구 · 오투모에게 보낸 편지'],
     ['💗 호감도가 가장 높은 사람', p=>relSum(p), v=>`${v.toLocaleString()} 점`, '주민 12 명 호감도 점수 합 (한 명 최대 500)', relTop],
+    ['🍳 요리를 가장 많이 한 사람', p=>+S(p).dishesCooked||0, v=>`${v.toLocaleString()} 번`, '요리한 횟수 · 처음부터 쌓인 기록'],
+    ['🕊 가장 많이 살린 사람', p=>+S(p).revives||0, v=>`${v.toLocaleString()} 번`, '쓰러진 친구를 일으킨 횟수 · 이 업데이트부터 집계'],
+    ['💸 돈을 가장 많이 쓴 사람', p=>+S(p).goldSpent||0, v=>`${v.toLocaleString()} G`, '쓴 돈 누적 · 이 업데이트부터 집계'],
     ['💰 돈을 가장 많이 번 사람', p=>+p.earned||0, v=>`${v.toLocaleString()} G`, '판매 · 장사 · 리조트 수입 등 번 돈 누적'],
     ['📖 도감을 가장 많이 채운 사람', p=>+S(p).dexTotal||0, v=>`${v} 종`, '물고기 + 광석 + 몬스터 도감 (마지막 접속 기준)']];
   return C.map(([t, f, fmt, note, extra])=>{ const rows = ppl.map(([id, p])=>[p, f(p)]).filter(([, v])=>v > 0).sort((a, b)=>b[1] - a[1]).slice(0, 5);
