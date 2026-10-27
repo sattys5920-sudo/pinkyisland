@@ -6787,8 +6787,8 @@ const darkLimit = r => DARK_LIMIT_MS - ((r && r.pen) | 0) + (r && r.bt ? DARK_BO
 const DARK_TOK = 1000000;
 const darkFirst = r => (r && (r.first || r.start)) || 0;
 const darkEnd = r => r.start + darkLimit(r);
-// 문제를 다 푼 뒤(보스전)에 시간이 다 되면 보스 체력만 처음부터, 문제를 풀던 중이면 문제도 모두 처음부터 (열쇠는 그대로)
-const darkRetry = (npc, {start, hp, max, bossAt, rageAt, lowAt, bs, rv, wipe, pen, bt, tok, ...r}) => darkSolvedN(r) >= darkPuzzles(npc).length ? {...r, att:(r.att|0)+1, first:darkFirst({...r, start}), ...(rageAt || r.ph2 ? {ph2:1} : {})} : {att:(r.att|0)+1, first:darkFirst({...r, start}), ...(r.keys ? {keys:r.keys} : {})};
+// 시간이 다 되면 푼 문제는 그대로 두고 (토큰으로 다시 열면 그다음부터), 보스 체력은 처음부터 (열쇠도 그대로)
+const darkRetry = (npc, {start, hp, max, bossAt, rageAt, lowAt, bs, rv, wipe, pen, bt, tok, ...r}) => darkSolvedN(r) >= darkPuzzles(npc).length ? {...r, att:(r.att|0)+1, first:darkFirst({...r, start}), ...(rageAt || r.ph2 ? {ph2:1} : {})} : {att:(r.att|0)+1, first:darkFirst({...r, start}), ...(r.keys ? {keys:r.keys} : {}), ...(r.solved ? {solved:r.solved} : {})};
 // 열쇠로 처음 들어간 뒤 48 시간 안에 못 꿰매면 기회가 사라져요 (날이 바뀌어도 48 시간 안이면 토큰으로 다시 열 수 있어요)
 const DARK_GRACE = 48*3600000;
 function darkLive(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(), r = roomOf(npc); if (i < 0 || i > di || r.clear) return false; if (i === di) return !darkFirst(r) || darkNow() <= darkFirst(r) + DARK_GRACE; return !!darkFirst(r) && darkNow() <= darkFirst(r) + DARK_GRACE; }
@@ -8347,6 +8347,10 @@ function adminDarkTgtSec(regs){
   const done = DARK_ORDER.filter(n=>darkTgt(n)).length;
   return `<div class="adm-sec"><b>노리는 몸 ${done}/${DARK_ORDER.length}</b><small>주민마다 몸을 바꾸려고 노리는 사람 한 명. 그 방의 단서와 보스 패턴에 이 사람 이름이 나와요</small>${rows}</div>`;
 }
+// 사람들이 모은 단서 (players/<uid>/clues/<방>) 로, 그 방에서 풀린 문제를 알아내요: 문제 i 의 단서 번호는 clueOf 와 같아요 (푼 문제는 앞에서부터 이어져요)
+function clueSolvedMax(npc){ const list = darkPuzzles(npc), have = new Set();
+  for (const q of Object.values(players)){ if (!q || q.adm) continue; String((q.clues || {})[npc] || '').split('').forEach((ch, i) => { if (ch === '1') have.add(i + 1); }); }
+  let m = -1; list.forEach((pz, i) => { const n = i < 4 ? i + 1 : i === 4 ? 0 : i <= CLUE_N ? i : 0; if (n && have.has(n)) m = i; }); return m; }
 function adminDarkSec(){
   const i = darkIdx(), npc = darkToday(), r = npc ? roomOf(npc) : {}, n = npc ? darkPuzzles(npc).length : 0;
   const pen = r.start ? `${r.pen ? ` · 오답 감점 ${Math.round(r.pen/60000)} 분 (${Object.values(r.wr||{}).reduce((a, v) => a + (v|0), 0)} 번 틀림)` : ' · 감점 없음'}${r.bt ? ' · 보스 +30 분' : ''}` : '';
@@ -8359,6 +8363,8 @@ function adminDarkSec(){
   return `<div class="adm-dark"><b>${i+1} 일 차 · ${npc ? esc(NPC[npc].name)+'의 방' : '-'}</b><small>${state} · 방 안 ${inRoom} 명${r.clear ? '' : pen}</small>${keyHtml}
     <small>방 닫기 · 열기 (닫으면 열쇠도 안 떨어지고 문이 꿰매져 있어요)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${DARK_ORDER.map(n => { const lk = !!(world.darkLock || {})[n], cl = roomOf(n).clear; return `<button data-a="dklock" data-k="${n}" class="adm-btn${lk ? ' warn' : ''}" style="flex:0 0 auto;padding:4px 8px">${esc(NPC[n].name)} ${cl ? '✓' : lk ? '닫힘' : '열림'}</button>`; }).join('')}</div>
     ${npc && r.start && !r.clear ? `<small>푼 문제 되돌리기 (누르면 그 문제부터 다시 풀어요 · 보스는 잠들어요)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${darkPuzzles(npc).filter(p => (r.solved || {})[p.id]).map(p => `<button data-a="dkunsolve" data-k="${p.id}" class="adm-btn" style="flex:0 0 auto;padding:4px 8px">${parseInt(p.id.slice(1), 10)}번</button>`).join('') || '<small>아직 푼 문제가 없어요</small>'}</div>` : ''}
+    ${(() => { const rooms = DARK_ORDER.filter(n => darkFirst(roomOf(n)) && !roomOf(n).clear); if (!rooms.length) return '';
+      return `<small>푼 문제 복구 (시간이 끝나 기록이 지워진 방 · 사람들이 모은 단서 기록으로 어디까지 풀었는지 알아내요)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${rooms.map(n => { const m = clueSolvedMax(n), have = darkSolvedN(roomOf(n)); return `<button data-a="dkrestore" data-k="${n}" class="adm-btn" style="flex:0 0 auto;padding:4px 8px" ${m < 0 ? 'disabled' : ''}>${esc(NPC[n].name)} ${m < 0 ? '단서 기록 없음' : `${m + 1} 번까지 복구 (지금 ${have} 개)`}</button>`; }).join('')}</div>`; })()}
     ${(() => { const K = {true:'집으로', home:'돌아온 사람들', taken:'빼앗긴 몸', closed:'닫힌 섬'}, L = Object.entries(players).filter(([, q]) => q && !q.adm && q.endSeen).sort((a, b) => String(a[1].nick || '').localeCompare(String(b[1].nick || ''), 'ko')), tot = Object.values(players).filter(q => q && !q.adm).length;
       return `<small>엔딩 본 사람 ${L.length} 명 / 전체 ${tot} 명</small>${L.length ? `<div class="adm-keys">${L.map(([id, q]) => { const nm = (world.darkNames || {})[id]; return `<div class="adm-wrow" style="gap:6px;align-items:center"><span style="flex:1 1 auto">${esc(String(q.nick || '').slice(0, 8))}${nm ? ` <small>(${esc(String(nm).slice(0, 6))})</small>` : ''} · <small>${esc(K[String(q.endSeen).split(':')[1]] || '?')}</small></span><button data-a="endclear" data-k="${esc(id)}" class="adm-btn" style="flex:0 0 auto;padding:3px 8px">기록 지우기</button></div>`; }).join('')}</div>` : '<small>아직 아무도 엔딩을 보지 않았어요</small>'}`; })()}
     <small>끝낸 게임 · 엔딩을 본 사람은 접속할 수 없어요 (지금 ${world.endOpen ? '들어올 수 있어요' : '막혀 있어요'})</small><div class="adm-wrow"><button data-a="endopen" class="adm-btn${world.endOpen ? ' warn' : ''}">${world.endOpen ? '다시 막기' : '엔딩 본 사람도 들어오게 하기'}</button></div>
@@ -8603,6 +8609,9 @@ function adminClick(e){
     Promise.resolve(net.darkTx(npc, cur => { if (!cur || cur.clear) return undefined; const {ph2, ...c} = cur; on = !ph2; return ph2 ? c : {...c, ph2:1}; })).then(ok => toast(ok ? `${NPC[npc].name}의 방: ${on ? '다음에 2 페이즈부터 시작해요' : '1 페이즈부터로 되돌렸어요'}` : '바꾸지 못했어요')).catch(()=>toast('바꾸지 못했어요')); }
   else if (b.dataset.a==='endclear'){ const id = b.dataset.k, q = players[id]; if (!q || !confirm(`${q.nick} 님의 엔딩 본 기록을 지울까요? 다시 접속할 수 있고 엔딩을 또 볼 수 있어요.`)) return;
     Promise.resolve(net.adminPatch(id, {endSeen:null})).then(()=>toast(`${q.nick} 님의 엔딩 기록을 지웠어요`)).catch(()=>toast('지우지 못했어요')); }
+  else if (b.dataset.a==='dkrestore'){ const npc = b.dataset.k, m = clueSolvedMax(npc), ids = darkPuzzles(npc).map(p => p.id).slice(0, m + 1); if (!NPC[npc] || m < 0 || !confirm(`${NPC[npc].name}의 방 ${m + 1} 번 문제까지 푼 걸로 복구할까요? (이미 푼 문제는 그대로 둬요 · 다시 열면 그다음 문제부터예요)`)) return;
+    const now = darkNow(); let added = 0;
+    Promise.resolve(net.darkTx(npc, cur => { if (!cur || cur.clear) return undefined; const sv = {...(cur.solved || {})}; added = 0; for (const id of ids) if (!sv[id]){ sv[id] = {uid:'admin', nick:'복구', at:now, ans:'x'}; added++; } return added ? {...cur, solved:sv} : undefined; })).then(ok => toast(ok ? `${NPC[npc].name}의 방 ${added} 개를 복구했어요 (${m + 1} 번까지)` : '더 복구할 문제가 없어요')).catch(()=>toast('복구하지 못했어요')); }
   else if (b.dataset.a==='endopen'){ const on = !world.endOpen; Promise.resolve(net.setWorld({endOpen:on})).then(()=>toast(on ? '엔딩을 본 사람도 들어올 수 있어요' : '엔딩을 본 사람은 다시 막혀요')).catch(()=>toast('바꾸지 못했어요')); }
   else if (b.dataset.a==='dklock'){ const n = b.dataset.k, lk = {...(world.darkLock || {})}; if (lk[n]) delete lk[n]; else lk[n] = true; Promise.resolve(net.setWorld({darkLock:lk})).then(()=>toast(`${NPC[n].name}의 방을 ${lk[n] ? '닫았어요' : '열었어요'}`)).catch(()=>toast('바꾸지 못했어요')); }
   else if (b.dataset.a==='dkprev' || b.dataset.a==='dknext'){ Promise.resolve(net.setWorld({darkShift:(world.darkShift|0) + (b.dataset.a==='dknext' ? 1 : -1)})).catch(()=>toast('방을 옮기지 못했어요. 관리자 권한을 확인해 주세요')); }
