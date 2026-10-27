@@ -1533,7 +1533,7 @@ function firebaseNet(){
     chatZone: (z, cb) => F.onValue(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z), F.limitToLast(CHAT_KEEP)), s=>cb(s.val()||{}), ()=>{}),
     // 장소마다 100 줄만 남기고 오래된 줄은 지워요
     chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
-    chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(3000)), s=>cb(s.val()||{}), ()=>{}),
+    chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(20000)), s=>cb(s.val()||{}), ()=>{}),
     wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, bridge:null, resort:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ox:null, fest:null, ...(withChat ? {chat:null} : {})}),
     listen(){
       F.onValue(F.ref(db, 'players'), s=>onPlayers(s.val()), ()=>toast('섬 정보를 불러오지 못했어요.'));
@@ -8190,7 +8190,7 @@ function adminDress(){
     <div class="adm-dress-row"><button data-a="odoff" class="adm-btn warn">원래 로봇 몸으로</button></div></div>`;
 }
 let adminLetterData = {}, admPost = false, admDrafts = {}; // 주민·오투모에게 온 편지 (관리자가 답장)
-let chatLog = [], admChat = null, admChatScroll = null; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
+let chatLog = [], admChat = null, admChatScroll = null, admChatQ = '', admChatWin = 60; // admChat: 채팅 기록 (null 닫힘 / '' 전체 / uid 그 사람만)
 let world = {}, cam = {follow:null, zone:'village'}, admTbl = null; // admTbl: 자금·호감도 표 (null 닫힘 / '' 열림 / uid 그 사람 강조)
 let reloadSeen; // 관리자 [전원 새로고침]: 처음 본 값에서 바뀌면 저장하고 새로고침해요
 // 밤 모드가 켜지면 탭 이름 · 아이콘도 글리치 버전으로 (관리자 화면도 똑같이)
@@ -8227,7 +8227,7 @@ function enterAdmin(){
   obStep = null; $('ob').hidden = true;
   for (const id of ['hud','stats','quest','bar','chatbox','sideBtns']) if ($(id)) $(id).hidden = true;
   document.body.classList.add('admin');
-  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; if (e.target.id && e.target.id in admFest) admFest[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('input', e=>{ if (e.target.dataset?.dn) admDn[e.target.dataset.dn] = e.target.value; }); box.addEventListener('change', e=>{ if (e.target.dataset?.dn){ const id = e.target.dataset.dn, v = e.target.value.trim().slice(0,12), N = {...(world.darkNames || {})}; if (v) N[id] = v; else delete N[id]; delete admDn[id]; Promise.resolve(net.setWorld({darkNames:N})).then(()=>{}).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); return; } if (e.target.dataset && e.target.dataset.dt && DARK_ORDER.includes(e.target.dataset.dt)){ const T = {...(world.darkTgt || {})}; if (e.target.value) T[e.target.dataset.dt] = e.target.value; else delete T[e.target.dataset.dt]; e.target.blur(); Promise.resolve(net.setWorld({darkTgt:T})).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); return; } if (e.target.dataset && e.target.dataset.od){ const D = {...(otumoDress || {})}; D[e.target.dataset.od] = e.target.value === 'none' && e.target.dataset.od === 'set' ? '' : e.target.value; if (e.target.dataset.od === 'set' && D.set) {} setOtumoDress(D); e.target.blur(); return; } if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK' || ['fgbK','fhuK','frpK','fsyK','ffiK','fmgK','fmcK','ftcK','fbbK'].includes(e.target.id)){ e.target.blur(); renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
+  let box = $('adminUi'); if (!box){ box = document.createElement('div'); box.id = 'adminUi'; document.body.appendChild(box); box.addEventListener('click', adminClick); const grKeep = e => { if (e.target.id && e.target.id in admGr) admGr[e.target.id] = e.target.value; if (e.target.id && e.target.id in admAuc) admAuc[e.target.id] = e.target.value; if (e.target.id && e.target.id in admOx) admOx[e.target.id] = e.target.value; if (e.target.id && e.target.id in admFest) admFest[e.target.id] = e.target.value; }; box.addEventListener('input', grKeep); box.addEventListener('change', grKeep); box.addEventListener('input', e=>{ if (e.target.dataset?.dn) admDn[e.target.dataset.dn] = e.target.value; }); box.addEventListener('change', e=>{ if (e.target.dataset?.dn){ const id = e.target.dataset.dn, v = e.target.value.trim().slice(0,12), N = {...(world.darkNames || {})}; if (v) N[id] = v; else delete N[id]; delete admDn[id]; Promise.resolve(net.setWorld({darkNames:N})).then(()=>{}).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); return; } if (e.target.dataset && e.target.dataset.dt && DARK_ORDER.includes(e.target.dataset.dt)){ const T = {...(world.darkTgt || {})}; if (e.target.value) T[e.target.dataset.dt] = e.target.value; else delete T[e.target.dataset.dt]; e.target.blur(); Promise.resolve(net.setWorld({darkTgt:T})).catch(()=>toast('저장하지 못했어요. 관리자 권한을 확인해 주세요')); return; } if (e.target.dataset && e.target.dataset.od){ const D = {...(otumoDress || {})}; D[e.target.dataset.od] = e.target.value === 'none' && e.target.dataset.od === 'set' ? '' : e.target.value; if (e.target.dataset.od === 'set' && D.set) {} setOtumoDress(D); e.target.blur(); return; } if (e.target.tagName==='SELECT' && (e.target.id==='admChatWho' || e.target.id==='admQWho')) e.target.blur(); if (e.target.id==='admChatWho'){ admChat = e.target.value; admChatScroll = null; renderAdmin(); } if (e.target.id==='admChatWin'){ admChatWin = +e.target.value || 60; renderAdmin(); } if (e.target.id==='admQWho'){ admQ = e.target.value; renderAdmin(); } if (e.target.id==='oxK' || ['fgbK','fhuK','frpK','fsyK','ffiK','fmgK','fmcK','ftcK','fbbK'].includes(e.target.id)){ e.target.blur(); renderAdmin(); } if (e.target.id==='admWipeChat') admWipeChat = e.target.checked; }); box.addEventListener('input', e=>{ if (e.target.id==='admWipeTxt'){ admWipeTxt = e.target.value; const g = box.querySelector('[data-a="wipego"]'); if (g) g.disabled = admWipeTxt.trim() !== '전부 삭제' || wiping; } }); net.chatLog && net.adminLetters && net.adminLetters(v=>{ adminLetterData = v; if (admin) renderAdmin(); }); net.adminDms && net.adminDms(v=>{ adminDmData = v; if (admin && admDm !== null) renderAdmin(); }); box.addEventListener('input', e=>{ if (e.target.dataset.rk) admDrafts[e.target.dataset.rk] = e.target.value; }); net.chatLog(v=>{ chatLog = Object.values(v).filter(m=>m && typeof m.t==='string').sort((a,b)=>(a.at||0)-(b.at||0)); if (admChat !== null) renderAdmin(); }); }
   const Zz = ZONES[cam.zone]; enterZone(cam.zone, null, Zz.W/2, Zz.H/2);
   renderAdmin();
   setInterval(()=>{ const c = $('recClock'); if (c) c.textContent = kstClock(); }, 1000);
@@ -8447,14 +8447,20 @@ async function wipeAll(){
 }
 // 채팅 기록: 지금까지 보낸 채팅 (최근 3,000 개). 맨 아래가 최신, 사람별로 골라 보거나 글 파일로 내려받아요
 const kstTime = at => new Date((at||0) + 9*3600000).toISOString().slice(0, 19).replace('T', ' ');
-function chatShown(){ return admChat ? chatLog.filter(m=>m.uid===admChat) : chatLog; }
+// 단어를 찾으면 그 단어가 나온 말의 앞뒤 admChatWin 분 동안 모두의 채팅을 보여요 (고른 사람이 있으면 그 사람이 한 말만 찾아요)
+const chatHit = m => admChatQ && String(m.t || '').includes(admChatQ);
+function chatShown(){
+  if (admChatQ){ const w = admChatWin*60000, hits = chatLog.filter(m => chatHit(m) && (!admChat || m.uid === admChat)).map(m => m.at); if (!hits.length) return [];
+    return chatLog.filter(m => hits.some(t => Math.abs(m.at - t) <= w)); }
+  return admChat ? chatLog.filter(m=>m.uid===admChat) : chatLog; }
 function adminChat(regs){
   const list = chatShown(), who = new Map(regs.map(([id,p])=>[id, p.nick])); for (const m of chatLog) if (!who.has(m.uid)) who.set(m.uid, m.nick);
   let day = '', rows = '';
   for (const m of list){ const t = kstTime(m.at), d = t.slice(0, 10); if (d !== day){ day = d; rows += `<div class="adm-day">${d}</div>`; }
-    rows += `<div class="adm-msg"><small>${t.slice(11, 16)}</small><b>${esc(String(m.nick||'누군가').slice(0, 8))}</b>${m.z ? `<i>${esc(zoneName(m.z))}</i>` : ''}<span>${esc(m.t.slice(0, 80))}</span></div>`; }
+    rows += `<div class="adm-msg"${chatHit(m) ? ' style="background:rgba(255,220,120,.28);border-radius:6px"' : ''}><small>${t.slice(11, 16)}</small><b>${esc(String(m.nick||'누군가').slice(0, 8))}</b>${m.z ? `<i>${esc(zoneName(m.z))}</i>` : ''}<span>${esc(m.t.slice(0, 80))}</span></div>`; }
   return `<div class="adm-tbl adm-chat"><div class="adm-tbl-head"><b>채팅 기록</b><small>${list.length.toLocaleString()} 개 · 맨 아래가 최신이에요</small>
     <select id="admChatWho"><option value="">모든 사람</option>${[...who].sort((a,b)=>String(a[1]).localeCompare(String(b[1]), 'ko')).map(([id,n])=>`<option value="${id}" ${admChat===id ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+    <input id="admChatQ" value="${esc(admChatQ)}" placeholder="단어 찾기 (앞뒤 시간 같이)" style="font:inherit;font-size:18px;border-radius:10px;border:0;padding:1px 8px;width:9em"><select id="admChatWin">${[[30, '앞뒤 30 분'], [60, '앞뒤 1 시간'], [180, '앞뒤 3 시간']].map(([v, l]) => `<option value="${v}" ${admChatWin === v ? 'selected' : ''}>${l}</option>`).join('')}</select><button data-a="chatq" class="adm-btn">찾기</button>${admChatQ ? '<button data-a="chatqx" class="adm-btn">찾기 끄기</button>' : ''}
     <button data-a="chatdl" class="adm-btn">내려받기</button><button data-a="cclose" class="adm-btn">닫기</button></div>
     <div class="adm-chat-list">${rows || '<small>아직 채팅이 없어요</small>'}</div></div>`;
 }
@@ -8623,6 +8629,8 @@ function adminClick(e){
   if (b.dataset.a==='lreply') return adminReply(b.dataset.to, b.dataset.id);
   if (b.dataset.a==='kick') return adminKick(b.dataset.u);
   if (b.dataset.a==='disc') return adminDisconnect(b.dataset.u);
+  if (b.dataset.a==='chatq'){ admChatQ = String($('admChatQ')?.value || '').trim(); admChatScroll = null; return renderAdmin(); }
+  if (b.dataset.a==='chatqx'){ admChatQ = ''; admChatScroll = null; return renderAdmin(); }
   if (b.dataset.a==='chatdl') return chatDownload();
   if (b.dataset.a==='wipe'){ admDm = null; admPost = false; admWipe = !admWipe; admTbl = null; admChat = null; admWipeTxt = ''; return renderAdmin(); }
   if (b.dataset.a==='wclose'){ admWipe = false; admWipeTxt = ''; return renderAdmin(); }
