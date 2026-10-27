@@ -6802,13 +6802,20 @@ const darkHintOpen = (r, pz) => ((r.wr||{})[pz.id]|0) >= DARK_HINT;
 const darkHintBtn = (r, pz) => darkHintOpen(r, pz) ? '<button class="mini" id="dkHint">힌트 보기</button>' : '<button class="mini" id="dkHint" disabled style="opacity:.45">힌트는 두 번 틀리면 열려요</button>';
 function darkHintWire(npc, pz){ const b = $('dkHint'); if (b) b.onclick = () => { if (!darkHintOpen(roomOf(npc), pz)) return; const t = $('dkHintT'); t.textContent = pz.hint || '힌트가 없어요'; t.hidden = false; }; }
 function darkTriesTxt(r, pz){ const n = ((r.wr||{})[pz.id]|0), left = DARK_FREE - n; return left > 0 ? `틀려도 되는 기회 ${left} 번 · 그 뒤로는 틀릴 때마다 남은 시간 10 분이 줄어요` : '이제 틀릴 때마다 남은 시간이 10 분씩 줄어요'; }
+// ⑪ 콩이 방명록: 손전등으로 비춘 곳만 보여요 (손가락 · 마우스를 따라와요)
+function darkLightWire(){ const w = $('npcPanel').querySelector('.dk-imw'); if (!w) return; const cv = document.createElement('canvas'); cv.className = 'dk-lt'; cv.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;touch-action:none;cursor:none;border-radius:8px'; w.appendChild(cv);
+  let px = null, py = null; const draw = () => { const W = w.clientWidth, H = w.clientHeight; if (!W || !H) return; if (cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; } const c = cv.getContext('2d'); c.globalCompositeOperation = 'source-over'; c.fillStyle = '#08060c'; c.fillRect(0, 0, W, H);
+    if (px === null){ px = W*.22; py = H*.34; } const R = W*.16, g = c.createRadialGradient(px, py, R*.56, px, py, R); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.globalCompositeOperation = 'destination-out'; c.fillStyle = g; c.fillRect(px - R, py - R, R*2, R*2); };
+  const at = e => { const b = cv.getBoundingClientRect(); px = e.clientX - b.left; py = e.clientY - b.top; draw(); };
+  cv.addEventListener('pointerdown', e => { try { cv.setPointerCapture(e.pointerId); } catch(_){} at(e); }); cv.addEventListener('pointermove', at);
+  const img = w.querySelector('img'); if (img) img.addEventListener('load', draw); if (window.ResizeObserver) new ResizeObserver(draw).observe(w); draw(); }
 function darkPuzzlePanel(pz){
   const npc = Z().dark; if (!npc) return; const r = roomOf(npc), done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), list = darkPuzzles(npc);
   const owner = (r.asg || {})[pz.id], notMine = !done && owner && owner !== uid && !admin && !pz.film; // 문제는 모두 보고, 답은 맡은 사람만 써요
   const shown = done && (done.ans || pz.a[0] || ''), body = done ? `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
     : lock ? `<p class="dk-q">굳게 닫혀 있어요. 꿈쩍도 하지 않아요.</p><p class="mnote">어딘가에서 다른 것이 먼저 열려야 할 것 같아요.</p>`
     : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p>${notMine ? `<p class="mnote">✎ 답은 ${players[owner]?.nick ? `<b>${esc(String(players[owner].nick).slice(0, 8))}</b> 님만` : '맡은 사람만'} 쓸 수 있어요</p>` : `<div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><p class="mnote" id="dkTries">${darkTriesTxt(r, pz)}</p>`}${darkHintBtn(r, pz)}<p class="mnote" id="dkHintT" hidden></p>${pz.film ? filmBtnHtml(pz.film) : ''}`;
-  openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body + (admin ? '' : `<button class="mini" id="dkBook">단서 수첩 ${clueCount(npc)}/${CLUE_N}</button>`)); darkImgFill($('npcPanel')); if ($('dkBook')) $('dkBook').onclick = () => clueBook(npc);
+  openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body + (admin ? '' : `<button class="mini" id="dkBook">단서 수첩 ${clueCount(npc)}/${CLUE_N}</button>`)); darkImgFill($('npcPanel')); if (pz.light && !done && !lock) darkLightWire(); if ($('dkBook')) $('dkBook').onclick = () => clueBook(npc);
   for (const el of $('npcPanel').querySelectorAll('.dk-img')) el.onclick = () => el.classList.toggle('big'); // 누르면 크게
   if (done || lock) return;
   if (pz.film) filmBtnWire(pz.film);
