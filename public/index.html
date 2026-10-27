@@ -1358,7 +1358,7 @@ function onOnline(raw){
   if (me) renderHud();
 }
 // ===== 채팅: 같은 장소에 있는 사람끼리만 보여요. 장소마다 최근 100 줄을 남기고, [채팅]을 열면 지난 대화가 보여요 =====
-const CHAT_KEEP = 100;
+const CHAT_KEEP = 100, CHAT_STORE = 3000; // CHAT_KEEP: 화면에 보여 주는 수 · CHAT_STORE: 서버에 남겨 두는 수 (구역마다 · 오투모가 옛 대화를 찾아볼 수 있게)
 let chatHist = [], chatSeen = new Set(), chatUnsub = null, chatZoneId = null;
 function chatZone(){
   if (!net || !me || admin || chatZoneId===zoneId) return;
@@ -1532,7 +1532,7 @@ function firebaseNet(){
     // 이 장소의 대화 최근 100 줄만 받아요
     chatZone: (z, cb) => F.onValue(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z), F.limitToLast(CHAT_KEEP)), s=>cb(s.val()||{}), ()=>{}),
     // 장소마다 100 줄만 남기고 오래된 줄은 지워요
-    chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_KEEP) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_KEEP).map(k=>[k, null]))); } catch(e){} },
+    chatTrim: async z => { try { const v = (await F.get(F.query(F.ref(db, 'chat'), F.orderByChild('z'), F.equalTo(z)))).val() || {}; const ks = Object.keys(v).sort(); if (ks.length > CHAT_STORE) await F.update(F.ref(db, 'chat'), Object.fromEntries(ks.slice(0, ks.length - CHAT_STORE).map(k=>[k, null]))); } catch(e){} },
     chatLog: cb => F.onValue(F.query(F.ref(db, 'chat'), F.limitToLast(20000)), s=>cb(s.val()||{}), ()=>{}),
     wipeAll: withChat => F.update(F.ref(db), {players:null, roofs:null, lots:null, online:null, contest:null, mail:null, letters:null, lettersOut:null, dms:null, dmIndex:null, petClaims:null, snowmen:null, museum:null, bridge:null, resort:null, mobs:null, darkRooms:null, market:null, bazaar:null, boss:null, ox:null, fest:null, ...(withChat ? {chat:null} : {})}),
     listen(){
@@ -7698,7 +7698,7 @@ function sendChat(){
   const inp = $('chatin'), t = inp.value.trim(); inp.value = ''; inp.blur();
   if (!t) return;
   if (zoneId.startsWith('dark:')) bossChat(t);
-  const z = zoneId; net.sendChat(t).then(()=>net.chatTrim(z)).catch(()=>toast('채팅을 보내지 못했어요.')); stat('chatSent');
+  const z = zoneId; net.sendChat(t).then(()=>{ if (Math.random() < 1/40) return net.chatTrim(z); }) /* 정리는 가끔만 (옛 대화는 오래 남겨요) */.catch(()=>toast('채팅을 보내지 못했어요.')); stat('chatSent');
 }
 document.querySelectorAll('.emo[data-e]').forEach(b=>b.onclick = ()=>{ $('emorow').hidden = true; emo = {e:b.dataset.e, at:Date.now()}; bubbles.set('me-emo',{text:b.dataset.e,at:performance.now()}); setExpr({'👋':'happy','❤️':'wink','✨':'sparkle','😢':'sad'}[b.dataset.e] || 'cat', 3000); stat('emotesSent'); if (b.dataset.e === '❤️') stat('heartEmotes'); });
 
