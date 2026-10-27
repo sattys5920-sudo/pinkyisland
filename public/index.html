@@ -1438,6 +1438,7 @@ function soloNet(){
     darkWipe: async npc => { const st_ = soloNet.dark || (soloNet.dark = {}); if (npc) delete st_[npc]; else for (const k in st_) delete st_[k]; onDarkRooms(structuredClone(st_)); },
     darkFilmXY: async (npc, x, y) => { const f = soloNet.dark?.[npc]?.film; if (f){ f.x = x; f.y = y; onDarkRooms(structuredClone(soloNet.dark)); } },
     adminRemove: async id => { delete st.players[id]; onPlayers(structuredClone(st.players)); },
+    adminPatch: async (id, v) => { const q = st.players[id]; if (q){ for (const [k, x] of Object.entries(v)){ if (x === null) delete q[k]; else q[k] = x; } onPlayers(structuredClone(st.players)); } },
     adminDisconnect: async id => {},
     sessionClaim: () => {},
     presence: async () => {},
@@ -1519,6 +1520,7 @@ function firebaseNet(){
     // 입주한 뒤 남아 있는 내 옛 선점(다른 지붕·집터)을 풀어 줘요
     cleanupClaims: async (roof, lot) => { for (const [kind, mine] of [['roofs', roof], ['lots', lot]]){ try { const v = (await F.get(F.ref(db, kind))).val() || {}; for (const [k,c] of Object.entries(v)) if (c && c.uid===uid && +k !== mine) await F.remove(F.ref(db, kind+'/'+k)).catch(()=>{}); } catch(e){} } },
     adminCapPts: (ups) => F.update(F.ref(db), ups),
+    adminPatch: (id, v) => F.update(F.ref(db, 'players/' + id), v),
     adminRemove: (id, roof, lot) => F.update(F.ref(db), {...Object.fromEntries(Object.entries(petClaims).filter(([,c])=>c && c.uid===id).map(([sp])=>['petClaims/'+sp, null])), ...bzRemovePaths(id), ['players/'+id]:null, ['online/'+id]:null, ['sessions/'+id]:null, ['snowmen/'+id]:null, ...(roof!=null ? {['roofs/'+roof]:null} : {}), ...(lot!=null ? {['lots/'+lot]:null} : {})}),
     adminDisconnect: id => F.update(F.ref(db), {['sessions/'+id]:'admin-' + Date.now().toString(36), ['online/'+id]:null}), // 접속만 끊어요 (캐릭터·가방은 그대로)
     sessionClaim: sid => { const r = F.ref(db, 'sessions/'+uid); F.set(r, sid).catch(()=>{}); F.onValue(r, s=>{ const v = s.val(); if (v && v !== sid) onKicked(); }); },
@@ -8357,6 +8359,8 @@ function adminDarkSec(){
   return `<div class="adm-dark"><b>${i+1} 일 차 · ${npc ? esc(NPC[npc].name)+'의 방' : '-'}</b><small>${state} · 방 안 ${inRoom} 명${r.clear ? '' : pen}</small>${keyHtml}
     <small>방 닫기 · 열기 (닫으면 열쇠도 안 떨어지고 문이 꿰매져 있어요)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${DARK_ORDER.map(n => { const lk = !!(world.darkLock || {})[n], cl = roomOf(n).clear; return `<button data-a="dklock" data-k="${n}" class="adm-btn${lk ? ' warn' : ''}" style="flex:0 0 auto;padding:4px 8px">${esc(NPC[n].name)} ${cl ? '✓' : lk ? '닫힘' : '열림'}</button>`; }).join('')}</div>
     ${npc && r.start && !r.clear ? `<small>푼 문제 되돌리기 (누르면 그 문제부터 다시 풀어요 · 보스는 잠들어요)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${darkPuzzles(npc).filter(p => (r.solved || {})[p.id]).map(p => `<button data-a="dkunsolve" data-k="${p.id}" class="adm-btn" style="flex:0 0 auto;padding:4px 8px">${parseInt(p.id.slice(1), 10)}번</button>`).join('') || '<small>아직 푼 문제가 없어요</small>'}</div>` : ''}
+    ${(() => { const K = {true:'집으로', home:'돌아온 사람들', taken:'빼앗긴 몸', closed:'닫힌 섬'}, L = Object.entries(players).filter(([, q]) => q && !q.adm && q.endSeen).sort((a, b) => String(a[1].nick || '').localeCompare(String(b[1].nick || ''), 'ko')), tot = Object.values(players).filter(q => q && !q.adm).length;
+      return `<small>엔딩 본 사람 ${L.length} 명 / 전체 ${tot} 명</small>${L.length ? `<div class="adm-keys">${L.map(([id, q]) => { const nm = (world.darkNames || {})[id]; return `<div class="adm-wrow" style="gap:6px;align-items:center"><span style="flex:1 1 auto">${esc(String(q.nick || '').slice(0, 8))}${nm ? ` <small>(${esc(String(nm).slice(0, 6))})</small>` : ''} · <small>${esc(K[String(q.endSeen).split(':')[1]] || '?')}</small></span><button data-a="endclear" data-k="${esc(id)}" class="adm-btn" style="flex:0 0 auto;padding:3px 8px">기록 지우기</button></div>`; }).join('')}</div>` : '<small>아직 아무도 엔딩을 보지 않았어요</small>'}`; })()}
     <small>끝낸 게임 · 엔딩을 본 사람은 접속할 수 없어요 (지금 ${world.endOpen ? '들어올 수 있어요' : '막혀 있어요'})</small><div class="adm-wrow"><button data-a="endopen" class="adm-btn${world.endOpen ? ' warn' : ''}">${world.endOpen ? '다시 막기' : '엔딩 본 사람도 들어오게 하기'}</button></div>
     <div class="adm-wrow"><button data-a="dkprev" class="adm-btn">◀ 이전 방</button><button data-a="dknext" class="adm-btn">다음 방 ▶</button></div>
     ${(() => { const L = DARK_ORDER.filter(n => darkFirst(roomOf(n)) && !roomOf(n).clear); return L.length ? `<small>토큰으로 다시 열 때 2 페이즈 · 체력 절반부터 시작 (눌러서 켜고 끄기)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${L.map(n => `<button data-a="dkph2" data-k="${n}" class="adm-btn${roomOf(n).ph2 ? ' warn' : ''}" style="flex:0 0 auto;padding:4px 8px">${esc(NPC[n].name)} ${roomOf(n).ph2 ? '2 페이즈부터 ✓' : '1 페이즈부터'}</button>`).join('')}</div>` : ''; })()}
@@ -8597,6 +8601,8 @@ function adminClick(e){
     Promise.resolve(net.darkTx(npc, cur => { if (!cur || cur.clear) return undefined; const sv = {...(cur.solved || {})}; ids.slice(from).forEach(k => delete sv[k]); const { hp, max, bossAt, rageAt, lowAt, bs, rv, bt, ...c } = cur; return {...c, solved:sv}; })).then(ok => toast(ok ? `${parseInt(id.slice(1), 10)}번부터 다시 풀 수 있어요` : '되돌리지 못했어요')).catch(()=>toast('되돌리지 못했어요')); }
   else if (b.dataset.a==='dkph2'){ const npc = b.dataset.k; if (!NPC[npc]) return; let on = false;
     Promise.resolve(net.darkTx(npc, cur => { if (!cur || cur.clear) return undefined; const {ph2, ...c} = cur; on = !ph2; return ph2 ? c : {...c, ph2:1}; })).then(ok => toast(ok ? `${NPC[npc].name}의 방: ${on ? '다음에 2 페이즈부터 시작해요' : '1 페이즈부터로 되돌렸어요'}` : '바꾸지 못했어요')).catch(()=>toast('바꾸지 못했어요')); }
+  else if (b.dataset.a==='endclear'){ const id = b.dataset.k, q = players[id]; if (!q || !confirm(`${q.nick} 님의 엔딩 본 기록을 지울까요? 다시 접속할 수 있고 엔딩을 또 볼 수 있어요.`)) return;
+    Promise.resolve(net.adminPatch(id, {endSeen:null})).then(()=>toast(`${q.nick} 님의 엔딩 기록을 지웠어요`)).catch(()=>toast('지우지 못했어요')); }
   else if (b.dataset.a==='endopen'){ const on = !world.endOpen; Promise.resolve(net.setWorld({endOpen:on})).then(()=>toast(on ? '엔딩을 본 사람도 들어올 수 있어요' : '엔딩을 본 사람은 다시 막혀요')).catch(()=>toast('바꾸지 못했어요')); }
   else if (b.dataset.a==='dklock'){ const n = b.dataset.k, lk = {...(world.darkLock || {})}; if (lk[n]) delete lk[n]; else lk[n] = true; Promise.resolve(net.setWorld({darkLock:lk})).then(()=>toast(`${NPC[n].name}의 방을 ${lk[n] ? '닫았어요' : '열었어요'}`)).catch(()=>toast('바꾸지 못했어요')); }
   else if (b.dataset.a==='dkprev' || b.dataset.a==='dknext'){ Promise.resolve(net.setWorld({darkShift:(world.darkShift|0) + (b.dataset.a==='dknext' ? 1 : -1)})).catch(()=>toast('방을 옮기지 못했어요. 관리자 권한을 확인해 주세요')); }
