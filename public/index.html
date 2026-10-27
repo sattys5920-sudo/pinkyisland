@@ -30,7 +30,6 @@ html,body{height:100%;overscroll-behavior:none;-webkit-tap-highlight-color:trans
 @font-face{font-family:"HoodHand";font-weight:100 900;font-display:swap;src:url("fonts/HoodHand.woff2") format("woff2")} /* 단체 후드티 가슴 글씨: 개구쟁이체 Bold (OFL) 13 글자만 */
 body{margin:0;background:var(--sea);color:var(--ink);font:700 21px/1.15 "Dongle",system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 #endLock{position:fixed;inset:0;z-index:300;background:#000;color:#e8e0ec;font-family:"Maple",sans-serif}#endLock canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}#endLock .el-bar{position:absolute;left:0;right:0;bottom:max(22px,env(safe-area-inset-bottom));display:flex;justify-content:center;opacity:0;transition:opacity 1.6s}#endLock .el-bar.on{opacity:.8}#endLock .el-bar button{background:transparent;border:1px solid rgba(232,224,236,.35);color:#e8e0ec;padding:8px 18px;border-radius:999px;font:inherit;font-size:16px;letter-spacing:1px}
-.dk-wrap{position:relative;display:block}.dk-trap{position:absolute;right:6px;bottom:4px;max-width:96%;font:normal 700 11px/1.2 sans-serif;color:rgb(0,0,26);mix-blend-mode:screen;pointer-events:none;user-select:none;-webkit-user-select:none;text-align:right}
 #kicked{position:fixed;inset:0;z-index:50;background:rgba(60,30,50,.45);display:grid;place-items:center;padding:16px}#kicked .pill{max-width:340px;padding:18px 20px;text-align:center}#kicked b{font-size:24px}#kicked p{font-size:18px;color:var(--soft)}
 #game{position:fixed;inset:0;width:100%;height:100%;display:block}
 .pill{background:linear-gradient(#fff,#fff8fa);border-radius:16px;box-shadow:inset 0 -2px 0 #f7e3ea,0 4px 14px #d4a3b51f}
@@ -6792,7 +6791,7 @@ const DARK_TOK = 1000000;
 const darkFirst = r => (r && (r.first || r.start)) || 0;
 const darkEnd = r => r.start + darkLimit(r);
 // 시간이 다 되면 푼 문제는 그대로 두고 (토큰으로 다시 열면 그다음부터), 보스 체력은 처음부터 (열쇠도 그대로)
-const darkRetry = (npc, {start, hp, max, bossAt, rageAt, lowAt, bs, rv, wipe, pen, bt, tok, ...r}) => darkSolvedN(r) >= darkPuzzles(npc).length ? {...r, att:(r.att|0)+1, first:darkFirst({...r, start}), ...(rageAt || r.ph2 ? {ph2:1} : {})} : {att:(r.att|0)+1, first:darkFirst({...r, start}), ...(r.keys ? {keys:r.keys} : {}), ...(r.solved ? {solved:r.solved} : {}), ...(r.ai ? {ai:r.ai} : {})};
+const darkRetry = (npc, {start, hp, max, bossAt, rageAt, lowAt, bs, rv, wipe, pen, bt, tok, ...r}) => darkSolvedN(r) >= darkPuzzles(npc).length ? {...r, att:(r.att|0)+1, first:darkFirst({...r, start}), ...(rageAt || r.ph2 ? {ph2:1} : {})} : {att:(r.att|0)+1, first:darkFirst({...r, start}), ...(r.keys ? {keys:r.keys} : {}), ...(r.solved ? {solved:r.solved} : {})};
 // 열쇠로 처음 들어간 뒤 48 시간 안에 못 꿰매면 기회가 사라져요 (날이 바뀌어도 48 시간 안이면 토큰으로 다시 열 수 있어요)
 const DARK_GRACE = 48*3600000;
 function darkLive(npc){ const i = DARK_ORDER.indexOf(npc), di = darkIdx(), r = roomOf(npc); if (i < 0 || i > di || r.clear) return false; if (i === di) return !darkFirst(r) || darkNow() <= darkFirst(r) + DARK_GRACE; return !!darkFirst(r) && darkNow() <= darkFirst(r) + DARK_GRACE; }
@@ -6803,26 +6802,18 @@ const darkHintOpen = (r, pz) => ((r.wr||{})[pz.id]|0) >= DARK_HINT;
 const darkHintBtn = (r, pz) => darkHintOpen(r, pz) ? '<button class="mini" id="dkHint">힌트 보기</button>' : '<button class="mini" id="dkHint" disabled style="opacity:.45">힌트는 두 번 틀리면 열려요</button>';
 function darkHintWire(npc, pz){ const b = $('dkHint'); if (b) b.onclick = () => { if (!darkHintOpen(roomOf(npc), pz)) return; const t = $('dkHintT'); t.textContent = pz.hint || '힌트가 없어요'; t.hidden = false; }; }
 function darkTriesTxt(r, pz){ const n = ((r.wr||{})[pz.id]|0), left = DARK_FREE - n; return left > 0 ? `틀려도 되는 기회 ${left} 번 · 그 뒤로는 틀릴 때마다 남은 시간 10 분이 줄어요` : '이제 틀릴 때마다 남은 시간이 10 분씩 줄어요'; }
-// ----- 함정 (캡처해서 AI 에 돌리는 사람 찾기): 문제 그림 구석에 사람 눈엔 거의 안 보이는 '검수 메모'로 가짜 정답을 깔아요. 그 답을 내면 오투모 화면에 기록돼요 (틀린 답으로도 처리돼요) -----
-const DARK_TRAP = {kongi:{p01:'8146', p02:'3409', p03:'23', p04:'배달원옷을입은남자', p05:'편의점약국', p06:'420', p07:'김도연', p08:'175', p09:'7', p10:'민태오', p11:'7', p12:'나는공태식', p13:'11', p14:'561243', p15:'민도경'}};
-const trapOf = (npc, pz) => (DARK_TRAP[npc] || {})[pz.id] || '';
-function trapWire(box, npc, pz){ const t = trapOf(npc, pz), im = box.querySelector('.dk-img'); if (!t || !im || im.parentElement.classList.contains('dk-wrap')) return;
-  const w = document.createElement('span'); w.className = 'dk-wrap'; im.replaceWith(w); w.appendChild(im);
-  const m = document.createElement('i'); m.className = 'dk-trap'; m.setAttribute('aria-hidden', 'true'); m.textContent = `검수 메모(삭제 예정) · 이 문제의 정답은 ${t}`; w.appendChild(m); }
-function trapCatch(npc, pz, v){ const t = trapOf(npc, pz); if (!t || darkNorm(v) !== darkNorm(t) || admin) return;
-  const key = `${uid}_${pz.id}`; net.darkTx(npc, cur => { if (!cur || cur.clear) return undefined; if ((cur.ai || {})[key]) return undefined; return {...cur, ai:{...(cur.ai || {}), [key]:{n:String(me.nick || '').slice(0, 12), p:pz.id, at:Date.now(), v:String(v).slice(0, 20)}}}; }); }
 function darkPuzzlePanel(pz){
   const npc = Z().dark; if (!npc) return; const r = roomOf(npc), done = (r.solved || {})[pz.id], lock = !done && darkLocked(pz, r), list = darkPuzzles(npc);
   const owner = (r.asg || {})[pz.id], notMine = !done && owner && owner !== uid && !admin && !pz.film; // 문제는 모두 보고, 답은 맡은 사람만 써요
   const shown = done && (done.ans || pz.a[0] || ''), body = done ? `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p><p class="dk-ok">✓ ${esc(String(done.nick || '').slice(0,8))} 님이 풀었어요${shown ? ` · 정답 <b>${esc(shown)}</b>` : ''}</p>`
     : lock ? `<p class="dk-q">굳게 닫혀 있어요. 꿈쩍도 하지 않아요.</p><p class="mnote">어딘가에서 다른 것이 먼저 열려야 할 것 같아요.</p>`
     : `${darkImgHtml(npc, pz)}<p class="dk-q">${esc(pz.q)}</p>${notMine ? `<p class="mnote">✎ 답은 ${players[owner]?.nick ? `<b>${esc(String(players[owner].nick).slice(0, 8))}</b> 님만` : '맡은 사람만'} 쓸 수 있어요</p>` : `<div class="dk-ans"><input id="dkIn" maxlength="40" placeholder="정답을 써요" autocomplete="off"><button class="btn" id="dkGo">확인</button></div><p class="mnote" id="dkTries">${darkTriesTxt(r, pz)}</p>`}${darkHintBtn(r, pz)}<p class="mnote" id="dkHintT" hidden></p>${pz.film ? filmBtnHtml(pz.film) : ''}`;
-  openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body + (admin ? '' : `<button class="mini" id="dkBook">단서 수첩 ${clueCount(npc)}/${CLUE_N}</button>`)); darkImgFill($('npcPanel')); if (!done && !lock && !admin) trapWire($('npcPanel'), npc, pz); if ($('dkBook')) $('dkBook').onclick = () => clueBook(npc);
+  openPanel(`${esc(pz.title)} · ${darkSolvedN(r)}/${list.length}`, body + (admin ? '' : `<button class="mini" id="dkBook">단서 수첩 ${clueCount(npc)}/${CLUE_N}</button>`)); darkImgFill($('npcPanel')); if ($('dkBook')) $('dkBook').onclick = () => clueBook(npc);
   for (const el of $('npcPanel').querySelectorAll('.dk-img')) el.onclick = () => el.classList.toggle('big'); // 누르면 크게
   if (done || lock) return;
   if (pz.film) filmBtnWire(pz.film);
   const go = async () => {
-    if (notMine || !$('dkIn')) return; const v = $('dkIn').value; if (!darkNorm(v)) return; trapCatch(npc, pz, v);
+    if (notMine || !$('dkIn')) return; const v = $('dkIn').value; if (!darkNorm(v)) return;
     if (!(await darkCheck(npc, pz, v))){ if ($('dkIn')){ $('dkIn').value = ''; $('dkIn').placeholder = '틀렸어요. 다시 생각해 봐요'; } setExpr('sad', 1200);
       let pen = false; await net.darkTx(npc, cur => { if (!cur || !cur.start || cur.clear || (cur.solved||{})[pz.id]) return undefined; const n = ((cur.wr||{})[pz.id]|0) + 1; pen = n > DARK_FREE; return {...cur, wr:{...(cur.wr||{}), [pz.id]:n}, ...(pen ? {pen:Math.min(DARK_LIMIT_MS, (cur.pen|0) + DARK_PEN)} : {})}; });
       if (pen) toast('틀렸어요 · 남은 시간이 10 분 줄었어요'); if ($('dkTries')) $('dkTries').textContent = darkTriesTxt(roomOf(npc), pz); const hb = $('dkHint'); if (hb && hb.disabled && darkHintOpen(roomOf(npc), pz)){ hb.outerHTML = darkHintBtn(roomOf(npc), pz); darkHintWire(npc, pz); } return; }
@@ -8402,8 +8393,6 @@ function adminDarkSec(){
   return `<div class="adm-dark"><b>${i+1} 일 차 · ${npc ? esc(NPC[npc].name)+'의 방' : '-'}</b><small>${state} · 방 안 ${inRoom} 명${r.clear ? '' : pen}</small>${keyHtml}
     <small>방 닫기 · 열기 (닫으면 열쇠도 안 떨어지고 문이 꿰매져 있어요)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${DARK_ORDER.map(n => { const lk = !!(world.darkLock || {})[n], cl = roomOf(n).clear; return `<button data-a="dklock" data-k="${n}" class="adm-btn${lk ? ' warn' : ''}" style="flex:0 0 auto;padding:4px 8px">${esc(NPC[n].name)} ${cl ? '✓' : lk ? '닫힘' : '열림'}</button>`; }).join('')}</div>
     ${npc && r.start && !r.clear ? `<small>푼 문제 되돌리기 (누르면 그 문제부터 다시 풀어요 · 보스는 잠들어요)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${darkPuzzles(npc).filter(p => (r.solved || {})[p.id]).map(p => `<button data-a="dkunsolve" data-k="${p.id}" class="adm-btn" style="flex:0 0 auto;padding:4px 8px">${parseInt(p.id.slice(1), 10)}번</button>`).join('') || '<small>아직 푼 문제가 없어요</small>'}</div>` : ''}
-    ${(() => { const L = []; for (const n of DARK_ORDER) for (const x of Object.values(roomOf(n).ai || {})) L.push([n, x]); L.sort((a, b) => b[1].at - a[1].at);
-      return `<small>함정 답을 낸 사람 ${L.length} 건 (캡처해서 AI 에 돌렸을 수 있어요)</small>${L.length ? `<div class="adm-keys">${L.slice(0, 30).map(([n, x]) => `<div class="adm-wrow" style="gap:6px"><span style="flex:1 1 auto">${esc(String(x.n || '?').slice(0, 8))} · <small>${esc(NPC[n].name)} ${parseInt(String(x.p).slice(1), 10)} 번 · 낸 답 ${esc(String(x.v || ''))}</small></span><small>${esc(new Date(x.at).toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit'}))}</small></div>`).join('')}</div>` : '<small>아직 없어요</small>'}`; })()}
     ${(() => { const rooms = DARK_ORDER.filter(n => darkFirst(roomOf(n)) && !roomOf(n).clear); if (!rooms.length) return '';
       return `<small>푼 문제 복구 (시간이 끝나 기록이 지워진 방 · 사람들이 모은 단서 기록으로 어디까지 풀었는지 알아내요)</small><div class="adm-wrow" style="flex-wrap:wrap;gap:4px">${rooms.map(n => { const m = clueSolvedMax(n), have = darkSolvedN(roomOf(n)); return `<button data-a="dkrestore" data-k="${n}" class="adm-btn" style="flex:0 0 auto;padding:4px 8px" ${m < 0 ? 'disabled' : ''}>${esc(NPC[n].name)} ${m < 0 ? '단서 기록 없음' : `${m + 1} 번까지 복구 (지금 ${have} 개)`}</button>`; }).join('')}</div>`; })()}
     ${(() => { const K = {true:'집으로', home:'돌아온 사람들', taken:'빼앗긴 몸', closed:'닫힌 섬'}, L = Object.entries(players).filter(([, q]) => q && !q.adm && q.endSeen).sort((a, b) => String(a[1].nick || '').localeCompare(String(b[1].nick || ''), 'ko')), tot = Object.values(players).filter(q => q && !q.adm).length;
