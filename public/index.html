@@ -8352,8 +8352,18 @@ function adminRankSec(regs){
     ['💸 돈을 가장 많이 쓴 사람', p=>+S(p).goldSpent||0, v=>`${v.toLocaleString()} G`, '쓴 돈 누적 · 이 업데이트부터 집계'],
     ['💰 돈을 가장 많이 번 사람', p=>+p.earned||0, v=>`${v.toLocaleString()} G`, '판매 · 장사 · 리조트 수입 등 번 돈 누적'],
     ['📖 도감을 가장 많이 채운 사람', p=>+S(p).dexTotal||0, v=>`${v} 종`, '물고기 + 광석 + 몬스터 도감 (마지막 접속 기준)']];
+  const RANK_GROUPS = [['활동 · 접속', ['zonesVisited', 'questsDone', 'errandsDone', 'deliveries']], ['전투', ['weaponTier']],
+    ['돈 · 장사', ['sold', 'bought', 'marketSold', 'marketBought', 'aucWon', 'candyBought', 'stockProfit', 'interiorBought']],
+    ['생활', ['foodEaten', 'coffeePerfect', 'fishCaught', 'fish3Star', 'oreMined', 'foraged', 'cropsHarvested', 'treesChopped', 'mgPlayed', 'snowmen', 'balloons', 'petsAdopted', 'petFed']],
+    ['소셜', ['dmSent', 'giftsGiven', 'emotesSent', 'heartEmotes', 'friendCount', 'friends7', 'soulmates', 'maxHearts', 'otumoFriend', 'wishes']],
+    ['집 · 꾸미기', ['houseLevel', 'interiorCount', 'furnCount', 'closetCount', 'outfitChanged', 'plots', 'museumDonated']],
+    ['도감 · 업적', ['dexFish', 'dexOre', 'dexMon', 'achCount', 'bridgeGiven', 'sawGod']],
+    ['솜사탕 리조트', ['rsPlayed', 'rsEarned', 'rsBoat', 'rsCoaster', 'rsSlide', 'rsSauna', 'rsCamp', 'rsChest', 'rsStrike', 'rsClaps', 'rsClapGiven', 'rsBalloon', 'rsMaint', 'rsSurfMax', 'rsPlush', 'rsPhotos']],
+    ['보물 지도', ['tmapPieces', 'tmapDug', 'tmapDone']]];
+  const more = RANK_GROUPS.map(([g, keys]) => `<div class="adm-sec"><b>📊 ${g} (상위 3명)</b>${keys.map(k => { const rows = ppl.map(([id, p]) => [p, +S(p)[k] || 0]).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]).slice(0, 3);
+    return `<small>${esc(STAT_LABEL[k] || k)}</small>${rows.length ? rows.map(([p, v], i) => `<div class="adm-wrow"><small style="min-width:22px">${i + 1}</small><b style="flex:1">${esc(String(p.nick || '?').slice(0, 10))}</b><small>${v.toLocaleString()}</small></div>`).join('') : '<small>— 기록 없음</small>'}`; }).join('')}</div>`).join('');
   return `<div class="adm-sec"><b>전체 기록 상위 3명</b><small>지금까지 모인 모든 기록을 상위 3명씩 글로 복사해요</small><div class="adm-wrow"><button data-a="top3" class="adm-btn">복사하기</button></div><textarea id="top3Box" readonly hidden style="width:100%;height:180px;font-size:12px"></textarea></div>` + C.map(([t, f, fmt, note, extra])=>{ const rows = ppl.map(([id, p])=>[p, f(p)]).filter(([, v])=>v > 0).sort((a, b)=>b[1] - a[1]).slice(0, 5);
-    return `<div class="adm-sec"><b>${t}</b><small>${note}</small>${rows.length ? rows.map(([p, v], i)=>`<div class="adm-wrow"><small style="min-width:22px">${i + 1}</small><b style="flex:1">${esc(String(p.nick || '?').slice(0, 10))}</b><small>${fmt(v)}${extra ? extra(p) : ''}</small></div>`).join('') : '<small>아직 기록이 없어요</small>'}</div>`; }).join('');
+    return `<div class="adm-sec"><b>${t}</b><small>${note}</small>${rows.length ? rows.map(([p, v], i)=>`<div class="adm-wrow"><small style="min-width:22px">${i + 1}</small><b style="flex:1">${esc(String(p.nick || '?').slice(0, 10))}</b><small>${fmt(v)}${extra ? extra(p) : ''}</small></div>`).join('') : '<small>아직 기록이 없어요</small>'}</div>`; }).join('') + more;
 }
 function adminDarkNameSec(regs){
   const ppl = regs.filter(([,p])=>p && !p.adm), set = world.darkNames || {}, done = ppl.filter(([id])=>set[id]).length, phN = ppl.filter(([id])=>missPhotoAt(id)).length;
