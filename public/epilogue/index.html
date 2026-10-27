@@ -1,0 +1,536 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>꿰매진 섬</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Pen+Script&display=swap">
+<style>
+/* 레이아웃: 밤의 천 위에 꿰맨 책장. 한 줄 본문 기둥 + 주민마다 실로 꿰맨 장(章) */
+:root{
+  --night:#16121c; --cloth:#1f1a27; --cloth-2:#2a2333; --ink:#efe6ee; --ink-dim:#b8a9b9;
+  --thread:#f08cae; --thread-dim:#8a5470; --seam:#5b4a63; --paper:#f3e9df; --paper-ink:#2b2129; --gold:#e6c27a;
+  --f-display:"Gowun Batang", "Nanum Myeongjo", serif;
+  --f-body:"Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-hand:"Nanum Pen Script", "Gowun Dodum", cursive;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{background:var(--night)}
+body{background:var(--night);color:var(--ink);font-family:var(--f-body);font-size:16.5px;line-height:1.75;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
+  background-image:radial-gradient(circle at 20% 0%, #2a1f30 0, transparent 55%), repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 2px, transparent 2px 6px)}
+a{color:var(--thread)}
+a:focus-visible,button:focus-visible{outline:2px dashed var(--thread);outline-offset:3px}
+.wrap{max-width:760px;margin:0 auto;padding-block:40px 80px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+p{margin:0}
+.stack{display:flex;flex-direction:column;gap:14px}
+
+/* 표지 */
+.cover{padding-block:56px 40px;display:flex;flex-direction:column;gap:18px;text-align:center;align-items:center}
+.cover .eyebrow{font-size:13px;letter-spacing:.32em;color:var(--ink-dim)}
+.cover h1{font-size:clamp(46px, 12vw, 88px);font-weight:700;letter-spacing:.06em;line-height:1.1;position:relative;padding-bottom:18px}
+.cover h1::after{content:"";position:absolute;left:8%;right:8%;bottom:0;border-bottom:3px dashed var(--thread)}
+.cover .lead{font-family:var(--f-display);font-size:18px;color:var(--ink-dim);max-width:30em}
+.dolls{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:560px}
+.dolls a{font-size:13.5px;text-decoration:none;color:var(--ink);border:1px dashed var(--seam);border-radius:999px;padding:3px 12px;background:var(--cloth)}
+.dolls a:hover{border-color:var(--thread);color:var(--thread)}
+
+/* 장 */
+section.part{margin-top:64px;display:flex;flex-direction:column;gap:18px}
+.part-head{display:flex;flex-direction:column;gap:4px}
+.part-head .no{font-family:var(--f-hand);font-size:24px;color:var(--thread)}
+.part-head h2{font-size:clamp(26px, 6vw, 34px)}
+.prose{font-family:var(--f-display);font-size:17.5px;line-height:1.9;max-width:36em}
+.prose p+p{margin-top:12px}
+.prose em{font-style:normal;color:var(--thread)}
+
+/* 꿰맨 메모 */
+.note{background:var(--paper);color:var(--paper-ink);border-radius:4px;padding:18px 20px;position:relative;box-shadow:0 10px 30px rgba(0,0,0,.35);transform:rotate(-.4deg)}
+.note::before{content:"";position:absolute;inset:6px;border:1.5px dashed #c98aa3;border-radius:2px;pointer-events:none}
+.note .hand{font-family:var(--f-hand);font-size:23px;line-height:1.45}
+
+/* 택배 표 */
+.table-wrap{overflow-x:auto;border:1px solid var(--seam);border-radius:6px;background:var(--cloth)}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:14.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--seam);vertical-align:top}
+th{font-weight:400;color:var(--ink-dim);font-size:12.5px;letter-spacing:.08em}
+tr:last-child td{border-bottom:0}
+td.n{font-variant-numeric:tabular-nums;color:var(--thread);white-space:nowrap}
+
+/* 주민 장 */
+.doll{border:1px solid var(--seam);border-radius:10px;background:var(--cloth);padding:22px 20px 20px;display:flex;flex-direction:column;gap:16px;position:relative;scroll-margin-top:16px}
+.doll::before{content:"";position:absolute;left:10px;right:10px;top:10px;bottom:10px;border:1.5px dashed var(--thread-dim);border-radius:6px;pointer-events:none}
+.doll-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;position:relative}
+.doll-top .idx{font-family:var(--f-hand);font-size:22px;color:var(--thread);font-variant-numeric:tabular-nums}
+.doll-top h3{font-size:26px}
+.doll-top .mask{font-size:14px;color:var(--ink-dim)}
+.reveal{display:flex;flex-wrap:wrap;gap:8px;position:relative}
+.chip{font-size:13px;border-radius:999px;padding:2px 11px;background:var(--cloth-2);border:1px solid var(--seam)}
+.chip.real{border-color:var(--thread);color:var(--thread)}
+.chip.crime{color:var(--gold);border-color:#6b5a3a}
+.doll .prose{position:relative}
+.facts{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:10px;position:relative}
+.fact{background:var(--cloth-2);border-radius:6px;padding:10px 12px;min-width:0}
+.fact b{display:block;font-weight:400;font-size:12px;letter-spacing:.1em;color:var(--ink-dim);margin-bottom:2px}
+.fact span{font-size:14.5px}
+.omens{position:relative;display:flex;flex-direction:column;gap:8px}
+.omens > b{font-weight:400;font-size:12px;letter-spacing:.1em;color:var(--ink-dim)}
+.omen{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;align-items:baseline;font-size:14.5px}
+.omen .h{font-family:var(--f-hand);font-size:19px;color:var(--thread);white-space:nowrap}
+.omen .said{font-family:var(--f-display)}
+.omen .meant{grid-column:2;color:var(--ink-dim);font-size:13.5px}
+.target{position:relative;font-family:var(--f-hand);font-size:21px;color:var(--gold);line-height:1.4}
+
+/* 콩이 반전 · 엔딩 */
+.twist{border:1.5px solid var(--thread);border-radius:10px;padding:22px 20px;background:linear-gradient(180deg, #2a1d2a, var(--cloth));display:flex;flex-direction:column;gap:12px}
+.badge-back{align-self:flex-start;font-family:var(--f-hand);font-size:30px;color:var(--paper-ink);background:var(--gold);padding:4px 18px;border-radius:999px;transform:rotate(-2deg)}
+.endings{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:12px}
+.end{background:var(--cloth);border:1px solid var(--seam);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.end h3{font-size:19px}
+.end .cond{font-size:12.5px;letter-spacing:.06em;color:var(--thread)}
+.end p{font-size:14.5px;color:var(--ink-dim)}
+.letters{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:12px}
+.letters .note{transform:rotate(.5deg)}
+.letters .note:nth-child(2n){transform:rotate(-.6deg)}
+.letters .note .hand{font-size:21px}
+.closing{margin-top:72px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
+.closing .hand{font-family:var(--f-hand);font-size:28px;color:var(--thread)}
+.closing small{color:var(--ink-dim)}
+@media (max-width:560px){ .facts,.endings,.letters{grid-template-columns:minmax(0,1fr)} .doll{padding:22px 16px 18px} body{font-size:16px} }
+@media (prefers-reduced-motion:no-preference){ .cover h1::after{animation:sew 2.4s ease-out both} @keyframes sew{from{right:92%}to{right:8%}} }
+
+/* 시상식 (누르면 열리는 상) */
+.awards{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:12px}
+.award{appearance:none;-webkit-appearance:none;font:inherit;color:inherit;text-align:left;cursor:pointer;border:1.5px dashed var(--thread-dim);border-radius:10px;background:var(--cloth);padding:16px 16px 14px;display:flex;flex-direction:column;gap:6px;min-height:124px;position:relative;min-width:0;transition:border-color .25s, background .25s, transform .25s}
+.award:hover{border-color:var(--thread)}
+.award::after{content:"";position:absolute;inset:7px;border:1px dashed var(--seam);border-radius:6px;pointer-events:none;transition:opacity .25s}
+.award .no{font-family:var(--f-hand);font-size:20px;color:var(--thread);font-variant-numeric:tabular-nums}
+.award h3{font-size:20px;line-height:1.3;overflow-wrap:anywhere}
+.award .seal{margin-top:auto;font-size:12.5px;letter-spacing:.14em;color:var(--ink-dim)}
+.award .who{display:none;margin-top:auto;flex-direction:column;gap:2px}
+.award .who b{font-family:var(--f-display);font-size:24px;font-weight:700;color:var(--gold);line-height:1.2;overflow-wrap:anywhere}
+.award .who span{font-size:14px;color:var(--ink-dim)}
+.award[aria-pressed="true"]{border-style:solid;border-color:var(--thread);background:linear-gradient(180deg, #2a1d2a, var(--cloth))}
+.award[aria-pressed="true"]::after{opacity:0}
+.award[aria-pressed="true"] .seal{display:none}
+.award[aria-pressed="true"] .who{display:flex}
+.award-bar{display:flex;justify-content:center}
+.award-bar button{font:inherit;font-size:14px;color:var(--ink-dim);background:transparent;border:1px dashed var(--seam);border-radius:999px;padding:6px 18px;cursor:pointer}
+.award-bar button:hover{border-color:var(--thread);color:var(--thread)}
+@media (max-width:560px){ .awards{grid-template-columns:minmax(0,1fr)} }
+@media (prefers-reduced-motion:no-preference){ .award[aria-pressed="true"] .who{animation:pop .45s ease-out both} @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} }
+
+/* 남아 있던 흔적 (누르면 사진) */
+.trace{appearance:none;-webkit-appearance:none;font:inherit;color:inherit;text-align:left;background:transparent;border:0;padding:0;cursor:pointer;text-decoration:underline dashed var(--thread-dim);text-underline-offset:4px;line-height:inherit}
+.trace:hover,.trace:focus-visible{color:var(--thread);text-decoration-color:var(--thread)}
+.trace .mag{text-decoration:none;display:inline-block}
+#lb{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));background:rgba(8,5,12,.86)}
+#lb.open{display:flex}
+#lb .box{position:relative;width:min(720px, 100%);max-height:100%;overflow:auto;background:var(--cloth);border:1px solid var(--thread-dim);border-radius:10px;padding:14px 14px 16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+#lb .box::before{content:"";position:absolute;inset:6px;border:1.5px dashed var(--thread-dim);border-radius:6px;pointer-events:none}
+#lb .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative}
+#lb .bar b{font-family:var(--f-display);font-size:19px;font-weight:700}
+#lb .x{font:inherit;font-size:15px;color:var(--ink);background:var(--cloth-2);border:1px solid var(--seam);border-radius:999px;padding:5px 14px;cursor:pointer;white-space:nowrap}
+#lb .x:hover{border-color:var(--thread);color:var(--thread)}
+#lb img{display:block;width:100%;height:auto;border-radius:6px;position:relative;background:#120d16}
+#lb .cap{position:relative;font-size:14.5px;color:var(--ink-dim)}
+</style>
+
+<div class="wrap">
+
+<header class="cover">
+  <div class="eyebrow">핑키 디저트 아일랜드 · 다크 모드의 기록</div>
+  <h1>꿰매진 섬</h1>
+  <p class="lead">분홍빛 섬의 주민 열둘은 모두 죄수였어요. 실밥이 풀리던 밤들의 전말과, 다정한 말 속에 숨어 있던 진짜 얼굴을 여기 꿰매어 둡니다.</p>
+  <nav class="dolls" aria-label="주민 바로 가기">
+    <a href="#tori">토리</a><a href="#bori">보리</a><a href="#olly">올리</a><a href="#mongsil">몽실</a><a href="#pengpeng">펭펭</a><a href="#dandan">단단</a><a href="#momo">모모</a><a href="#hana">하나</a><a href="#dodo">도도</a><a href="#bami">밤이</a><a href="#toto">토토</a><a href="#kongi">콩이</a>
+  </nav>
+</header>
+
+<section class="part">
+  <div class="part-head"><span class="no">첫째 장</span><h2>섬의 정체</h2></div>
+  <div class="prose">
+    <p>핑키 디저트 아일랜드는 사실 <em>감옥</em>이었어요. 누군가 죄를 지은 자들의 영혼을 귀여운 동물 인형 몸에 꿰매어 가둔 섬이에요. 그 누군가가 누구인지는 끝까지 밝혀지지 않았어요.</p>
+    <p>꿰맨 실은 사람의 마음을 얻으면 느슨해져요. 그래서 주민들은 우리에게 그렇게 다정했어요. 호감도가 가득 찬 사람과는 몸을 바꿀 수 있었으니까요.</p>
+    <p>다크 모드는 <em>실밥이 풀리는 밤</em>이었어요. 주민들은 인형 몸에서 빠져나와 자기 기억으로 만든 방에 진짜 모습으로 숨었고, 서 있던 자리에는 그들을 상징하는 물건만 남았어요. 우리는 방마다 증거를 맞춰 그 죄를 밝혀내고, 진짜 모습의 주민과 싸워 다시 꿰맸어요. 꿰매진 주민은 아무것도 기억하지 못한 채 돌아왔어요.</p>
+    <p>그리고 주민마다 꼭 한 사람, 몸을 바꾸려고 <em>노리던 몸</em>이 있었어요. 방의 단서와 보스의 공격에 그 이름이 나왔던 건 그래서예요.</p>
+  </div>
+</section>
+
+<section class="part">
+  <div class="part-head"><span class="no">둘째 장</span><h2>보낸 사람이 없는 택배</h2></div>
+  <div class="prose">
+    <p>우리가 섬에 오게 된 건 우연이 아니었어요. 몸을 바꿔 섬을 나가려는 죄수들이 몰래 게임팩 택배 열두 상자를 섬 밖으로 보냈어요. 어느 날 보낸 사람 칸이 빈 분홍 상자를 받은 열두 명이 게임을 켰고, 그대로 섬에 갇혔어요.</p>
+    <p>방마다 남아 있던 상자 모양의 흔적, 기억나요? 문제가 아니었던 그 물건들이 바로 택배를 만든 증거였어요. 앞 방일수록 흐릿하고, 뒤로 갈수록 또렷해졌어요.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>방</th><th>남아 있던 흔적</th><th>맡은 일</th></tr></thead>
+      <tbody>
+        <tr><td class="n">토리</td><td><button type="button" class="trace" data-src="trace/tori.jpg" data-head="토리의 방 · 남아 있던 흔적" data-text="찢긴 상자 조각 · 수량 1 / 12 · 보내는 분 칸 공란">찢긴 상자 조각 · 수량 1 / 12 · 보내는 분 칸 공란<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>발송</td></tr>
+        <tr><td class="n">보리</td><td><button type="button" class="trace" data-src="trace/bori.jpg" data-head="보리의 방 · 남아 있던 흔적" data-text="봉인 스티커 · 24 칸 중 12 칸을 떼어 냄">봉인 스티커 · 24 칸 중 12 칸을 떼어 냄<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>봉인</td></tr>
+        <tr><td class="n">올리</td><td><button type="button" class="trace" data-src="trace/olly.jpg" data-head="올리의 방 · 남아 있던 흔적" data-text="정품 인증 홀로그램 연습장 · 게임팩 밑그림">정품 인증 홀로그램 연습장 · 게임팩 밑그림<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>진짜처럼 위장</td></tr>
+        <tr><td class="n">몽실</td><td><button type="button" class="trace" data-src="trace/mongsil.jpg" data-head="몽실의 방 · 남아 있던 흔적" data-text="분홍 천 부스러기 자루 &quot;한 상자에 한 줌&quot;">분홍 천 부스러기 자루 "한 상자에 한 줌"<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>완충재</td></tr>
+        <tr><td class="n">펭펭</td><td><button type="button" class="trace" data-src="trace/pengpeng.jpg" data-head="펭펭의 방 · 남아 있던 흔적" data-text="해도 · 섬에서 뭍으로 가는 길 하나 · &quot;새벽 · 불빛 끄고&quot;">해도 · 섬에서 뭍으로 가는 길 하나 · "새벽 · 불빛 끄고"<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>내보낼 길</td></tr>
+        <tr><td class="n">단단</td><td><button type="button" class="trace" data-src="trace/dandan.jpg" data-head="단단의 방 · 남아 있던 흔적" data-text="카드 초안 &quot;잠이 안 오는 밤에 켜 보세요 ♥ · 닉네임을 적어 주세요&quot;">카드 초안 "잠이 안 오는 밤에 켜 보세요 ♥ · 닉네임을 적어 주세요"<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>밤에 켜게 하기</td></tr>
+        <tr><td class="n">모모</td><td><button type="button" class="trace" data-src="trace/momo.jpg" data-head="모모의 방 · 남아 있던 흔적" data-text="배달 운행표 · 상자 1 ~ 12 &quot;문 앞에 두고 옴&quot; 12 / 12">배달 운행표 · 상자 1 ~ 12 "문 앞에 두고 옴" 12 / 12<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>배달</td></tr>
+        <tr><td class="n">하나</td><td><button type="button" class="trace" data-src="trace/hana.jpg" data-head="하나의 방 · 남아 있던 흔적" data-text="접힌 분홍 빈 상자 12 개 · 밀짚">접힌 분홍 빈 상자 12 개 · 밀짚<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>상자</td></tr>
+        <tr><td class="n">도도</td><td><button type="button" class="trace" data-src="trace/dodo.jpg" data-head="도도의 방 · 남아 있던 흔적" data-text="광석으로 깎은 게임팩 틀 12 개">광석으로 깎은 게임팩 틀 12 개<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>게임팩</td></tr>
+        <tr><td class="n">밤이</td><td><button type="button" class="trace" data-src="trace/bami.jpg" data-head="밤이의 방 · 남아 있던 흔적" data-text="향 주머니 12 개 &quot;상자마다 하나씩. 깊이 잠들 수 있게.&quot;">향 주머니 12 개 "상자마다 하나씩. 깊이 잠들 수 있게."<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>잠들게 하기</td></tr>
+        <tr><td class="n">토토</td><td><button type="button" class="trace" data-src="trace/toto.jpg" data-head="토토의 방 · 남아 있던 흔적" data-text="장부 마지막 장 &quot;보낼 사람&quot; 조건과 열두 개의 이름">장부 마지막 장 "보낼 사람" 조건과 열두 개의 이름<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>고르기</td></tr>
+        <tr><td class="n">콩이</td><td><button type="button" class="trace" data-src="trace/kongi.jpg" data-head="콩이의 방 · 남아 있던 흔적" data-text="신원 조회 결과 12 건 · 조회자 공태식 · &quot;모두 도착&quot;">신원 조회 결과 12 건 · 조회자 공태식 · "모두 도착"<span class="mag" aria-hidden="true"> 🔍</span></button></td><td>주소 알아내기</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="part">
+  <div class="part-head"><span class="no">셋째 장</span><h2>열두 인형의 진짜 얼굴</h2></div>
+  <p class="prose">방이 열린 순서대로 적었어요. 하트가 쌓일 때마다 무심코 흘렸던 말들이 사실 무엇을 뜻했는지도 함께 꿰매 두었어요.</p>
+
+  <article class="doll" id="tori">
+    <div class="doll-top"><span class="idx">01</span><h3>토리</h3><span class="mask">다람쥐 · 우체부</span></div>
+    <div class="reveal"><span class="chip real">이도윤</span><span class="chip">빨간 우표 사건</span><span class="chip crime">협박 · 공갈</span></div>
+    <div class="prose">
+      <p>작은 도시의 우편집배원. 남의 편지를 매일 날랐지만 자기 앞으로 오는 편지는 한 통도 없었어요. 부러움은 미움이 됐고, 그는 주전자 김으로 봉투를 열었다 다시 붙이는 법을 익혔어요.</p>
+      <p>아내 수술비 때문에 상회 돈을 잠시 빌려 쓴 한정우 씨의 편지를 읽은 날부터 빨간 우표를 붙인 협박 편지를 보냈어요. 매달 두 배씩, 모두 310 만 원. 한 씨네는 손목시계와 결혼반지, 딸의 피아노까지 팔았어요. 딸 한서진이 경찰에 보낸 고발 편지는 그 동네 우편을 나르던 도윤이 빼돌려 참나무 아래에 묻었어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>독촉장을 "수취인 이사"로 직접 반송</span></div>
+      <div class="fact"><b>남은 물건</b><span>뜯기지 않은 편지</span></div>
+      <div class="fact"><b>섬의 벌</b><span>남의 편지만 나르는 우체부 인형</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>발송</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/tori_1.jpg" data-head="토리의 대화 · 하트 3" data-text="&quot;풀칠 잘하는 것도 우체부 재능이에요.&quot;">"풀칠 잘하는 것도 우체부 재능이에요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">몰래 열고 다시 붙이던 수법</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/tori_2.jpg" data-head="토리의 대화 · 하트 6" data-text="&quot;편지는 꼭 본인한테만 전해요. 원칙이거든요.&quot;">"편지는 꼭 본인한테만 전해요. 원칙이거든요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">정작 그는 남의 편지를 다 읽었어요</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/tori_3.jpg" data-head="토리의 대화 · 하트 9" data-text="&quot;답장이 안 오는 편지도 있어요. 그런 건 제가 잘 보관해요.&quot;">"답장이 안 오는 편지도 있어요. 그런 건 제가 잘 보관해요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">땅에 묻어 버린 고발 편지</span></div>
+    </div>
+    <p class="target">노리던 몸에게 쓴 편지 · "이제 내 자리야. 답장해 줄 거지?"</p>
+  </article>
+
+  <article class="doll" id="bori">
+    <div class="doll-top"><span class="idx">02</span><h3>보리</h3><span class="mask">곰 · 목수 · 대장장이</span></div>
+    <div class="reveal"><span class="chip real">윤보혁</span><span class="chip">열쇠 꾸러미 사건</span><span class="chip crime">절도 · 주거침입</span></div>
+    <div class="prose">
+      <p>솜씨 좋고 말수 적은 동네 자물쇠 장인. 자물쇠를 달 때마다 열쇠를 하나 더 깎아 집 번호 꼬리표를 붙여 모았어요. "보통 몇 시에 자요?", "주말엔 여행 가세요?" 손님의 대답으로 빈집 시간을 적었어요.</p>
+      <p>복제 열쇠로 들어가 훔치고 문을 다시 잠갔어요. 부서진 곳이 없으니 경찰은 집 안 사람을 의심했어요. 노부부 최만석 · 오금자 씨는 먼저 떠난 딸의 유품 시계와 결혼반지가 사라지자 서로를 의심하다 따로 살게 됐어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>털린 집에 더 비싼 자물쇠를 또 팔고, 그 열쇠도 복제</span></div>
+      <div class="fact"><b>남은 물건</b><span>집 번호가 달린 열쇠 꾸러미 (23 개)</span></div>
+      <div class="fact"><b>섬의 벌</b><span>어느 집에도 초대받지 못하고 남의 가구만 만드는 곰 목수</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>봉인</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/bori_1.jpg" data-head="보리의 대화 · 하트 3" data-text="&quot;열쇠 잃어버리면 언제든 와. 금방 만들어 줄게.&quot;">"열쇠 잃어버리면 언제든 와. 금방 만들어 줄게."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">이미 하나씩 더 깎아 두었으니까요</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/bori_2.jpg" data-head="보리의 대화 · 하트 6" data-text="&quot;요즘 마을 집 자물쇠는 거의 다 내 거야.&quot;">"요즘 마을 집 자물쇠는 거의 다 내 거야."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">그 말은 마을 모든 집의 열쇠도 있다는 뜻</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/bori_3.jpg" data-head="보리의 대화 · 하트 9" data-text="&quot;너는 보통 몇 시에 자?&quot;">"너는 보통 몇 시에 자?"<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">빈집 시간을 적던 그 질문</span></div>
+    </div>
+    <p class="target">꾸러미 맨 끝에 새로 달린 꼬리표 · 노리던 몸의 집 번호</p>
+  </article>
+
+  <article class="doll" id="olly">
+    <div class="doll-top"><span class="idx">03</span><h3>올리</h3><span class="mask">사슴 · 박물관 관장</span></div>
+    <div class="reveal"><span class="chip real">오유리</span><span class="chip">3 시 17 분 사건</span><span class="chip crime">위조 · 바꿔치기</span></div>
+    <div class="prose">
+      <p>도시 미술관의 복원 담당 학예사. 보물 그림 「새벽의 사슴」을 몇 달 동안 마흔일곱 번 따라 그렸어요. 그리고 새벽 3 시 17 분, 일부러 전기를 끊고 어둠 속에서 진품과 가짜를 바꿔 걸었어요. 넘어지면서 Y.R. 이 새겨진 회중시계가 그 시각에 멈췄어요.</p>
+      <p>경비 일지는 그 20 분만 비어 있었고, 경비원 박태수 씨가 책임을 지고 해고됐어요. 진품은 익명 경매에서 3 억 원에 팔렸어요. 몇 년 뒤 성분 검사에서 진품 하늘의 옛 물감 '새벽 파랑'이 가짜에 없다는 게 드러났어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>정전 시각을 골라 바꿈 · 그 시각 경비 기록이 비어 있음</span></div>
+      <div class="fact"><b>남은 물건</b><span>3:17 에 멈춘 회중시계</span></div>
+      <div class="fact"><b>섬의 벌</b><span>진짜가 하나도 없는 빈 박물관을 지키는 사슴 관장</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>진짜처럼 위장</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/olly_1.jpg" data-head="올리의 대화 · 하트 3" data-text="&quot;새벽의 박물관은 정말 조용해요.&quot;">"새벽의 박물관은 정말 조용해요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">그 새벽에 무슨 일이 있었는지 알고 하는 말</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/olly_2.jpg" data-head="올리의 대화 · 하트 6" data-text="&quot;복제품도 예쁘지 않아요? 진짜만큼요.&quot;">"복제품도 예쁘지 않아요? 진짜만큼요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">마흔일곱 장의 연습 그림</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/olly_3.jpg" data-head="올리의 대화 · 하트 9" data-text="&quot;이 전시품, 어제랑 똑같죠? …그렇죠?&quot;">"이 전시품, 어제랑 똑같죠? …그렇죠?"<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">바꿔치기한 자의 버릇</span></div>
+    </div>
+    <p class="target">비어 있는 명판 · "소장품 No.13 — 노리던 몸" (날짜만 빈칸)</p>
+  </article>
+
+  <article class="doll" id="mongsil">
+    <div class="doll-top"><span class="idx">04</span><h3>몽실</h3><span class="mask">양 · 옷가게 재봉사</span></div>
+    <div class="reveal"><span class="chip real">문세실</span><span class="chip">이름표 사건</span><span class="chip crime">감금 · 신분 도용</span></div>
+    <div class="prose">
+      <p>진짜 '몽실이'는 곱슬머리 재봉사 민소윤이었어요. 손님들은 문을 열면 "몽실아~" 하고 반겼지만, 조수였던 세실은 늘 "저기요"였어요. 세실이 갖고 싶었던 건 솜씨가 아니라 모두가 다정하게 불러 주는 이름이었어요.</p>
+      <p>4 월 23 일, 세실은 소윤을 바닷가 뒤쪽 창고에 가두고 그날부터 소윤 행세를 했어요. 거울 앞에서 말투와 웃는 법, 서명을 연습하고, 굽 낮은 신발에 등을 굽혀 키를 맞췄어요. 갇힌 소윤은 억지로 만드는 옷 이름표 안쪽에 "창고에 갇혔어요"를 실로 수놓았고, 그 옷을 산 손님 덕에 41 일 만에 구조됐어요. 지문이 진짜 주인을 가려냈어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>옷마다 다른 이름표 (몽실 · 소윤 · 민소윤 · 세실)</span></div>
+      <div class="fact"><b>남은 물건</b><span>이름표가 섞인 엉킨 실타래</span></div>
+      <div class="fact"><b>섬의 벌</b><span>진짜 이름표를 하나도 가질 수 없는 양 재봉사</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>완충재</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/mongsil_1.jpg" data-head="몽실의 대화 · 하트 3" data-text="&quot;이름표 달아 드릴까요? 무슨 이름으로요?&quot;">"이름표 달아 드릴까요? 무슨 이름으로요?"<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">이름을 바꿔 다는 게 가장 익숙한 사람</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/mongsil_2.jpg" data-head="몽실의 대화 · 하트 6" data-text="&quot;몽실, 몽실… 입에 잘 붙죠? 이제는요.&quot;">"몽실, 몽실… 입에 잘 붙죠? 이제는요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">원래 자기 이름이 아니었으니까요</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/mongsil_3.jpg" data-head="몽실의 대화 · 하트 9" data-text="&quot;뒤쪽 창고는 정리가 안 돼서요.&quot;">"뒤쪽 창고는 정리가 안 돼서요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">소윤이 갇혀 있던 곳</span></div>
+    </div>
+    <p class="target">마네킹 줄 맨 끝 · 이미 꿰매 둔 노리던 몸의 새 이름표</p>
+  </article>
+
+  <article class="doll" id="pengpeng">
+    <div class="doll-top"><span class="idx">05</span><h3>펭펭</h3><span class="mask">펭귄 · 등대지기</span></div>
+    <div class="reveal"><span class="chip real">팽해준</span><span class="chip">검은 돛 사건</span><span class="chip crime">강도 공모</span></div>
+    <div class="prose">
+      <p>바다곶 등대의 등대지기. 해적단 '검은 돛'과 짜고, 화물선이 떠나는 밤마다 등대 불빛을 길게 · 짧게 · 짧게 깜빡였어요. 모스 부호 D, "출항한다"는 뜻이었어요.</p>
+      <p>깜빡인 다음 날마다 배가 습격당했어요. 백조호, 고래호, 은빛 갈매기호. 선원들은 모두 구조됐지만 배는 가라앉았고, 강무열 선장은 배를 잃었어요. 해준은 매번 몫의 5 분의 1 을 금화와 진주로 받았어요. 등대 창고에서는 해적의 쪽지가 나왔어요. "다음 불빛도 기다린다."</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>일지에 "불빛 고장, 깜빡임" · 수리 기록 없음, 전구는 멀쩡</span></div>
+      <div class="fact"><b>남은 물건</b><span>신호 랜턴</span></div>
+      <div class="fact"><b>섬의 벌</b><span>아무 배도 오지 않는 섬의 등대를 지키는 펭귄</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>섬 밖으로 내보낼 길</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/pengpeng_1.jpg" data-head="펭펭의 대화 · 하트 3" data-text="&quot;등대 불빛 세어 본 적 있어요? 저는 매일 세요.&quot;">"등대 불빛 세어 본 적 있어요? 저는 매일 세요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">신호를 보내던 사람의 습관</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/pengpeng_2.jpg" data-head="펭펭의 대화 · 하트 6" data-text="&quot;자주 흥얼거리는 노래가 있어요. 길게, 짧게, 짧게.&quot;">"자주 흥얼거리는 노래가 있어요. 길게, 짧게, 짧게."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">해적에게 보낸 그 신호</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/pengpeng_3.jpg" data-head="펭펭의 대화 · 하트 9" data-text="&quot;큰 배 오는 날은 바다가 좀 시끄러워요.&quot;">"큰 배 오는 날은 바다가 좀 시끄러워요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">습격이 있던 날들</span></div>
+    </div>
+    <p class="target">승선권 · "핑키 섬 → 남쪽 나라 · 승객: 노리던 몸 · 편도"</p>
+  </article>
+
+  <article class="doll" id="dandan">
+    <div class="doll-top"><span class="idx">06</span><h3>단단</h3><span class="mask">판다 · 카페 사장</span></div>
+    <div class="reveal"><span class="chip real">단혜원</span><span class="chip">느린 오후 사건</span><span class="chip crime">약물 강도</span></div>
+    <div class="prose">
+      <p>카페 '느린 오후'의 사장. 혼자 온 손님에게 '특별히 진하게'를 냈어요. 캐러멜 시럽으로 쓴맛을 가린 수면제 커피였어요. 손님이 잠든 사이 지갑과 시계와 반지를 훔쳤어요. 서른여덟 번이었어요.</p>
+      <p>11 월 3 일, 주문 No.12 손님 서동훈(68) 씨가 깨어나지 못했어요. 혜원은 12 번 주문 기록과 계산기 테이프만 지우고 "그런 손님은 온 적이 없다"고 했어요. 식은 커피잔 바닥에 하얀 가루가 남았어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>훔친 물건은 '분실물 상자'에 · 그 손님의 주문 기록만 삭제</span></div>
+      <div class="fact"><b>남은 물건</b><span>바닥에 하얀 가루가 남은 식은 커피잔</span></div>
+      <div class="fact"><b>섬의 벌</b><span>아무도 졸지 않는 카페에서 잠 못 드는 판다</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>밤에 켜게 하기</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/dandan_1.jpg" data-head="단단의 대화 · 하트 3" data-text="&quot;우리 카페 의자 편하죠? 다들 졸다 가요.&quot;">"우리 카페 의자 편하죠? 다들 졸다 가요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">의자 때문이 아니었어요</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/dandan_2.jpg" data-head="단단의 대화 · 하트 6" data-text="&quot;분실물 상자가 또 꽉 찼어요. 다들 덜렁이라니까요.&quot;">"분실물 상자가 또 꽉 찼어요. 다들 덜렁이라니까요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">지갑 23 개, 그중 돈이 든 지갑은 0 개</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/dandan_3.jpg" data-head="단단의 대화 · 하트 9" data-text="&quot;오늘은 특별히 진하게 타 드릴게요.&quot;">"오늘은 특별히 진하게 타 드릴게요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">가장 위험한 한 잔</span></div>
+    </div>
+    <p class="target">오늘의 주문서 · "손님: 노리던 몸 · 특별히 진하게" · 창가 자리 매일 예약</p>
+  </article>
+
+  <article class="doll" id="momo">
+    <div class="doll-top"><span class="idx">07</span><h3>모모</h3><span class="mask">호랑이 · 케이크 가게 주인</span></div>
+    <div class="reveal"><span class="chip real">모정민</span><span class="chip">4 월 16 일 골목길 사건</span><span class="chip crime">뺑소니</span></div>
+    <div class="prose">
+      <p>매주 새벽 5 시 40 분, 분홍 리본을 단 수레로 골목길을 지나 생일 케이크를 배달하던 케이크 가게 주인. 4 월 16 일, 늦게 출발해 서두르던 정민은 생일 케이크를 기다리던 일곱 살 이하늘을 치고 그대로 달아났어요. 현장엔 분홍 리본이, 수레엔 하늘이의 하늘색 운동화 한 짝이 걸려 있었어요.</p>
+      <p>하늘이는 넉 달 만에 퇴원했지만 예전처럼 뛰지 못해요. 정민은 해마다 4 월 16 일에 케이크를 만들기만 하고, 끝내 보내지 못했어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>그날 아침 바퀴 두 개를 갈고 수레를 하늘색으로 다시 칠함</span></div>
+      <div class="fact"><b>남은 물건</b><span>분홍 리본이 묶인 부러진 바퀴 살</span></div>
+      <div class="fact"><b>섬의 벌</b><span>아무 데도 배달할 수 없는 가게에 묶인 호랑이</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>배달</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/momo_1.jpg" data-head="모모의 대화 · 하트 3" data-text="&quot;아침 일찍은 가게 안 열어요. 늦잠 자거든요.&quot;">"아침 일찍은 가게 안 열어요. 늦잠 자거든요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">그날 이후로 새벽 배달을 그만뒀어요</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/momo_2.jpg" data-head="모모의 대화 · 하트 6" data-text="&quot;분홍 리본 예쁘죠? 요즘은 하늘색이 더 좋아졌어요.&quot;">"분홍 리본 예쁘죠? 요즘은 하늘색이 더 좋아졌어요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">다시 칠한 수레의 색</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/momo_3.jpg" data-head="모모의 대화 · 하트 9" data-text="&quot;골목길보단 큰길이 좋아요. 밝잖아요.&quot;">"골목길보단 큰길이 좋아요. 밝잖아요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">다시는 지나가지 못하는 골목</span></div>
+    </div>
+    <p class="target">배달 전표 · "받는 사람: 노리던 몸 · 새벽 5 시 40 분 · 상품: 새 몸 · 마지막 배달"</p>
+  </article>
+
+  <article class="doll" id="hana">
+    <div class="doll-top"><span class="idx">08</span><h3>하나</h3><span class="mask">여우 · 꼬마 농부</span></div>
+    <div class="reveal"><span class="chip real">백하은</span><span class="chip">맑은 밤의 번개 사건</span><span class="chip crime">방화</span></div>
+    <div class="prose">
+      <p>들판 마을의 농부. 할머니 밭 옆 권만복 · 권순례 부부의 과수원을 탐냈지만 부부는 절대 팔지 않았어요. 일지에는 이렇게 적었어요. "그럼 팔 수밖에 없게 하면 돼."</p>
+      <p>8 월 9 일 새벽 2 시, 부부가 잠든 걸 알면서 헛간 뒤에 등유를 뿌리고 불을 냈어요. 부부는 연기를 마시고 겨우 빠져나왔어요. "번개가 떨어졌대요!" 소문을 냈지만 그날 밤하늘엔 구름 한 점 없었어요. 부부는 땅을 헐값에 팔고 떠났고, 불탄 땅에는 '새 밭 1 호' 팻말이 꽂혔어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>번개 탓으로 소문냄 · 그날은 맑았다는 기상 기록</span></div>
+      <div class="fact"><b>남은 물건</b><span>흙 묻고 탄 냄새 나는 밀짚모자</span></div>
+      <div class="fact"><b>섬의 벌</b><span>할머니 밭 한 뙈기만 지키는 여우 농부</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>분홍 상자</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/hana_1.jpg" data-head="하나의 대화 · 하트 3" data-text="&quot;비 오는 날이 좋아. 밭이 촉촉해지잖아.&quot;">"비 오는 날이 좋아. 밭이 촉촉해지잖아."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">비 오는 날엔 불이 붙지 않아요</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/hana_2.jpg" data-head="하나의 대화 · 하트 6" data-text="&quot;향초는 안 켜. 켜 놓고 잊어버릴까 봐.&quot;">"향초는 안 켜. 켜 놓고 잊어버릴까 봐."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">불이 무엇을 하는지 누구보다 잘 알아서</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/hana_3.jpg" data-head="하나의 대화 · 하트 9" data-text="&quot;옆 땅까지 다 내 밭이야. 넓지?&quot;">"옆 땅까지 다 내 밭이야. 넓지?"<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">원래는 남의 과수원이었던 땅</span></div>
+    </div>
+    <p class="target">밭 늘리기 계획 · "다음 밭: 노리던 몸 · 이번엔 땅이 아니라 몸째로"</p>
+  </article>
+
+  <article class="doll" id="dodo">
+    <div class="doll-top"><span class="idx">09</span><h3>도도</h3><span class="mask">두더지 · 광부 아저씨</span></div>
+    <div class="reveal"><span class="chip real">도진규</span><span class="chip">3 번 갱도 사건</span><span class="chip crime">구조 거부 · 유기</span></div>
+    <div class="prose">
+      <p>은빛 광산의 반장. 10 월 2 일 밤, 동료 정만수 · 함동철 · 서태오와 3 번 갱도에 들어갔어요. 밤 11 시에 갱도가 무너졌어요. 안쪽에서 동료들이 쿵 쿵 쿵, 세 번씩 벽을 두드렸어요.</p>
+      <p>진규는 금광석 42 kg 자루만 챙겨 혼자 나왔고, 20 분 뒤 화약으로 입구를 바깥에서 막았어요. 구조대원이 들은 소리엔 "바람 소리"라고 했어요. 9 일 뒤 두 사람은 옛 환기구로 구조됐지만, 태오 씨는 끝내 나오지 못했어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>사고 보고서에 "혼자 작업 중 · 피해 없음"</span></div>
+      <div class="fact"><b>남은 물건</b><span>불 꺼진 광부 헬멧</span></div>
+      <div class="fact"><b>섬의 벌</b><span>동굴 입구만 지키는 두더지 광부</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>게임팩</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/dodo_1.jpg" data-head="도도의 대화 · 하트 3" data-text="&quot;광산에선 자기 몫은 자기가 챙기는 거야.&quot;">"광산에선 자기 몫은 자기가 챙기는 거야."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">금 자루 하나를 챙기고 동료를 두고 나왔어요</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/dodo_2.jpg" data-head="도도의 대화 · 하트 6" data-text="&quot;헬멧 하나 줄까? 여분이 좀 있거든.&quot;">"헬멧 하나 줄까? 여분이 좀 있거든."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">돌아오지 못한 사람들의 헬멧</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/dodo_3.jpg" data-head="도도의 대화 · 하트 9" data-text="&quot;땅속은 조용해야 해. 조용한 게 좋아.&quot;">"땅속은 조용해야 해. 조용한 게 좋아."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">두드리는 소리를 듣지 않으려고</span></div>
+    </div>
+    <p class="target">새 헬멧 안쪽에 적힌 이름 · 노리던 몸</p>
+  </article>
+
+  <article class="doll" id="bami">
+    <div class="doll-top"><span class="idx">10</span><h3>밤이</h3><span class="mask">고슴도치 · 꽃집 주인</span></div>
+    <div class="reveal"><span class="chip real">반세라</span><span class="chip">약초차 사건</span><span class="chip crime">독살</span></div>
+    <div class="prose">
+      <p>꽃집 주인. 1 월 5 일, 남편 고상현 씨 앞으로 받는 사람이 자신인 2 억 원짜리 생명 보험을 들었어요. 석 달 뒤부터 매일 아침 직접 끓인 '약초차'를 남편에게 건넸어요. 유리병 라벨 안쪽엔 디기탈리스 잎. 차 일지의 양은 한 스푼에서 세 스푼으로 늘었고, 자기 잔은 늘 맹물이었어요.</p>
+      <p>남편은 세 번 입원했지만 병원은 원인을 찾지 못했어요. 세라는 늘 곁을 지키는 보호자였어요. 남편이 남긴 마지막 쪽지에는 이렇게 적혀 있었어요. "네 차는 늘 좀 쓰지만 그래도 매일 고마워. 내일은 내가 꽃 사 갈게." 보험금이 들어온 다음 날, 세라는 새 온실을 지었어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>"몸에 좋은 약초차"라고 함</span></div>
+      <div class="fact"><b>남은 물건</b><span>꽃잎 진 꽃다발</span></div>
+      <div class="fact"><b>섬의 벌</b><span>아무도 꽃을 만져 주지 않는 가시투성이 고슴도치</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>깊이 잠들게 하기</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/bami_1.jpg" data-head="밤이의 대화 · 하트 3" data-text="&quot;이 꽃은 예쁜데 만지면 안 돼요. 손 꼭 씻어요.&quot;">"이 꽃은 예쁜데 만지면 안 돼요. 손 꼭 씻어요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">독이 있는 꽃을 누구보다 잘 알아서</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/bami_2.jpg" data-head="밤이의 대화 · 하트 6" data-text="&quot;차는 꾸준히 마셔야 좋대요.&quot;">"차는 꾸준히 마셔야 좋대요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">몇 달에 걸친 독</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/bami_3.jpg" data-head="밤이의 대화 · 하트 9" data-text="&quot;꽃은 꺾여도 한동안은 예뻐요.&quot;">"꽃은 꺾여도 한동안은 예뻐요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">시들어 가던 남편 곁의 보호자</span></div>
+    </div>
+    <p class="target">선물용 약초차 상자 · "노리던 몸 님께 · 꾸준히 드세요 ♡ (석 달 분)"</p>
+  </article>
+
+  <article class="doll" id="toto">
+    <div class="doll-top"><span class="idx">11</span><h3>토토</h3><span class="mask">고래 · 섬 촌장 할아버지</span></div>
+    <div class="reveal"><span class="chip real">탁도현</span><span class="chip">약속나무회 사건</span><span class="chip crime">사이비 교주 · 갈취 · 감금</span></div>
+    <div class="prose">
+      <p>바닷가 마을 '약속나무회'의 교주. 신도들은 그를 "아버지"라 불렀어요. "세상은 곧 가라앉는다, 약속을 지킨 자만 구원의 섬으로." 신도 312 명에게서 집 문서와 퇴직금, 결혼반지, 아이 학자금까지 전 재산을 받아 냈어요.</p>
+      <p>고해로 받아 적은 약점으로 떠나려는 사람을 붙잡았고, 질문한 사람은 참회실에 가뒀어요. 104 번 정은수 씨는 40 일을 갇혀 있었어요. 바깥 가족이 보낸 편지는 백 통이 넘었지만 한 통도 전해지지 않았어요. 마지막 헌금을 걷은 다음 날 새벽, 그는 한 장뿐인 배표로 혼자 사라졌어요.</p>
+      <p>섬에서도 그는 똑같았어요. 주민 열한 명의 죄를 '섬의 고해 장부'에 적어 쥐고 있었고, 그래서 토토의 방이 모든 방을 정리하는 판이 됐어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>고해 장부로 협박 · 가족을 갈라놓아 떠나지 못하게 함</span></div>
+      <div class="fact"><b>남은 물건</b><span>금이 간 안경</span></div>
+      <div class="fact"><b>섬의 벌</b><span>아무도 떠나지 않는 섬의 촌장 고래</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>보낼 사람 고르기</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/toto_1.jpg" data-head="토토의 대화 · 하트 3" data-text="&quot;이 섬은 조용해서 좋아. 시끄러운 일이 없지.&quot;">"이 섬은 조용해서 좋아. 시끄러운 일이 없지."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">아무도 떠나지 못하는 곳의 조용함</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/toto_2.jpg" data-head="토토의 대화 · 하트 6" data-text="&quot;장부는 내가 직접 정리한다네.&quot;">"장부는 내가 직접 정리한다네."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">모두의 죄가 적힌 고해 장부</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/toto_3.jpg" data-head="토토의 대화 · 하트 9" data-text="&quot;예전에 말 많던 친구가 하나 있었는데, 요즘 통 소식이 없군.&quot;">"예전에 말 많던 친구가 하나 있었는데, 요즘 통 소식이 없군."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">질문하던 사람이 가는 곳, 참회실</span></div>
+    </div>
+    <p class="target">후계자 증서 · "다음 '큰 고래'는 노리던 몸 · 촌장 자리는 원래 대신 앉는 자리거든"</p>
+  </article>
+
+  <article class="doll" id="kongi">
+    <div class="doll-top"><span class="idx">12</span><h3>콩이</h3><span class="mask">늑대 · 마을 경비대</span></div>
+    <div class="reveal"><span class="chip real">공태식</span><span class="chip real">서하람</span><span class="chip">바뀐 증거 사건</span><span class="chip crime">증거 조작 · 누명</span></div>
+    <div class="prose">
+      <p>콩이 인형 속 첫 번째 죄수는 전직 형사 공태식이에요. 편의점 강도 사건의 진짜 범인, 재벌가 아들 민도경에게 5 억을 받고 증거를 바꿨어요. 배달 영수증에서 배달원 하준서(19)의 지문을 떠서 칼에 옮기고, CCTV 테이프를 19 분 잘라 내고, 목격자 진술의 "키 큰 남자, 비싼 시계"를 수정액으로 지워 "배달원 옷"으로 고쳤어요.</p>
+      <p>하준서는 징역 20 년을 받았어요. 어머니의 탄원서는 기각됐어요. 19 년 뒤 재조사로 누명이 밝혀지기 바로 전날, 태식은 사라졌어요. 그리고 신원 조회로 우리 열두 명의 주소를 알아낸 것도 그였어요.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>숨긴 방법</b><span>지문 옮기기 · 테이프 자르기 · 진술 고쳐 쓰기</span></div>
+      <div class="fact"><b>남은 물건</b><span>떨어진 경비대 배지</span></div>
+      <div class="fact"><b>섬의 방</b><span>마지막 방이자 섬의 출구</span></div>
+      <div class="fact"><b>택배에서 맡은 일</b><span>주소 알아내기</span></div>
+    </div>
+    <div class="omens"><b>그때 그 말</b>
+      <div class="omen"><span class="h">♥3</span><span class="said"><button type="button" class="trace" data-src="om/kongi_1.jpg" data-head="콩이의 대화 · 하트 3" data-text="&quot;밤엔 문 꼭 잠가요.&quot;">"밤엔 문 꼭 잠가요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">하람이 하던 경고</span></div>
+      <div class="omen"><span class="h">♥6</span><span class="said"><button type="button" class="trace" data-src="om/kongi_2.jpg" data-head="콩이의 대화 · 하트 6" data-text="&quot;어디서 본 것 같은데… 기분 탓이겠죠.&quot;">"어디서 본 것 같은데… 기분 탓이겠죠."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">이것도 하람의 말이었어요. 갇힌 아이가 낯선 얼굴들 사이에서 집을 떠올리던 순간</span></div>
+      <div class="omen"><span class="h">♥9</span><span class="said"><button type="button" class="trace" data-src="om/kongi_3.jpg" data-head="콩이의 대화 · 하트 9" data-text="&quot;배지는 잃어버리면 안 돼요. 이거 하나로 다들 믿어 주거든요.&quot;">"배지는 잃어버리면 안 돼요. 이거 하나로 다들 믿어 주거든요."<span class="mag" aria-hidden="true"> 🔍</span></button></span><span class="meant">배지 하나로 사람들을 속인 형사</span></div>
+    </div>
+    <p class="target">출구 문 열쇠 꼬리표 · "노리던 몸의 몸으로 나간다"</p>
+  </article>
+</section>
+
+<section class="part">
+  <div class="part-head"><span class="no">넷째 장</span><h2>콩이 안의 또 한 사람</h2></div>
+  <div class="twist">
+    <div class="prose">
+      <p>19 년 전, 아홉 살 <em>서하람</em>이 섬에 놀러 왔어요. 하람은 콩이와 하트 10 을 맺을 만큼 친해졌어요. 그때 태식이 하람의 몸을 빼앗으려 했지만, 몸을 바꾸다 실패해 두 사람은 콩이 인형 한 몸에 함께 꿰매졌어요.</p>
+      <p>평소의 다정한 콩이는 하람이었어요. "밤엔 문 꼭 잠가요"는 하람이 우리에게 몰래 보내던 경고였어요. 다크 모드에서 실밥이 풀리면 깨어나는 건 태식이었어요.</p>
+      <p>하람은 배지 뒷면에 한마디를 새겨 두었어요. 섬의 출구가 열리면 태식이 노리던 몸을 입고 나가 버리니까요.</p>
+    </div>
+    <span class="badge-back">문 열지 마 — 하람</span>
+    <p class="prose">보스전에서 우리가 채팅으로 "문 열지 마"를 쳤을 때 태식이 쓰러졌던 건, 그 말로 하람을 불러냈기 때문이에요. 그리고 태식이 다시 꿰매지던 순간, 하람은 19 년 만에 풀려나 집으로 돌아갔어요.</p>
+  </div>
+</section>
+
+<section class="part">
+  <div class="part-head"><span class="no">다섯째 장</span><h2>그동안 바깥에서는</h2></div>
+  <p class="prose">다크 모드가 시작될 때마다 우편함에는 엄마의 편지가 한 통씩 와 있었어요. 열두 명의 엄마가 같은 시간을 버티고 있었어요.</p>
+  <div class="letters">
+    <div class="note"><p class="hand">책상 밑에는 뜯긴 택배 상자가 하나 있더라. 보낸 사람 칸이 비어 있어.</p></div>
+    <div class="note"><p class="hand">그 집에도 똑같은 분홍색 빈 상자가 있었대.</p></div>
+    <div class="note"><p class="hand">뉴스에 나왔어. 같은 날 사라진 사람이 열두 명이래.</p></div>
+    <div class="note"><p class="hand">형사님이 그러는데 네 방 문은 안에서 잠겨 있었대.</p></div>
+    <div class="note"><p class="hand">식탁에 네 숟가락까지 놓았는데, 결국 아빠랑 둘이서 말없이 먹었어.</p></div>
+    <div class="note"><p class="hand">엄마 여기 있어. 현관 불 켜 두고, 문 안 잠그고 있어. 언제든 들어와.</p></div>
+  </div>
+</section>
+
+<section class="part">
+  <div class="part-head"><span class="no">마지막 장</span><h2>네 갈래의 끝</h2></div>
+  <p class="prose">콩이의 방이 끝나면, 그때까지 꿰맨 방에 따라 사람마다 다른 끝을 맞았어요.</p>
+  <div class="endings">
+    <div class="end"><span class="cond">열두 방을 모두 꿰맸을 때</span><h3>집으로</h3><p>콩이의 가슴 실밥이 풀리며 빛이 새어 나와요. "이제 문 열어도 돼." 눈을 뜨면 내 방, 꺼진 모니터와 분홍 상자. 쉴 새 없이 떨리는 휴대 전화, 현관 불, 달려오는 엄마. "왔구나." 거실 뉴스에는 열두 사진 위에 '귀가'.</p></div>
+    <div class="end"><span class="cond">놓친 방이 있지만 나는 그 방이 노리던 몸이 아닐 때</span><h3>돌아온 사람들</h3><p>나는 집으로 돌아와요. 뉴스는 "12 명 중 n 명 귀가". 못 돌아온 사진은 어둡게 남아요. 창가의 누군가, 유리에 비친 얼굴이 잠깐 웃고 눈이 분홍빛으로 빛나요.</p></div>
+    <div class="end"><span class="cond">놓친 방이 노리던 몸이 나일 때</span><h3>빼앗긴 몸</h3><p>출구 앞에서 내 얼굴을 한 누군가가 먼저 지나가요. 내 넋은 그 주민의 인형 속으로 꿰매지고, 분홍빛 아침의 핑키 섬에 내가 서 있어요. 아무도 나를 알아보지 못하고, 입이 저절로 웃어요.</p></div>
+    <div class="end"><span class="cond">콩이의 방을 놓쳤을 때</span><h3>닫힌 섬</h3><p>출구는 열리지 않아요. 문이 다시 꿰매지고 열두 명이 해안에 남아요. 우체통에는 엄마의 편지가 쌓여 가요. 열두 명 모두, 섬에 갇혔어요.</p></div>
+  </div>
+</section>
+
+<section class="part" id="awards">
+  <div class="part-head"><span class="no">에필로그</span><h2>섬에서 보낸 날들에 주는 상</h2></div>
+  <p class="prose">다크 모드가 끝나고, 섬에 가장 오래 남은 흔적들에게 상을 드려요. 상 이름을 눌러 주인이 누구인지 확인해 보세요.</p>
+  <div class="awards">
+    <button type="button" class="award" aria-pressed="false"><span class="no">01</span><h3>BusMetroWalk 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>영원s2</b><span>464,027 걸음</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">02</span><h3>#9평 #원룸 #인테리어 #홍콩무드 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>엄마곗돈</b><span>가구 42 개</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">03</span><h3>부캉이의 적 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>솔</b><span>낚은 물고기 3,428 마리</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">04</span><h3>페이커 그렇게 하는 거 아닌데 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>꽁</b><span>딜량 4,882,521</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">05</span><h3>청조고놈파라다이스시티 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>걔</b><span>리조트 수입 2,723,030 원</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">06</span><h3>영차영차고나발이고 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>칠월</b><span>주식 이익 217,000 원</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">07</span><h3>물고기계의 윤무부 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>멍개</b><span>물고기 도감 50 개</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">08</span><h3>박물관이 살아 있다 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>하니</b><span>기증 160 개</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">09</span><h3>호캉스를 좋아해요 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>도움</b><span>리조트 관련 3 위 다수</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">10</span><h3>잭..컴백.. 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>쭈니</b><span>보트 3 위</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">11</span><h3>대부호의 아우라 상</h3><span class="seal">누르면 열려요</span><span class="who"><b>냥파</b><span>다리 기부 901,478 원</span></span></button>
+    <button type="button" class="award" aria-pressed="false"><span class="no">12</span><h3>야인마!!상</h3><span class="seal">누르면 열려요</span><span class="who"><b>째앙금</b><span>순위권 진입 0 회</span></span></button>
+  </div>
+  <div class="award-bar"><button type="button" id="openAll">모두 열어 보기</button></div>
+</section>
+
+<footer class="closing">
+  <p class="hand">섬을 만든 사람은 끝내 밝혀지지 않았어요.</p>
+  <small>핑키 디저트 아일랜드 · 다크 모드에 함께한 모두에게</small>
+</footer>
+
+</div>
+
+<div id="lb" role="dialog" aria-modal="true" aria-labelledby="lbTitle" hidden>
+  <div class="box">
+    <div class="bar"><b id="lbTitle"></b><button type="button" class="x" id="lbClose">닫기 ✕</button></div>
+    <img id="lbImg" alt="">
+    <p class="cap" id="lbCap"></p>
+  </div>
+</div>
+<script>
+(function(){
+  var lb = document.getElementById('lb'), img = document.getElementById('lbImg'), ttl = document.getElementById('lbTitle'), cap = document.getElementById('lbCap'), last = null;
+  function open(btn){ last = btn; ttl.textContent = btn.getAttribute('data-head'); cap.textContent = btn.getAttribute('data-text'); img.alt = btn.getAttribute('data-text'); img.src = btn.getAttribute('data-src'); lb.hidden = false; lb.classList.add('open'); document.documentElement.style.overflow = 'hidden'; document.getElementById('lbClose').focus(); }
+  function close(){ lb.classList.remove('open'); lb.hidden = true; document.documentElement.style.overflow = ''; if (last) last.focus(); }
+  document.querySelectorAll('.trace').forEach(function(b){ b.addEventListener('click', function(){ open(b); }); });
+  document.getElementById('lbClose').addEventListener('click', close);
+  lb.addEventListener('click', function(e){ if (e.target === lb) close(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && lb.classList.contains('open')) close(); });
+})();
+</script>
+<script>
+(function(){
+  var cards = document.querySelectorAll('.award');
+  cards.forEach(function(c){ c.addEventListener('click', function(){ c.setAttribute('aria-pressed', c.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); }); });
+  var all = document.getElementById('openAll');
+  if (all) all.addEventListener('click', function(){ var open = Array.prototype.every.call(cards, function(c){ return c.getAttribute('aria-pressed') === 'true'; }); cards.forEach(function(c){ c.setAttribute('aria-pressed', open ? 'false' : 'true'); }); all.textContent = open ? '모두 열어 보기' : '모두 닫기'; });
+})();
+</script>
+
+</body></html>
