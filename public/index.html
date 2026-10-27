@@ -8318,6 +8318,20 @@ const darkNames = () => darkOn() ? (world.darkNames || {}) : {};
 const realNick = (id, nick) => (id && darkNames()[id]) || nick;
 let admDn = {};
 // 기록 순위: 플레이어 문서에 쌓인 기록으로 항목마다 상위 5 명
+const STAT_LABEL = {playMin:'접속 시간(분)', daysAttended:'출석 일수', distanceWalked:'걸은 거리', zoneMoves:'구역 이동', zonesVisited:'방문한 구역 수', questsDone:'완료한 퀘스트', errandsDone:'심부름', deliveries:'배달',
+  dmgDealt:'딜량', monsterKills:'몬스터 처치', bossKills:'마을 보스 처치', caveBossKills:'동굴 보스 처치', faints:'쓰러진 횟수', weaponTier:'무기 단계', revives:'살린 횟수',
+  earned:'번 돈', goldSpent:'쓴 돈', sold:'판 물건', bought:'산 물건', marketSold:'시장 판매', marketBought:'시장 구매', aucWon:'경매 낙찰', candyBought:'별사탕 구매', stockProfit:'주식 이익', interiorBought:'인테리어 구매',
+  dishesCooked:'요리 횟수', foodEaten:'먹은 음식', coffeePerfect:'완벽한 커피', fishCaught:'낚은 물고기', fish3Star:'별 3개 물고기', oreMined:'캔 광석', foraged:'채집', cropsHarvested:'수확한 작물', treesChopped:'벤 나무', mgPlayed:'미니게임', snowmen:'눈사람', balloons:'터뜨린 풍선', petsAdopted:'입양한 펫', petFed:'펫 먹이',
+  chatSent:'채팅', dmSent:'메신저', lettersSent:'편지', giftsGiven:'선물', emotesSent:'이모티콘', heartEmotes:'하트 이모티콘', friendCount:'친구 수', friends7:'하트 7 이상 주민', soulmates:'하트 10 주민', maxHearts:'최고 하트', otumoFriend:'오투모 친구', wishes:'소원',
+  houseLevel:'집 단계', interiorCount:'인테리어 개수', furnCount:'가구 수', closetCount:'옷장 옷', outfitChanged:'옷 갈아입기', plots:'텃밭 칸', museumDonated:'박물관 기증',
+  dexFish:'물고기 도감', dexOre:'광석 도감', dexMon:'몬스터 도감', dexTotal:'도감 합계', achCount:'업적', bridgeGiven:'다리 기부', sawGod:'신을 본 횟수', tmapPieces:'지도 조각', tmapDug:'보물 판 횟수', tmapDone:'보물 지도 완성',
+  rsPlayed:'리조트 플레이', rsEarned:'리조트 수입', rsBoat:'보트', rsCoaster:'롤러코스터', rsSlide:'슬라이드', rsSauna:'사우나', rsCamp:'캠프', rsChest:'리조트 상자', rsStrike:'볼링', rsClaps:'박수 받음', rsClapGiven:'박수 줌', rsBalloon:'리조트 풍선', rsMaint:'정비', rsSurfMax:'최고 서핑', rsPlush:'인형', rsPhotos:'사진'};
+// 기록마다 상위 3 명을 글로 뽑아요 (오투모가 복사해서 볼 수 있게)
+function statsTop3Text(regs){ const ppl = regs.filter(([, q]) => q && !q.adm), rows = {};
+  const add = (k, q, v) => { v = +v; if (!(v > 0)) return; (rows[k] = rows[k] || []).push([String(q.nick || '?').slice(0, 10), v]); };
+  for (const [, q] of ppl){ for (const [k, v] of Object.entries(q.stats || {})) if (typeof v === 'number') add(k, q, v); add('earned', q, q.earned); add('relSum', q, Object.values(q.rel || {}).reduce((a, r) => a + (+r?.pts || 0), 0)); }
+  const lab = k => k === 'relSum' ? '호감도 합계' : (STAT_LABEL[k] || k);
+  return `기록 상위 3명 (플레이어 ${ppl.length} 명)\n` + Object.keys(rows).sort((a, b) => lab(a).localeCompare(lab(b), 'ko')).map(k => `${lab(k)}: ` + rows[k].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n, v], i) => `${i + 1}. ${n} ${k === 'distanceWalked' ? Math.round(v/50).toLocaleString() + '걸음' : v.toLocaleString()}`).join(' / ')).join('\n'); }
 function adminRankSec(regs){
   const ppl = regs.filter(([,p])=>p && !p.adm), S = p => p.stats || {};
   const relSum = p => Object.values(p.rel || {}).reduce((a, r)=>a + (+r?.pts || 0), 0), relTop = p => { let b = null; for (const n of NPCS){ const v = +p.rel?.[n.id]?.pts || 0; if (!b || v > b[1]) b = [n.name, v]; } return b && b[1] ? ` · 최고 ${b[0]} ♥${heartsOf(b[1])}` : ''; };
@@ -8338,7 +8352,7 @@ function adminRankSec(regs){
     ['💸 돈을 가장 많이 쓴 사람', p=>+S(p).goldSpent||0, v=>`${v.toLocaleString()} G`, '쓴 돈 누적 · 이 업데이트부터 집계'],
     ['💰 돈을 가장 많이 번 사람', p=>+p.earned||0, v=>`${v.toLocaleString()} G`, '판매 · 장사 · 리조트 수입 등 번 돈 누적'],
     ['📖 도감을 가장 많이 채운 사람', p=>+S(p).dexTotal||0, v=>`${v} 종`, '물고기 + 광석 + 몬스터 도감 (마지막 접속 기준)']];
-  return C.map(([t, f, fmt, note, extra])=>{ const rows = ppl.map(([id, p])=>[p, f(p)]).filter(([, v])=>v > 0).sort((a, b)=>b[1] - a[1]).slice(0, 5);
+  return `<div class="adm-sec"><b>전체 기록 상위 3명</b><small>지금까지 모인 모든 기록을 상위 3명씩 글로 복사해요</small><div class="adm-wrow"><button data-a="top3" class="adm-btn">복사하기</button></div><textarea id="top3Box" readonly hidden style="width:100%;height:180px;font-size:12px"></textarea></div>` + C.map(([t, f, fmt, note, extra])=>{ const rows = ppl.map(([id, p])=>[p, f(p)]).filter(([, v])=>v > 0).sort((a, b)=>b[1] - a[1]).slice(0, 5);
     return `<div class="adm-sec"><b>${t}</b><small>${note}</small>${rows.length ? rows.map(([p, v], i)=>`<div class="adm-wrow"><small style="min-width:22px">${i + 1}</small><b style="flex:1">${esc(String(p.nick || '?').slice(0, 10))}</b><small>${fmt(v)}${extra ? extra(p) : ''}</small></div>`).join('') : '<small>아직 기록이 없어요</small>'}</div>`; }).join('');
 }
 function adminDarkNameSec(regs){
@@ -8618,6 +8632,8 @@ function adminClick(e){
   else if (b.dataset.a==='dkrestore'){ const npc = b.dataset.k, m = clueSolvedMax(npc), ids = darkPuzzles(npc).map(p => p.id).slice(0, m + 1); if (!NPC[npc] || m < 0 || !confirm(`${NPC[npc].name}의 방 ${m + 1} 번 문제까지 푼 걸로 복구할까요? (이미 푼 문제는 그대로 둬요 · 다시 열면 그다음 문제부터예요)`)) return;
     const now = darkNow(); let added = 0;
     Promise.resolve(net.darkTx(npc, cur => { if (!cur || cur.clear) return undefined; const sv = {...(cur.solved || {})}; added = 0; for (const id of ids) if (!sv[id]){ sv[id] = {uid:'admin', nick:'복구', at:now, ans:'x'}; added++; } return added ? {...cur, solved:sv} : undefined; })).then(ok => toast(ok ? `${NPC[npc].name}의 방 ${added} 개를 복구했어요 (${m + 1} 번까지)` : '더 복구할 문제가 없어요')).catch(()=>toast('복구하지 못했어요')); }
+  else if (b.dataset.a==='top3'){ const txt = statsTop3Text(Object.entries(players)), box = $('top3Box'); if (box){ box.hidden = false; box.value = txt; box.select(); }
+    try { navigator.clipboard.writeText(txt).then(()=>toast('복사했어요 · 붙여 넣어 보내 주세요')).catch(()=>toast('아래 글을 길게 눌러 복사해 주세요')); } catch(e){ toast('아래 글을 길게 눌러 복사해 주세요'); } }
   else if (b.dataset.a==='endopen'){ const on = !world.endOpen; Promise.resolve(net.setWorld({endOpen:on})).then(()=>toast(on ? '엔딩을 본 사람도 들어올 수 있어요' : '엔딩을 본 사람은 다시 막혀요')).catch(()=>toast('바꾸지 못했어요')); }
   else if (b.dataset.a==='dklock'){ const n = b.dataset.k, lk = {...(world.darkLock || {})}; if (lk[n]) delete lk[n]; else lk[n] = true; Promise.resolve(net.setWorld({darkLock:lk})).then(()=>toast(`${NPC[n].name}의 방을 ${lk[n] ? '닫았어요' : '열었어요'}`)).catch(()=>toast('바꾸지 못했어요')); }
   else if (b.dataset.a==='dkprev' || b.dataset.a==='dknext'){ Promise.resolve(net.setWorld({darkShift:(world.darkShift|0) + (b.dataset.a==='dknext' ? 1 : -1)})).catch(()=>toast('방을 옮기지 못했어요. 관리자 권한을 확인해 주세요')); }
