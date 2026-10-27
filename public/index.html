@@ -8329,7 +8329,7 @@ const STAT_LABEL = {playMin:'접속 시간(분)', daysAttended:'출석 일수', 
 // 기록마다 상위 3 명을 글로 뽑아요 (오투모가 복사해서 볼 수 있게)
 function statsTop3Text(regs){ const ppl = regs.filter(([, q]) => q && !q.adm), rows = {};
   const add = (k, q, v) => { v = +v; if (!(v > 0)) return; (rows[k] = rows[k] || []).push([String(q.nick || '?').slice(0, 10), v]); };
-  for (const [, q] of ppl){ for (const [k, v] of Object.entries(q.stats || {})) if (typeof v === 'number') add(k, q, v); add('earned', q, q.earned); add('relSum', q, Object.values(q.rel || {}).reduce((a, r) => a + (+r?.pts || 0), 0)); }
+  for (const [, q] of ppl){ for (const [k, v] of Object.entries(q.stats || {})) if (typeof v === 'number' && k !== 'earned') add(k, q, v); add('earned', q, q.earned); add('relSum', q, Object.values(q.rel || {}).reduce((a, r) => a + (+r?.pts || 0), 0)); }
   const lab = k => k === 'relSum' ? '호감도 합계' : (STAT_LABEL[k] || k);
   return `기록 상위 3명 (플레이어 ${ppl.length} 명)\n` + Object.keys(rows).sort((a, b) => lab(a).localeCompare(lab(b), 'ko')).map(k => `${lab(k)}: ` + rows[k].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n, v], i) => `${i + 1}. ${n} ${k === 'distanceWalked' ? Math.round(v/50).toLocaleString() + '걸음' : v.toLocaleString()}`).join(' / ')).join('\n'); }
 function adminRankSec(regs){
