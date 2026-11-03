@@ -24,7 +24,16 @@ jobs:
           printf '{"v":"%s"}' "${{ github.sha }}" > public/version.json
           sed -i "s/const BUILD = 'dev';/const BUILD = '${{ github.sha }}';/" public/index.html
           grep -q "const BUILD = '${{ github.sha }}';" public/index.html
-      - name: 호스팅과 DB 규칙 배포
+      - name: 게임 호스팅과 DB 규칙 배포
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: npx -y firebase-tools@13 deploy --only hosting,database --non-interactive
+        run: npx -y firebase-tools@13 deploy --only hosting:game,database --non-interactive
+      # 오투모집(제보함)은 따로 떨어진 주소 otumojip.web.app 에 올려요. 게임 배포가 끝난 뒤라 여기서 실패해도 게임은 이미 올라가 있어요.
+      - name: 오투모집 사이트 만들기 (처음 한 번만, 이미 있으면 건너뜀)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx -y firebase-tools@13 hosting:sites:create otumojip --project pinkyisland --non-interactive || echo "이미 있거나 만들 수 없어요. 다음 단계에서 확인해요."
+      - name: 오투모집 배포 (otumojip.web.app)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx -y firebase-tools@13 deploy --only hosting:otumo --non-interactive

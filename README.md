@@ -6,7 +6,7 @@
 - 주민 대사·스토리: `public/npcs.js` (대사를 고치거나 늘릴 때는 이 파일만 고치면 돼요)
 - 저장과 실시간 접속: Firebase Realtime Database
 - 로그인: 아이디(영어 3~16자) + 비밀번호(5자 이상). Firebase 이메일/비밀번호 인증을 아이디 형태로 감싸요 (`아이디@pinkyisland.app`, 비밀번호 뒤에 고정 꼬리표를 붙여 6자 규칙을 맞춤)
-- 배포: `main` 브랜치에 푸시하면 GitHub Actions가 Firebase Hosting에 올려요
+- 배포: `main` 브랜치에 푸시하면 GitHub Actions가 Firebase Hosting에 올려요 (게임 `pinkyisland.web.app` + 제보함 `otumojip.web.app`)
 
 ## 처음 한 번만 하는 설정
 
@@ -51,6 +51,19 @@ npx firebase-tools emulators:start --only hosting
 ```
 또는 `public` 폴더를 아무 정적 서버로 열어도 돼요. `firebase-config.js`를 채우기 전에는 **혼자 보기 모드**로 실행돼요.
 
+## 오투모집 (오류 제보 · 건의함)
+**https://otumojip.web.app** — 게임과 따로 떨어진 주소에 있는 제보함이에요. 로그인 없이 누구나 글을 남길 수 있어요 (`otumo-site/`).
+- 같은 Firebase 프로젝트 안의 두 번째 호스팅 사이트예요. 배포할 때 사이트가 없으면 알아서 만들어요 (`firebase-deploy.yml`)
+- 주소 이름을 바꾸려면 `.firebaserc`의 `otumojip`, `firebase.json`의 `/otumo` 넘겨주기 주소, 워크플로의 `otumojip` 세 곳을 같이 바꿔요
+- 예전 주소 `pinkyisland.web.app/otumo/`로 들어오면 새 주소로 넘겨줘요
+- `otumo-site/firebase-config.js`는 `public/firebase-config.js`와 같은 값이에요 (Firebase 설정이 바뀌면 둘 다 고쳐요)
+- **오류 제보**: 우선순위 P1(치명적)~P4(낮음) · 언제 · 어떤 상황에서 · 어떻게 보이나요 · 사진 5장까지
+- **건의하기**: 하고 싶은 게임 / 하고 싶은 이벤트 / 의견 / 기타
+- 익명 또는 닉네임으로 쓸 수 있고, 다른 사람 글에 "나도요 +1"을 누를 수 있어요
+- 사진은 브라우저에서 줄여(JPEG, 1280px 이하) Realtime Database `feedbackImg/<글id>/<0~4>`에 넣어요 (Storage 필요 없음)
+- 페이지 아래 **관리자**에 관리자 코드를 넣으면 처리 상태(접수됨·확인 중·진행 중·완료·보류) 바꾸기, 답글, 삭제를 할 수 있어요. 게임 로그인과는 따로라서 게임 쪽 로그인은 그대로예요
+- 글은 고칠 수 없고 새로 쓰기만 돼요. 상태·답글은 관리자만 쓸 수 있게 `database.rules.json`이 막아요
+
 ## 무료 요금제(Spark)로 충분할까?
 - 동시 접속 100명, 저장 1GB, 다운로드 월 10GB까지 무료예요.
 - 움직임은 목적지만 보내고 각자 화면에서 걸어가게 해서 데이터를 아꼈어요. 14명이 하루 몇 시간 노는 정도는 무료 범위 안이에요.
@@ -65,6 +78,8 @@ npx firebase-tools emulators:start --only hosting
 | `online/<uid>` | 지금 접속 중인 사람의 위치와 이모티콘 (나가면 자동 삭제) |
 | `chat` | 채팅 |
 | `market/<id>` | 거래소에 올린 물건 (판매자·품목·개수·가격, 산 사람) |
+| `feedback/<id>` | 오투모집 글 (종류·제목·우선순위/분류·내용·작성자·공감 수·상태·답글) |
+| `feedbackImg/<id>/<n>` | 오투모집 첨부 사진 (줄인 JPEG) |
 
 지붕 색이 14개뿐이라 섬 주민은 최대 14명이에요. 규칙(`database.rules.json`)이 이걸 서버 쪽에서도 지켜요.
 

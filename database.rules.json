@@ -529,6 +529,73 @@
           }
         }
       }
+    },
+    "feedback": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$id": {
+        ".write": "!data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['k','t','at','n']) && (newData.child('k').val() === 'idea' || newData.child('pri').exists())",
+        "k": {
+          ".validate": "newData.val() === 'bug' || newData.val() === 'idea'"
+        },
+        "t": {
+          ".validate": "newData.isString() && newData.val().length <= 60 && newData.val().length >= 1"
+        },
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 12"
+        },
+        "pri": {
+          ".validate": "newData.isString() && newData.val().matches(/^p[1-4]$/)"
+        },
+        "cat": {
+          ".validate": "newData.isString() && newData.val().matches(/^(game|event|opinion|etc)$/)"
+        },
+        "when": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "where": {
+          ".validate": "newData.isString() && newData.val().length <= 1000"
+        },
+        "what": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "body": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "at": {
+          ".validate": "newData.isNumber() && (newData.val() === now || newData.val() === data.val())"
+        },
+        "n": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5 && newData.val() % 1 === 0"
+        },
+        "me": {
+          ".write": "data.parent().exists()",
+          ".validate": "newData.isNumber() && ((!data.exists() && newData.val() === 1) || (data.exists() && newData.val() === data.val() + 1))"
+        },
+        "st": {
+          ".validate": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app' && newData.isString() && newData.val().matches(/^(new|check|doing|done|hold)$/)"
+        },
+        "re": {
+          ".validate": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app' && newData.isString() && newData.val().length <= 1000"
+        },
+        "reAt": {
+          ".validate": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app' && newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "feedbackImg": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
+      "$id": {
+        "$n": {
+          ".write": "!data.exists() && $n.matches(/^[0-4]$/) && root.child('feedback/' + $id + '/at').val() > now - 600000",
+          ".validate": "newData.isString() && newData.val().beginsWith('data:image/') && newData.val().length <= 600000 && $n < '' + root.child('feedback/' + $id + '/n').val()"
+        }
+      }
     }
   }
 }
