@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>오투모집</title>
+<meta name="description" content="핑키 아일랜드 오류 제보 · 건의함">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="icon" href="../icons/favicon-48.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+:root{
+  --bg:#0a0a0a; --bg-2:#121212; --card:#151515; --line:#262626; --line-2:#363636;
+  --ink:#f4f4f2; --dim:#9a9a96; --mute:#5f5f5c;
+  --acid:#d7ff3a; --acid-ink:#0a0a0a;
+  --p1:#ff4d4d; --p2:#ff9a3d; --p3:#ffd84a; --p4:#8f8f8a;
+  --f-logo:"Black Han Sans", "IBM Plex Sans KR", sans-serif;
+  --f-body:"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom:env(safe-area-inset-bottom, 0px);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background-image:linear-gradient(var(--line) 1px, transparent 1px),linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:48px 48px;mask-image:linear-gradient(to bottom, rgba(0,0,0,.6), transparent 520px);-webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.6), transparent 520px)}
+.wrap{position:relative;z-index:1;max-width:880px;margin:0 auto}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--acid)}
+:focus-visible{outline:2px solid var(--acid);outline-offset:2px}
+[hidden]{display:none!important}
+.mono{font-family:var(--f-mono);letter-spacing:.02em}
+
+/* 머리 */
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:18px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:10px;text-decoration:none;color:var(--ink)}
+.brand b{white-space:nowrap;font-family:var(--f-logo);font-weight:400;font-size:24px;letter-spacing:-.01em}
+.brand small{font-family:var(--f-mono);font-size:11px;color:var(--dim);letter-spacing:.14em}
+.top nav{display:flex;gap:6px}
+.top nav a{white-space:nowrap;font-family:var(--f-mono);font-size:12px;text-decoration:none;color:var(--dim);padding:6px 10px;border:1px solid var(--line);border-radius:999px}
+.top nav a:hover{color:var(--ink);border-color:var(--line-2)}
+
+.hero{padding-block:44px 30px;display:grid;gap:14px}
+.hero .tag{font-family:var(--f-mono);font-size:12px;color:var(--acid);letter-spacing:.2em}
+.hero h1{margin:0;font-family:var(--f-logo);font-weight:400;font-size:clamp(56px, 16vw, 128px);line-height:.92;letter-spacing:-.02em}
+.hero h1 span{color:var(--acid)}
+.hero p{margin:0;color:var(--dim);max-width:34em}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--bg-2);min-width:96px}
+.stat b{display:block;font-family:var(--f-mono);font-size:20px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--dim)}
+
+/* 섹션 */
+section.blk{margin-top:28px}
+.blk-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+.blk-head h2{margin:0;font-size:13px;font-family:var(--f-mono);font-weight:700;letter-spacing:.16em;color:var(--dim)}
+.blk-head h2 i{font-style:normal;color:var(--acid)}
+
+/* 종류 고르기 */
+.kinds{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kind{text-align:left;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--card);display:grid;gap:4px;transition:border-color .15s, transform .15s}
+.kind:hover{border-color:var(--line-2)}
+.kind b{font-size:19px}
+.kind span{font-size:13px;color:var(--dim)}
+.kind .mono{font-size:11px;color:var(--mute)}
+.kind[aria-pressed="true"]{border-color:var(--acid);background:linear-gradient(160deg, rgba(215,255,58,.09), transparent 60%), var(--card)}
+.kind[aria-pressed="true"] .mono{color:var(--acid)}
+
+/* 폼 */
+form.sheet{margin-top:12px;border:1px solid var(--line);border-radius:16px;background:var(--card);padding:20px;display:grid;gap:20px}
+.f{display:grid;gap:8px}
+.f > label, .f > .lbl{font-size:13px;font-weight:700;display:flex;gap:8px;align-items:baseline}
+.f > label em, .f > .lbl em{font-style:normal;font-weight:400;color:var(--mute);font-size:12px}
+.f .req{color:var(--acid);font-family:var(--f-mono);font-size:11px}
+input[type=text], textarea{width:100%;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:11px 13px;outline:none;transition:border-color .15s}
+input[type=text]:focus, textarea:focus{border-color:var(--acid)}
+textarea{resize:vertical;min-height:96px}
+::placeholder{color:var(--mute)}
+.count{font-family:var(--f-mono);font-size:11px;color:var(--mute);justify-self:end;margin-top:-4px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line-2);background:var(--bg);border-radius:999px;padding:8px 14px;font-size:14px;transition:all .15s}
+.chip:hover{border-color:var(--dim)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.pris{display:grid;grid-template-columns:repeat(4, 1fr);gap:8px}
+.pri{border:1px solid var(--line-2);background:var(--bg);border-radius:12px;padding:12px 10px;text-align:left;display:grid;gap:2px;--c:var(--p4)}
+.pri b{font-family:var(--f-mono);font-size:18px;color:var(--c)}
+.pri strong{font-size:13px}
+.pri span{font-size:11.5px;color:var(--dim);line-height:1.4}
+.pri[aria-pressed="true"]{border-color:var(--c);background:color-mix(in srgb, var(--c) 12%, var(--bg))}
+.pri[data-p=p1]{--c:var(--p1)} .pri[data-p=p2]{--c:var(--p2)} .pri[data-p=p3]{--c:var(--p3)} .pri[data-p=p4]{--c:var(--p4)}
+
+/* 사진 */
+.drop{border:1px dashed var(--line-2);border-radius:12px;padding:14px;display:grid;gap:12px;background:var(--bg)}
+.drop.over{border-color:var(--acid)}
+.thumbs{display:grid;grid-template-columns:repeat(5, minmax(0, 120px));gap:8px}
+.thumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--bg-2);border:1px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.75);color:#fff;font-size:14px;line-height:24px;padding:0}
+.addimg{aspect-ratio:1;border-radius:8px;border:1px dashed var(--line-2);background:transparent;color:var(--dim);display:grid;place-items:center;font-size:12px;text-align:center;padding:4px}
+.addimg:hover{border-color:var(--acid);color:var(--acid)}
+.addimg b{display:block;font-size:22px;font-weight:400;line-height:1}
+.drop p{margin:0;font-size:12px;color:var(--mute)}
+
+/* 작성자 */
+.who{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:999px;padding:3px;background:var(--bg)}
+.seg button{border:0;background:transparent;border-radius:999px;padding:7px 14px;font-size:13.5px;color:var(--dim)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+.submit{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+.submit p{margin:0;font-size:13px;color:var(--dim);min-height:1.6em}
+.submit p.err{color:var(--p1)}
+.submit p.ok{color:var(--acid)}
+.btn{border:0;border-radius:999px;background:var(--acid);color:var(--acid-ink);font-weight:700;padding:13px 24px;font-size:15px;display:inline-flex;gap:8px;align-items:center}
+.btn:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line-2)}
+.btn.small{padding:8px 14px;font-size:13px}
+.btn.danger{background:transparent;color:var(--p1);border:1px solid color-mix(in srgb, var(--p1) 50%, transparent)}
+
+/* 목록 */
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.bar .chip{padding:6px 12px;font-size:13px}
+.bar .sp{flex:1}
+.bar select{background:var(--bg);border:1px solid var(--line-2);border-radius:999px;padding:6px 12px;font-size:13px}
+.search{width:100%;margin-bottom:12px}
+.list{display:grid;gap:8px}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--card);text-align:left;width:100%;transition:border-color .15s}
+.item:hover{border-color:var(--line-2)}
+.badge{font-family:var(--f-mono);font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;border:1px solid var(--line-2);color:var(--dim);white-space:nowrap;--c:var(--dim)}
+.badge.pri{color:var(--c);border-color:color-mix(in srgb, var(--c) 45%, transparent);background:color-mix(in srgb, var(--c) 10%, transparent)}
+.badge.p1{--c:var(--p1)} .badge.p2{--c:var(--p2)} .badge.p3{--c:var(--p3)} .badge.p4{--c:var(--p4)}
+.badge.idea{color:var(--acid);border-color:color-mix(in srgb, var(--acid) 40%, transparent)}
+.item .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .m{font-size:12px;color:var(--mute);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
+.item .m .cam::before{content:"▣ "}
+.item .r{display:grid;justify-items:end;gap:4px}
+.st{font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--bg-2);border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.st.check{color:#9ad1ff;border-color:#2b4a63} .st.doing{color:var(--p3);border-color:#5a4f22} .st.done{color:var(--acid-ink);background:var(--acid);border-color:var(--acid)} .st.hold{color:var(--mute)}
+.me{font-family:var(--f-mono);font-size:11px;color:var(--dim)}
+.empty{padding:40px 16px;text-align:center;color:var(--mute);border:1px dashed var(--line);border-radius:12px}
+.more{margin-top:12px;width:100%}
+
+/* 자세히 */
+dialog{border:1px solid var(--line-2);border-radius:18px;background:var(--bg-2);color:var(--ink);padding:0;width:min(680px, calc(100vw - 24px));max-height:calc(100dvh - 32px)}
+dialog::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
+.dl{display:grid;gap:18px;padding:22px}
+.dl-head{display:grid;gap:10px;padding-right:40px}
+.dl-head .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dl-head h3{margin:0;font-size:22px;line-height:1.35;word-break:keep-all;overflow-wrap:anywhere}
+.dl-head .m{font-size:12.5px;color:var(--mute)}
+.x{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line-2);background:var(--bg);font-size:16px;z-index:2}
+.fld{display:grid;gap:4px}
+.fld .k{font-family:var(--f-mono);font-size:11px;color:var(--acid);letter-spacing:.14em}
+.fld .v{white-space:pre-wrap;overflow-wrap:anywhere}
+.gal{display:grid;grid-template-columns:repeat(auto-fill, minmax(110px, 1fr));gap:8px}
+.gal button{padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;aspect-ratio:1;background:var(--bg)}
+.gal img{width:100%;height:100%;object-fit:cover;display:block}
+.gal .ld{display:grid;place-items:center;color:var(--mute);font-size:12px}
+.reply{border-left:3px solid var(--acid);padding:10px 14px;background:var(--bg);border-radius:0 10px 10px 0}
+.reply .k{font-family:var(--f-mono);font-size:11px;color:var(--acid);letter-spacing:.14em}
+.reply p{margin:4px 0 0;white-space:pre-wrap}
+.dl-foot{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:16px}
+.admin-box{display:grid;gap:10px;border:1px solid #3a3a1a;border-radius:12px;padding:14px;background:rgba(215,255,58,.03)}
+.admin-box .k{font-family:var(--f-mono);font-size:11px;color:var(--acid);letter-spacing:.14em}
+.view{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:50;display:grid;place-items:center;padding:16px;cursor:zoom-out}
+.view img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+
+footer{margin-top:56px;padding-block:24px 40px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute)}
+footer button{background:none;border:0;color:var(--mute);padding:0;text-decoration:underline;text-underline-offset:3px;font-size:12px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;z-index:60;max-width:calc(100vw - 32px)}
+
+@media (max-width:620px){
+  .brand small{display:none}
+  .top nav a{padding:5px 9px;font-size:11px}
+  .pris{grid-template-columns:1fr 1fr}
+  .thumbs{grid-template-columns:repeat(3, 1fr)}
+  .dl{padding:18px}
+  .kind{padding:14px}
+  .kind b{font-size:17px}
+  form.sheet{padding:16px}
+  .item{grid-template-columns:1fr auto;gap:10px}
+  .item > .badge{grid-column:1 / -1;justify-self:start}
+  .who{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./"><b>오투모집</b><small>OTUMO.JIP</small></a>
+    <nav><a href="#write">제보하기</a><a href="#board">목록</a><a href="../">게임으로</a></nav>
+  </header>
+
+  <section class="hero">
+    <div class="tag">// BUG REPORT &amp; WISHLIST</div>
+    <h1>오투모<span>집</span></h1>
+    <p>섬에서 이상한 걸 봤거나, 하고 싶은 게임·이벤트가 있다면 여기에 남겨 주세요. 익명으로 써도 되고, 닉네임을 적어도 돼요. 오투모가 하나하나 읽어요.</p>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="blk" id="write">
+    <div class="blk-head"><h2><i>01</i> / 무엇을 남길까요</h2></div>
+    <div class="kinds" role="group" aria-label="종류">
+      <button type="button" class="kind" data-k="bug" aria-pressed="true"><span class="mono">BUG</span><b>오류 제보</b><span>버그, 깨진 화면, 이상한 동작</span></button>
+      <button type="button" class="kind" data-k="idea" aria-pressed="false"><span class="mono">IDEA</span><b>건의하기</b><span>하고 싶은 게임 · 이벤트 · 의견</span></button>
+    </div>
+
+    <form class="sheet" id="form" novalidate>
+      <!-- 오류 -->
+      <div class="f" data-for="bug">
+        <div class="lbl">우선순위 <span class="req">REQUIRED</span> <em>얼마나 급한지 골라 주세요</em></div>
+        <div class="pris" role="group" aria-label="우선순위">
+          <button type="button" class="pri" data-p="p1" aria-pressed="false"><b>P1</b><strong>치명적</strong><span>게임을 못 해요 · 접속 불가 · 진행 막힘 · 데이터 날아감</span></button>
+          <button type="button" class="pri" data-p="p2" aria-pressed="false"><b>P2</b><strong>높음</strong><span>중요한 기능이 고장 났어요</span></button>
+          <button type="button" class="pri" data-p="p3" aria-pressed="false"><b>P3</b><strong>보통</strong><span>불편하지만 다른 방법으로 할 수 있어요</span></button>
+          <button type="button" class="pri" data-p="p4" aria-pressed="false"><b>P4</b><strong>낮음</strong><span>사소해요 · 오타 · 살짝 어긋남</span></button>
+        </div>
+      </div>
+      <!-- 건의 -->
+      <div class="f" data-for="idea" hidden>
+        <div class="lbl">종류 <span class="req">REQUIRED</span></div>
+        <div class="chips" role="group" aria-label="건의 종류" id="cats">
+          <button type="button" class="chip" data-c="game" aria-pressed="false">🎮 하고 싶은 게임</button>
+          <button type="button" class="chip" data-c="event" aria-pressed="false">🎉 하고 싶은 이벤트</button>
+          <button type="button" class="chip" data-c="opinion" aria-pressed="false">💬 의견이 있어요</button>
+          <button type="button" class="chip" data-c="etc" aria-pressed="false">✦ 기타</button>
+        </div>
+      </div>
+
+      <div class="f">
+        <label for="t">제목 <span class="req">REQUIRED</span></label>
+        <input type="text" id="t" maxlength="60" placeholder="한 줄로 요약해 주세요" autocomplete="off">
+      </div>
+
+      <div class="f" data-for="bug">
+        <label for="when">언제 <em>예) 오늘 밤 10시쯤 · 접속할 때마다</em></label>
+        <input type="text" id="when" maxlength="200" autocomplete="off" placeholder="언제 일어났나요?">
+      </div>
+      <div class="f" data-for="bug">
+        <label for="where">어떤 상황에서 <span class="req">REQUIRED</span> <em>어디서 무엇을 하다가</em></label>
+        <textarea id="where" maxlength="1000" placeholder="예) 바닷가에서 낚시하다가 가방을 열었을 때"></textarea>
+        <span class="count" data-c="where"></span>
+      </div>
+      <div class="f" data-for="bug">
+        <label for="what">어떻게 보이나요 <span class="req">REQUIRED</span> <em>무엇이 이상했는지</em></label>
+        <textarea id="what" maxlength="2000" placeholder="예) 물고기 그림이 안 보이고 빈 칸만 떠요. 새로고침해도 그대로예요."></textarea>
+        <span class="count" data-c="what"></span>
+      </div>
+
+      <div class="f" data-for="idea" hidden>
+        <label for="body">내용 <span class="req">REQUIRED</span></label>
+        <textarea id="body" maxlength="2000" rows="6" placeholder="자유롭게 적어 주세요. 어떤 게임/이벤트면 좋겠는지, 왜 좋을지까지 적어 주면 더 좋아요."></textarea>
+        <span class="count" data-c="body"></span>
+      </div>
+
+      <div class="f">
+        <div class="lbl">사진 <em>최대 5장 · 캡처를 붙여넣기(Ctrl+V)해도 돼요</em></div>
+        <div class="drop" id="drop">
+          <div class="thumbs" id="thumbs"></div>
+          <p>사진은 올리기 전에 알아서 줄여요. 개인 정보가 보이는 부분은 가려 주세요.</p>
+        </div>
+        <input type="file" id="file" accept="image/*" multiple hidden>
+      </div>
+
+      <div class="f">
+        <div class="lbl">작성자</div>
+        <div class="who">
+          <div class="seg" role="group" aria-label="작성자 표시">
+            <button type="button" data-w="anon" aria-pressed="true">익명</button>
+            <button type="button" data-w="nick" aria-pressed="false">닉네임</button>
+          </div>
+          <input type="text" id="name" maxlength="12" placeholder="닉네임 (12자까지)" autocomplete="nickname" hidden>
+        </div>
+      </div>
+
+      <div class="submit">
+        <p id="msg" role="status"></p>
+        <button class="btn" id="send" type="submit">보내기 →</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="blk" id="board">
+    <div class="blk-head"><h2><i>02</i> / 들어온 이야기</h2><span class="mono" style="font-size:11px;color:var(--mute)" id="live">LOADING</span></div>
+    <div class="bar" id="filters">
+      <button type="button" class="chip" data-f="all" aria-pressed="true">전체</button>
+      <button type="button" class="chip" data-f="bug" aria-pressed="false">오류</button>
+      <button type="button" class="chip" data-f="idea" aria-pressed="false">건의</button>
+      <span class="sp"></span>
+      <select id="stf" aria-label="처리 상태">
+        <option value="">모든 상태</option>
+        <option value="new">접수됨</option><option value="check">확인 중</option><option value="doing">진행 중</option><option value="done">완료</option><option value="hold">보류</option>
+      </select>
+      <select id="sort" aria-label="정렬">
+        <option value="new">최신순</option><option value="me">공감순</option><option value="pri">우선순위순</option>
+      </select>
+    </div>
+    <input type="text" class="search" id="q" placeholder="검색 — 제목 · 내용 · 닉네임" autocomplete="off">
+    <div class="list" id="list"><div class="empty">불러오는 중…</div></div>
+    <button class="btn ghost more" id="more" type="button" hidden>더 보기</button>
+  </section>
+
+  <footer>
+    <span>오투모집 · 핑키 디저트 아일랜드 제보함</span>
+    <span id="adm"><button type="button" id="admBtn">관리자</button></span>
+  </footer>
+</div>
+
+<dialog id="dlg"></dialog>
+<dialog id="admDlg">
+  <form class="dl" id="admForm" method="dialog">
+    <div class="dl-head"><h3>관리자</h3><div class="m">관리자 코드를 넣으면 처리 상태를 바꾸고 답글을 달 수 있어요.</div></div>
+    <input type="password" id="acode" placeholder="관리자 코드" autocomplete="off">
+    <p id="aerr" style="margin:0;color:var(--p1);font-size:13px;min-height:1.4em"></p>
+    <div class="dl-foot"><button class="btn ghost small" type="button" id="acancel">닫기</button><button class="btn small" type="submit" id="ago">들어가기</button></div>
+  </form>
+</dialog>
+
+<script type="module">
+import { firebaseConfig } from '../firebase-config.js';
+
+const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const ADMIN_EMAIL = 'pinky-admin@pinkyisland.app';
+const MAX_IMG = 5, PAGE = 30;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch(e){} },
+};
+
+const PRI = {p1:'치명적', p2:'높음', p3:'보통', p4:'낮음'};
+const CAT = {game:'하고 싶은 게임', event:'하고 싶은 이벤트', opinion:'의견', etc:'기타'};
+const ST = {new:'접수됨', check:'확인 중', doing:'진행 중', done:'완료', hold:'보류'};
+
+// ===== 상태 =====
+const draft = { k:'bug', pri:'', cat:'', who:'anon', imgs:[] };
+let F = null, db = null, auth = null, isAdmin = false;
+let posts = [], shown = PAGE, filt = 'all';
+
+function toast(t){
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = t;
+  document.body.append(el); setTimeout(() => el.remove(), 2400);
+}
+
+// ===== 폼: 종류 · 우선순위 · 작성자 =====
+function press(group, btn){ group.querySelectorAll('[aria-pressed]').forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false')); }
+document.querySelectorAll('.kind').forEach(b => b.onclick = () => {
+  draft.k = b.dataset.k; press(b.parentElement, b);
+  document.querySelectorAll('[data-for]').forEach(el => el.hidden = el.dataset.for !== draft.k);
+  $('t').placeholder = draft.k === 'bug' ? '예) 가방을 열면 물고기 그림이 안 보여요' : '예) 보물찾기 이벤트 해 주세요';
+  $('msg').textContent = ''; $('msg').className = '';
+});
+document.querySelectorAll('.pri').forEach(b => b.onclick = () => { draft.pri = b.dataset.p; press(b.parentElement, b); });
+document.querySelectorAll('#cats .chip').forEach(b => b.onclick = () => { draft.cat = b.dataset.c; press(b.parentElement, b); });
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+  draft.who = b.dataset.w; press(b.parentElement, b);
+  $('name').hidden = draft.who !== 'nick';
+  if (draft.who === 'nick'){ if (!$('name').value) $('name').value = store.get('otumo-name') || ''; $('name').focus(); }
+});
+for (const id of ['where','what','body']){
+  const ta = $(id), c = document.querySelector(`.count[data-c=${id}]`);
+  const up = () => c.textContent = `${ta.value.length} / ${ta.maxLength}`;
+  ta.addEventListener('input', up); up();
+}
+
+// ===== 사진: 고르기 · 끌어 놓기 · 붙여넣기 → 줄여서 JPEG로 =====
+function renderThumbs(){
+  const box = $('thumbs');
+  box.innerHTML = draft.imgs.map((src, i) => `<div class="thumb"><img src="${src}" alt="첨부 ${i+1}"><button type="button" data-i="${i}" aria-label="사진 ${i+1} 빼기">×</button></div>`).join('')
+    + (draft.imgs.length < MAX_IMG ? `<button type="button" class="addimg" id="addimg"><span><b>+</b>${draft.imgs.length} / ${MAX_IMG}</span></button>` : '');
+  box.querySelectorAll('.thumb button').forEach(b => b.onclick = () => { draft.imgs.splice(+b.dataset.i, 1); renderThumbs(); });
+  const add = $('addimg'); if (add) add.onclick = () => $('file').click();
+}
+function loadImage(file){
+  return new Promise((ok, no) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => { URL.revokeObjectURL(url); ok(im); };
+    im.onerror = () => { URL.revokeObjectURL(url); no(new Error('img')); };
+    im.src = url;
+  });
+}
+async function shrink(file){
+  const im = await loadImage(file);
+  let side = 1280, q = 0.78, out = '';
+  for (let tries = 0; tries < 6; tries++){
+    const s = Math.min(1, side / Math.max(im.naturalWidth, im.naturalHeight));
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(im.naturalWidth * s)); cv.height = Math.max(1, Math.round(im.naturalHeight * s));
+    const g = cv.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(im, 0, 0, cv.width, cv.height);
+    out = cv.toDataURL('image/jpeg', q);
+    if (out.length <= 380000) return out;
+    side = Math.round(side * 0.8); q = Math.max(0.5, q - 0.08);
+  }
+  return out.length <= 590000 ? out : null;
+}
+async function addFiles(files){
+  const list = [...files].filter(f => f.type.startsWith('image/'));
+  if (!list.length) return;
+  const room = MAX_IMG - draft.imgs.length;
+  if (room <= 0) return toast(`사진은 ${MAX_IMG}장까지예요`);
+  if (list.length > room) toast(`사진은 ${MAX_IMG}장까지라 ${room}장만 넣었어요`);
+  for (const f of list.slice(0, room)){
+    try { const d = await shrink(f); if (d) draft.imgs.push(d); else toast('사진이 너무 커서 못 넣었어요'); }
+    catch(e){ toast('이 사진은 열 수 없어요'); }
+    renderThumbs();
+  }
+}
+$('file').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
+const drop = $('drop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
+document.addEventListener('paste', e => {
+  const files = [...(e.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+  if (files.length){ e.preventDefault(); addFiles(files); }
+});
+renderThumbs();
+
+// ===== 보내기 =====
+function fail(t){ const m = $('msg'); m.textContent = t; m.className = 'err'; return false; }
+$('form').onsubmit = async e => {
+  e.preventDefault();
+  if (!db) return fail('아직 연결 중이에요. 잠시 뒤 다시 눌러 주세요.');
+  const v = id => $(id).value.trim();
+  const post = { k: draft.k, t: v('t'), n: draft.imgs.length, at: F.serverTimestamp() };
+  if (draft.k === 'bug'){
+    if (!draft.pri) return fail('우선순위(P1~P4)를 골라 주세요.');
+    post.pri = draft.pri;
+    if (v('when')) post.when = v('when');
+    post.where = v('where'); post.what = v('what');
+    if (!post.where) return fail('어떤 상황에서 일어났는지 적어 주세요.');
+    if (!post.what) return fail('어떻게 보이는지 적어 주세요.');
+  } else {
+    if (!draft.cat) return fail('건의 종류를 골라 주세요.');
+    post.cat = draft.cat; post.body = v('body');
+    if (!post.body) return fail('내용을 적어 주세요.');
+  }
+  if (!post.t) return fail('제목을 적어 주세요.');
+  if (draft.who === 'nick'){
+    const nm = v('name');
+    if (!nm) return fail('닉네임을 적거나 익명을 골라 주세요.');
+    post.name = nm; store.set('otumo-name', nm);
+  }
+  const btn = $('send'); btn.disabled = true;
+  const m = $('msg'); m.className = ''; m.textContent = '보내는 중…';
+  try {
+    const r = F.push(F.ref(db, 'feedback'));
+    await F.set(r, post);
+    for (let i = 0; i < draft.imgs.length; i++){
+      m.textContent = `사진 올리는 중… ${i+1} / ${draft.imgs.length}`;
+      await F.set(F.ref(db, `feedbackImg/${r.key}/${i}`), draft.imgs[i]);
+    }
+    store.set('otumo-mine-' + r.key, '1');
+    $('form').reset(); draft.pri = ''; draft.cat = ''; draft.imgs = [];
+    document.querySelectorAll('.pri, #cats .chip').forEach(b => b.setAttribute('aria-pressed', 'false'));
+    $('name').hidden = draft.who !== 'nick';
+    if (draft.who === 'nick') $('name').value = store.get('otumo-name') || '';
+    document.querySelectorAll('textarea').forEach(t => t.dispatchEvent(new Event('input')));
+    renderThumbs();
+    m.className = 'ok'; m.textContent = '잘 받았어요! 오투모가 꼭 읽을게요 ✦';
+    toast('제보 완료');
+  } catch(ex){
+    console.error(ex);
+    fail('보내지 못했어요. 인터넷을 확인하고 다시 눌러 주세요.');
+  } finally { btn.disabled = false; }
+};
+
+// ===== 목록 =====
+const ago = t => {
+  if (!t) return '';
+  const s = (Date.now() - t) / 1000;
+  if (s < 60) return '방금';
+  if (s < 3600) return `${Math.floor(s/60)}분 전`;
+  if (s < 86400) return `${Math.floor(s/3600)}시간 전`;
+  if (s < 86400 * 7) return `${Math.floor(s/86400)}일 전`;
+  const d = new Date(t); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+};
+const kindBadge = p => p.k === 'bug'
+  ? `<span class="badge pri ${esc(p.pri)}">${esc((p.pri||'').toUpperCase())} ${esc(PRI[p.pri]||'')}</span>`
+  : `<span class="badge idea">${esc(CAT[p.cat] || '건의')}</span>`;
+const stBadge = p => { const s = p.st || 'new'; return `<span class="st ${s}">${ST[s]}</span>`; };
+
+function renderStats(){
+  const bugs = posts.filter(p => p.k === 'bug'), open = bugs.filter(p => p.st !== 'done');
+  const cards = [
+    [posts.length, '전체'],
+    [open.filter(p => p.pri === 'p1' || p.pri === 'p2').length, '급한 오류 (P1·P2)'],
+    [posts.filter(p => p.k === 'idea').length, '건의'],
+    [posts.filter(p => p.st === 'done').length, '완료'],
+  ];
+  $('stats').innerHTML = cards.map(([n, l]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('');
+}
+function renderList(){
+  const q = $('q').value.trim().toLowerCase(), stf = $('stf').value, sort = $('sort').value;
+  let L = posts.filter(p => (filt === 'all' || p.k === filt) && (!stf || (p.st || 'new') === stf));
+  if (q) L = L.filter(p => [p.t, p.where, p.what, p.when, p.body, p.name].some(x => x && x.toLowerCase().includes(q)));
+  const pr = p => p.k === 'bug' ? +p.pri.slice(1) : 9;
+  L.sort((a, b) => sort === 'me' ? (b.me||0) - (a.me||0) || b.at - a.at
+                 : sort === 'pri' ? pr(a) - pr(b) || b.at - a.at
+                 : b.at - a.at);
+  const box = $('list');
+  if (!L.length){ box.innerHTML = `<div class="empty">${posts.length ? '조건에 맞는 글이 없어요' : '아직 아무도 안 남겼어요. 첫 번째가 되어 주세요!'}</div>`; $('more').hidden = true; return; }
+  box.innerHTML = L.slice(0, shown).map(p => `
+    <button type="button" class="item" data-id="${esc(p.id)}">
+      ${kindBadge(p)}
+      <div style="min-width:0"><div class="t">${esc(p.t)}</div>
+        <div class="m"><span>${p.name ? esc(p.name) : '익명'}</span><span>${ago(p.at)}</span>${p.n ? `<span class="cam">${p.n}</span>` : ''}${p.re ? '<span>💬 답글</span>' : ''}</div></div>
+      <div class="r">${stBadge(p)}${p.me ? `<span class="me">+${p.me}</span>` : ''}</div>
+    </button>`).join('');
+  box.querySelectorAll('.item').forEach(b => b.onclick = () => openPost(b.dataset.id));
+  $('more').hidden = L.length <= shown;
+}
+document.querySelectorAll('#filters .chip').forEach(b => b.onclick = () => { filt = b.dataset.f; press(b.parentElement, b); shown = PAGE; renderList(); });
+$('stf').onchange = $('sort').onchange = () => { shown = PAGE; renderList(); };
+$('q').oninput = () => { shown = PAGE; renderList(); };
+$('more').onclick = () => { shown += PAGE; renderList(); };
+setInterval(() => posts.length && renderList(), 60000);
+
+// ===== 자세히 보기 =====
+const dlg = $('dlg');
+let openId = null;
+function fld(k, v){ return v ? `<div class="fld"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>` : ''; }
+function openPost(id){
+  const p = posts.find(x => x.id === id); if (!p) return;
+  openId = id;
+  const meKey = 'otumo-me-' + id, did = !!store.get(meKey);
+  dlg.innerHTML = `<button class="x" type="button" aria-label="닫기" id="dx">✕</button>
+  <div class="dl">
+    <div class="dl-head">
+      <div class="row">${kindBadge(p)}${stBadge(p)}</div>
+      <h3>${esc(p.t)}</h3>
+      <div class="m">${p.name ? esc(p.name) : '익명'} · ${ago(p.at)}</div>
+    </div>
+    ${p.k === 'bug' ? fld('WHEN · 언제', p.when) + fld('SITUATION · 어떤 상황에서', p.where) + fld('SYMPTOM · 어떻게 보이나요', p.what) : fld('CONTENT · 내용', p.body)}
+    ${p.n ? `<div class="fld"><div class="k">PHOTOS · ${p.n}</div><div class="gal" id="gal">${Array.from({length:p.n}, () => '<div class="ld" style="aspect-ratio:1;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;color:var(--mute)">…</div>').join('')}</div></div>` : ''}
+    ${p.re ? `<div class="reply"><div class="k">OTUMO · 오투모의 답${p.reAt ? ' · ' + ago(p.reAt) : ''}</div><p>${esc(p.re)}</p></div>` : ''}
+    ${isAdmin ? `<div class="admin-box"><div class="k">ADMIN</div>
+      <div class="chips" id="stPick">${Object.entries(ST).map(([k, l]) => `<button type="button" class="chip" data-s="${k}" aria-pressed="${(p.st||'new') === k}">${l}</button>`).join('')}</div>
+      <textarea id="reTxt" maxlength="1000" placeholder="답글 (비우면 답글 없음)">${esc(p.re || '')}</textarea>
+      <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button class="btn danger small" type="button" id="del">삭제</button><button class="btn small" type="button" id="reSave">답글 저장</button></div>
+    </div>` : ''}
+    <div class="dl-foot">
+      <button class="btn ${did ? 'ghost' : ''} small" type="button" id="meBtn" ${did ? 'disabled' : ''}>${p.k === 'bug' ? '나도 겪었어요' : '나도 원해요'} +${p.me || 0}</button>
+      <button class="btn ghost small" type="button" id="dclose">닫기</button>
+    </div>
+  </div>`;
+  $('dx').onclick = $('dclose').onclick = () => dlg.close();
+  $('meBtn').onclick = async () => {
+    $('meBtn').disabled = true;
+    try { await F.runTransaction(F.ref(db, `feedback/${id}/me`), v => (v || 0) + 1); store.set(meKey, '1'); $('meBtn').textContent = $('meBtn').textContent.replace(/\+\d+$/, '+' + ((p.me || 0) + 1)); $('meBtn').classList.add('ghost'); toast('공감했어요'); }
+    catch(e){ $('meBtn').disabled = false; toast('실패했어요. 다시 눌러 주세요'); }
+  };
+  if (isAdmin){
+    dlg.querySelectorAll('#stPick .chip').forEach(b => b.onclick = async () => {
+      try { await F.update(F.ref(db, `feedback/${id}`), {st: b.dataset.s}); press(b.parentElement, b); toast(`상태: ${ST[b.dataset.s]}`); }
+      catch(e){ toast('바꾸지 못했어요'); }
+    });
+    $('reSave').onclick = async () => {
+      const t = $('reTxt').value.trim();
+      try { await F.update(F.ref(db, `feedback/${id}`), t ? {re: t, reAt: F.serverTimestamp()} : {re: null, reAt: null}); toast('답글 저장'); openPost(id); }
+      catch(e){ toast('저장하지 못했어요'); }
+    };
+    $('del').onclick = async () => {
+      if (!confirm('이 글을 지울까요? 되돌릴 수 없어요.')) return;
+      try { await F.update(F.ref(db), {[`feedback/${id}`]: null, [`feedbackImg/${id}`]: null}); dlg.close(); toast('지웠어요'); }
+      catch(e){ toast('지우지 못했어요'); }
+    };
+  }
+  if (!dlg.open) dlg.showModal();
+  if (p.n) loadImgs(id, p.n);
+}
+async function loadImgs(id, n){
+  try {
+    const snap = await F.get(F.ref(db, `feedbackImg/${id}`));
+    if (openId !== id || !$('gal')) return;
+    const v = snap.val() || {};
+    const srcs = Array.from({length:n}, (_, i) => v[i]).filter(s => typeof s === 'string' && s.startsWith('data:image/'));
+    $('gal').innerHTML = srcs.length ? srcs.map((s, i) => `<button type="button" data-i="${i}" aria-label="사진 ${i+1} 크게 보기"><img src="${s}" alt="첨부 사진 ${i+1}"></button>`).join('') : '<span style="color:var(--mute);font-size:13px">사진을 아직 올리는 중이거나 없어요</span>';
+    $('gal').querySelectorAll('button').forEach(b => b.onclick = () => {
+      const view = document.createElement('div'); view.className = 'view';
+      view.innerHTML = `<img src="${srcs[+b.dataset.i]}" alt="">`;
+      view.onclick = () => view.remove();
+      dlg.append(view);
+    });
+  } catch(e){ if ($('gal')) $('gal').innerHTML = '<span style="color:var(--mute);font-size:13px">사진을 불러오지 못했어요</span>'; }
+}
+dlg.addEventListener('close', () => { openId = null; });
+dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+
+// ===== 관리자 =====
+const admDlg = $('admDlg');
+$('acancel').onclick = () => admDlg.close();
+function renderAdm(){
+  $('adm').innerHTML = isAdmin ? '관리자 모드 · <button type="button" id="aout">나가기</button>' : '<button type="button" id="admBtn">관리자</button>';
+  if (isAdmin) $('aout').onclick = () => F.signOut(auth);
+  else $('admBtn').onclick = () => { $('aerr').textContent = ''; $('acode').value = ''; admDlg.showModal(); };
+}
+$('admForm').onsubmit = async e => {
+  e.preventDefault();
+  const code = $('acode').value.trim();
+  if (code.length < 6) return $('aerr').textContent = '관리자 코드가 맞지 않아요.';
+  $('ago').disabled = true; $('aerr').textContent = '확인하는 중…';
+  try { await F.signInWithEmailAndPassword(auth, ADMIN_EMAIL, code); admDlg.close(); toast('관리자 모드'); }
+  catch(ex){ $('aerr').textContent = ex.code === 'auth/too-many-requests' ? '너무 여러 번 시도했어요. 잠시 뒤 다시 해 주세요.' : '관리자 코드가 맞지 않아요.'; }
+  finally { $('ago').disabled = false; }
+};
+
+// ===== 연결 =====
+(async () => {
+  renderAdm();
+  try {
+    const mods = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-database.js'].map(f => import(FB + f)));
+    F = Object.assign({}, ...mods);
+  } catch(e){ $('list').innerHTML = '<div class="empty">불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.</div>'; $('live').textContent = 'OFFLINE'; return; }
+  // 게임 로그인과 섞이지 않게 따로 이름 붙인 앱을 써요 (여기서 관리자로 들어가도 게임 쪽 로그인은 그대로)
+  const app = F.initializeApp(firebaseConfig, 'otumo');
+  db = F.getDatabase(app); auth = F.getAuth(app);
+  F.onAuthStateChanged(auth, u => {
+    isAdmin = !!u && u.email === ADMIN_EMAIL; renderAdm();
+    if (openId && dlg.open) openPost(openId);
+  });
+  F.onValue(F.query(F.ref(db, 'feedback'), F.limitToLast(500)), snap => {
+    const v = snap.val() || {};
+    posts = Object.entries(v).map(([id, p]) => ({id, ...p, at: typeof p.at === 'number' ? p.at : Date.now()}));
+    $('live').textContent = '● LIVE';
+    renderStats(); renderList();
+  }, err => {
+    console.error(err);
+    $('list').innerHTML = '<div class="empty">목록을 불러오지 못했어요.</div>'; $('live').textContent = 'ERROR';
+  });
+})();
+</script>
+</body>
+</html>
