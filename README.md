@@ -6,7 +6,7 @@
 - 주민 대사·스토리: `public/npcs.js` (대사를 고치거나 늘릴 때는 이 파일만 고치면 돼요)
 - 저장과 실시간 접속: Firebase Realtime Database
 - 로그인: 아이디(영어 3~16자) + 비밀번호(5자 이상). Firebase 이메일/비밀번호 인증을 아이디 형태로 감싸요 (`아이디@pinkyisland.app`, 비밀번호 뒤에 고정 꼬리표를 붙여 6자 규칙을 맞춤)
-- 배포: `main` 브랜치에 푸시하면 GitHub Actions가 Firebase Hosting에 올려요
+- 배포: `main` 브랜치에 푸시하면 GitHub Actions가 Firebase Hosting에 올려요 (게임 `pinkyisland.web.app` + 제보함 `otumojip.web.app`)
 
 ## 처음 한 번만 하는 설정
 
@@ -52,7 +52,11 @@ npx firebase-tools emulators:start --only hosting
 또는 `public` 폴더를 아무 정적 서버로 열어도 돼요. `firebase-config.js`를 채우기 전에는 **혼자 보기 모드**로 실행돼요.
 
 ## 오투모집 (오류 제보 · 건의함)
-`https://<프로젝트ID>.web.app/otumo/` — 로그인 없이 누구나 글을 남길 수 있는 제보함이에요 (`public/otumo/index.html`).
+**https://otumojip.web.app** — 게임과 따로 떨어진 주소에 있는 제보함이에요. 로그인 없이 누구나 글을 남길 수 있어요 (`otumo-site/`).
+- 같은 Firebase 프로젝트 안의 두 번째 호스팅 사이트예요. 배포할 때 사이트가 없으면 알아서 만들어요 (`firebase-deploy.yml`)
+- 주소 이름을 바꾸려면 `.firebaserc`의 `otumojip`, `firebase.json`의 `/otumo` 넘겨주기 주소, 워크플로의 `otumojip` 세 곳을 같이 바꿔요
+- 예전 주소 `pinkyisland.web.app/otumo/`로 들어오면 새 주소로 넘겨줘요
+- `otumo-site/firebase-config.js`는 `public/firebase-config.js`와 같은 값이에요 (Firebase 설정이 바뀌면 둘 다 고쳐요)
 - **오류 제보**: 우선순위 P1(치명적)~P4(낮음) · 언제 · 어떤 상황에서 · 어떻게 보이나요 · 사진 5장까지
 - **건의하기**: 하고 싶은 게임 / 하고 싶은 이벤트 / 의견 / 기타
 - 익명 또는 닉네임으로 쓸 수 있고, 다른 사람 글에 "나도요 +1"을 누를 수 있어요
