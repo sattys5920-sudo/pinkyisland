@@ -193,13 +193,13 @@ footer button{background:none;border:0;color:var(--mute);padding:0;text-decorati
 <div class="wrap">
   <header class="top">
     <a class="brand" href="./">오투모집</a>
-    <nav><a href="#write">제보하기</a><a href="#board">목록</a><a href="https://pinkyisland.web.app/">게임으로</a></nav>
+    <nav><a href="#write">제보하기</a><a href="#board" id="navBoard" hidden>목록</a></nav>
   </header>
 
   <section class="intro">
     <h1>무엇이든 알려 주세요</h1>
-    <p>핑키 아일랜드에서 이상한 걸 봤거나 바라는 게 있으면 남겨 주세요. 익명으로 써도 돼요.</p>
-    <div class="stats" id="stats"></div>
+    <p>게임에서 이상한 걸 봤거나 바라는 게 있으면 남겨 주세요. 익명으로 써도 돼요.<br>남긴 글은 관리자만 읽어요.</p>
+    <div class="stats" id="stats" hidden></div>
   </section>
 
   <section class="blk" id="write">
@@ -283,7 +283,7 @@ footer button{background:none;border:0;color:var(--mute);padding:0;text-decorati
     </form>
   </section>
 
-  <section class="blk" id="board">
+  <section class="blk" id="board" hidden>
     <div class="blk-head"><h2>들어온 이야기</h2><span class="live" id="live">불러오는 중</span></div>
     <div class="bar" id="filters">
       <button type="button" class="chip" data-f="all" aria-pressed="true">전체</button>
@@ -461,7 +461,7 @@ $('form').onsubmit = async e => {
     if (draft.who === 'nick') $('name').value = store.get('otumo-name') || '';
     document.querySelectorAll('textarea').forEach(t => t.dispatchEvent(new Event('input')));
     renderThumbs();
-    m.className = 'ok'; m.textContent = '잘 받았어요! 오투모가 꼭 읽을게요.';
+    m.className = 'ok'; m.textContent = '잘 받았어요! 관리자가 꼭 읽을게요.';
     toast('보냈어요');
   } catch(ex){
     console.error(ex);
@@ -614,15 +614,23 @@ $('admForm').onsubmit = async e => {
   try {
     const mods = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-database.js'].map(f => import(FB + f)));
     F = Object.assign({}, ...mods);
-  } catch(e){ $('list').innerHTML = '<div class="empty">불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.</div>'; $('live').textContent = '연결 안 됨'; return; }
+  } catch(e){ $('msg').className = 'err'; $('msg').textContent = '연결하지 못했어요. 인터넷을 확인하고 새로고침해 주세요.'; return; }
   // 게임 로그인과 섞이지 않게 따로 이름 붙인 앱을 써요 (여기서 관리자로 들어가도 게임 쪽 로그인은 그대로)
   const app = F.initializeApp(firebaseConfig, 'otumo');
   db = F.getDatabase(app); auth = F.getAuth(app);
+  // 들어온 글은 관리자만 읽을 수 있어요 (database.rules.json). 관리자로 들어왔을 때만 목록을 불러와요.
+  let unsub = null;
   F.onAuthStateChanged(auth, u => {
     isAdmin = !!u && u.email === ADMIN_EMAIL; renderAdm();
+    $('board').hidden = $('navBoard').hidden = $('stats').hidden = !isAdmin;
+    if (isAdmin && !unsub) unsub = listen();
+    if (!isAdmin && unsub){ unsub(); unsub = null; posts = []; if (dlg.open) dlg.close(); $('list').innerHTML = ''; $('stats').innerHTML = ''; }
     if (openId && dlg.open) openPost(openId);
   });
-  F.onValue(F.query(F.ref(db, 'feedback'), F.limitToLast(500)), snap => {
+})();
+function listen(){
+  $('live').textContent = '불러오는 중';
+  return F.onValue(F.query(F.ref(db, 'feedback'), F.limitToLast(500)), snap => {
     const v = snap.val() || {};
     posts = Object.entries(v).map(([id, p]) => ({id, ...p, at: typeof p.at === 'number' ? p.at : Date.now()}));
     $('live').textContent = '실시간';
@@ -631,7 +639,7 @@ $('admForm').onsubmit = async e => {
     console.error(err);
     $('list').innerHTML = '<div class="empty">목록을 불러오지 못했어요.</div>'; $('live').textContent = '오류';
   });
-})();
+}
 </script>
 </body>
 </html>
