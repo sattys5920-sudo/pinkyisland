@@ -531,7 +531,7 @@
       }
     },
     "feedback": {
-      ".read": true,
+      ".read": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$id": {
         ".write": "!data.exists() && newData.exists()",
@@ -588,7 +588,7 @@
       }
     },
     "feedbackImg": {
-      ".read": true,
+      ".read": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       ".write": "auth != null && auth.token.email === 'pinky-admin@pinkyisland.app'",
       "$id": {
         "$n": {
