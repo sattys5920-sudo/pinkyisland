@@ -88,8 +88,8 @@ textarea{resize:vertical;min-height:92px;line-height:1.55}
 .pri b{font-size:13px;font-weight:700;color:var(--c);min-width:62px}
 .pri b small{font-weight:600;color:var(--ink);margin-left:6px;font-size:13px}
 .pri span{font-size:13px;color:var(--dim);line-height:1.4}
-.pri[aria-pressed="true"]{border-color:color-mix(in srgb, var(--c) 55%, var(--line-2));background:color-mix(in srgb, var(--c) 7%, var(--bg))}
-.pri[aria-pressed="true"]::before{border:5px solid var(--c)}
+.pri[aria-pressed="true"]{border-color:#55555a;background:var(--surface-2)}
+.pri[aria-pressed="true"]::before{border:5px solid var(--ink)}
 .pri[data-p=p1]{--c:var(--p1)} .pri[data-p=p2]{--c:var(--p2)} .pri[data-p=p3]{--c:var(--p3)} .pri[data-p=p4]{--c:var(--p4)}
 
 /* 사진 */
@@ -142,7 +142,7 @@ textarea{resize:vertical;min-height:92px;line-height:1.55}
 .badge.p1{--c:var(--p1)} .badge.p2{--c:var(--p2)} .badge.p3{--c:var(--p3)} .badge.p4{--c:var(--p4)}
 .badge.idea{color:var(--dim)}
 .st{font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line-2);color:var(--dim);white-space:nowrap}
-.st.check{color:#9fb7d4} .st.doing{color:var(--p3)} .st.done{color:var(--ok);border-color:color-mix(in srgb, var(--ok) 40%, transparent)} .st.hold{color:var(--mute)}
+.st.check{color:#9fb7d4} .st.doing{color:var(--ink)} .st.done{color:var(--ok);border-color:color-mix(in srgb, var(--ok) 40%, transparent)} .st.hold{color:var(--mute)}
 .me{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
 .empty{padding:36px 16px;text-align:center;color:var(--mute);font-size:14px}
 .more{margin-top:10px;width:100%}
