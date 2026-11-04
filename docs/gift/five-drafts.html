@@ -1,0 +1,312 @@
+<title>여섯 세계 선물 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Pen+Script&family=UnifrakturCook:wght@700&family=Black+Han+Sans&display=swap">
+<style>
+/* 레이아웃: 시안마다 한 줄 — 왼쪽은 폰 크기 실물 모형, 오른쪽은 설명. 바깥 틀은 조용하게, 모형 안은 각자의 세계 색 */
+:root{
+  --bg:#f3f1f5; --panel:#ffffff; --fg:#221d29; --dim:#6b6275; --line:#d9d3df; --accent:#8a3f6a; --chip:#ece6f0;
+  --f-display:"Gowun Batang","Nanum Myeongjo",serif;
+  --f-body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-hand:"Nanum Pen Script","Gowun Dodum",cursive;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#17141b; --panel:#201c26; --fg:#ece6f0; --dim:#a79db1; --line:#3a3342; --accent:#e59ac4; --chip:#2b2532; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17141b; --panel:#201c26; --fg:#ece6f0; --dim:#a79db1; --line:#3a3342; --accent:#e59ac4; --chip:#2b2532; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1040px;margin:0 auto;padding-block:40px 72px;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.3}
+p{margin:0}
+header.top{display:flex;flex-direction:column;gap:12px;max-width:44em}
+header.top h1{font-size:clamp(30px,6vw,44px)}
+header.top p{color:var(--dim)}
+.worlds{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.worlds span{font-size:13px;background:var(--chip);border-radius:999px;padding:2px 10px}
+
+section.draft{display:grid;grid-template-columns:340px 1fr;gap:36px;align-items:start;border-top:1px solid var(--line);padding-top:40px}
+@media (max-width:780px){section.draft{grid-template-columns:1fr}}
+.info{display:flex;flex-direction:column;gap:16px;min-width:0}
+.info .tag{font-size:13px;letter-spacing:.12em;color:var(--accent);font-weight:700}
+.info h2{font-size:28px}
+.info .pitch{font-size:17px}
+dl.facts{display:grid;grid-template-columns:7.5em 1fr;gap:8px 14px;margin:0;font-size:15px}
+dl.facts dt{color:var(--dim)}
+dl.facts dd{margin:0;min-width:0}
+.meter{display:inline-flex;gap:3px;vertical-align:middle}
+.meter i{width:12px;height:12px;border-radius:3px;background:var(--line)}
+.meter i.on{background:var(--accent)}
+.note{font-size:14px;color:var(--dim)}
+.example{font-size:12px;color:var(--dim);text-align:center;margin-top:8px}
+
+/* 공통 폰 모형 */
+.phone{width:100%;max-width:340px;margin:0 auto;aspect-ratio:9/16;border-radius:28px;overflow:hidden;position:relative;
+  box-shadow:0 0 0 8px #0d0b10, 0 18px 40px rgba(0,0,0,.25)}
+
+/* ① 이야기책 */
+.book{background:#1c1622;color:#efe4ea;font-family:var(--f-display);padding:28px 22px;display:flex;flex-direction:column;gap:14px}
+.book .for{font-family:var(--f-hand);font-size:24px;color:#f2a6c4}
+.book h3{font-size:26px;line-height:1.25}
+.book ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;font-size:14px}
+.book li{display:grid;grid-template-columns:2.2em 1fr;border-bottom:1px dashed #5a4560;padding-bottom:6px}
+.book li b{color:#f2a6c4;font-weight:400}
+.book li small{display:block;color:#b9a6bd;font-family:var(--f-body);font-size:12px}
+.book .award{margin-top:auto;border:1px solid #f2a6c4;border-radius:6px;padding:10px 12px;font-size:13px;text-align:center}
+.book .award strong{display:block;font-size:17px;color:#ffd38a}
+
+/* ② 여권 */
+.passport{background:#efe7d6;color:#2b2a3a;padding:22px 18px;display:flex;flex-direction:column;gap:12px;
+  background-image:repeating-linear-gradient(0deg,rgba(60,60,110,.06) 0 1px,transparent 1px 18px)}
+.passport .ph{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.14em;color:#55557a}
+.passport h3{font-size:20px;font-family:var(--f-body)}
+.stamps{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1}
+.stamp{border:2.5px solid currentColor;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:6px;font-family:"Black Han Sans",var(--f-body);font-size:15px;line-height:1.15;opacity:.88}
+.stamp small{font-family:var(--f-body);font-size:10.5px;margin-top:3px}
+.stamp:nth-child(1){color:#4d6b5c;transform:rotate(-6deg);border-style:dashed}
+.stamp:nth-child(2){color:#7a1e24;transform:rotate(4deg);border-radius:50%}
+.stamp:nth-child(3){color:#111;transform:rotate(-3deg)}
+.stamp:nth-child(4){color:#3c5f8f;transform:rotate(7deg);border-radius:50%}
+.stamp:nth-child(5){color:#c04d84;transform:rotate(-8deg)}
+.stamp:nth-child(6){color:#4a3a9a;transform:rotate(3deg);border-style:double;border-width:5px}
+.stamp:nth-child(3) .ink{color:#b0261c}
+
+/* ③ 저승 명부 */
+.ledger{background:#0f0d0c;color:#e8dfd2;font-family:var(--f-display);padding:26px 22px;display:flex;flex-direction:column;gap:12px;position:relative}
+.ledger .hd{font-size:12px;letter-spacing:.3em;color:#9d8f7c;text-align:center}
+.ledger h3{font-size:24px;text-align:center}
+.ledger table{width:100%;border-collapse:collapse;font-size:13px}
+.ledger td{border-bottom:1px solid #3a322a;padding:6px 2px;vertical-align:top}
+.ledger td:first-child{color:#9d8f7c;width:5.4em}
+.ledger .quote{font-size:14px;color:#cbbda9;line-height:1.6}
+.seal{position:absolute;right:20px;bottom:24px;width:96px;height:96px;border:3px solid #c0392b;color:#c0392b;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;text-align:center;font-family:"Black Han Sans",var(--f-body);font-size:17px;line-height:1.15;
+  transform:rotate(-12deg);background:rgba(192,57,43,.08)}
+
+/* ④ 엔딩 크레딧 */
+.credits{background:#000;color:#fff;font-family:var(--f-display);text-align:center}
+.roll{position:absolute;inset:0;padding:30px 18px;display:flex;flex-direction:column;gap:22px;animation:roll 26s linear infinite}
+.roll h4{margin:0;font-size:11px;letter-spacing:.32em;color:#9a9a9a;font-weight:400}
+.roll p{font-size:15px;line-height:1.55}
+.roll .t{font-size:24px}
+@keyframes roll{0%,8%{transform:translateY(0)}100%{transform:translateY(-62%)}}
+@media (prefers-reduced-motion:reduce){.roll{animation:none}}
+.credits::after{content:"";position:absolute;inset:0;background:linear-gradient(#000 0,transparent 14%,transparent 86%,#000 100%);pointer-events:none}
+
+/* ⑤ 카드 */
+.cards{background:radial-gradient(circle at 50% 20%,#3b2d55,#15111f 70%);padding:22px 16px;display:flex;flex-direction:column;gap:12px;color:#f1eaff}
+.cards .hd{text-align:center;font-family:var(--f-display);font-size:18px}
+.cards .hd small{display:block;font-family:var(--f-body);font-size:12px;color:#bdb0d8}
+.deck{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;flex:1}
+.card{perspective:600px;border:0;padding:0;background:none;cursor:pointer;font:inherit;color:inherit}
+.card .in{position:relative;width:100%;height:100%;min-height:118px;transition:transform .5s;transform-style:preserve-3d}
+.card.flip .in{transform:rotateY(180deg)}
+.card .f,.card .b{position:absolute;inset:0;border-radius:8px;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;text-align:center}
+.card .b{background:repeating-linear-gradient(45deg,#4a3878 0 6px,#3a2c62 6px 12px);border:2px solid #cdb6ff}
+.card .b::after{content:"?";font-family:var(--f-display);font-size:26px;color:#e6dbff}
+.card .f{transform:rotateY(180deg);font-size:12px;line-height:1.3;border:2px solid #fff}
+.card .f strong{font-family:var(--f-display);font-size:13.5px;margin-bottom:4px}
+.card:focus-visible{outline:2px dashed #fff;outline-offset:2px;border-radius:8px}
+.c1 .f{background:#c9d1cb;color:#24302a}.c2 .f{background:#efe4c8;color:#5a1418}.c3 .f{background:#141110;color:#e8dfd2}
+.c4 .f{background:#e8f0fa;color:#203a5f}.c5 .f{background:#ffd9e8;color:#7a2752}.c6 .f{background:#2a2470;color:#ffe9a8}
+.cards .tip{text-align:center;font-size:12px;color:#bdb0d8}
+
+/* 비교표 */
+.compare{border-top:1px solid var(--line);padding-top:40px;display:flex;flex-direction:column;gap:16px}
+.tbl{overflow-x:auto}
+table.cmp{border-collapse:collapse;width:100%;min-width:620px;font-size:15px}
+table.cmp th,table.cmp td{border-bottom:1px solid var(--line);padding:10px 8px;text-align:left;vertical-align:top}
+table.cmp th{color:var(--dim);font-weight:400;font-size:13px}
+table.cmp tr.pick td{background:var(--chip)}
+.rec{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:8px}
+.rec strong{color:var(--accent)}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>여섯 세계를 같이 걸은 사람들에게</h1>
+    <p>같이 플레이한 사람들에게 줄 선물 시안 다섯 가지예요. 왼쪽 화면은 폰에서 받았을 때의 모습이고, 이름과 기록은 모두 예시예요.</p>
+    <div class="worlds"><span>괴이</span><span>아르카눔 마법학교</span><span>저승 장부</span><span>투명인간</span><span>핑키 디저트 아일랜드</span><span>별빛 아카데미</span></div>
+  </header>
+
+  <!-- ① -->
+  <section class="draft">
+    <div>
+      <div class="phone book" aria-label="이야기책 시안 화면">
+        <div class="for">○○에게</div>
+        <h3>당신이 지나온<br>여섯 개의 세계</h3>
+        <ol>
+          <li><b>1장</b><span>괴이<small>안개 낀 학교에서 끝까지 남은 밤</small></span></li>
+          <li><b>2장</b><span>아르카눔 마법학교<small>잉크로 적힌 이름 하나</small></span></li>
+          <li><b>3장</b><span>저승 장부<small>장부에서 지워 준 이름들</small></span></li>
+          <li><b>4장</b><span>투명인간<small>그해 겨울, 나흘</small></span></li>
+          <li><b>5장</b><span>핑키 디저트 아일랜드<small>토마토 32개 · 요리 18번</small></span></li>
+          <li><b>6장</b><span>별빛 아카데미<small>물약 연구 41번</small></span></li>
+        </ol>
+        <div class="award">여섯 세계가 주는 상<strong>끝까지 불을 켜 둔 사람상</strong></div>
+      </div>
+      <p class="example">예시 화면</p>
+    </div>
+    <div class="info">
+      <span class="tag">시안 1 · 사람마다 한 권</span>
+      <h2>당신이 지나온 여섯 세계 (이야기책)</h2>
+      <p class="pitch">사람마다 자기 링크를 하나씩 받아요. 열면 책 한 권이 펼쳐지고, 장마다 그 게임에서의 내 캐릭터와 기록, 그 세계 주민이 남긴 짧은 편지가 나와요. 마지막 장에는 그 사람에게만 주는 상이 있어요.</p>
+      <dl class="facts">
+        <dt>받는 느낌</dt><dd>"나를 기억하고 만든 거구나"</dd>
+        <dt>필요한 것</dt><dd>게임별 닉네임 명단. 기록을 넣으려면 Firebase에서 JSON으로 내보낸 파일</dd>
+        <dt>만들기</dt><dd><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span> 사람 수만큼 내용이 달라서 손이 가장 많이 가요</dd>
+        <dt>주의</dt><dd>한두 게임만 한 사람은 책이 얇아요. 안 한 세계는 "아직 가 보지 않은 곳"으로 짧게 보여 주면 돼요</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ② -->
+  <section class="draft">
+    <div>
+      <div class="phone passport" aria-label="여권 시안 화면">
+        <div class="ph"><span>PASSPORT · 이계 여권</span><span>No. 07</span></div>
+        <h3>소지인: ○○</h3>
+        <div class="stamps">
+          <div class="stamp">괴이<small>입국 · 수학여행 전날</small></div>
+          <div class="stamp" style="font-family:'UnifrakturCook',serif">Arcanum<small>입학 허가</small></div>
+          <div class="stamp">저승<span class="ink">·</span>장부<small>명부 대조 완료</small></div>
+          <div class="stamp">투명인간<small>나흘 체류</small></div>
+          <div class="stamp">핑키 섬<small>입주 · 3번 집터</small></div>
+          <div class="stamp">별빛<br>아카데미<small>12기 졸업</small></div>
+        </div>
+      </div>
+      <p class="example">예시 화면</p>
+    </div>
+    <div class="info">
+      <span class="tag">시안 2 · 사람마다 한 장</span>
+      <h2>이계 여권 (도장 모음)</h2>
+      <p class="pitch">여섯 세계를 오간 여권이에요. 직접 들어가 본 세계마다 그 세계 모양의 입국 도장이 찍혀 있어요. 도장을 누르면 그 게임에서 있었던 일 한 줄과 날짜가 나와요.</p>
+      <dl class="facts">
+        <dt>받는 느낌</dt><dd>모으는 재미가 있고, 캡처해서 자랑하기 좋아요</dd>
+        <dt>필요한 것</dt><dd>누가 어느 게임을 했는지 명단만 있으면 돼요. 기록은 없어도 돼요</dd>
+        <dt>만들기</dt><dd><span class="meter"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span> 틀 하나에 도장 6개만 그리면 돼요</dd>
+        <dt>주의</dt><dd>내용이 가벼워서, 감동보다는 기념품에 가까워요</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ③ -->
+  <section class="draft">
+    <div>
+      <div class="phone ledger" aria-label="저승 명부 시안 화면">
+        <div class="hd">冥 府 · 명 부</div>
+        <h3>○○ 님의 장부</h3>
+        <table>
+          <tr><td>괴이</td><td>안개 속에서 한 번 길을 잃음</td></tr>
+          <tr><td>아르카눔</td><td>이름이 잉크로 적힘</td></tr>
+          <tr><td>투명인간</td><td>나흘 동안 사라지지 않음</td></tr>
+          <tr><td>핑키 섬</td><td>인형이 되지 않고 돌아옴</td></tr>
+          <tr><td>별빛</td><td>밤하늘에 이름이 남음</td></tr>
+        </table>
+        <p class="quote">"여섯 번이나 다른 세계에 다녀간 사람치고는<br>장부가 너무 깨끗하구려."</p>
+        <div class="seal">아직<br>올 때가<br>아님</div>
+      </div>
+      <p class="example">예시 화면</p>
+    </div>
+    <div class="info">
+      <span class="tag">시안 3 · 사람마다 한 장 · 이야기 있음</span>
+      <h2>저승 명부 (여섯 번째 세계가 들려주는 마무리)</h2>
+      <p class="pitch">저승 장부 게임의 저승사자가 화자가 돼요. 저승사자가 내 이름을 명부에서 찾아 다른 다섯 세계에서 있었던 일을 읽어 주고, 마지막에 "아직 올 때가 아님" 도장을 쾅 찍어 돌려보내요. 여섯 게임이 한 이야기로 묶이는 선물이에요.</p>
+      <dl class="facts">
+        <dt>받는 느낌</dt><dd>"이게 다 이어져 있었네?" 하는 마지막 이벤트</dd>
+        <dt>필요한 것</dt><dd>저승 장부 게임의 저승사자 이름과 말투, 그리고 명단</dd>
+        <dt>만들기</dt><dd><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span> 글이 핵심이라 연출은 짧아요</dd>
+        <dt>주의</dt><dd>저승 장부 게임 내용을 아직 못 봤어요. 저승사자 설정을 알려 주셔야 말투를 맞출 수 있어요</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ④ -->
+  <section class="draft">
+    <div>
+      <div class="phone credits" aria-label="엔딩 크레딧 시안 화면">
+        <div class="roll">
+          <p class="t">여섯 개의 세계</p>
+          <div><h4>괴이</h4><p>○○ · ○○ · ○○<br>○○ · ○○</p></div>
+          <div><h4>아르카눔 마법학교</h4><p>○○ · ○○ · ○○ · ○○</p></div>
+          <div><h4>저승 장부</h4><p>○○ · ○○ · ○○</p></div>
+          <div><h4>투명인간</h4><p>○○ · ○○ · ○○ · ○○<br>○○ · ○○ · ○○</p></div>
+          <div><h4>핑키 디저트 아일랜드</h4><p>○○ · ○○ · ○○ · ○○<br>○○ · ○○ · ○○</p></div>
+          <div><h4>별빛 아카데미</h4><p>○○ · ○○ · ○○ · ○○<br>○○ · ○○</p></div>
+          <div><h4>그리고</h4><p>여섯 번 모두 와 준<br>○○ · ○○</p></div>
+          <div><h4>만든 사람</h4><p>○○</p></div>
+          <p class="t">함께해 줘서 고마워요</p>
+        </div>
+      </div>
+      <p class="example">예시 화면 · 천천히 올라가요</p>
+    </div>
+    <div class="info">
+      <span class="tag">시안 4 · 모두 같은 한 페이지</span>
+      <h2>엔딩 크레딧</h2>
+      <p class="pitch">영화가 끝날 때처럼 검은 화면에 음악과 함께 이름이 올라가요. 게임마다 같이 한 사람들의 닉네임이 나오고, 여섯 번 모두 온 사람은 따로 한 번 더 불러 줘요. 링크 하나를 단톡방에 올리면 끝이에요.</p>
+      <dl class="facts">
+        <dt>받는 느낌</dt><dd>다 같이 보면서 "내 이름 있다!" 하는 순간</dd>
+        <dt>필요한 것</dt><dd>게임별 닉네임 명단 하나</dd>
+        <dt>만들기</dt><dd><span class="meter"><i class="on"></i><i></i><i></i><i></i><i></i></span> 가장 빨라요 (반나절)</dd>
+        <dt>주의</dt><dd>개인 선물이라기보다 다 같이 보는 마무리 영상에 가까워요. 다른 시안의 끝에 붙여도 좋아요</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ⑤ -->
+  <section class="draft">
+    <div>
+      <div class="phone cards" aria-label="카드 뽑기 시안 화면">
+        <div class="hd">○○의 카드 여섯 장<small>눌러서 뒤집어 보세요</small></div>
+        <div class="deck" id="deck">
+          <button class="card c1" type="button" id="card1" aria-label="괴이 카드 뒤집기"><span class="in"><span class="b"></span><span class="f"><strong>괴이</strong>방송실 스피커를<br>끝까지 의심한 사람</span></span></button>
+          <button class="card c2 flip" type="button" id="card2" aria-label="아르카눔 카드 뒤집기"><span class="in"><span class="b"></span><span class="f"><strong style="font-family:'UnifrakturCook',serif">Arcanum</strong>핏빛 잉크로<br>정답을 쓴 사람</span></span></button>
+          <button class="card c3" type="button" id="card3" aria-label="저승 장부 카드 뒤집기"><span class="in"><span class="b"></span><span class="f"><strong>저승 장부</strong>명부에서 이름 하나를<br>지워 준 사람</span></span></button>
+          <button class="card c4" type="button" id="card4" aria-label="투명인간 카드 뒤집기"><span class="in"><span class="b"></span><span class="f"><strong>투명인간</strong>그해 겨울<br>한 바퀴를 다 돈 사람</span></span></button>
+          <button class="card c5 flip" type="button" id="card5" aria-label="핑키 섬 카드 뒤집기"><span class="in"><span class="b"></span><span class="f"><strong>핑키 섬</strong>토마토 32개<br>요리 18번</span></span></button>
+          <button class="card c6" type="button" id="card6" aria-label="별빛 아카데미 카드 뒤집기"><span class="in"><span class="b"></span><span class="f"><strong>별빛 아카데미</strong>물약 연구 41번<br>12기 졸업</span></span></button>
+        </div>
+        <p class="tip">카드마다 이미지로 저장 가능</p>
+      </div>
+      <p class="example">예시 화면 · 카드를 눌러 보세요</p>
+    </div>
+    <div class="info">
+      <span class="tag">시안 5 · 사람마다 여섯 장</span>
+      <h2>여섯 장의 카드</h2>
+      <p class="pitch">게임마다 한 장씩, 그 사람만의 칭호가 적힌 카드예요. 처음엔 다 뒤집혀 있고, 하나씩 눌러서 열어요. 앞면에는 그 세계 그림체로 그린 내 캐릭터와 칭호가 있고, 폰 배경화면으로 저장할 수 있어요.</p>
+      <dl class="facts">
+        <dt>받는 느낌</dt><dd>뽑기를 여는 두근거림, 모으고 서로 보여 주기</dd>
+        <dt>필요한 것</dt><dd>명단과 사람별 칭호. 칭호는 기록에서 뽑거나 직접 지어 주셔도 돼요</dd>
+        <dt>만들기</dt><dd><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span> 카드 틀 6종 + 사람별 칭호</dd>
+        <dt>주의</dt><dd>칭호가 비슷비슷하면 시시해져요. 사람마다 다르게 붙이는 게 핵심이에요</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="compare">
+    <h2>한눈에 비교</h2>
+    <div class="tbl">
+      <table class="cmp">
+        <thead><tr><th>시안</th><th>받는 방식</th><th>기록 필요</th><th>손 가는 정도</th><th>어울리는 때</th></tr></thead>
+        <tbody>
+          <tr><td>1 이야기책</td><td>사람마다 링크</td><td>있으면 좋음</td><td>가장 많음</td><td>한 사람 한 사람에게 진심을 전하고 싶을 때</td></tr>
+          <tr><td>2 이계 여권</td><td>사람마다 링크</td><td>명단만</td><td>적음</td><td>가볍고 귀여운 기념품</td></tr>
+          <tr class="pick"><td>3 저승 명부</td><td>사람마다 링크</td><td>명단 + 한 줄씩</td><td>보통</td><td>여섯 게임을 한 이야기로 닫고 싶을 때</td></tr>
+          <tr><td>4 엔딩 크레딧</td><td>링크 하나</td><td>명단만</td><td>가장 적음</td><td>단톡방에서 다 같이 보는 마무리</td></tr>
+          <tr><td>5 여섯 장의 카드</td><td>사람마다 링크</td><td>칭호</td><td>보통</td><td>모으고 자랑하는 재미</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="rec">
+      <p><strong>추천 조합: 3 저승 명부 + 4 엔딩 크레딧</strong></p>
+      <p>사람마다 명부 링크를 받아 "아직 올 때가 아님" 도장을 받고, 도장이 찍힌 뒤 크레딧이 올라가며 같이 한 사람들 이름이 나오는 흐름이에요. 여섯 번째 세계가 다섯 세계를 읽어 주는 구조라 따로 놀던 게임들이 하나로 묶여요. 명단만 있으면 시작할 수 있고, 기록은 나중에 더해도 돼요.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+document.querySelectorAll('#deck .card').forEach(function(c){
+  c.addEventListener('click',function(){c.classList.toggle('flip')});
+});
+</script>

@@ -1,0 +1,316 @@
+<title>다섯 세계의 카드</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Pen+Script&family=UnifrakturCook:wght@700&family=Black+Han+Sans&family=Galmuri11&display=swap">
+<style>
+/* 레이아웃: 밤의 탁자 위에 카드 다섯 장이 세로로 놓임. 각 카드는 자기 세계의 재질, 탁자는 조용한 남색. 한 가지 어두운 화면으로 고정 */
+:root{
+  --table:#14121c; --table-2:#1d1a28; --ink:#efeaf6; --dim:#a69fb8; --line:#3a3550; --glow:#f3d38a;
+  --f-display:"Gowun Batang","Nanum Myeongjo",serif;
+  --f-body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-hand:"Nanum Pen Script","Gowun Dodum",cursive;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--table)}
+body{background:var(--table);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.65;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background-image:radial-gradient(ellipse at 50% -10%,#2b2440 0,transparent 60%)}
+.wrap{max-width:420px;margin:0 auto;padding-block:36px 72px;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{margin:0;font-family:var(--f-display);text-wrap:balance;line-height:1.3}
+p{margin:0}
+button{font:inherit;color:inherit}
+
+.sample{align-self:center;font-size:12px;letter-spacing:.08em;color:var(--dim);border:1px dashed var(--line);border-radius:999px;padding:2px 12px}
+.intro{display:flex;flex-direction:column;gap:10px;text-align:center}
+.intro .to{font-family:var(--f-hand);font-size:30px;color:var(--glow);line-height:1.1}
+.intro h1{font-size:28px}
+.intro p{color:var(--dim);font-size:15px}
+.names{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:4px}
+.names span{font-size:13px;border:1px solid var(--line);border-radius:999px;padding:1px 10px;color:var(--ink)}
+.names b{font-weight:400;color:var(--dim)}
+
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;color:var(--dim)}
+.pips{display:flex;gap:5px}
+.pips i{width:18px;height:6px;border-radius:3px;background:var(--line);transition:background .3s}
+.pips i.on{background:var(--glow)}
+.bar button{background:none;border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;color:var(--ink)}
+.bar button:hover{border-color:var(--glow)}
+
+/* 카드 공통 */
+.card{display:block;width:100%;border:0;padding:0;background:none;cursor:pointer;perspective:1400px;text-align:left}
+.card:focus-visible{outline:2px dashed var(--glow);outline-offset:6px;border-radius:18px}
+.in{position:relative;display:block;width:100%;height:540px;transition:transform .7s cubic-bezier(.3,.7,.2,1);transform-style:preserve-3d}
+.card.open .in{transform:rotateY(180deg)}
+@media (prefers-reduced-motion:reduce){.in{transition:none}}
+.face{position:absolute;inset:0;border-radius:18px;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  box-shadow:0 14px 30px rgba(0,0,0,.45)}
+.back{transform:rotateY(180deg);padding:22px 20px 18px;display:flex;flex-direction:column;gap:12px}
+.front{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px}
+.front .who{font-size:13px;letter-spacing:.2em;opacity:.75}
+.front .hint{position:absolute;bottom:18px;left:0;right:0;font-size:12px;opacity:.6;text-align:center}
+.front h2{font-size:30px}
+.back .head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.back .head h3{font-size:20px}
+.back .head small{font-size:12px;opacity:.7;white-space:nowrap}
+.title{font-size:14px;border-radius:8px;padding:8px 10px;line-height:1.45}
+.title b{display:block;font-size:18px;font-family:var(--f-display)}
+dl.stats{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:14px;line-height:1.45}
+dl.stats dt{opacity:.7;white-space:nowrap}
+dl.stats dd{margin:0;min-width:0;font-variant-numeric:tabular-nums}
+.letter{margin-top:auto;font-size:14px;line-height:1.55;padding-top:10px}
+.letter cite{display:block;font-style:normal;font-size:12px;opacity:.7;margin-top:4px}
+
+/* 아르카눔 · 크림 양피지 + 검정/핏빛/인디고 잉크 */
+.arc .face{background:#efe4c9;color:#1f1b17;background-image:radial-gradient(circle at 20% 15%,rgba(255,255,255,.5),transparent 50%),radial-gradient(circle at 90% 95%,rgba(120,80,30,.18),transparent 55%)}
+.arc .front{border:1px solid #b9a273;box-shadow:inset 0 0 0 8px #efe4c9,inset 0 0 0 9px #8a1c1c}
+.arc .front h2,.arc .blk{font-family:"UnifrakturCook",var(--f-display);font-weight:700}
+.arc .front h2{font-size:44px;color:#8a1c1c}
+.arc .front .sub{font-family:var(--f-display);color:#2d3570}
+.arc .crest{width:64px;height:64px;border-radius:50%;border:2px solid #2d3570;display:grid;place-items:center;font-family:"UnifrakturCook",serif;font-size:32px;color:#5b4a9e}
+.arc .title{background:#2d3570;color:#f2ead6}
+.arc dl.stats dt{color:#8a1c1c;opacity:1}
+.arc .letter{border-top:1px solid #b9a273;font-family:var(--f-display)}
+
+/* 신당 · 먹색 바탕, 인주 붉은빛, 금박 */
+.sin .face{background:#0e0c0b;color:#e9dfcf}
+.sin .front{background:radial-gradient(circle at 50% 40%,#2a1512,#0e0c0b 70%)}
+.sin .front h2{font-family:var(--f-display);font-size:40px;letter-spacing:.3em;padding-left:.3em}
+.sin .front .sub{font-size:12px;letter-spacing:.35em;color:#c9a65a}
+.sin .beads{display:flex;gap:7px}
+.sin .beads i{width:14px;height:14px;border-radius:50%;box-shadow:inset -3px -3px 5px rgba(0,0,0,.4),inset 2px 2px 3px rgba(255,255,255,.35)}
+.sin .title{background:transparent;border:1px solid #b03a2e;color:#f0c6bc}
+.sin .title b{color:#e8604c}
+.sin dl.stats dt{color:#c9a65a;opacity:1}
+.sin .letter{border-top:1px solid #3d332b;font-family:var(--f-display)}
+.sin .seal{position:absolute;right:16px;top:16px;width:52px;height:52px;border:2px solid #b03a2e;color:#d0493a;border-radius:6px;display:grid;place-items:center;
+  font-family:"Black Han Sans",var(--f-body);font-size:13px;line-height:1.1;text-align:center;transform:rotate(-10deg)}
+
+/* 투명인간 · 눈 오는 교실, 공책 줄 */
+.inv .face{background:#eef3f8;color:#1d2b3d;background-image:repeating-linear-gradient(0deg,transparent 0 27px,#c9d7e6 27px 28px)}
+.inv .front{background:linear-gradient(#dfe9f3,#f5f8fb)}
+.inv .front h2{font-family:var(--f-display);font-size:36px;color:#1d2b3d;opacity:.28;letter-spacing:.08em}
+.inv .front .sub{font-family:var(--f-hand);font-size:24px;color:#3a5a86}
+.inv .snow{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(#fff 1.4px,transparent 1.6px),radial-gradient(#fff 1px,transparent 1.2px);background-size:46px 46px,29px 29px;background-position:0 0,13px 17px;opacity:.9}
+.inv .title{background:#1d2b3d;color:#eef3f8}
+.inv dl.stats dt{color:#3a5a86;opacity:1}
+.inv .note{font-family:var(--f-hand);font-size:20px;line-height:1.3;color:#3a5a86}
+.inv .letter{font-family:var(--f-hand);font-size:21px;line-height:1.35}
+
+/* 핑키 디저트 아일랜드 · 분홍 크림 + 꿰맨 실 */
+.pky .face{background:#ffe3ee;color:#4a2140}
+.pky .front{background:radial-gradient(circle at 50% 35%,#fff5f9,#ffc9dd 75%);border:3px dashed #e86f9f;border-radius:18px;box-shadow:inset 0 0 0 7px #ffe3ee}
+.pky .front h2{font-family:var(--f-display);font-size:28px;color:#c2477a}
+.pky .front .sub{font-size:13px;color:#8a4a6c}
+.pky .roof{width:84px;height:62px;position:relative}
+.pky .roof::before{content:"";position:absolute;left:4px;right:4px;top:0;height:30px;background:#f27aa8;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.pky .roof::after{content:"";position:absolute;left:16px;right:16px;top:30px;bottom:0;background:#fff;border:2px solid #e86f9f;border-top:0}
+.pky .title{background:#fff;border:2px dashed #e86f9f;color:#4a2140}
+.pky .title b{color:#c2477a}
+.pky dl.stats dt{color:#c2477a;opacity:1}
+.pky .letter{border-top:2px dashed #f2a3c3;font-family:var(--f-display)}
+
+/* 별빛 아카데미 · 밤하늘 픽셀 */
+.sbt .face{background:#1b1f4a;color:#f4efff;font-family:"Galmuri11",var(--f-body)}
+.sbt .front{background:linear-gradient(#141739,#2a2f6e);background-image:radial-gradient(#fff 1px,transparent 1.5px),radial-gradient(#ffe9a8 1px,transparent 1.5px),linear-gradient(#141739,#2a2f6e);background-size:37px 37px,61px 61px,auto;background-position:0 0,20px 30px,0 0}
+.sbt .front h2{font-family:"Galmuri11",var(--f-body);font-size:24px;color:#ffe9a8;letter-spacing:.04em}
+.sbt .front .sub{font-size:12px;color:#c9c3ff}
+.sbt .flask{width:56px;height:56px;image-rendering:pixelated;background:
+  linear-gradient(#5ccb8e,#5ccb8e) 20px 26px/16px 22px no-repeat,
+  linear-gradient(#5ccb8e,#5ccb8e) 14px 32px/28px 16px no-repeat,
+  linear-gradient(#e2f8ea,#e2f8ea) 22px 8px/12px 18px no-repeat,
+  linear-gradient(#8a7a5a,#8a7a5a) 20px 4px/16px 6px no-repeat}
+.sbt .title{background:#5ccb8e;color:#10301e}
+.sbt dl.stats dt{color:#ffe9a8;opacity:1}
+.sbt .letter{border-top:2px solid #3b4290}
+
+/* 마지막 장 */
+.finale{border:1px solid var(--line);border-radius:18px;padding:24px 20px;display:flex;flex-direction:column;gap:12px;text-align:center;background:var(--table-2);transition:opacity .5s}
+.finale.locked{opacity:.45}
+.finale h2{font-size:22px}
+.finale .lock{font-size:13px;color:var(--dim)}
+.finale p{font-size:15px}
+.finale .sig{font-family:var(--f-hand);font-size:24px;color:var(--glow)}
+</style>
+
+<div class="wrap">
+  <span class="sample">시안 · 기록은 모두 예시예요</span>
+
+  <header class="intro">
+    <p class="to">당신에게</p>
+    <h1>다섯 개의 세계에서<br>당신 앞으로 카드가 왔어요</h1>
+    <p>세계마다 당신을 부르던 이름이 달랐어요.</p>
+    <div class="names">
+      <span><b>아르카눔</b> 하니</span><span><b>신당</b> 예지</span><span><b>투명인간</b> 다니엘</span><span><b>핑키 섬</b> 해린</span><span><b>별빛</b> 사나</span>
+    </div>
+  </header>
+
+  <div class="bar">
+    <span id="count">0 / 5장 열었어요</span>
+    <span class="pips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+    <button type="button" id="all">모두 뒤집기</button>
+  </div>
+
+  <!-- 아르카눔 -->
+  <button class="card arc" type="button" id="c-arc" aria-pressed="false" aria-label="아르카눔 마법학교 카드, 눌러서 뒤집기">
+    <span class="in">
+      <span class="face front">
+        <span class="who">HWCF · 아르카눔 마법학교</span>
+        <span class="crest">R</span>
+        <h2>Hani</h2>
+        <span class="sub">달빛 기숙사의 학생에게</span>
+        <span class="hint">눌러서 뒤집기</span>
+      </span>
+      <span class="face back">
+        <span class="head"><h3 class="blk">Arcanum</h3><small>하니 · R 기숙사</small></span>
+        <span class="title">당신에게 붙은 이름<b>달의 눈물을 처음 본 사람</b>학교에서 가장 먼저 ★5 약초 「달의 눈물」을 찾았어요</span>
+        <dl class="stats">
+          <dt>약초 도감</dt><dd>50종 중 31종 (전체 3등)</dd>
+          <dt>첫 수확</dt><dd>9월 3일 밤 11시 · 라벤더</dd>
+          <dt>금지된 숲</dt><dd>탐사 5번, 그중 3번 끝까지 갔어요</dd>
+          <dt>퀴디치</dt><dd>2경기 · 1승</dd>
+          <dt>최종 추리</dt><dd>범인을 정확히 짚었어요</dd>
+          <dt>기숙사컵</dt><dd>R 기숙사 2위</dd>
+        </dl>
+        <span class="letter">"잉크가 마르기도 전에 답을 적던 학생. 도서관 사서가 당신 이름을 아직 기억해요."<cite>아르카눔 교무실에서</cite></span>
+      </span>
+    </span>
+  </button>
+
+  <!-- 신당 -->
+  <button class="card sin" type="button" id="c-sin" aria-pressed="false" aria-label="신당 카드, 눌러서 뒤집기">
+    <span class="in">
+      <span class="face front">
+        <span class="sub">THE DEATH LEDGER</span>
+        <h2>신당</h2>
+        <span class="beads" aria-hidden="true"><i style="background:#c0283d"></i><i style="background:#e0a92b"></i><i style="background:#1f9a6b"></i><i style="background:#2a5bc4"></i><i style="background:#8a46c4"></i><i style="background:#e9eef5"></i></span>
+        <span class="who">명패 · 예지</span>
+        <span class="hint">눌러서 뒤집기</span>
+      </span>
+      <span class="face back">
+        <span class="seal">명부<br>대조<br>완료</span>
+        <span class="head"><h3>명패 · 예지</h3></span>
+        <span class="title">당신에게 붙은 이름<b>일곱 번째 알을 깨운 사람</b>열두 개의 알 중 7번 알을 골라 호령으로 길렀어요</span>
+        <dl class="stats">
+          <dt>호령</dt><dd>7번 알 · 다섯째 날까지 함께</dd>
+          <dt>임무</dt><dd>1일부터 5일까지 모두 참석</dd>
+          <dt>식혼 토벌</dt><dd>4번 출정 · 피해 순위 2등</dd>
+          <dt>객잔</dt><dd>윷놀이 6판 4승 · 투전 2판</dd>
+          <dt>살생부</dt><dd>판결 5번 모두 응답</dd>
+          <dt>혼록</dt><dd>여섯 구슬이 다 찬 날 함께 있었어요</dd>
+        </dl>
+        <span class="letter">"이름을 세 번 부를 수 있었는데도, 끝까지 아껴 둔 사람."<cite>달이가</cite></span>
+      </span>
+    </span>
+  </button>
+
+  <!-- 투명인간 -->
+  <button class="card inv" type="button" id="c-inv" aria-pressed="false" aria-label="투명인간 카드, 눌러서 뒤집기">
+    <span class="in">
+      <span class="face front">
+        <span class="snow" aria-hidden="true"></span>
+        <h2>투명인간</h2>
+        <span class="sub">그해 겨울, 다니엘에게</span>
+        <span class="who" style="color:#3a5a86">열네 명 · 나흘</span>
+        <span class="hint" style="color:#3a5a86">눌러서 뒤집기</span>
+      </span>
+      <span class="face back">
+        <span class="head"><h3>07 주번 · 다니엘</h3><small>열네 명 중 한 명</small></span>
+        <span class="title">당신에게 붙은 이름<b>이번엔 창문을 다 닫은 사람</b>그때 하지 않은 일을, 이번 나흘 동안은 했어요</span>
+        <dl class="stats">
+          <dt>DAY 1</dt><dd>미션 성공</dd>
+          <dt>DAY 2</dt><dd>미션 성공</dd>
+          <dt>DAY 3</dt><dd>미션 실패 · 쪽지 3번이 뿌려진 날</dd>
+          <dt>DAY 4</dt><dd>미션 성공</dd>
+          <dt>주고받은 것</dt><dd>거래 9번 · 쪽지 6장</dd>
+        </dl>
+        <span class="note">당신을 가리킨 쪽지 다섯 장 중 끝까지 들키지 않은 건 두 장.</span>
+        <span class="letter">"눈이 와서 빨리 가고 싶던 밤에도, 너는 끝까지 남아 있었어."<cite>반장이</cite></span>
+      </span>
+    </span>
+  </button>
+
+  <!-- 핑키 -->
+  <button class="card pky" type="button" id="c-pky" aria-pressed="false" aria-label="핑키 디저트 아일랜드 카드, 눌러서 뒤집기">
+    <span class="in">
+      <span class="face front">
+        <span class="roof" aria-hidden="true"></span>
+        <h2>핑키 디저트 아일랜드</h2>
+        <span class="sub">3번 집터 주민 해린에게</span>
+        <span class="hint">눌러서 뒤집기</span>
+      </span>
+      <span class="face back">
+        <span class="head"><h3>해린의 섬 생활</h3><small>3번 집터 · 분홍 지붕</small></span>
+        <span class="title">당신에게 붙은 이름<b>토토가 제일 좋아한 이웃</b>열네 주민 중 토토와의 호감도가 가장 높았어요</span>
+        <dl class="stats">
+          <dt>텃밭</dt><dd>토마토 32개 수확</dd>
+          <dt>부엌</dt><dd>요리 18번 · 솜사탕을 제일 많이</dd>
+          <dt>밤의 섬</dt><dd>토토 방 · 콩이 방 함께 깸</dd>
+          <dt>콩이 방</dt><dd>문제 15개 중 9개를 풀었어요</dd>
+          <dt>살린 횟수</dt><dd>쓰러진 이웃을 7번 일으켜 세움</dd>
+          <dt>본 엔딩</dt><dd>「집으로」</dd>
+        </dl>
+        <span class="letter">"네가 심은 토마토, 아직도 텃밭에 남아 있어. 언제든 와서 따 가."<cite>토토가</cite></span>
+      </span>
+    </span>
+  </button>
+
+  <!-- 별빛 -->
+  <button class="card sbt" type="button" id="c-sbt" aria-pressed="false" aria-label="별빛 아카데미 카드, 눌러서 뒤집기">
+    <span class="in">
+      <span class="face front">
+        <span class="flask" aria-hidden="true"></span>
+        <h2>별빛 아카데미</h2>
+        <span class="sub">듀모른 기숙사 · 사나에게</span>
+        <span class="hint" style="color:#c9c3ff">눌러서 뒤집기</span>
+      </span>
+      <span class="face back">
+        <span class="head"><h3>사나의 학생 기록부</h3><small>Dewmorn</small></span>
+        <span class="title">당신에게 붙은 이름<b>새벽 온실의 주인</b>새벽에 수확한 약초가 학년에서 가장 많았어요</span>
+        <dl class="stats">
+          <dt>기숙사</dt><dd>듀모른 · 유령관</dd>
+          <dt>물약</dt><dd>41번 끓임 · 주로 새벽빛 물약</dd>
+          <dt>수업</dt><dd>칠판 문양 맞히기 지식 27</dd>
+          <dt>시험</dt><dd>주간 시험 최고 2등</dd>
+          <dt>마법 생물</dt><dd>애정 가장 높은 친구: 털복숭이</dd>
+          <dt>시장</dt><dd>거래 23번</dd>
+        </dl>
+        <span class="letter">"이슬 맺힌 온실 문은 아직 열어 둘게요. 물 주는 건 마력이 안 드니까요."<cite>듀모른 사감 선생님</cite></span>
+      </span>
+    </span>
+  </button>
+
+  <section class="finale locked" id="finale" aria-live="polite">
+    <span class="lock" id="lockmsg">다섯 장을 모두 뒤집으면 마지막 장이 열려요</span>
+    <h2>하니, 예지, 다니엘, 해린, 사나</h2>
+    <p>세계마다 이름은 달랐지만 모두 한 사람이었어요. 다섯 번 와 줘서 고마워요.</p>
+    <p class="sig">만든 사람이</p>
+  </section>
+</div>
+
+<script>
+(function(){
+  var cards=[].slice.call(document.querySelectorAll('.card'));
+  var pips=[].slice.call(document.querySelectorAll('.pips i'));
+  var count=document.getElementById('count'), fin=document.getElementById('finale'), lock=document.getElementById('lockmsg'), all=document.getElementById('all');
+  function update(){
+    var n=cards.filter(function(c){return c.classList.contains('open')}).length;
+    count.textContent=n+' / 5장 열었어요';
+    pips.forEach(function(p,i){p.classList.toggle('on',i<n)});
+    var done=n===cards.length;
+    fin.classList.toggle('locked',!done);
+    lock.textContent=done?'마지막 장':'다섯 장을 모두 뒤집으면 마지막 장이 열려요';
+    all.textContent=done?'모두 덮기':'모두 뒤집기';
+  }
+  cards.forEach(function(c){
+    c.addEventListener('click',function(){var o=c.classList.toggle('open');c.setAttribute('aria-pressed',o);update()});
+  });
+  all.addEventListener('click',function(){
+    var open=cards.some(function(c){return !c.classList.contains('open')});
+    cards.forEach(function(c){c.classList.toggle('open',open);c.setAttribute('aria-pressed',open)});
+    update();
+  });
+  update();
+})();
+</script>
