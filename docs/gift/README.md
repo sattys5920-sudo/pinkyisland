@@ -19,6 +19,8 @@
 
 ## 사람 잇기
 
+**짝 표는 비공개 페이지에 있다 (공개 저장소에는 안 올림):** https://claude.ai/artifact/5MnnG4ok9iiqYwFQRrPnjq · 1번 사람 카드 시안(실제 기록 4장): https://claude.ai/artifact/QVvc8HgiUuPRmxncPAPWXA
+
 게임마다 계정이 따로라서 자동으로 못 잇는다. **운영자가 게임별 닉네임 표를 준다** (아이디 몰라도 됨, 여섯 게임 모두 닉네임이 저장돼 있음).
 
 ```
